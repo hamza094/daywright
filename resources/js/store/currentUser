@@ -30,7 +30,7 @@ const actions = {
 
     dispatch('subscribeUser/userSubscription', null, { root: true });
     if (toastMsg && vm?.$vToastify) vm.$vToastify.success(toastMsg);
-    pushRoute(vm, '/home', router);
+    pushRoute(vm, '/dashboard', router);
   },
 
   handleLoginResponse({ dispatch }, response) {
@@ -79,7 +79,7 @@ const actions = {
 
   deleteUser({ commit, dispatch }) {
     resetAuthState(commit, dispatch);
-    router.push('/home');
+    router.push('/dashboard');
   },
 
   updateVerifiedStatus({ commit }, isVerified) {

@@ -3,7 +3,7 @@
     <div class="card shadow-sm p-4" style="max-width: 400px; width: 100%">
       <div v-if="status === 'enabled'">
         <h5 class="mb-3 text-center text-success">✅ 2FA is enabled on your account.</h5>
-        <button class="btn btn-primary w-100 mb-2" @click="$router.push('/home')">Go to Dashboard</button>
+        <button class="btn btn-primary w-100 mb-2" @click="$router.push('/dashboard')">Go to Dashboard</button>
       </div>
       <div v-else>
         <h5 class="mb-3 text-center">Enter Two-Factor Authentication Code</h5>

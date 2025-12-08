@@ -10,7 +10,7 @@ import Login from './components/Authentication/Login.vue';
 import TwoFACode from './components/Authentication/TwoFACode.vue';
 import OAuth from './components/Authentication/OAuth.vue';
 import ZoomAuth from './components/Authentication/ZoomAuth.vue';
-import Dashboard from './components/Dashboard/ProjectDashboard.vue';
+import Dashboard from './components/Dashboard/Dashboard.vue';
 import ForgotPassword from './components/Authentication/ForgotPassword.vue';
 import ResetPassword from './components/Authentication/ResetPassword.vue';
 import VerifyPassword from './components/Authentication/VerifyPassword.vue';
@@ -30,7 +30,7 @@ const guest = (to, from, next) => {
   if (!store.state.currentUser.loggedIn) {
     return next();
   }
-  return next('/home');
+  return next('/dashboard');
 };
 
 const auth = (to, from, next) => {
@@ -61,7 +61,7 @@ const twofaGuard = (to, from, next) => {
     return next();
   }
   if (store.state.currentUser.loggedIn) {
-    return next('/home');
+    return next('/dashboard');
   }
   return next('/login');
 };
