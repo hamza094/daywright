@@ -13,3 +13,6 @@ npm-debug.log
 yarn-error.log
 extra.txt
 .phpstan-cache/
+.phpstan/
+.phpstan-result/
+phpstan.neon.tmp

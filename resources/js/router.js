@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import Router from 'vue-router';
-import currentUserModule from './store/CurrentUser';
+import store from './store';
 
 Vue.use(Router);
 
@@ -27,14 +27,14 @@ import NotFound from './components/Error.vue';
 import UserNotification from './components/UserNotification.vue';
 
 const guest = (to, from, next) => {
-  if (!currentUserModule.state.loggedIn) {
+  if (!store.state.currentUser.loggedIn) {
     return next();
   }
   return next('/home');
 };
 
 const auth = (to, from, next) => {
-  if (currentUserModule.state.loggedIn) {
+  if (store.state.currentUser.loggedIn) {
     return next();
   }
   return next('/login');
@@ -60,7 +60,7 @@ const twofaGuard = (to, from, next) => {
   if (twofaPending === 'true') {
     return next();
   }
-  if (currentUserModule.state.loggedIn) {
+  if (store.state.currentUser.loggedIn) {
     return next('/home');
   }
   return next('/login');
