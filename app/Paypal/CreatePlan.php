@@ -73,8 +73,8 @@ class CreatePlan extends Paypal
     {
         $plan = new Plan;
 
-        $plan->setName('ProFresh Online Subscription')
-            ->setDescription('Monthly Subscription For profresh plan to access all features')
+        $plan->setName('DayWright Online Subscription')
+            ->setDescription('Monthly Subscription For daywright plan to access all features')
             ->setType('fixed');
 
         return $plan;

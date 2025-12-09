@@ -43,7 +43,7 @@ class TaskAssigned extends Notification implements ShouldBroadcast, ShouldQueue
     public function toMail(mixed $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->from('ProFresh@live.com', 'ProFresh')
+            ->from('daywright@live.com', 'DayWright')
             ->line("{$this->notifierData['name']} has assigned you a new task.")
             ->line("Task: \"{$this->taskTitle}\"")
             ->line("Project: {$this->projectName}")

@@ -3,7 +3,7 @@
     <div class="row">
       <div class="col-md-1 panel-left">
         <div class="panel">
-          <a href="/"><img src="/img/profresh.png" class="main-img" alt="" /></a>
+          <a href="/"><img src="/img/daywright.png" class="main-img" alt="" /></a>
 
           <div v-if="loggedIn">
             <router-link :to="{ name: 'Dashboard' }" class="panel-list_item">
@@ -68,7 +68,7 @@
         <vue-progress-bar></vue-progress-bar>
 
         <nav class="navbar navbar-expand-md navbar-light bg-white">
-          <router-link class="navbar-brand" :to="{ name: 'Home' }"><b>Profresh</b></router-link>
+          <router-link class="navbar-brand" :to="{ name: 'Home' }"><b>DayWright</b></router-link>
 
           <button
             class="navbar-toggler"

@@ -5,7 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>ProFresh - Work on big ideas</title>
+    <title>DayWright - Work on big ideas</title>
 
       <script>window.Laravel = {csrfToken: '{{ csrf_token() }}'}</script>
 
@@ -40,7 +40,7 @@
                             <!-- Right Side Of Navbar -->
                             <ul class="navbar-nav ml-auto">
                                     <li class="nav-item">
-                                        <a class="nav-link" href="/home"><b>ProFresh Managment</b></a>
+                                        <a class="nav-link" href="/dashboard"><b>DayWright Managment</b></a>
                                     </li>
                             </ul>
                         </div>

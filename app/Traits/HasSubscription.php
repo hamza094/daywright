@@ -6,10 +6,10 @@ namespace App\Traits;
 
 trait HasSubscription
 {
-    private const SUBSCRIPTION_NAME = 'ProFresh';
+    private const SUBSCRIPTION_NAME = 'DayWright';
 
     /**
-     * Check if the user is subscribed to the ProFresh plan.
+     * Check if the user is subscribed to the DayWright plan.
      */
     public function isSubscribed(): bool
     {
@@ -47,7 +47,7 @@ trait HasSubscription
     }
 
     /**
-     * Get the user's next payment for the ProFresh subscription, or a message if not subscribed.
+     * Get the user's next payment for the DayWright subscription, or a message if not subscribed.
      */
     public function payment(): mixed
     {
@@ -57,7 +57,7 @@ trait HasSubscription
     }
 
     /**
-     * Helper to get the ProFresh subscription instance.
+     * Helper to get the DayWright subscription instance.
      */
     public function getSubscription(): mixed
     {

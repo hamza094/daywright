@@ -15,7 +15,7 @@
           that during this time, you still have access to all subscription benefits.
         </div>
         <div v-if="subscription" class="alert alert-success" role="alert">
-          <i class="fa-solid fa-exclamation-circle"> </i> You have created ProFresh Subscription
+          <i class="fa-solid fa-exclamation-circle"> </i> You have created DayWright Subscription
           <b> {{ subscription.created_at }}</b>
         </div>
 

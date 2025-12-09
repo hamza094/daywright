@@ -7,7 +7,7 @@
     <!-- CSRF Token -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>ProFresh</title>
+    <title>DayWright</title>
 
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
 
@@ -37,7 +37,7 @@
      <footer class="page-footer font-small blue">
 
   <div class="footer-copyright text-center py-3 ft-p">© 2023 Copyright:
-    <a href="http://localhost:8000/"> Profresh.com</a>
+    <a href="http://localhost:8000/"> DayWright.com</a>
   </div>
 
 </footer>

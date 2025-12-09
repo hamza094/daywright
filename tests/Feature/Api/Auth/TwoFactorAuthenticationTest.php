@@ -278,7 +278,7 @@ class TwoFactorAuthenticationTest extends TestCase
         // Ensure deterministic label for assertions if needed
         /** @var \Illuminate\Database\Eloquent\Model $twoFactor */
         $twoFactor->forceFill([
-            'label' => "ProFresh:{$this->user->email}",
+            'label' => "DayWright:{$this->user->email}",
         ])->save();
 
         $this->user->enableTwoFactorAuth();

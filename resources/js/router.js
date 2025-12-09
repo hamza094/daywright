@@ -4,7 +4,6 @@ import store from './store';
 
 Vue.use(Router);
 
-import Home from './components/Home.vue';
 import Register from './components/Authentication/Register.vue';
 import Login from './components/Authentication/Login.vue';
 import TwoFACode from './components/Authentication/TwoFACode.vue';
@@ -84,12 +83,6 @@ let router = new Router({
       path: '/oauth/zoom/callback',
       component: ZoomAuth,
       name: 'ZoomAuth',
-      beforeEnter: auth,
-    },
-    {
-      path: '/home',
-      component: Home,
-      name: 'Home',
       beforeEnter: auth,
     },
     {

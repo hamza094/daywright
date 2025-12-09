@@ -148,7 +148,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Profresh: 2FA login state
+    | DayWright: 2FA login state
     |--------------------------------------------------------------------------
     |
     | These values control how long the temporary 2FA login state is kept and

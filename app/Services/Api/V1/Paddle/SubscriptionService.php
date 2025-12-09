@@ -16,7 +16,7 @@ final class SubscriptionService implements Paddle
             throw new SubscriptionException('You are already subscribed to this plan.');
         }
 
-        return $user->newSubscription('ProFresh', config('services.paddle.'.$plan))
+        return $user->newSubscription('DayWright', config('services.paddle.'.$plan))
             ->returnTo('http://localhost:8000/subscriptions')
             ->create();
     }
@@ -32,7 +32,7 @@ final class SubscriptionService implements Paddle
             throw new SubscriptionException('You are already on this plan.');
         }
 
-        $user->subscription('ProFresh')->swapAndInvoice(config('services.paddle.'.$plan));
+        $user->subscription('DayWright')->swapAndInvoice(config('services.paddle.'.$plan));
 
         return [
             'message' => 'Your subscription has been successfully updated to the '.$plan.' plan',
@@ -48,7 +48,7 @@ final class SubscriptionService implements Paddle
             throw new SubscriptionException('You are not subscribed to this plan.');
         }
 
-        $user->subscription('ProFresh')->cancel();
+        $user->subscription('DayWright')->cancel();
 
         return [
             'message' => 'Your subscription has been canceled successfully.',

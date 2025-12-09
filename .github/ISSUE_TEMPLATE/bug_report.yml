@@ -15,9 +15,9 @@ body:
       options:
         - label: This is a **bug**, not a question or a configuration/webserver/proxy issue.
           required: true
-        - label: This issue is **not** already reported on [Github](https://github.com/hamza094/ProFresh/issues) _(I've searched it)_.
+        - label: This issue is **not** already reported on [Github](https://github.com/hamza094/daywright/issues) _(I've searched it)_.
           required: true
-        - label: I agree to follow ProFresh [Code of Conduct](https://github.com/hamza094/ProFresh/blob/master/CODE_OF_CONDUCT.md).
+        - label: I agree to follow daywright [Code of Conduct](https://github.com/hamza094/daywright/blob/master/CODE_OF_CONDUCT.md).
           required: true
   - type: input
     id: description
@@ -57,9 +57,9 @@ body:
   - type: input
     id: version
     attributes:
-      label: Version of ProFresh
+      label: Version of DayWright
       description: |
-        ProFresh semver version or commit number.
+        DayWright semver version or commit number.
   - type: dropdown
     id: install-method
     attributes:
@@ -75,7 +75,7 @@ body:
     attributes:
       label: Web server
       description: |
-        Select Webserver serving ProFresh Server.
+        Select Webserver serving DayWright Server.
         _Describe in the "Additional info" section if you chose "Other"._
       options:
         - Apache
