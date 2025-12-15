@@ -1,0 +1,150 @@
+.landing-subscribe {
+  background: linear-gradient(120deg, #f6f4ff 0%, #f8ecff 45%, #ffeef6 100%);
+  color: $color-secondary;
+  position: relative;
+  overflow: hidden;
+
+  &::before,
+  &::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  &::before {
+    width: 220px;
+    height: 220px;
+    background: rgba($color-secondary, 0.12);
+    top: -60px;
+    right: 5%;
+  }
+
+  &::after {
+    width: 180px;
+    height: 180px;
+    background: rgba($color-secondary, 0.08);
+    bottom: -40px;
+    left: 8%;
+  }
+
+  &_badge {
+    @extend .landing-section_badge;
+    background: rgba($color-secondary, 0.1);
+  }
+
+  &_title {
+    @extend .landing-section_title;
+  }
+
+  &_subtitle {
+    @extend .landing-section_subtitle;
+    max-width: 36rem;
+  }
+
+  &_list {
+    display: grid;
+    gap: 0.4rem;
+    color: $color-secondary;
+    font-weight: 600;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+
+    i {
+      color: $color-secondary;
+      font-size: 1rem;
+    }
+  }
+
+  &_form {
+    background: $color-white;
+    border-radius: 0.9rem;
+    padding: 1.25rem;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba($color-light-grey, 0.8);
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  &_field {
+    display: grid;
+    gap: 0.35rem;
+
+    .form-label {
+      font-weight: 700;
+      color: $color-secondary;
+      margin-bottom: 0;
+    }
+
+    .form-control {
+      border-radius: 0.6rem;
+      border: 1px solid rgba($color-light-grey, 0.9);
+      padding: 0.75rem 0.85rem;
+      font-size: 1rem;
+      transition: border-color 180ms ease, box-shadow 180ms ease;
+
+      &:focus {
+        border-color: rgba($color-secondary, 0.45);
+        box-shadow: 0 0 0 3px rgba($color-secondary, 0.18);
+      }
+    }
+  }
+
+  &_consent {
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    gap: 0.6rem;
+
+    .form-check-input {
+      margin-top: 0.25rem;
+      width: 1.05rem;
+      height: 1.05rem;
+      border-radius: 0.35rem;
+      border: 1px solid rgba($color-light-grey, 0.9);
+      cursor: pointer;
+    }
+
+    .form-check-input:checked {
+      background-color: $color-secondary;
+      border-color: $color-secondary;
+    }
+
+    .form-check-label {
+      color: $color-grey;
+      font-size: 0.96rem;
+      line-height: 1.4;
+    }
+  }
+
+  &_btn {
+    background: linear-gradient(90deg, #6f6bff 0%, #b46bff 50%, #ff7ec7 100%);
+    color: $color-white;
+    border: none;
+    border-radius: 999px;
+    padding: 0.7rem 1.1rem;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
+    transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+
+    &:hover,
+    &:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 22px 44px rgba(0, 0, 0, 0.16);
+      filter: brightness(1.02);
+    }
+  }
+
+  &_figure img {
+    width: 100%;
+    max-width: 520px;
+    filter: drop-shadow(0 26px 60px rgba(0, 0, 0, 0.12));
+  }
+}

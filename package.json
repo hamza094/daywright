@@ -5,12 +5,14 @@
     "build": "vite build",
     "lint": "eslint *.js resources",
     "format": "prettier --write '**/*.{js,vue,css,scss,json,yml,md}'",
-    "postinstall": "husky install"
+    "postinstall": "husky install",
+    "dev:all": "concurrently \"php artisan serve --host=127.0.0.1 --port=8000\" \"npm run dev\""
   },
   "devDependencies": {
     "@vitejs/plugin-vue2": "^2.3.3",
     "axios": "^1.13",
     "bootstrap": "^4.6.0",
+    "concurrently": "^9.2.1",
     "cross-env": "^7.0.3",
     "eslint": "^9.38.0",
     "eslint-config-prettier": "^10.1.8",

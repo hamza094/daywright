@@ -3,7 +3,7 @@
     <div class="row">
       <div class="col-md-1 panel-left">
         <div class="panel">
-          <a href="/"><img src="/img/daywright.png" class="main-img" alt="" /></a>
+          <a href="/"><img src="/img/D1.png" class="main-img" alt="" /></a>
 
           <div v-if="loggedIn">
             <router-link :to="{ name: 'Dashboard' }" class="panel-list_item">

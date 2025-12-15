@@ -1,0 +1,32 @@
+.landing-section_badge {
+  display: inline-block;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: rgba($color-secondary, 0.08);
+  color: $color-secondary;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.landing-section_title {
+  font-size: clamp(1.9rem, 2.8vw, 2.4rem);
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.landing-section_subtitle {
+  font-size: 1.05rem;
+  color: $color-grey;
+  max-width: 44rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.padding-0 {
+  padding-right: 0;
+}
+
+
+

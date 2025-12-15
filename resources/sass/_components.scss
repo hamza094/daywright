@@ -1,3 +1,7 @@
+html, body {
+  margin: 0 !important;
+}
+
 //panel
 .panel {
   height: 100vh;
@@ -189,10 +193,11 @@
 }
 
 .main-img {
-  height: 4rem;
-  width: 4rem;
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+margin-top:.7rem;
+  width: 4.3rem; 
+  height: 4.3rem; 
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .page-top {
@@ -1235,8 +1240,7 @@
     border-radius: 50%;
   }
 }
-.gioj {
-}
+
 
 .chat li.left .chat-body {
   margin-left: 60px;
