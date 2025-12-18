@@ -22,15 +22,6 @@ General rules
  - When i provide an image per section as inspiration, the assistant may adapt that design (layout, spacing, colors, and assets) to match the app's standards and sync it according to my app design.
  - Section headings: except for the Hero, Navbar,Subscrbe and Footer, every section must use a consistent section-heading design (badge/heading/border pattern) and follow the project's heading styles.
 
-Section checklist
-
-- Header: semantic nav, one primary CTA (`/dashboard` or `/register`).
-- Hero: Update hero section with two CTAs (primary + secondary).
-- About: mention Daywright is open source and link to GitHub (badge or button).
-- Features: Bootstrap grid of `.feature-card` items, each with icon, heading, and one-sentence blurb.
-- Pricing: two `.pricing-card` options (Free = Open Source badge, Paid = Hosted) with short bullet benefits.
-- Subscription: form collecting name + email + consent note, label associations, server-friendly validation.
-- Footer: include Docs, GitHub, Privacy links plus copyright text.
 
 Assistant workflow
 

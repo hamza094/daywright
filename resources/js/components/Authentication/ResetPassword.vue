@@ -1,74 +1,67 @@
 <template>
-  <div>
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-md-8">
-          <div class="form">
-            <div class="form-header">Reset Password</div>
-            <h5>Enter your new password</h5>
-            <div class="form-body">
-              <form method="POST" @submit.prevent="resetPassword">
-                <div class="form-group">
-                  <label for="email" class="form-label">E-Mail Address</label>
-
-                  <div class="col-md-8">
-                    <input
-                      id="email"
-                      type="email"
-                      class="form-control"
-                      name="email"
-                      v-model="form.email"
-                      required
-                      autocomplete="email"
-                      readonly />
-                    <span class="text-danger font-italic" v-if="errors.email" v-text="errors.email[0]"></span>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label for="password" class="form-label">Password</label>
-
-                  <div class="col-md-8">
-                    <input
-                      id="password"
-                      type="password"
-                      class="form-control"
-                      name="password"
-                      v-model="form.password"
-                      required
-                      autocomplete="new-password" />
-                    <span class="text-danger font-italic" v-if="errors.password" v-text="errors.password[0]"></span>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label for="password-confirm" class="form-label">Confirm Password</label>
-
-                  <div class="col-md-8">
-                    <input
-                      id="password-confirm"
-                      type="password"
-                      class="form-control"
-                      name="password_confirmation"
-                      v-model="form.password_confirmation"
-                      required
-                      autocomplete="new-password" />
-                    <span
-                      class="text-danger font-italic"
-                      v-if="errors.password_confirmation"
-                      v-text="errors.password_confirmation[0]"></span>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <div class="col-md-8">
-                    <button type="submit" class="form-btn">Reset Password</button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
+  <div class="auth-page">
+    <div class="auth-card auth-card--narrow">
+      <div class="auth-form">
+        <div class="text-center mb-4">
+          <router-link to="/" aria-label="Back to home">
+            <img src="/img/D2.png" alt="DayWright" class="auth-logo_img" />
+          </router-link>
         </div>
+
+        <h2 class="auth-title text-center mb-2">Reset password</h2>
+        <p class="auth-subtitle text-center mb-4">Choose a new password for your account.</p>
+
+        <form method="POST" @submit.prevent="resetPassword">
+          <div class="form-group mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input
+              id="email"
+              type="email"
+              class="form-control"
+              name="email"
+              v-model="form.email"
+              required
+              autocomplete="email"
+              readonly />
+            <span class="text-danger font-italic" v-if="errors.email" v-text="errors.email[0]"></span>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="password" class="form-label">New password</label>
+            <input
+              id="password"
+              type="password"
+              class="form-control"
+              name="password"
+              v-model="form.password"
+              required
+              autocomplete="new-password" />
+            <span class="text-danger font-italic" v-if="errors.password" v-text="errors.password[0]"></span>
+          </div>
+
+          <div class="form-group mb-4">
+            <label for="password-confirm" class="form-label">Confirm password</label>
+            <input
+              id="password-confirm"
+              type="password"
+              class="form-control"
+              name="password_confirmation"
+              v-model="form.password_confirmation"
+              required
+              autocomplete="new-password" />
+            <span
+              class="text-danger font-italic"
+              v-if="errors.password_confirmation"
+              v-text="errors.password_confirmation[0]"></span>
+          </div>
+
+          <button type="submit" class="btn btn-primary auth-submit w-100">Update password</button>
+        </form>
+
+        <p class="auth-small text-center mt-3 mb-0">
+          Remembered it?
+          <router-link class="auth-link" to="/login">Return to sign in</router-link>
+        </p>
       </div>
     </div>
   </div>
