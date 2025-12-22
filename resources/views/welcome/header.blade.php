@@ -52,7 +52,7 @@
                                             </a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="landing-nav_cta" href="/dashboard">Get started</a>
+                                            <a class="landing-nav_cta" href="{{ auth()->check() ? '/dashboard' : '/login' }}">Get started</a>
                                         </li>
                                     </ul>
                                 </div>

@@ -158,6 +158,7 @@ const components = [
   ['notifications', './components/Notification.vue'],
   ['profile', './components/Profile/ProfilePge.vue'],
   ['navbar', './components/Navbar.vue'],
+  ['sidebar-nav-panel', './components/layouts/SidebarNavPanel.vue'],
 ];
 
 components.forEach(([name, path]) => {

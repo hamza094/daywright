@@ -3,9 +3,9 @@
     <div class="auth-card auth-card--narrow">
       <div class="auth-form">
         <div class="text-center mb-4">
-          <router-link to="/" aria-label="Back to home">
+          <a href="/" aria-label="Back to home">
             <img src="/img/D2.png" alt="DayWright" class="auth-logo_img" />
-          </router-link>
+          </a>
         </div>
 
         <div v-if="status === 'enabled'" class="text-center">

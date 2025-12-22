@@ -7,9 +7,9 @@
         </div>
         <div class="col-lg-6 col-12 auth-form">
           <div class="auth-logo text-center mb-4">
-            <router-link to="/" aria-label="Back to welcome">
+            <a href="/" aria-label="Back to welcome">
               <img src="/img/D2.png" alt="DayWright" class="auth-logo_img" />
-            </router-link>
+            </a>
           </div>
           <h2 class="auth-title text-center mb-2">Create your account</h2>
           <p class="auth-subtitle text-center mb-4">Join DayWright to collaborate with your team.</p>

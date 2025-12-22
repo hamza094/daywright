@@ -1,6 +1,6 @@
 <template>
   <div>
-    <li class="dropdown mr-5">
+    <div class="dropdown mr-5">
       <a href="#" data-toggle="dropdown" class="notification">
         <i class="fa-regular fa-bell notification-icon"></i>
         <span v-if="hasUnreadNotifications" class="notification-count"></span>
@@ -43,7 +43,7 @@
           </li>
         </div>
       </ul>
-    </li>
+    </div>
   </div>
 </template>
 

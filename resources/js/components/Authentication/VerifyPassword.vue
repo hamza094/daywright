@@ -3,9 +3,9 @@
     <div class="auth-card auth-card--narrow">
       <div class="auth-form text-center">
         <div class="text-center mb-4">
-          <router-link to="/" aria-label="Back to home">
+          <a href="/" aria-label="Back to home">
             <img src="/img/D2.png" alt="DayWright" class="auth-logo_img" />
-          </router-link>
+          </a>
         </div>
 
         <h2 class="auth-title text-center mb-2">Account verification</h2>
