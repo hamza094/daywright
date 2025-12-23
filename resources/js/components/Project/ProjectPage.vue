@@ -1,17 +1,29 @@
 <template>
-  <div v-if="show">
+  <div v-if="show" class="project-page">
     <div class="container-fluid">
       <div class="row">
-        <div class="col-md-8 page pd-r">
+        <div class="col-12 col-lg-8 page pd-r">
           <div class="page-top">
-            <div>
+            <div class="d-flex align-items-center justify-content-between flex-wrap">
               <span>
                 <span class="page-top_heading">Projects </span>
                 <span class="page-top_arrow"> > </span>
                 <span> {{ project.name }}</span>
               </span>
-              <project-features :slug="project.slug" :members="project.members" :name="project.name">
-              </project-features>
+
+              <div class="d-flex align-items-center">
+                <button
+                  type="button"
+                  class="btn btn-link btn-sm"
+                  aria-label="Open project chat"
+                  @click.prevent="openProjectChat">
+                  <i class="fa-solid fa-comments"></i>
+                  <span class="d-none d-sm-inline"> Chat</span>
+                </button>
+
+                <project-features :slug="project.slug" :members="project.members" :name="project.name">
+                </project-features>
+              </div>
             </div>
           </div>
           <div class="page-content">
@@ -170,35 +182,67 @@
           </div>
         </div>
 
-        <div class="col-md-4 side_panel">
-          Project Side Panel
-          <br />
-          <Task
-            :slug="project.slug"
-            :tasks="tasks"
-            :access="permission.access"
-            :project-members="project.members"></Task>
-          <hr />
-          <PanelFeatues
-            :slug="project.slug"
-            :notes="project.notes"
-            :members="project.members"
-            :owner="user"
-            :access="permission.access"
-            :owner-login="permission.owner"></PanelFeatues>
-          <hr />
-          <div>
-            <p><b>Online Users For Chat</b></p>
-            <p v-for="user in chatusers" :key="user.id">{{ user.name }} <span class="chat-circle"></span></p>
+        <div class="col-12 col-lg-4 side_panel">
+          <div class="d-lg-none">
+            <ul class="nav nav-pills mb-3">
+              <li class="nav-item">
+                <button
+                  type="button"
+                  class="nav-link"
+                  :class="{ active: activePanelTab === 'none' }"
+                  @click.prevent="activePanelTab = 'none'">
+                  Panel
+                </button>
+              </li>
+              <li class="nav-item">
+                <button
+                  type="button"
+                  class="nav-link"
+                  :class="{ active: activePanelTab === 'tasks' }"
+                  @click.prevent="activePanelTab = 'tasks'">
+                  Tasks
+                </button>
+              </li>
+              <li class="nav-item">
+                <button
+                  type="button"
+                  class="nav-link"
+                  :class="{ active: activePanelTab === 'people' }"
+                  @click.prevent="activePanelTab = 'people'">
+                  Notes & People
+                </button>
+              </li>
+            </ul>
+
+            <div v-if="activePanelTab === 'none'" class="text-muted small mb-3">
+              Select a section to view tasks, notes, and members.
+            </div>
+
+            <Task v-if="activePanelTab === 'tasks'" :slug="project.slug" :access="permission.access"></Task>
+
+            <PanelFeatues
+              v-if="activePanelTab === 'people'"
+              :slug="project.slug"
+              :notes="project.notes"
+              :members="project.members"
+              :owner="user"
+              :access="permission.access"
+              :owner-login="permission.owner"></PanelFeatues>
           </div>
 
-          <hr />
-          <Chat
-            :slug="project.slug"
-            :conversations="project.conversations"
-            :members="project.members"
-            :owner="user"
-            :auth="auth"></Chat>
+          <div class="d-none d-lg-block">
+            Project Side Panel
+            <br />
+            <Task :slug="project.slug" :access="permission.access"></Task>
+            <hr />
+            <PanelFeatues
+              :slug="project.slug"
+              :notes="project.notes"
+              :members="project.members"
+              :owner="user"
+              :access="permission.access"
+              :owner-login="permission.owner"></PanelFeatues>
+          </div>
         </div>
       </div>
     </div>
@@ -217,7 +261,6 @@ import Stage from './Stage.vue';
 import Task from './Panel/Task.vue';
 import PanelFeatues from './Panel/Features.vue';
 import RecentActivities from './RecentActivities.vue';
-import Chat from './Panel/Chat.vue';
 import { permission } from '../../auth';
 import { mapState, mapMutations, mapActions } from 'vuex';
 
@@ -228,7 +271,6 @@ export default {
     Task,
     PanelFeatues,
     RecentActivities,
-    Chat,
     Meeting,
   },
 
@@ -242,7 +284,7 @@ export default {
       projectId: '',
       auth: this.$store.state.currentUser.user,
       conversations: [],
-      chatusers: [],
+      activePanelTab: 'none',
       path: '',
       members: '',
       show: false,
@@ -294,11 +336,9 @@ export default {
 
   mounted() {
     this.path = this.getProjectSlug();
-    this.connectToEcho();
   },
 
   beforeDestroy() {
-    Echo.leave('chatroom.' + this.path);
     if (this.projectId) {
       Echo.leave(`project.${this.projectId}.health`);
     }
@@ -307,6 +347,27 @@ export default {
   methods: {
     ...mapActions('project', ['loadProject']),
     ...mapMutations('project', ['aboutUpdate']),
+
+    openProjectChat() {
+      if (!this.project || !this.project.slug) {
+        return;
+      }
+
+      const panelHandle = this.$showPanel({
+        component: 'project-chat',
+        openOn: 'right',
+        width: 440,
+        disableBgClick: true,
+        keepAlive: true,
+        props: {
+          slug: this.project.slug,
+          members: this.project.members,
+          owner: this.user,
+          auth: this.auth,
+        },
+      });
+      panelHandle.promise.then(() => {});
+    },
 
     // Listen for backend health score updates in real-time and update store
     listenForProjectHealth() {
@@ -421,23 +482,6 @@ export default {
       Echo.channel('activities.project.' + this.projectId).listen('ActivityLogged', (e) => {
         this.project.activities.unshift(e);
       });
-    },
-
-    connectToEcho() {
-      Echo.join(`chatroom.${this.getProjectSlug()}`)
-        .here((members) => {
-          this.chatusers = members;
-        })
-        .joining((auth) => {
-          if (!this.chatusers.some((user) => user.id === auth.id)) {
-            this.chatusers = [...this.chatusers, auth];
-            this.$vToastify.info(`${auth.name} joined project conversation`);
-          }
-        })
-        .leaving((auth) => {
-          this.chatusers = this.chatusers.filter((user) => user.id !== auth.id);
-          this.$vToastify.info(`${auth.name} leave project conversation`);
-        });
     },
 
     archiveTask() {

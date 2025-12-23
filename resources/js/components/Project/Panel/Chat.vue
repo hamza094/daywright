@@ -1,6 +1,6 @@
 <template>
   <div>
-    <p>
+    <p v-if="showIntro">
       <b><i>Start Group chat with project Members</i></b>
     </p>
 
@@ -15,6 +15,7 @@
           </div>
 
           <a
+            v-if="collapsible"
             type="button"
             class="btn btn-default btn-xs float-right"
             data-toggle="collapse"
@@ -23,7 +24,7 @@
           </a>
         </div>
 
-        <div class="collapse" :id="'collapseOne-' + slug">
+        <div v-if="collapsible" class="collapse" :class="{ show: startOpen }" :id="'collapseOne-' + slug">
           <div class="card-body chat-panel">
             <!-- Chat Message -->
 
@@ -160,6 +161,141 @@
             </p>
           </div>
         </div>
+
+        <template v-else>
+          <div class="card-body chat-panel">
+            <ul class="chat">
+              <li v-for="conversation in conversations.data" :key="conversation.id || conversation.created_at">
+                <div class="chat-body clearfix">
+                  <div class="header">
+                    <router-link :to="'/user/' + conversation.user.name + '/profile'">
+                      <img
+                        v-if="conversation.user.avatar"
+                        :src="$options.filters.safeUrl(conversation.user.avatar)"
+                        alt="User Avatar"
+                        class="chat-user_image" />
+                    </router-link>
+
+                    <strong class="primary-font"> {{ conversation.user.name }}</strong>
+                  </div>
+                  <p v-if="conversation.message" class="mt-2">
+                    <span class="chat-message" v-text="conversation.message"></span>
+                  </p>
+
+                  <p v-if="conversation.file" class="mt-2">
+                    <span v-if="isImage(conversation.file)"
+                      ><img :src="$options.filters.safeUrl(conversation.file)" class="chat-image" alt=""
+                    /></span>
+
+                    <span v-else>
+                      <a
+                        :href="$options.filters.safeUrl(conversation.file)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        >{{ conversation.file }}</a
+                      >
+                    </span>
+                  </p>
+
+                  <br />
+                  <span class="float-right chat-time">
+                    <i>{{ conversation.created_at }}</i>
+                  </span>
+
+                  <button
+                    v-if="auth.uuid === conversation.user.uuid"
+                    class="btn btn-link btn-sm"
+                    @click.prevent="deleteConversation(conversation.id)">
+                    Delete
+                  </button>
+
+                  <button v-else class="btn btn-link btn-sm disabled">Delete</button>
+                </div>
+              </li>
+              <span v-if="typing" class="help-block" style="font-style: italic">
+                💬 @{{ (user && user.name) || 'Someone' }} is typing...
+              </span>
+              <span v-else class="help-block" style="font-style: italic"> 💬 </span>
+            </ul>
+          </div>
+
+          <div class="card-footer gioj">
+            <div class="chat-floating">
+              <transition name="emoji-slide" mode="out-in">
+                <Picker
+                  v-if="emojiModal"
+                  :data="emojiIndex"
+                  set="twitter"
+                  @select="showEmoji"
+                  title="Pick your emoji…"
+                  class="emoji-modal"
+                  :show-preview="false" />
+              </transition>
+            </div>
+
+            <Mentionable
+              :keys="['@']"
+              :items="items"
+              offset="6"
+              insert-space
+              @open="handleOpen"
+              @apply="handleApply">
+              <div class="position-relative w-100">
+                <textarea
+                  class="form-control mb-2"
+                  placeholder="Type your message here..."
+                  v-model="message"
+                  autofocus
+                  @keypress.enter.exact.prevent="send()"
+                  @keydown="isTyping"
+                  row="1">
+                </textarea>
+
+                <i class="fa-regular fa-grin chat-emotion position-absolute" @click="toggleEmojiModal"> </i>
+              </div>
+
+              <div class="d-flex align-items-center">
+                <button @click="openFilePicker" class="btn btn-light">
+                  <i class="fa-solid fa-paperclip"></i> Attach File
+                </button>
+
+                <div v-if="file" class="ml-2 d-flex align-items-center">
+                  <i class="fa-solid fa-file-alt mr-1"></i>
+                  <span class="file-name">{{ fileName }}</span>
+                  <button @click="removeFile" class="btn btn-sm text-danger p-0 ml-2 file-close-btn">✖</button>
+                </div>
+
+                <input
+                  type="file"
+                  ref="fileInput"
+                  class="d-none"
+                  accept=".jpg,.jpeg,.png,.pdf,.docx"
+                  @change="fileUpload" />
+              </div>
+
+              <template #no-result>
+                <div class="dim">No result</div>
+              </template>
+
+              <template #[`item-@`]="{ item }">
+                <div class="user">
+                  <img :src="item.avatar" alt="User Avatar" class="mention-user" />
+                  <span class="dim">{{ item.name }}</span>
+                  <span class="dim">({{ item.username }})</span>
+                </div>
+              </template>
+            </Mentionable>
+            <p>
+              <button
+                class="btn btn-primary btn-sm float-right mb-2"
+                id="btn-chat"
+                :disabled="isSendDisabled"
+                @click.prevent="send()">
+                Send
+              </button>
+            </p>
+          </div>
+        </template>
       </div>
     </SubscriptionCheck>
     <vue-progress-bar></vue-progress-bar>
@@ -190,6 +326,18 @@ export default {
     auth: {
       type: Object,
       required: true,
+    },
+    startOpen: {
+      type: Boolean,
+      default: false,
+    },
+    collapsible: {
+      type: Boolean,
+      default: true,
+    },
+    showIntro: {
+      type: Boolean,
+      default: true,
     },
   },
   data() {

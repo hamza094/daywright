@@ -61,7 +61,8 @@
     ".phpstan-cache": true,
     "app": true,
     "tests": true,
-    "routes": true
+    "routes": true,
+    "public": true
   },
 
   // Exclude from search index
