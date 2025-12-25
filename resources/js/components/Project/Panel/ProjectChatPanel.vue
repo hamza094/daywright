@@ -1,6 +1,6 @@
 <template>
-  <div class="p-3">
-    <div class="d-flex align-items-center justify-content-between mb-3">
+  <div class="p-3 project-chat-panel">
+    <div class="d-flex align-items-center justify-content-between mb-3 panel-header">
       <h5 class="mb-0">Project Chat</h5>
       <button type="button" class="btn btn-light btn-sm" aria-label="Close" @click.prevent="close">
         <i class="fa-solid fa-xmark"></i>
@@ -54,6 +54,12 @@ export default {
   },
   mounted() {
     this.joinPresence();
+  },
+  watch: {
+    // If user navigates away (e.g. clicking a username in chat), close the slideout.
+    $route() {
+      this.close();
+    },
   },
   beforeDestroy() {
     this.leavePresence();

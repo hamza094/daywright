@@ -1,5 +1,6 @@
 <template>
-  <div v-if="show" class="project-page">
+  <div v-if="show" class="project-page-wrapper">
+    <div class="project-page">
     <div class="container-fluid">
       <div class="row">
         <div class="col-12 col-lg-8 page pd-r">
@@ -12,15 +13,6 @@
               </span>
 
               <div class="d-flex align-items-center">
-                <button
-                  type="button"
-                  class="btn btn-link btn-sm"
-                  aria-label="Open project chat"
-                  @click.prevent="openProjectChat">
-                  <i class="fa-solid fa-comments"></i>
-                  <span class="d-none d-sm-inline"> Chat</span>
-                </button>
-
                 <project-features :slug="project.slug" :members="project.members" :name="project.name">
                 </project-features>
               </div>
@@ -246,6 +238,15 @@
         </div>
       </div>
     </div>
+    </div>
+
+    <button
+      type="button"
+      class="project-chat-fab"
+      aria-label="Open project chat"
+      @click.prevent="openProjectChat">
+      <i class="fa-solid fa-comments"></i>
+    </button>
   </div>
   <!--<div v-else class="text-center mt-5">
     <h3>Thank you for your patience. The page is loading, and we're almost there!</h3>
@@ -283,12 +284,10 @@ export default {
       projectabout: '',
       projectId: '',
       auth: this.$store.state.currentUser.user,
-      conversations: [],
       activePanelTab: 'none',
-      path: '',
-      members: '',
       show: false,
       errors: [],
+      chatPanelHandle: null,
     };
   },
 
@@ -301,10 +300,6 @@ export default {
       return { access, owner };
     },
 
-    status() {
-      // Use backend-provided derived health status (hot/warm/cold) to avoid duplicating logic here
-      return this.project.health_status || 'cold';
-    },
     healthBadgeClass() {
       const map = {
         cold: 'badge-info',
@@ -323,8 +318,6 @@ export default {
         this.projectname = this.project.name;
         this.projectabout = this.project.about;
         this.projectId = this.project.id;
-        this.members = this.project.members;
-        this.meetings = this.project.meetings;
         this.listenForActivity();
         this.listenForProjectHealth();
         this.archiveTask();
@@ -334,14 +327,16 @@ export default {
       });
   },
 
-  mounted() {
-    this.path = this.getProjectSlug();
-  },
-
   beforeDestroy() {
+    this.closeProjectChatPanel();
     if (this.projectId) {
       Echo.leave(`project.${this.projectId}.health`);
     }
+  },
+
+  beforeRouteLeave(to, from, next) {
+    this.closeProjectChatPanel();
+    next();
   },
 
   methods: {
@@ -353,12 +348,15 @@ export default {
         return;
       }
 
+      // Close any previous chat panel before opening a new one
+      this.closeProjectChatPanel();
+
       const panelHandle = this.$showPanel({
         component: 'project-chat',
         openOn: 'right',
         width: 440,
         disableBgClick: true,
-        keepAlive: true,
+        keepAlive: false,
         props: {
           slug: this.project.slug,
           members: this.project.members,
@@ -366,7 +364,20 @@ export default {
           auth: this.auth,
         },
       });
-      panelHandle.promise.then(() => {});
+
+      this.chatPanelHandle = panelHandle;
+      panelHandle.promise.finally(() => {
+        if (this.chatPanelHandle === panelHandle) {
+          this.chatPanelHandle = null;
+        }
+      });
+    },
+
+    closeProjectChatPanel() {
+      if (this.chatPanelHandle && typeof this.chatPanelHandle.close === 'function') {
+        this.chatPanelHandle.close();
+      }
+      this.chatPanelHandle = null;
     },
 
     // Listen for backend health score updates in real-time and update store

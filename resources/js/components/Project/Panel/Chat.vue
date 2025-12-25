@@ -6,41 +6,53 @@
 
     <SubscriptionCheck>
       <div class="card chat-card mb-5">
-        <div class="card-header d-flex align-items-center justify-content-between bg-primary text-white" id="accordion">
-          <div class="d-flex align-items-center">
-            <i class="fa-solid fa-comment-alt mr-2"></i>
-            <span>Group Chat</span>
-            <span v-if="conversationCount" class="badge badge-light ml-2">{{ conversationCount }}</span>
-            <span class="ml-1">messages</span>
+        <div class="card-header d-flex align-items-center justify-content-between" id="accordion">
+          <div class="d-flex align-items-center gap-2">
+            <i class="fa-solid chat-logo fa-comment-alt mr-2"></i>
+            <div class="chat-header_text">
+              <div class="chat-header_sub">Stay in sync with your team</div>
+            </div>
           </div>
 
-          <a
-            v-if="collapsible"
-            type="button"
-            class="btn btn-default btn-xs float-right"
-            data-toggle="collapse"
-            :href="'#collapseOne-' + slug">
-            <i class="fa-solid fa-angle-down"></i>
-          </a>
+          <div class="d-flex align-items-center gap-2 chat-header_meta">
+            <span class="badge badge-light">{{ conversationCount }} messages</span>
+            <span class="badge badge-secondary">{{ participantCount }} members</span>
+          </div>
         </div>
 
-        <div v-if="collapsible" class="collapse" :class="{ show: startOpen }" :id="'collapseOne-' + slug">
+        <div
+          class="chat-wrapper">
           <div class="card-body chat-panel">
-            <!-- Chat Message -->
-
             <ul class="chat">
-              <li v-for="conversation in conversations.data" :key="conversation.id || conversation.created_at">
+              <li
+                v-for="conversation in conversations.data"
+                :key="conversation.id || conversation.created_at"
+                :class="{ 'chat-item_own': auth.uuid === conversation.user.uuid }">
                 <div class="chat-body clearfix">
-                  <div class="header">
-                    <router-link :to="'/user/' + conversation.user.name + '/profile'">
-                      <img
-                        v-if="conversation.user.avatar"
-                        :src="$options.filters.safeUrl(conversation.user.avatar)"
-                        alt="User Avatar"
-                        class="chat-user_image" />
-                    </router-link>
+                  <div class="header d-flex align-items-start">
+                    <div class="d-flex align-items-center gap-2">
+                      <router-link :to="'/user/' + conversation.user.name + '/profile'">
+                        <img
+                          v-if="conversation.user.avatar"
+                          :src="$options.filters.safeUrl(conversation.user.avatar)"
+                          alt="User Avatar"
+                          class="chat-user_image" />
+                      </router-link>
 
-                    <strong class="primary-font"> {{ conversation.user.name }}</strong>
+                      <strong class="primary-font"> {{ conversation.user.name }}</strong>
+                    </div>
+
+                    <div v-if="auth.uuid === conversation.user.uuid" class="chat-message_actions ml-auto">
+                      <FeatureDropdown
+                        :feature-pop="openMenuId === (conversation.id || conversation.created_at)"
+                        @update:featurePop="(val) => toggleMenu(conversation.id || conversation.created_at, val)">
+                        <ul class="feature-dropdown_menu">
+                          <li class="feature-dropdown_item-content" @click="handleDelete(conversation.id)">
+                            <i class="fa-solid fa-ban"></i> Delete
+                          </li>
+                        </ul>
+                      </FeatureDropdown>
+                    </div>
                   </div>
                   <p v-if="conversation.message" class="mt-2">
                     <span class="chat-message" v-text="conversation.message"></span>
@@ -60,51 +72,28 @@
                       >
                     </span>
                   </p>
-
-                  <br />
                   <span class="float-right chat-time">
                     <i>{{ conversation.created_at }}</i>
                   </span>
 
-                  <button
-                    v-if="auth.uuid === conversation.user.uuid"
-                    class="btn btn-link btn-sm"
-                    @click.prevent="deleteConversation(conversation.id)">
-                    Delete
-                  </button>
-
-                  <button v-else class="btn btn-link btn-sm disabled">Delete</button>
                 </div>
               </li>
-              <span v-if="typing" class="help-block" style="font-style: italic">
-                💬 @{{ (user && user.name) || 'Someone' }} is typing...
-              </span>
-              <span v-else class="help-block" style="font-style: italic"> 💬 </span>
+              <div v-if="typing" class="chat-typing">
+                <span class="chat-typing_icon">💬</span>
+                <span class="chat-typing_text">@{{ (user && user.name) || 'Someone' }} is typing...</span>
+              </div>
+              <div v-else class="chat-typing chat-typing_idle">
+                <span class="chat-typing_icon">💬</span>
+                <span class="chat-typing_text">Waiting for new messages</span>
+              </div>
             </ul>
-
-            <!-- Chat Footer -->
           </div>
 
           <div class="card-footer gioj">
-            <div class="chat-floating">
-              <transition name="emoji-slide" mode="out-in">
-                <Picker
-                  v-if="emojiModal"
-                  :data="emojiIndex"
-                  set="twitter"
-                  @select="showEmoji"
-                  title="Pick your emoji…"
-                  class="emoji-modal"
-                  :show-preview="false" />
-              </transition>
-            </div>
-
-            <!-- Chat with mentionable user functionality -->
-
             <Mentionable :keys="['@']" :items="items" offset="6" insert-space @open="handleOpen" @apply="handleApply">
-              <div class="position-relative w-100">
+              <div class="chat-input position-relative mb-2">
                 <textarea
-                  class="form-control mb-2"
+                  class="form-control"
                   placeholder="Type your message here..."
                   v-model="message"
                   autofocus
@@ -112,158 +101,44 @@
                   @keydown="isTyping"
                   row="1">
                 </textarea>
-
-                <i class="fa-regular fa-grin chat-emotion position-absolute" @click="toggleEmojiModal"> </i>
               </div>
 
-              <div class="d-flex align-items-center">
-                <!-- Attach File Button -->
-                <button @click="openFilePicker" class="btn btn-light">
-                  <i class="fa-solid fa-paperclip"></i> Attach File
-                </button>
-
-                <!-- Show Selected File Name with Delete Option -->
-                <div v-if="file" class="ml-2 d-flex align-items-center">
-                  <i class="fa-solid fa-file-alt mr-1"></i>
-                  <span class="file-name">{{ fileName }}</span>
-                  <button @click="removeFile" class="btn btn-sm text-danger p-0 ml-2 file-close-btn">✖</button>
-                </div>
-
-                <!-- Hidden File Input -->
-                <input
-                  type="file"
-                  ref="fileInput"
-                  class="d-none"
-                  accept=".jpg,.jpeg,.png,.pdf,.docx"
-                  @change="fileUpload" />
-              </div>
-
-              <template #no-result>
-                <div class="dim">No result</div>
-              </template>
-
-              <template #[`item-@`]="{ item }">
-                <div class="user">
-                  <img :src="item.avatar" alt="User Avatar" class="mention-user" />
-                  <span class="dim">{{ item.name }}</span>
-                  <span class="dim">({{ item.username }})</span>
-                </div>
-              </template>
-            </Mentionable>
-            <p>
-              <button
-                class="btn btn-primary btn-sm float-right mb-2"
-                id="btn-chat"
-                :disabled="isSendDisabled"
-                @click.prevent="send()">
-                Send
-              </button>
-            </p>
-          </div>
-        </div>
-
-        <template v-else>
-          <div class="card-body chat-panel">
-            <ul class="chat">
-              <li v-for="conversation in conversations.data" :key="conversation.id || conversation.created_at">
-                <div class="chat-body clearfix">
-                  <div class="header">
-                    <router-link :to="'/user/' + conversation.user.name + '/profile'">
-                      <img
-                        v-if="conversation.user.avatar"
-                        :src="$options.filters.safeUrl(conversation.user.avatar)"
-                        alt="User Avatar"
-                        class="chat-user_image" />
-                    </router-link>
-
-                    <strong class="primary-font"> {{ conversation.user.name }}</strong>
-                  </div>
-                  <p v-if="conversation.message" class="mt-2">
-                    <span class="chat-message" v-text="conversation.message"></span>
-                  </p>
-
-                  <p v-if="conversation.file" class="mt-2">
-                    <span v-if="isImage(conversation.file)"
-                      ><img :src="$options.filters.safeUrl(conversation.file)" class="chat-image" alt=""
-                    /></span>
-
-                    <span v-else>
-                      <a
-                        :href="$options.filters.safeUrl(conversation.file)"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        >{{ conversation.file }}</a
-                      >
-                    </span>
-                  </p>
-
-                  <br />
-                  <span class="float-right chat-time">
-                    <i>{{ conversation.created_at }}</i>
-                  </span>
-
-                  <button
-                    v-if="auth.uuid === conversation.user.uuid"
-                    class="btn btn-link btn-sm"
-                    @click.prevent="deleteConversation(conversation.id)">
-                    Delete
+              <div class="chat-actions d-flex align-items-center flex-wrap">
+                <div class="d-flex align-items-center flex-wrap chat-actions_left">
+                  <button type="button" @click="openFilePicker" class="btn btn-light btn-icon chat-action">
+                    <i class="fa-solid fa-paperclip"></i>
                   </button>
 
-                  <button v-else class="btn btn-link btn-sm disabled">Delete</button>
+                  <div class="chat-emoji">
+                    <button type="button" class="btn btn-light btn-icon chat-action" @click="toggleEmojiModal">
+                      <i class="fa-regular fa-face-smile"></i>
+                    </button>
+                    <transition name="emoji-slide" mode="out-in">
+                      <Picker
+                        v-if="emojiModal"
+                        :data="emojiIndex"
+                        set="twitter"
+                        @select="showEmoji"
+                        title="Pick your emoji…"
+                        class="emoji-modal"
+                        :show-preview="false" />
+                    </transition>
+                  </div>
+
+                  <div v-if="file" class="chat-file-chip ml-2 d-flex align-items-center">
+                    <i class="fa-solid fa-file-alt mr-1"></i>
+                    <span class="file-name mr-2">{{ fileName }}</span>
+                    <button type="button" @click="removeFile" class="btn btn-link p-0 file-close-btn" aria-label="Remove file">✖</button>
+                  </div>
                 </div>
-              </li>
-              <span v-if="typing" class="help-block" style="font-style: italic">
-                💬 @{{ (user && user.name) || 'Someone' }} is typing...
-              </span>
-              <span v-else class="help-block" style="font-style: italic"> 💬 </span>
-            </ul>
-          </div>
 
-          <div class="card-footer gioj">
-            <div class="chat-floating">
-              <transition name="emoji-slide" mode="out-in">
-                <Picker
-                  v-if="emojiModal"
-                  :data="emojiIndex"
-                  set="twitter"
-                  @select="showEmoji"
-                  title="Pick your emoji…"
-                  class="emoji-modal"
-                  :show-preview="false" />
-              </transition>
-            </div>
-
-            <Mentionable
-              :keys="['@']"
-              :items="items"
-              offset="6"
-              insert-space
-              @open="handleOpen"
-              @apply="handleApply">
-              <div class="position-relative w-100">
-                <textarea
-                  class="form-control mb-2"
-                  placeholder="Type your message here..."
-                  v-model="message"
-                  autofocus
-                  @keypress.enter.exact.prevent="send()"
-                  @keydown="isTyping"
-                  row="1">
-                </textarea>
-
-                <i class="fa-regular fa-grin chat-emotion position-absolute" @click="toggleEmojiModal"> </i>
-              </div>
-
-              <div class="d-flex align-items-center">
-                <button @click="openFilePicker" class="btn btn-light">
-                  <i class="fa-solid fa-paperclip"></i> Attach File
+                <button
+                  class="btn btn-primary btn-sm ml-auto"
+                  id="btn-chat"
+                  :disabled="isSendDisabled"
+                  @click.prevent="send()">
+                  Send
                 </button>
-
-                <div v-if="file" class="ml-2 d-flex align-items-center">
-                  <i class="fa-solid fa-file-alt mr-1"></i>
-                  <span class="file-name">{{ fileName }}</span>
-                  <button @click="removeFile" class="btn btn-sm text-danger p-0 ml-2 file-close-btn">✖</button>
-                </div>
 
                 <input
                   type="file"
@@ -285,17 +160,9 @@
                 </div>
               </template>
             </Mentionable>
-            <p>
-              <button
-                class="btn btn-primary btn-sm float-right mb-2"
-                id="btn-chat"
-                :disabled="isSendDisabled"
-                @click.prevent="send()">
-                Send
-              </button>
-            </p>
+            <p class="d-none"></p>
           </div>
-        </template>
+        </div>
       </div>
     </SubscriptionCheck>
     <vue-progress-bar></vue-progress-bar>
@@ -306,10 +173,11 @@ import data from 'emoji-mart-vue-fast/data/all.json';
 import { Mentionable } from 'vue-mention';
 import { Picker, EmojiIndex } from 'emoji-mart-vue-fast';
 import SubscriptionCheck from '../../SubscriptionChecker.vue';
+import FeatureDropdown from '../../FeatureDropdown.vue';
 import { debounce } from 'lodash';
 
 export default {
-  components: { Picker, Mentionable, SubscriptionCheck },
+  components: { Picker, Mentionable, SubscriptionCheck, FeatureDropdown },
   props: {
     slug: {
       type: String,
@@ -330,10 +198,6 @@ export default {
     startOpen: {
       type: Boolean,
       default: false,
-    },
-    collapsible: {
-      type: Boolean,
-      default: true,
     },
     showIntro: {
       type: Boolean,
@@ -362,6 +226,7 @@ export default {
       conversations: { data: [] },
       errors: [],
       users: [...this.members, this.owner],
+      openMenuId: null,
     };
   },
 
@@ -374,6 +239,10 @@ export default {
         return this.conversations.data.length;
       }
       return 0;
+    },
+    participantCount() {
+      const memberCount = Array.isArray(this.members) ? this.members.length : 0;
+      return (this.owner ? 1 : 0) + memberCount;
     },
   },
 
@@ -479,6 +348,15 @@ export default {
         .finally(() => {
           this.isSending = false;
         });
+    },
+
+    toggleMenu(id, val) {
+      this.openMenuId = val ? id : null;
+    },
+
+    handleDelete(id) {
+      this.toggleMenu(id, false);
+      this.deleteConversation(id);
     },
 
     deleteConversation(id) {
