@@ -849,8 +849,12 @@ margin-top:.7rem;
   color: #fff;
   font-size: 20px;
 }
-#text {
-  width: 376px;
+#text,
+#project-note-text,
+#project-note-text-readonly {
+  width: 100%;
+  max-width: 376px;
+  box-sizing: border-box;
   overflow: hidden;
   background-color: #fff;
   color: #222;
@@ -861,23 +865,34 @@ margin-top:.7rem;
   padding-right: 33px;
   padding-top: 45px;
   padding-bottom: 34px;
-  background-image:
-    url(https://i.ibb.co/68zNYry/lines-1.png), url(https://static.tumblr.com/maopbtg/nBUmgtogx/paper.png);
-  background-repeat: repeat-y, repeat;
+  background-image: url('/img/lines-1.png');
+  background-repeat: repeat-y;
   border-radius: 12px;
-  box-shadow: 0px 1px 10px #000;
-  border-top: 1px solid #fff;
-  border-bottom: 1px solid #fff;
+  box-shadow: 0 10px 24px rgba(15, 36, 53, 0.16);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
   word-wrap: break-word;
   resize: none;
   height: 200px;
   &:focus {
     outline: none;
+    border-color: rgba($color-secondary, 0.55);
+    box-shadow:
+      0 10px 24px rgba(15, 36, 53, 0.16),
+      0 0 0 3px rgba($color-secondary, 0.18);
   }
 }
+
+#project-note-text-readonly[readonly] {
+  background-color: #fff;
+  color: rgba(0, 0, 0, 0.65);
+  border-color: rgba(0, 0, 0, 0.06);
+  box-shadow: 0 6px 16px rgba(15, 36, 53, 0.10);
+  cursor: not-allowed;
+}
 #wrapper {
-  width: 376px;
+  width: 100%;
+  max-width: 376px;
   height: auto;
   margin-left: auto;
   margin-right: auto;

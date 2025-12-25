@@ -3,7 +3,7 @@
     <div class="project-note">
       <div id="wrapper">
         <!-- Project Notes Section -->
-        <p><b>Add Project Note:</b></p>
+        <p class="mb-2"><b>Add Project Note:</b></p>
 
         <SubscriptionCheck>
           <form v-if="access" id="paper" method="post" @keyup.enter.prevent="ProjectNote">
@@ -16,7 +16,6 @@
               v-model="form.notes"
               v-text="notes">
             </textarea>
-            <br />
           </form>
 
           <textarea
@@ -29,7 +28,6 @@
             readonly>
           </textarea>
         </SubscriptionCheck>
-        <br />
       </div>
     </div>
     <hr />

@@ -62,7 +62,7 @@
     "app": true,
     "tests": true,
     "routes": true,
-    "public": true
+    //"public": true
   },
 
   // Exclude from search index
