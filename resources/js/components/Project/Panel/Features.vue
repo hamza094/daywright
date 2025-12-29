@@ -32,129 +32,122 @@
     </div>
     <hr />
 
-    <div class="invite" v-if="access">
-      <p><b>Project Invitations:</b></p>
-
-      <input
-        type="text"
-        placeholder="Search user for invitation"
-        class="form-control"
-        v-model="query"
-        @input="searchUsers" />
-
-      <div class="invite-list">
-        <ul>
-          <li v-if="isLoading" class="loading-spinner-container">
-            <div class="loading-spinner"></div>
-          </li>
-
-          <!-- Show "no users found" message -->
-          <li v-else-if="!isLoading && query && results.length === 0">No users found.</li>
-
-          <!-- Show user results -->
-          <li v-else-if="results.length > 0 && query" v-for="result in results.slice(0, 5)" :key="result.id">
-            <div @click.prevent="inviteUser(result.email)">{{ result.name }} ({{ result.email }})</div>
-          </li>
-        </ul>
-      </div>
-    </div>
-    <hr />
-
     <div class="project_members">
-      <div class="task-top">
-        <p>
-          <b>Project Members</b>
-          <button
-            type="button"
-            class="btn btn-link p-0"
-            data-toggle="collapse"
-            data-target="#memberProject"
-            aria-expanded="false"
-            aria-controls="memberProject">
-            <i class="fa-solid fa-angle-down float-right"></i>
-          </button>
+      <div class="task-top project-members_header">
+        <p class="project-members_title mb-0">
+          Project Members
         </p>
+        <button
+          type="button"
+          class="btn btn-link p-0 collapse-toggle collapsed"
+          data-toggle="collapse"
+          data-target="#projectMembers"
+          aria-expanded="false"
+          aria-controls="projectMembers">
+          <i class="fa-solid fa-angle-down"></i>
+        </button>
       </div>
 
-      <div class="collapse" id="memberProject">
-        <div class="row">
-          <div v-for="member in members" :key="member.id" class="col-6">
-            <div class="project_members-detail text-center">
-              <router-link :to="'/user/' + member.uuid + '/profile'">
-                <img v-if="member.avatar" :src="member.avatar" alt="" class="img-fluid rounded-circle" />
-                <p>
-                  <span v-if="member.uuid == owner.uuid" class="badge badge-success">project owner </span>
-                  <br />
-                  <span>{{ member.name }}</span>
-                  <br />
-                  <span>({{ member.username }})</span>
-                </p>
-                <p></p>
-              </router-link>
-              <button
-                v-if="ownerLogin && member.uuid !== owner.uuid"
-                type="button"
-                @click.prevent="removeMember(member.uuid)"
-                class="text-danger btn btn-link p-0">
-                Remove
-              </button>
+      <div class="collapse project-members_collapse" id="projectMembers">
+        <template v-if="access">
+          <div class="invite">
+            <p class="mb-2"><b>Project Invitations:</b></p>
+
+            <input
+              type="text"
+              placeholder="Search user for invitation"
+              class="form-control"
+              v-model="query" />
+
+            <div class="invite-list">
+              <ul v-if="query">
+                <li v-if="isLoading" class="loading-spinner-container">
+                  <div class="loading-spinner"></div>
+                </li>
+
+                <!-- Show "no users found" message -->
+                <li v-else-if="!isLoading && results.length === 0" class="invite-empty">No users found.</li>
+
+                <!-- Show user results -->
+                <li v-else v-for="result in results.slice(0, 5)" :key="result.id" class="invite-item">
+                  <button
+                    type="button"
+                    class="btn invite-result-btn"
+                    @click.prevent="inviteUser(result.email)">
+                    {{ result.name }} ({{ result.email }})
+                  </button>
+                </li>
+              </ul>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
 
-    <div class="project_members">
-      <div class="task-top">
-        <p>
-          <b>Pending Members</b>
-          <button
-            type="button"
-            class="btn btn-link p-0"
-            data-toggle="collapse"
-            data-target="#pendingMembers"
-            aria-expanded="false"
-            aria-controls="pendingMembers">
-            <i class="fa-solid fa-angle-down float-right"></i>
-          </button>
-        </p>
-      </div>
+          <hr />
+        </template>
 
-      <div class="collapse" id="pendingMembers">
-        <div class="row">
-          <!-- Check if pendingMembers array is not empty -->
+        <p class="mb-2 section-heading">Active members</p>
+        <ul class="member-listing">
+          <li v-for="member in members" :key="member.id" class="member-listing_item">
+            <router-link class="member-card_main" :to="'/user/' + member.uuid + '/profile'">
+              <div class="member-card_avatar">
+                <img v-if="member.avatar" :src="member.avatar" alt="" class="img-fluid rounded-circle" />
+              </div>
+
+              <div class="member-card_meta">
+                <div class="member-card_name">
+                  <span>{{ member.name }}</span>
+                  <span v-if="member.uuid == owner.uuid" class="badge badge-success ml-1">project owner</span>
+                </div>
+                <div class="member-card_sub member-card_time">{{ member.email}}</div>
+              </div>
+            </router-link>
+
+            <button
+              v-if="ownerLogin && member.uuid !== owner.uuid"
+              type="button"
+              @click.prevent="removeMember(member.uuid)"
+              class="text-danger btn btn-link p-0 member-card_action">
+              Remove
+            </button>
+          </li>
+        </ul>
+
+        <template v-if="ownerLogin">
+          <hr />
+          <p class="mb-2 section-heading">Pending invitations</p>
+
           <template v-if="pendingMembers.length">
-            <div v-for="member in pendingMembers" :key="member.id" class="col-6">
-              <div class="project_members-detail text-center">
-                <router-link :to="'/user/' + member.uuid + '/profile'">
-                  <img v-if="member.avatar" :src="member.avatar" class="img-fluid rounded-circle" alt="" />
-                  <p>
-                    <span>{{ member.name }}</span>
-                    <br />
-                    <span>({{ member.username }})</span>
-                  </p>
-                  <p></p>
+            <ul class="member-listing">
+              <li v-for="member in pendingMembers" :key="member.id" class="member-listing_item">
+                <router-link class="member-card_main" :to="'/user/' + member.uuid + '/profile'">
+                  <div class="member-card_avatar">
+                    <img v-if="member.avatar" :src="member.avatar" class="img-fluid rounded-circle" alt="" />
+                  </div>
+
+                  <div class="member-card_meta">
+                    <div class="member-card_name">
+                      <span>{{ member.name }}</span>
+                    </div>
+                    <div class="member-card_sub member-card_time">{{ member.invitation_sent_at }}</div>
+                  </div>
                 </router-link>
-                <span>{{ member.invitation_sent_at }}</span>
-                <br />
+
                 <button
-                  v-if="ownerLogin && member.uuid !== owner.uuid"
+                  v-if="member.uuid !== owner.uuid"
                   type="button"
                   @click.prevent="cancelRequest(member.uuid, member)"
-                  class="text-danger btn btn-link p-0">
+                  class="text-danger btn btn-link p-0 member-card_action">
                   Cancel
                 </button>
-              </div>
-            </div>
+              </li>
+            </ul>
           </template>
 
-          <!-- Show a message when no members are found -->
           <template v-else>
             <div class="col-12 text-center">
               <p>No pending or invited members found.</p>
             </div>
           </template>
-        </div>
+        </template>
       </div>
     </div>
   </div>
@@ -209,10 +202,19 @@ export default {
     query: debounce(function (newQuery) {
       this.searchUsers(newQuery);
     }, 500),
+    ownerLogin(newValue) {
+      if (newValue) {
+        this.loadPendingRequests();
+      } else {
+        this.pendingMembers = [];
+      }
+    },
   },
 
   created() {
-    this.loadPendingRequests();
+    if (this.ownerLogin) {
+      this.loadPendingRequests();
+    }
   },
 
   methods: {
@@ -249,7 +251,10 @@ export default {
           this.form.notes = this.notes;
         })
         .finally(() => {
-          document.getElementById('focus-target').focus();
+          const focusTarget = document.getElementById('focus-target');
+          if (focusTarget && focusTarget.focus) {
+            focusTarget.focus();
+          }
         });
     },
 
@@ -284,12 +289,12 @@ export default {
         )
         .then((response) => {
           this.query = '';
-          this.results = '';
+          this.results = [];
           this.$vToastify.success(response.data.message);
         })
         .catch((error) => {
           this.query = '';
-          this.results = '';
+          this.results = [];
 
           const errors = error.response?.data?.errors;
 

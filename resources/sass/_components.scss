@@ -833,13 +833,13 @@ margin-top:.7rem;
       }
     }
     &-detail {
-      padding: 1rem;
-      border: 1px solid #f0f0f0;
-      border-radius: 0.5rem;
-      background-color: #f9f9f9;
+      padding: 0;
+      border: none;
+      background: transparent;
     }
   }
 }
+
 .badge-warm {
   @extend .badge;
   background-color: $color-warm;
@@ -1125,46 +1125,6 @@ margin-top:.7rem;
   opacity: 1;
 }
 
-.invite {
-  &-list {
-    position: relative;
-  }
-  ul {
-    position: absolute;
-    list-style: none;
-    border: 1px solid $color-secondary;
-    border-radius: 4px;
-    padding-left: 0;
-    background-color: #d3d3d3;
-    width: 100%;
-  }
-  li {
-    cursor: pointer;
-    padding-left: 2rem;
-    padding-top: 0.2rem;
-    padding-bottom: 0.2rem;
-    &:hover {
-      background-color: #e5e5ee;
-    }
-  }
-}
-
-.member-list {
-  position: relative;
-  text-align: center;
-  background-color: #eee;
-  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-  padding: 0.4rem 0 0.4rem 0;
-
-  &_items {
-    cursor: pointer;
-    transition: background-color 0.1s ease;
-    &:hover {
-      background-color: #4682b4;
-      color: white;
-    }
-  }
-}
 
 .pro-info {
   font-weight: 700;
@@ -1365,20 +1325,6 @@ button.gnuIjg {
   display: none !important;
 }
 
-.member-dropdown {
-  &_item {
-    padding: 0.5rem;
-    position: fixed;
-    border-radius: 0.2rem;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    z-index: 2000 !important;
-    background-color: $color-white;
-    width: 18rem;
-    height: auto;
-    overflow: hidden;
-    border: 1px solid $color-light-grey;
-  }
-}
 /*.vm--container{
     z-index: 0 !important;
 }*/
