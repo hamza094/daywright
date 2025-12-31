@@ -218,14 +218,14 @@
   }
 }
 
-@media (max-width: 991.98px) {
+@include respond(tab-pot) {
   .chat-card .card-body.chat-panel {
     height: 46vh;
     max-height: none;
   }
 }
 
-@media (max-width: 575.98px) {
+@include respond(phone) {
   .chat-card .card-body.chat-panel {
     height: 44vh;
   }
@@ -342,7 +342,7 @@
     opacity: 0.95;
   }
 
-  @media (max-width: 575.98px) {
+  @include respond(phone) {
     .panel-header h5 { font-size: 0.95rem; }
     .panel-header button { padding: 0.2rem 0.4rem; }
   }
@@ -374,7 +374,7 @@
   white-space: nowrap;
 }
 
-@media (max-width: 575.98px) {
+@include respond(phone) {
   .chat-floating {
     inset-inline-start: 0;
     inset-inline-end: 0;

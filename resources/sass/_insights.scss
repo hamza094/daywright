@@ -273,7 +273,7 @@
 }
 
 // Responsive Adjustments for Mobile - specific footer/button handling
-@media (max-width: 768px) {
+@include respond(phone) {
   .insights-modal-footer {
     .d-flex {
       flex-direction: column !important;

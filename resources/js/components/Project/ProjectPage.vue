@@ -85,7 +85,7 @@
             <hr />
             <p class="pro-info">Project Detail</p>
             <div class="row">
-              <div class="col-md-6">
+              <div class="col-md-7">
                 <!-- About Section -->
                 <p class="crm-info">
                   <b>About</b>:
@@ -117,26 +117,6 @@
                   <b>Postponed reason</b>: <span> {{ project.postponed_reason }} </span>
                 </p>
               </div>
-              <div class="col-md-6">
-                <p class="crm-info"><b>Tasks</b>: <span> Info </span></p>
-                <p class="crm-info"><b>Appointments</b>: <span> Info </span></p>
-                <p class="crm-info"><b>Other</b>: <span> Info </span></p>
-              </div>
-            </div>
-            <br />
-            <Stage
-              :slug="project.slug"
-              :postponed-reason="project.postponed_reason"
-              :stage-updated="project.stage_updated_at"
-              :get-stage="getStage"
-              :access="permission.access">
-            </Stage>
-            <br />
-            <hr />
-            <h3>RECENT ACTIVITIES</h3>
-            <div class="row">
-              <RecentActivities :activities="project.activities" :slug="project.slug" :name="project.name">
-              </RecentActivities>
               <div class="col-md-5">
                 <div class="project-info">
                   <div class="project-info_socre">
@@ -162,8 +142,23 @@
                     <p v-text="project.updated_at"></p>
                   </div>
                 </div>
-                <br />
-                <hr />
+              </div>
+            </div>
+            <br />
+            <Stage
+              :slug="project.slug"
+              :postponed-reason="project.postponed_reason"
+              :stage-updated="project.stage_updated_at"
+              :get-stage="getStage"
+              :access="permission.access">
+            </Stage>
+            <br />
+            <hr />
+            <h3>RECENT ACTIVITIES</h3>
+            <div class="row">
+              <RecentActivities :activities="project.activities" :slug="project.slug" :name="project.name">
+              </RecentActivities>
+              <div class="col-md-5">
                 <Meeting
                   :project-slug="project.slug"
                   :project-meetings="project.meetings"

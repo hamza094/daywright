@@ -3,11 +3,18 @@
 @import '@tabler/core/dist/css/tabler-payments.min.css';
 @import '@tabler/core/dist/css/tabler-vendors.min.css';
 
+@import 'mixins';
+
 // Variables
 @import 'variables';
 
+
+// Base resets & typography
+@import 'base';
+
 // Componenets
 @import 'components';
+@import 'meeting';
 @import 'members';
 
 // Chat styles
@@ -36,5 +43,4 @@
 
 @import 'insights';
 
-// Bootstrap
 @import '~bootstrap/scss/bootstrap';

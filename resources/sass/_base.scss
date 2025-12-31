@@ -1,0 +1,32 @@
+// Base resets and responsive root sizing
+html {
+  box-sizing: border-box; // 1rem = 10px
+
+  @include respond(big-desktop) {
+    font-size: 62.5%; // keep desktop sizing stable
+  }
+
+  @include respond(tab-land) {
+    font-size: 97% !important; // 1rem ≈ 9px
+  }
+
+  @include respond(tab-pot) {
+    font-size: 93% !important; // 1rem = 8px
+  }
+
+  @include respond(phone) {
+    font-size: 87% !important; // keep text legible on phones
+  }
+}
+
+
+body {
+  font-family: $font-family-sans-serif;
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 1.6;
+ color: $text-color;
+  background-color: $body-bg;
+  padding: 0;
+}
+

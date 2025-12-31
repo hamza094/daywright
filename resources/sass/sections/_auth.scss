@@ -169,7 +169,7 @@
   margin-top: 0;
 }
 
-@media (max-width: 991.98px) {
+@include respond(tab-pot) {
   .auth-card {
     border-radius: 1rem;
     padding: 1rem;

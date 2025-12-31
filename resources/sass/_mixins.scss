@@ -1,0 +1,22 @@
+
+
+// Media Query Manager
+// Use named breakpoints instead of hard-coded values.
+$breakpoints: (
+    phone: 37.5em,       // 600px
+    tab-pot: 56.25em,    // 900px
+    tab-land: 75em,      // 1200px
+    big-desktop: 112.5em // 1800px
+);
+
+@mixin respond($breakpoint) {
+    $bp-value: map-get($breakpoints, $breakpoint);
+
+    @if $bp-value {
+        @media only screen and (max-width: $bp-value) {
+            @content;
+        }
+    } @else {
+        @warn "respond(): `#{$breakpoint}` is not defined in $breakpoints.";
+    }
+}

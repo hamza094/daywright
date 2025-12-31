@@ -1,5 +1,15 @@
 <template>
-  <div class="panel-left">
+  <div class="panel-left panel-drawer">
+    <div class="panel-drawer_header">
+      <button
+        type="button"
+        class="panel-drawer_close"
+        aria-label="Close menu"
+        @click.prevent="closePanel">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
     <sidebar-nav-menu
       :user="user"
       :loggedIn="loggedIn"

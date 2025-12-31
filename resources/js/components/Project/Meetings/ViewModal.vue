@@ -159,18 +159,18 @@
           <div class="mt-3">
             <div v-if="!isEditing">
               <button
-                class="btn btn-danger float-right mb-3"
+                class="btn btn-sm btn-danger float-right mb-3"
                 @click.prevent="deleteMeeting(meeting.id)"
                 :disabled="loader">
                 {{ loader ? 'Deleting...' : 'Delete' }}
               </button>
-              <button class="btn btn-primary float-left mb-3" @click.prevent="meetingEdit()">Edit</button>
+              <button class="btn btn-sm btn-primary float-left mb-3" @click.prevent="meetingEdit()">Edit</button>
             </div>
 
             <div v-else>
-              <button class="btn btn-info float-right mb-3" @click.prevent="meetingEditClose()">Close</button>
+              <button class="btn btn-sm btn-info float-right mb-3" @click.prevent="meetingEditClose()">Close</button>
               <button
-                class="btn btn-primary float-left mb-3"
+                class="btn btn-sm btn-primary float-left mb-3"
                 @click.prevent="updateMeeting(meeting.id)"
                 :disabled="loading">
                 {{ loading ? 'Saving...' : 'Save' }}

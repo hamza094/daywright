@@ -5,7 +5,7 @@ html, body {
 
 //panel
 .panel {
-  height: 100vh;
+  min-height: 100vh;
   &-left {
     background: #0f2435;
     text-align: center;
@@ -26,7 +26,47 @@ html, body {
   gap: 1rem;
 }
 
-@media (max-width: 991.98px) {
+.panel-drawer {
+  position: relative;
+
+  &_header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.35rem;
+  }
+
+  &_close {
+    width: 2.2rem;
+    height: 2.2rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.65rem;
+    color: $color-white;
+    background: rgba($color-white, 0.08);
+    border: 1px solid rgba($color-white, 0.18);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
+
+    &:hover,
+    &:focus {
+      background: rgba($color-white, 0.16);
+      color: $color-white;
+      transform: translateY(-1px) scale(1.02);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+      outline: none;
+      text-decoration: none;
+    }
+
+    i {
+      font-size: 1.05rem;
+      line-height: 1;
+    }
+  }
+}
+
+@include respond(tab-pot) {
   .panel-left {
     padding: 0.9rem 0.75rem;
   }
@@ -248,7 +288,26 @@ html, body {
     font-size: 1.1rem;
   }
   &-exit {
-    font-size: 1rem;
+    font-size: 1.1rem;
+    background: transparent;
+    border: none;
+    padding: 0.15rem 0.35rem;
+    color: #555;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.35rem;
+    transition: color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+
+    &:hover,
+    &:focus {
+      color: #12344d;
+      background-color: rgba(0, 0, 0, 0.05);
+      outline: none;
+      transform: translateY(-1px);
+    }
   }
   &-btn_save {
     background-color: #1d4967 !important;
@@ -310,8 +369,8 @@ margin-top:.7rem;
 .page {
   border-right: 1px solid #dce1e5;
   &-content {
-    overflow-y: scroll;
-    height: 100vh;
+    overflow-y: visible;
+    height: auto;
     padding: 1.2rem;
     &_img {
       width: 100%;
@@ -840,6 +899,51 @@ margin-top:.7rem;
   }
 }
 
+@include respond(phone) {
+  .project-info {
+    width: 100%;
+    padding: 1rem;
+    text-align: left;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    column-gap: 1rem;
+    row-gap: 0.5rem;
+    align-items: start;
+
+    &_rec {
+      grid-column: 1;
+      text-align: left;
+
+      p {
+        margin-bottom: 0.25rem;
+      }
+    }
+
+    // Support both score class spellings used in templates
+    &_score,
+    &_socre {
+      grid-column: 2;
+      grid-row: 1 / span 4;
+      justify-self: end;
+
+      // center heading above the score circle
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      &-heading {
+        margin: 0 0 0.35rem 0;
+        text-align: center;
+        width: 100%;
+      }
+
+      &-point {
+        margin: 0;
+      }
+    }
+  }
+}
+
 .badge-warm {
   @extend .badge;
   background-color: $color-warm;
@@ -1061,11 +1165,11 @@ margin-top:.7rem;
 }
 
 .side_panel {
-  overflow-y: scroll;
-  height: 100vh;
+  overflow-y: visible;
+  height: auto;
 }
 
-@media (max-width: 991.98px) {
+@include respond(tab-pot) {
   .project-page {
     margin-left:1rem;
   }
@@ -1084,7 +1188,7 @@ margin-top:.7rem;
   }
 }
 
-@media (max-width: 575.98px) {
+@include respond(phone) {
   .slideout-panel .slideout-wrapper .slideout {
     max-width: 100vw;
     width: 100vw !important;
@@ -1337,37 +1441,7 @@ button.gnuIjg {
   cursor: pointer;
 }
 
-.meeting {
-  &_heading {
-    color: #999999;
-    font-weight: bold;
-    font-size: 1.3rem;
-  }
-  &_list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    li {
-      margin-top: 0.8rem;
-      margin-left: 0.5rem;
-    }
-  }
-  &-agenda {
-    font-size: 1.1rem;
-  }
-  &_item {
-    color: #999999;
-    font-weight: bold;
-  }
-  &_button {
-    text-decoration: none !important;
-
-    &:hover,
-    &:focus {
-      text-decoration: none !important;
-    }
-  }
-}
+/* Meeting styles moved to _meeting.scss */
 
 .btn-link.active {
   background-color: #007bff;
@@ -1379,32 +1453,6 @@ button.gnuIjg {
   &:hover,
   &:focus {
     text-decoration: none;
-  }
-}
-
-/* Meeting glow circle */
-
-.glowing-dot {
-  width: 15px;
-  height: 15px;
-  background-color: green;
-  border-radius: 50%;
-  border: 2px solid white;
-  animation: glow 1s infinite alternate;
-}
-
-@keyframes glow {
-  from {
-    box-shadow:
-      0 0 10px rgba(0, 128, 0, 0.8),
-      0 0 20px rgba(0, 128, 0, 0.6),
-      0 0 30px rgba(0, 128, 0, 0.4);
-  }
-  to {
-    box-shadow:
-      0 0 20px rgba(0, 255, 0, 0.8),
-      0 0 40px rgba(0, 255, 0, 0.6),
-      0 0 60px rgba(0, 255, 0, 0.4);
   }
 }
 
