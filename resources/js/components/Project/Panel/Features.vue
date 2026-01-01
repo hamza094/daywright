@@ -39,7 +39,7 @@
         </p>
         <button
           type="button"
-          class="btn btn-link p-0 collapse-toggle collapsed"
+          class="btn btn-link btn-fix p-0 collapse-toggle collapsed"
           data-toggle="collapse"
           data-target="#projectMembers"
           aria-expanded="false"

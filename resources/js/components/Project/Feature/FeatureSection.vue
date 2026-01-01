@@ -1,6 +1,6 @@
 <template>
   <div class="float-right">
-    <FeatureDropdown :feature-pop="featurePop">
+    <FeatureDropdown :feature-pop.sync="featurePop">
       <ul>
         <li class="feature-dropdown_item-content" @click="abandon()"><i class="fa-solid fa-eye-slash"></i> Abandon</li>
 
@@ -37,17 +37,18 @@ export default {
     return {
       projectmembers: this.members,
       featurePop: false,
+      featureClickOutsideHandler: null,
       errors: {},
     };
   },
   watch: {
-    stagePop(featurePop) {
-      if (featurePop) {
-        document.addEventListener('click', (event) =>
-          this.$options.methods.handleClickOutside.call(this, event, '.feature-dropdown', this.featurePop),
-        );
-      }
+    featurePop(open) {
+      if (open) this.addFeatureClickOutsideListener();
+      else this.removeFeatureClickOutsideListener();
     },
+  },
+  beforeDestroy() {
+    this.removeFeatureClickOutsideListener();
   },
   methods: {
     abandon() {
@@ -79,6 +80,21 @@ export default {
           }
         });
     },
+      addFeatureClickOutsideListener() {
+        if (this.featureClickOutsideHandler) return;
+        this.$nextTick(() => {
+          this.featureClickOutsideHandler = (event) => {
+            const el = this.$el.querySelector('.feature-dropdown');
+            if (el && !el.contains(event.target)) this.featurePop = false;
+          };
+          document.addEventListener('click', this.featureClickOutsideHandler);
+        });
+      },
+      removeFeatureClickOutsideListener() {
+        if (!this.featureClickOutsideHandler) return;
+        document.removeEventListener('click', this.featureClickOutsideHandler);
+        this.featureClickOutsideHandler = null;
+      },
   },
 };
 </script>

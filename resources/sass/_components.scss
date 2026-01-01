@@ -383,6 +383,26 @@ margin-top:.7rem;
 .pd-r {
   padding-right: 0rem !important;
 }
+.project-icon{
+  position: relative;
+  &_name{
+    background-color: $color-secondary;
+    border-radius: 50%;
+    text-align: center;
+    color: #ffffff;
+    height: 5.5rem;
+    width: 5.5rem;
+    font-size: 2rem;
+    display: table-cell;
+    vertical-align: middle;
+  }
+}
+
+/* wrapper for icon + score badge so badge can be absolutely positioned */
+.project-status-root {
+  position: relative;
+  display: inline-block;
+}
 
 .img-avatar {
   position: relative;
@@ -420,17 +440,6 @@ margin-top:.7rem;
       transform: translate(-50%, -50%);
       text-align: center;
     }
-  }
-  &_name {
-    background-color: $color-secondary;
-    border-radius: 50%;
-    text-align: center;
-    color: #ffffff;
-    height: 5.5rem;
-    width: 5.5rem;
-    font-size: 2rem;
-    display: table-cell;
-    vertical-align: middle;
   }
 }
 .img-avatar:hover .img-avatar_overlay {
@@ -499,18 +508,20 @@ margin-top:.7rem;
   }
   //score point
   &-point {
-    position: relative;
-    bottom: 95px;
-    right: -64px;
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translate(35%, -20%);
     border: 3px solid white;
     border-radius: 50%;
     height: 37px;
     width: 37px;
-    display: flex !important;
+    display: flex;
     align-items: center;
     justify-content: center;
     color: white;
     cursor: pointer;
+    z-index: 30;
     &_cold {
       background-color: $color-cold;
     }
@@ -1003,163 +1014,6 @@ margin-top:.7rem;
   margin-top: 24px;
 }
 
-.task {
-  margin-top: 1rem;
-  &-top {
-    background-color: #f5f7f9;
-    padding: 0.5rem;
-    a {
-      text-decoration: none;
-      i {
-        color: black;
-      }
-    }
-  }
-  &-list {
-    &_text {
-      font-size: 1rem;
-      &-body {
-        text-decoration: line-through 2px $color-secondary;
-      }
-    }
-    &_heading {
-      font-size: 0.9rem;
-      font-weight: 700;
-    }
-    &_time {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: #524e4e;
-    }
-    i {
-      cursor: pointer;
-    }
-  }
-  &-card {
-    &_style {
-      width: 18rem;
-      margin-bottom: 1rem;
-      cursor: pointer;
-    }
-    &_body {
-      padding: 0.5rem 1rem 1rem 1rem !important;
-      font-size: 1rem;
-    }
-    &_border {
-      border: 0.3rem solid;
-      width: 25%;
-      margin: 0.5rem 0 0 0.5rem;
-      border-radius: 0.5rem;
-    }
-  }
-  &-modal {
-    &_title {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: 0.1rem;
-      color: #4c4a4a;
-      cursor: pointer;
-    }
-    &_close {
-      font-size: 1.5rem;
-      margin-top: -1rem;
-    }
-    &_content {
-      padding: 0.5rem;
-    }
-  }
-  &-option {
-    &_labels {
-      list-style-type: none;
-      margin-bottom: 1.5rem;
-      &-component {
-        cursor: pointer;
-        color: white;
-        padding: 0.2rem;
-        text-align: center;
-        border-radius: 0.2rem;
-      }
-    }
-    &_features {
-      list-style-type: none;
-      li {
-        &:not(:last-child) {
-          margin-bottom: 0.5rem;
-        }
-      }
-    }
-  }
-  &-member {
-    margin-right: 0.2rem;
-    display: inline-block;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    text-align: center;
-    line-height: 30px;
-    text-decoration: none;
-
-    &_avatar {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-
-    &_name {
-      background-color: $color-secondary;
-      color: white;
-      display: inline-block;
-      border-radius: 50%;
-      width: 30px;
-      height: 30px;
-      text-align: center;
-      line-height: 30px;
-    }
-    &:hover {
-      text-decoration: none;
-      color: white;
-    }
-
-    &_username {
-      font-size: 14px;
-      color: #333;
-    }
-
-    &-container {
-      display: inline-block;
-      text-align: center;
-      margin-right: 8.8px; /* Adjust the margin as needed */
-    }
-  }
-  &-description {
-    &_container {
-      margin-bottom: 0.6rem;
-    }
-    margin-top: 2rem;
-    &_heading {
-      font-weight: 600;
-      font-size: 1rem;
-      text-transform: uppercase;
-      letter-spacing: 0.2rem;
-    }
-    &_content {
-      font-size: 1rem;
-      &-link {
-        cursor: pointer;
-        &:hover {
-          text-decoration: none;
-        }
-      }
-    }
-  }
-}
-
-.title-form {
-  width: 50% !important;
-  display: inherit !important;
-}
-
 .project-appointment {
   margin-top: 0.5rem;
 }
@@ -1167,6 +1021,9 @@ margin-top:.7rem;
 .side_panel {
   overflow-y: visible;
   height: auto;
+  @include respond(phone) {
+    width: 95%!important
+  }
 }
 
 @include respond(tab-pot) {
@@ -1178,11 +1035,6 @@ margin-top:.7rem;
   }
 
   .page-content {
-    height: auto;
-    overflow-y: visible;
-  }
-
-  .side_panel {
     height: auto;
     overflow-y: visible;
   }
@@ -1214,22 +1066,6 @@ margin-top:.7rem;
   margin-bottom: 0.8rem;
 }
 
-.unassign-cross {
-  position: relative;
-  top: -8px;
-  right: 4px;
-  font-size: 1rem;
-  color: red;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.task-member-username:hover .unassign-cross {
-  opacity: 1;
-}
-
-
 .pro-info {
   font-weight: 700;
   font-size: 1rem;
@@ -1248,6 +1084,7 @@ margin-top:.7rem;
 .notification {
   position: absolute;
   &-icon {
+    color: $color-secondary;
     font-size: 1.1rem;
   }
   &-count {

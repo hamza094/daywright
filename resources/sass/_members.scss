@@ -213,17 +213,3 @@
   }
 }
 
-.member-dropdown {
-  &_item {
-    padding: 0.5rem;
-    position: fixed;
-    border-radius: 0.2rem;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-    z-index: 2000 !important;
-    background-color: $color-white;
-    width: 18rem;
-    height: auto;
-    overflow: hidden;
-    border: 1px solid $color-light-grey;
-  }
-}

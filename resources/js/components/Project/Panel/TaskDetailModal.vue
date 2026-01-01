@@ -120,7 +120,7 @@
                   <div class="float-right mt-2">
                     <button class="btn btn-sm btn-secondary" @click.prevent="cancelDue()">Cancel</button>
 
-                    <button class="btn btn-sm btn-primary" @click.prevent="taskDue(task.id)">Set</button>
+                    <button class="btn btn-sm btn-primary ml-1" @click.prevent="taskDue(task.id)">Set</button>
                   </div>
                 </div>
               </li>

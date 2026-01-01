@@ -142,18 +142,23 @@
 .meeting-show {
   padding-right: 0.5rem; // spacing around content
   width: 100%;
+  overflow-x: hidden; // prevent horizontal scrolling
 }
 
 .meeting-show > ul {
   max-height: 75vh;
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  padding: 0; /* remove extra horizontal padding that can cause overflow */
+  margin: 0;
+  box-sizing: border-box;
 }
 
 @include respond(tab-pot) {
   .meeting-show > ul {
     max-height: 60vh;
-    padding-right: 0.25rem;
+    padding-right: 0; /* avoid horizontal overflow on constrained widths */
   }
 
   .card,
@@ -166,7 +171,7 @@
 @include respond(phone) {
   .meeting-show > ul {
     max-height: 50vh;
-    padding: 0 0.25rem;
+    padding: 0; /* avoid horizontal overflow on small screens */
   }
 
   .card,
@@ -212,13 +217,17 @@
       width: 78vw !important;
       margin: 1rem;
     }
-
-    .panel-bottom .panel-top_content {
-      //justify-content: center;
-
-      .btn {
-        //width: 100%;
-      }
-    }
   }
 }
+
+// Ensure the right side panel has breathing room on smaller screens
+@include respond(tab-pot) {
+  .side_panel {
+    margin-top: 3.5rem;
+    margin-bottom: 3.5rem;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 42rem;
+  }
+}
+

@@ -169,7 +169,7 @@
           </div>
         </div>
 
-        <div class="col-12 col-lg-4 side_panel">
+        <div class="col-lg-4 side_panel">
           <div class="d-lg-none">
             <ul class="nav nav-pills mb-3">
               <li class="nav-item">
@@ -196,7 +196,7 @@
                   class="nav-link"
                   :class="{ active: activePanelTab === 'people' }"
                   @click.prevent="activePanelTab = 'people'">
-                  Notes & People
+                  Notes & Members
                 </button>
               </li>
             </ul>

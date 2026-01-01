@@ -1,7 +1,7 @@
 <template>
   <div class="project-status-root">
-    <div class="img-avatar">
-      <div class="img-avatar_name">{{ projectInitial }}</div>
+    <div class="project-icon">
+      <div class="project-icon_name">{{ projectInitial }}</div>
     </div>
 
     <div class="score-dropdown" ref="dropdown" :id="'score-dropdown-' + _uid">
@@ -21,7 +21,7 @@
       <div class="score-dropdown_item" v-show="isPop">
         <div class="score">
           <div class="score-content">
-            <p class="score-content_para">
+            <p class="score-content_para p-2">
               <i class="fa-regular fa-clock"></i>
               The project started {{ project && project.start ? project.start : 'N/A' }}. Currently in its
               <b v-text="project.stage.name"></b> stage
@@ -52,7 +52,7 @@
                     <div class="insight-icon health"><i class="fa-solid fa-heartbeat"></i></div>
                     <h6 class="card-title mb-0 fw-semibold">{{ healthInsight.title || 'Health' }}</h6>
                   </div>
-                  <span class="badge bg-success insight-badge">Health</span>
+                  <span class="badge bg-success text-white insight-badge">Health</span>
                 </div>
                 <div class="card-body py-2">
                   <div v-if="healthInsight.data" class="primary-value mb-2">

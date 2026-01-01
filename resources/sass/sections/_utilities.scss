@@ -28,5 +28,24 @@
   padding-right: 0;
 }
 
+.btn-link {
+  text-decoration: none !important;
+  color: inherit;
 
+  &:hover,
+  &:focus,
+  &:active {
+    background-color: transparent !important;
+    color: $color-secondary !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+  }
+}
 
+.btn-fix {
+  &:hover,
+  &:focus,
+  &:active {
+    color: $color-white !important;
+  }
+}
