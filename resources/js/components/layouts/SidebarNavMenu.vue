@@ -76,7 +76,9 @@ export default {
   },
   computed: {
     userId() {
-      return this.user && this.user.id ? this.user.id : null;
+      // prefer `uuid` where available (routes use :uuid), fall back to `id`
+      if (!this.user) return null;
+      return this.user.uuid || this.user.id || null;
     },
   },
   methods: {

@@ -14,12 +14,10 @@
 
 // Componenets
 @import 'components';
-@import 'task';
-@import 'meeting';
-@import 'members';
-
-// Chat styles
-@import 'chat';
+@import 'sections/project/task';
+@import 'sections/project/meeting';
+@import 'sections/project/members';
+@import 'sections/project/chat';
 
 // Landing page (sectioned)
 @import 'main';
@@ -38,10 +36,10 @@
 
 @import 'subscriptionModal';
 
-@import 'twoFactorAuth';
+@import 'sections/profile/twoFactorAuth';
 
 @import 'user-activities';
 
-@import 'insights';
+@import 'sections/project/insights';
 
 @import '~bootstrap/scss/bootstrap';

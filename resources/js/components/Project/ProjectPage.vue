@@ -67,7 +67,7 @@
                   </p>
                   <p class="content-info">
                     Created By<span class="content-dot"></span>
-                    <router-link :to="'/user/' + user.id + '/profile'" class="btn btn-link">{{
+                    <router-link :to="'/user/' + user.uuid+ '/profile'" class="btn btn-link">{{
                       user.name
                     }}</router-link>
                   </p>

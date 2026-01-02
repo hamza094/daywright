@@ -31,7 +31,7 @@
                 <div class="chat-body clearfix">
                   <div class="header d-flex align-items-start">
                     <div class="d-flex align-items-center gap-2">
-                      <router-link :to="'/user/' + conversation.user.name + '/profile'">
+                      <router-link :to="'/user/' + (conversation.user.uuid conversation.user.name) + '/profile'">
                         <img
                           v-if="conversation.user.avatar"
                           :src="$options.filters.safeUrl(conversation.user.avatar)"
