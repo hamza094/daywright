@@ -3,7 +3,7 @@
     name="edit-profile"
     height="auto"
     :scrollable="true"
-    :shift-x="0.98"
+    :shift-x="1"
     width="38%"
     class="model-desin"
     :click-to-close="false">

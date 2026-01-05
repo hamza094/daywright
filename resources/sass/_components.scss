@@ -350,6 +350,9 @@ margin-top:.7rem;
   background: #f5f7f9;
   color: #1d4967;
   padding: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-weight: 700;
   border-bottom: 1px solid #ebeff3;
   &_heading {
@@ -404,50 +407,6 @@ margin-top:.7rem;
   display: inline-block;
 }
 
-.img-avatar {
-  position: relative;
-  cursor: pointer;
-  img {
-    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-    width: 5.5rem;
-    //height: 6rem;
-    border-radius: 2.5rem;
-    display: block;
-    overflow: hidden;
-  }
-  &_overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: #12344d;
-    overflow: hidden;
-    width: 5.5rem;
-    height: 0;
-    transition: 0.5s ease;
-    overflow: hidden;
-    clip-path: polygon(0% 0, 100% 0%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-    border-bottom-left-radius: 2.5rem;
-    border-bottom-right-radius: 2.5rem;
-    &-text {
-      color: white;
-      font-size: 0.7rem;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      -webkit-transform: translate(-50%, -50%);
-      -ms-transform: translate(-50%, -50%);
-      transform: translate(-50%, -50%);
-      text-align: center;
-    }
-  }
-}
-.img-avatar:hover .img-avatar_overlay {
-  height: 20%;
-  opacity: 0.9;
-  overflow: hidden;
-}
-
 .content {
   &-name {
     font-weight: 700;
@@ -473,20 +432,6 @@ margin-top:.7rem;
     margin-right: 0.4rem;
     margin-left: 0.4rem;
   }
-  /*&-map{
-        i{
-            color:$color-grey;
-            margin-right: .5rem;
-        }
-        a{
-            text-decoration: none !important;
-        }
-    }*/
-}
-
-.img_avarar input[type='file'] {
-  font-size: 15px;
-  color: $color-secondary;
 }
 
 //score feature
@@ -1030,6 +975,9 @@ margin-top:.7rem;
   .project-page {
     margin-left:1rem;
   }
+  .profile-page {
+      margin-left:.8rem;
+    }
   .page {
     border-right: 0;
   }

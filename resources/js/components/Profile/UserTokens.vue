@@ -60,7 +60,8 @@
         </div>
       </div>
       <div v-else>
-        <table class="table table-bordered table-hover">
+        <div class="table-responsive table-responsive-md">
+          <table class="table table-bordered table-hover">
           <thead class="thead-light">
             <tr>
               <th>Name</th>
@@ -104,7 +105,8 @@
               <td colspan="6" class="text-center">No tokens found.</td>
             </tr>
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
     </div>
   </div>
