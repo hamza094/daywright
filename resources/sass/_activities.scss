@@ -1,0 +1,138 @@
+.activity {
+  ul {
+    list-style: none;
+    border-left: 4px solid #d3d3d3;
+    padding-left: 2rem;
+    margin-left: 1rem;
+    li {
+      margin-bottom: -1.2rem;
+    }
+  }
+  &-icon {
+    position: relative;
+    top: 33px;
+    right: 55px;
+    border: 3px solid #d3d3d3;
+    border-radius: 50%;
+    height: 43px;
+    width: 43px;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    &_blue {
+      color: $color-cold;
+    }
+    &_green {
+      color: #0f703b;
+      &:hover {
+        color: #0f703b;
+        font-weight: bold;
+      }
+    }
+    &_purple {
+      color: $color-secondary;
+      &:hover {
+        color: $color-secondary;
+        font-weight: bold;
+      }
+    }
+    &_main {
+      color: $color-cold;
+      &:hover {
+        color: $color-cold;
+        font-weight: bold;
+      }
+    }
+    &_primary {
+      color: $color-primary;
+      &:hover {
+        color: $color-primary;
+        font-weight: bold;
+      }
+    }
+    &_danger {
+      color: #e74c3c;
+      &:hover {
+        color: #e74c3c;
+        font-weight: bold;
+      }
+    }
+    &_member {
+      color: #40e227;
+      &:hover {
+        color: #40e227;
+        font-weight: bold;
+      }
+    }
+    i {
+      font-size: 1.2rem;
+    }
+  }
+  &-info {
+    font-size: 0.7rem;
+    &_dot {
+      height: 0.4rem;
+      width: 0.4rem;
+      background-color: #d3d3d3;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 0.2rem;
+      margin-left: 0.2rem;
+    }
+  }
+  &-more {
+    a {
+      position: relative;
+      top: 24px;
+      right: 66px;
+      background-color: #d3d3d3;
+      font-size: 0.7rem;
+      padding: 0.4rem;
+      border-radius: 2rem;
+
+      &:hover {
+        text-decoration: none;
+      }
+    }
+  }
+  &-search {
+    ul {
+      list-style: none;
+      a {
+        text-decoration: none;
+        font-size: 1rem;
+      }
+    }
+  }
+}
+
+@include respond(phone){
+  .activity{
+  margin-left:1rem;
+}
+}
+
+/* Sidebar filters: horizontal layout on small screens */
+@include respond(tab-pot) {
+  .activity-search ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding-left: 0;
+    margin: 0;
+  }
+
+  .activity-search ul li {
+    list-style: none;
+    margin: 0;
+    flex: 0 1 auto;
+  }
+
+  .activity-search ul li a {
+    display: inline-block;
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.25rem;
+    white-space: nowrap;
+  }
+}

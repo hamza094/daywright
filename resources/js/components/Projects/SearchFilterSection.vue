@@ -5,12 +5,11 @@
         <i :class="`fa-solid ${currentTabConfig.icon} text-${currentTabConfig.color} me-2`"></i>
         {{ currentTabConfig.label }}
       </h5>
-      <div class="d-flex flex-column flex-sm-row gap-2 w-md-auto">
+      <div class="margin-small d-flex flex-column flex-sm-row gap-2 w-md-auto">
         <div class="position-relative flex-grow-1 flex-sm-grow-0">
-          <i class="fa-solid fa-search position-absolute top-50 start-0 translate-middle-y ms-2 text-muted"></i>
           <input
             type="text"
-            class="form-control form-control-sm ps-4"
+            class="form-control"
             placeholder="Search projects..."
             :value="searchQuery"
             @input="handleSearchInput" />
