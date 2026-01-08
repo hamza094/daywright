@@ -1,0 +1,40 @@
+
+.subscription-plans {
+	margin-top: 2rem;
+	margin-bottom: 2rem;
+}
+
+.subscription-plan-card {
+	border: 1px solid $laravel-border-color;
+	border-radius: 12px;
+	transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.subscription-plan-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 0.75rem 1.5rem rgba($color-secondary, 0.12);
+}
+
+.subscription-plan-card--featured {
+	border-width: 2px;
+}
+
+.subscription_heading {
+	color: $color-secondary;
+	font-size: 1.25rem;
+	font-weight: 600;
+}
+
+.subscription_value {
+	color: $color-secondary;
+	font-size: 2.5rem;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1;
+}
+
+@media (max-width: 575.98px) {
+	.subscription_value {
+		font-size: 2.1rem;
+	}
+}

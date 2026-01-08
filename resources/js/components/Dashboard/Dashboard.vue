@@ -22,7 +22,7 @@
           </h5>
         </div>
 
-        <div class="col-md-4" v-for="project in projects" :key="project.id">
+        <div class="col-md-6 col-lg-4" v-for="project in projects" :key="project.id">
           <router-link :to="{ name: 'ProjectPage', params: { slug: project.slug } }" class="dashboard-link">
             <div class="dashboard-projects mt-5 active-projects">
               <div class="project-status">
@@ -31,16 +31,25 @@
               <div class="project-title">{{ project.name }}</div>
               <div class="project-info">
                 <div class="info-item">
-                  <span class="info-label">Stage:</span>
-                  <span class="info-value">{{ project.stage.name }}</span>
+                  <span class="info-label">
+                    <i class="fa-solid fa-flag me-2 assigned_icon" aria-hidden="true"></i>
+                    Stage:
+                  </span>
+                  <span class="info-value"><b>{{ project.stage.name }}</b></span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Health Status:</span>
-                  <span class="info-value">{{ project.health_status }}</span>
+                  <span class="info-label">
+                    <i class="fa-solid fa-heart-pulse me-2 assigned_icon" aria-hidden="true"></i>
+                    Health Status:
+                  </span>
+                  <span class="info-value"><b>{{ capitalize(project.health_status) }}</b></span>
                 </div>
                 <div class="info-item">
-                  <span class="info-label">Created:</span>
-                  <span class="info-value">{{ project.created_at }}</span>
+                  <span class="info-label">
+                    <i class="fa-solid fa-clock me-2 assigned_icon" aria-hidden="true"></i>
+                    Created:
+                  </span>
+                  <span class="info-value"><b>{{ project.created_at }}</b></span>
                 </div>
               </div>
             </div>
@@ -49,8 +58,6 @@
       </div>
     </div>
     <div class="dashboard-project_info m-5">
-      <p class="float-left"><b>Your Projects Info</b></p>
-      <br />
       <div class="row">
         <div class="col-md-6">
           <ProjectChart> </ProjectChart>
@@ -62,8 +69,6 @@
     </div>
 
     <div class="dashboard-project_info m-5">
-      <p class="float-left"><b>Your Tasks Info</b></p>
-      <br />
       <div class="row">
         <div class="col-md-6">
           <TasksData> </TasksData>
@@ -122,6 +127,11 @@ export default {
       this.projects = data.projects;
       this.projectsCount = data.projectsCount;
       this.message = data.message;
+    },
+    capitalize(value) {
+      if (value === null || value === undefined) return '';
+      const str = String(value);
+      return str.charAt(0).toUpperCase() + str.slice(1);
     },
   },
 };

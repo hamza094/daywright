@@ -10,7 +10,7 @@
     padding: 1.5rem;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     border-radius: 16px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, $color-secondary 0%, lighten($color-secondary, 25%) 100%);
     color: white;
     font-size: 0.95rem;
     border: none;
@@ -92,7 +92,7 @@
   // Modern card variants for different project types
   .dashboard-projects {
     &.active-projects {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, $color-secondary 0%, lighten($color-secondary, 25%) 100%);
     }
 
     &.invited-projects {
@@ -138,13 +138,8 @@
       color: #b8860b;
     }
   }
-
-  .created_icon {
-    color: $color-secondary;
-  }
-
   .assigned_icon {
-    color: green;
+    color: #fff;
   }
 
   // Modern tab styling

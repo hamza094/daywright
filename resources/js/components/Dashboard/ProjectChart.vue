@@ -25,7 +25,7 @@
 
     <div class="chart-summary mt-3" v-if="projectStats && !isLoading">
       <div class="row">
-        <div class="col-md-3" v-for="stat in projectStats" :key="stat.label">
+        <div class="col-sm-6 col-md-3" v-for="stat in projectStats" :key="stat.label">
           <div class="metric-card text-center p-2">
             <div class="metric-value">{{ stat.value }}</div>
             <div class="metric-label">{{ stat.label }}</div>
