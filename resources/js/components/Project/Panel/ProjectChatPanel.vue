@@ -10,14 +10,19 @@
     <div class="mb-3">
       <p class="mb-2"><b>Online Users</b></p>
       <div v-if="onlineUsers.length" class="small">
-        <div v-for="u in onlineUsers" :key="u.id">
-          {{ u.name }} <span class="chat-circle"></span>
-        </div>
+        <div v-for="u in onlineUsers" :key="u.id">{{ u.name }} <span class="chat-circle"></span></div>
       </div>
       <div v-else class="text-muted small">No one is currently online.</div>
     </div>
 
-    <Chat :slug="slug" :members="members" :owner="owner" :auth="auth" :start-open="true" :collapsible="false" :show-intro="false" />
+    <Chat
+      :slug="slug"
+      :members="members"
+      :owner="owner"
+      :auth="auth"
+      :start-open="true"
+      :collapsible="false"
+      :show-intro="false" />
   </div>
 </template>
 
@@ -52,14 +57,14 @@ export default {
       onlineUsers: [],
     };
   },
-  mounted() {
-    this.joinPresence();
-  },
   watch: {
     // If user navigates away (e.g. clicking a username in chat), close the slideout.
     $route() {
       this.close();
     },
+  },
+  mounted() {
+    this.joinPresence();
   },
   beforeDestroy() {
     this.leavePresence();

@@ -34,9 +34,7 @@
 
     <div class="project_members">
       <div class="task-top project-members_header">
-        <p class="project-members_title mb-0">
-          Project Members
-        </p>
+        <p class="project-members_title mb-0">Project Members</p>
         <button
           type="button"
           class="btn btn-link btn-fix p-0 collapse-toggle collapsed"
@@ -53,11 +51,7 @@
           <div class="invite">
             <p class="mb-2"><b>Project Invitations:</b></p>
 
-            <input
-              type="text"
-              placeholder="Search user for invitation"
-              class="form-control"
-              v-model="query" />
+            <input type="text" placeholder="Search user for invitation" class="form-control" v-model="query" />
 
             <div class="invite-list">
               <ul v-if="query">
@@ -70,10 +64,7 @@
 
                 <!-- Show user results -->
                 <li v-else v-for="result in results.slice(0, 5)" :key="result.id" class="invite-item">
-                  <button
-                    type="button"
-                    class="btn invite-result-btn"
-                    @click.prevent="inviteUser(result.email)">
+                  <button type="button" class="btn invite-result-btn" @click.prevent="inviteUser(result.email)">
                     {{ result.name }} ({{ result.email }})
                   </button>
                 </li>
@@ -97,7 +88,7 @@
                   <span>{{ member.name }}</span>
                   <span v-if="member.uuid == owner.uuid" class="badge badge-success ml-1">project owner</span>
                 </div>
-                <div class="member-card_sub member-card_time">{{ member.email}}</div>
+                <div class="member-card_sub member-card_time">{{ member.email }}</div>
               </div>
             </router-link>
 

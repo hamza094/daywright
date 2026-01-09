@@ -107,10 +107,10 @@
   }
 }
 
-@include respond(phone){
-  .activity{
-  margin-left:1rem;
-}
+@include respond(phone) {
+  .activity {
+    margin-left: 1rem;
+  }
 }
 
 /* Sidebar filters: horizontal layout on small screens */

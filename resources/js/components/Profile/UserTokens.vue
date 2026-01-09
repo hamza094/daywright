@@ -62,49 +62,49 @@
       <div v-else>
         <div class="table-responsive table-responsive-md">
           <table class="table table-bordered table-hover">
-          <thead class="thead-light">
-            <tr>
-              <th>Name</th>
-              <th>Created</th>
-              <th>Last Used</th>
-              <th>Expires</th>
-              <th>Token Value</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="token in tokens" :key="token.id">
-              <td>{{ token.name }}</td>
-              <td>{{ token.created_at }}</td>
-              <td>{{ token.last_used_at ? token.last_used_at : 'Never' }}</td>
-              <td>{{ token.expires_at ? token.expires_at : 'Never' }}</td>
-              <td>
-                <input
-                  :type="showTokenMap[token.id] ? 'text' : 'password'"
-                  class="form-control form-control-sm w-auto d-inline-block mr-2"
-                  :value="token.id === newTokenId ? newToken : 'Token value not available'"
-                  readonly
-                  style="max-width: 300px" />
-                <button class="btn btn-sm btn-outline-secondary mr-2" @click="toggleShowToken(token.id)">
-                  <i :class="showTokenMap[token.id] ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
-                </button>
-                <button
-                  class="btn btn-sm btn-outline-primary"
-                  :disabled="token.id !== newTokenId"
-                  @click="copyToken(token.id === newTokenId ? newToken : '')">
-                  <i class="fa-solid fa-copy"></i>
-                </button>
-              </td>
-              <td>
-                <button class="btn btn-sm btn-danger" @click="deleteToken(token.id)">
-                  <i class="fa-solid fa-trash"></i> Delete
-                </button>
-              </td>
-            </tr>
-            <tr v-if="tokens.length === 0">
-              <td colspan="6" class="text-center">No tokens found.</td>
-            </tr>
-          </tbody>
+            <thead class="thead-light">
+              <tr>
+                <th>Name</th>
+                <th>Created</th>
+                <th>Last Used</th>
+                <th>Expires</th>
+                <th>Token Value</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="token in tokens" :key="token.id">
+                <td>{{ token.name }}</td>
+                <td>{{ token.created_at }}</td>
+                <td>{{ token.last_used_at ? token.last_used_at : 'Never' }}</td>
+                <td>{{ token.expires_at ? token.expires_at : 'Never' }}</td>
+                <td>
+                  <input
+                    :type="showTokenMap[token.id] ? 'text' : 'password'"
+                    class="form-control form-control-sm w-auto d-inline-block mr-2"
+                    :value="token.id === newTokenId ? newToken : 'Token value not available'"
+                    readonly
+                    style="max-width: 300px" />
+                  <button class="btn btn-sm btn-outline-secondary mr-2" @click="toggleShowToken(token.id)">
+                    <i :class="showTokenMap[token.id] ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye'"></i>
+                  </button>
+                  <button
+                    class="btn btn-sm btn-outline-primary"
+                    :disabled="token.id !== newTokenId"
+                    @click="copyToken(token.id === newTokenId ? newToken : '')">
+                    <i class="fa-solid fa-copy"></i>
+                  </button>
+                </td>
+                <td>
+                  <button class="btn btn-sm btn-danger" @click="deleteToken(token.id)">
+                    <i class="fa-solid fa-trash"></i> Delete
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="tokens.length === 0">
+                <td colspan="6" class="text-center">No tokens found.</td>
+              </tr>
+            </tbody>
           </table>
         </div>
       </div>

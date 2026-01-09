@@ -11,7 +11,9 @@
         <div v-if="status === 'enabled'" class="text-center">
           <h2 class="auth-title mb-2">Two-factor enabled</h2>
           <p class="auth-subtitle mb-4">You are all set. Continue to your dashboard.</p>
-          <button class="btn btn-primary auth-submit w-100 mb-1" @click="$router.push('/dashboard')">Go to dashboard</button>
+          <button class="btn btn-primary auth-submit w-100 mb-1" @click="$router.push('/dashboard')">
+            Go to dashboard
+          </button>
         </div>
 
         <div v-else>

@@ -286,7 +286,8 @@
                   <div class="row">
                     <div class="col-auto">
                       <span class="avatar">
-                        <router-link :to="{ name: 'Profile', params: { uuid: activity.user.uuid || activity.user.id } }">
+                        <router-link
+                          :to="{ name: 'Profile', params: { uuid: activity.user.uuid || activity.user.id } }">
                           <img class="avatar" :src="activity.user.avatar" alt="Avatar" />
                         </router-link>
                       </span>

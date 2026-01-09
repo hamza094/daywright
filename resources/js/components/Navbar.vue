@@ -5,8 +5,7 @@
       :user="user"
       :logged-in="loggedIn"
       :show-alert-notice="showAlertNotice"
-      @sign-out="signOut"
-    />
+      @sign-out="signOut" />
   </div>
 </template>
 <script>

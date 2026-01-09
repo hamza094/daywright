@@ -2,10 +2,7 @@
   <div class="container-fluid">
     <div class="row">
       <div class="col-lg-2 panel-left d-none d-lg-block">
-        <sidebar-nav-menu
-          :user="user"
-          :loggedIn="loggedIn"
-          :onSignOut="handleSignOut">
+        <sidebar-nav-menu :user="user" :logged-in="loggedIn" :on-sign-out="handleSignOut">
           <template #new-project>
             <project-button></project-button>
           </template>
@@ -26,8 +23,8 @@
           </button>
           <router-link class="navbar-brand" :to="{ name: 'Home' }"><b>DayWright</b></router-link>
           <div class="ml-auto d-flex align-items-right">
-              <notifications v-if="loggedIn"></notifications>
-              </div>
+            <notifications v-if="loggedIn"></notifications>
+          </div>
         </nav>
         <div v-if="loggedIn && showAlertNotice" class="alert alert-dark mt-2" role="alert">
           <b>

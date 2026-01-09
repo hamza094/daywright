@@ -46,7 +46,9 @@
                 <tbody>
                   <tr v-for="(user, index) in users.data" :key="user.id">
                     <td>
-                      <router-link :to="{ name: 'Profile', params: { uuid: user.uuid || user.id } }" class="admin-panel-link">
+                      <router-link
+                        :to="{ name: 'Profile', params: { uuid: user.uuid || user.id } }"
+                        class="admin-panel-link">
                         <div>{{ user.name }}</div>
                       </router-link>
                     </td>

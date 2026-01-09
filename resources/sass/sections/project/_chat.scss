@@ -1,4 +1,3 @@
-
 .chat-card {
   border: 1px solid $color-light-grey;
   border-radius: 0.65rem;
@@ -14,7 +13,7 @@
     color: $color-white;
   }
 
-  .chat-header_text{
+  .chat-header_text {
     color: $color-white;
   }
 
@@ -50,7 +49,6 @@
 
     &_left {
       gap: 0.5rem;
-
     }
   }
 
@@ -235,9 +233,10 @@
   }
 }
 
-
 .chat-card .slidedown .fa-solid,
-.chat .fa-solid { margin-right: 5px; }
+.chat .fa-solid {
+  margin-right: 5px;
+}
 #btn-chat {
   margin-right: 0.5rem;
 }
@@ -313,12 +312,14 @@
     button {
       padding: 0.28rem 0.45rem;
       border-radius: 0.45rem;
-      border: 1px solid rgba(0,0,0,0.06);
+      border: 1px solid rgba(0, 0, 0, 0.06);
       background-color: transparent;
       color: #333;
       box-shadow: none;
 
-      i { font-size: 0.95rem; }
+      i {
+        font-size: 0.95rem;
+      }
 
       &:hover {
         background-color: lighten($color-light-grey, 8%);
@@ -343,8 +344,12 @@
   }
 
   @include respond(phone) {
-    .panel-header h5 { font-size: 0.95rem; }
-    .panel-header button { padding: 0.2rem 0.4rem; }
+    .panel-header h5 {
+      font-size: 0.95rem;
+    }
+    .panel-header button {
+      padding: 0.2rem 0.4rem;
+    }
   }
 }
 

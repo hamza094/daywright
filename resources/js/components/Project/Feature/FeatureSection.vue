@@ -80,21 +80,20 @@ export default {
           }
         });
     },
-      addFeatureClickOutsideListener() {
-        if (this.featureClickOutsideHandler) return;
-        this.$nextTick(() => {
-          this.featureClickOutsideHandler = (event) => {
-            const el = this.$el.querySelector('.feature-dropdown');
-            if (el && !el.contains(event.target)) this.featurePop = false;
-          };
-          document.addEventListener('click', this.featureClickOutsideHandler);
-        });
-      },
-      removeFeatureClickOutsideListener() {
-        if (!this.featureClickOutsideHandler) return;
-        document.removeEventListener('click', this.featureClickOutsideHandler);
-        this.featureClickOutsideHandler = null;
-      },
+    async addFeatureClickOutsideListener() {
+      if (this.featureClickOutsideHandler) return;
+      await this.$nextTick();
+      this.featureClickOutsideHandler = (event) => {
+        const el = this.$el.querySelector('.feature-dropdown');
+        if (el && !el.contains(event.target)) this.featurePop = false;
+      };
+      document.addEventListener('click', this.featureClickOutsideHandler);
+    },
+    removeFeatureClickOutsideListener() {
+      if (!this.featureClickOutsideHandler) return;
+      document.removeEventListener('click', this.featureClickOutsideHandler);
+      this.featureClickOutsideHandler = null;
+    },
   },
 };
 </script>

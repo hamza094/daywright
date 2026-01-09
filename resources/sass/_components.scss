@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
   margin: 0 !important;
   background: $color-light;
 }
@@ -47,7 +48,11 @@ html, body {
     background: rgba($color-white, 0.08);
     border: 1px solid rgba($color-white, 0.18);
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
-    transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease,
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
 
     &:hover,
     &:focus {
@@ -122,10 +127,16 @@ html, body {
   border-radius: 50%;
   padding: 0.35rem;
   color: #0f2636;
-  background: linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(245,245,250,0.96) 100%);
-  border: 1px solid rgba(0,0,0,0.06);
-  box-shadow: 0 6px 14px rgba(15,36,53,0.08), inset 0 1px 0 rgba(255,255,255,0.6);
-  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(245, 245, 250, 0.96) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 6px 14px rgba(15, 36, 53, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
   box-sizing: border-box;
 }
 
@@ -135,7 +146,9 @@ html, body {
   background: linear-gradient(135deg, #ffffff 0%, lighten($color-secondary, 40%) 100%);
   color: $color-secondary;
   transform: translateY(-1px) scale(1.04);
-  box-shadow: 0 10px 20px rgba(15,36,53,0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+  box-shadow:
+    0 10px 20px rgba(15, 36, 53, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .panel-left .icon-name {
@@ -155,17 +168,23 @@ html, body {
 
 .panel-brand .main-img {
   border-radius: 50%;
-  border: 3px solid rgba(255,255,255,0.08);
+  border: 3px solid rgba(255, 255, 255, 0.08);
   padding: 3px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(240,240,255,0.9));
-  box-shadow: 0 10px 30px rgba(12,30,45,0.12), 0 2px 6px rgba(0,0,0,0.06) inset;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(240, 240, 255, 0.9));
+  box-shadow:
+    0 10px 30px rgba(12, 30, 45, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.06) inset;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .panel-brand:hover .main-img,
 .panel-brand:focus .main-img {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 16px 40px rgba(12,30,45,0.16), 0 2px 6px rgba(0,0,0,0.06) inset;
+  box-shadow:
+    0 16px 40px rgba(12, 30, 45, 0.16),
+    0 2px 6px rgba(0, 0, 0, 0.06) inset;
 }
 
 .panel-list_action {
@@ -299,7 +318,10 @@ html, body {
     align-items: center;
     justify-content: center;
     border-radius: 0.35rem;
-    transition: color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease,
+      transform 0.12s ease;
 
     &:hover,
     &:focus {
@@ -339,9 +361,9 @@ html, body {
 }
 
 .main-img {
-margin-top:.7rem;
-  width: 4.3rem; 
-  height: 4.3rem; 
+  margin-top: 0.7rem;
+  width: 4.3rem;
+  height: 4.3rem;
   border-radius: 50%;
   object-fit: cover;
 }
@@ -386,9 +408,9 @@ margin-top:.7rem;
 .pd-r {
   padding-right: 0rem !important;
 }
-.project-icon{
+.project-icon {
   position: relative;
-  &_name{
+  &_name {
     background-color: $color-secondary;
     border-radius: 50%;
     text-align: center;
@@ -845,7 +867,7 @@ margin-top:.7rem;
   background-color: #fff;
   color: rgba(0, 0, 0, 0.65);
   border-color: rgba(0, 0, 0, 0.06);
-  box-shadow: 0 6px 16px rgba(15, 36, 53, 0.10);
+  box-shadow: 0 6px 16px rgba(15, 36, 53, 0.1);
   cursor: not-allowed;
 }
 #wrapper {
@@ -865,17 +887,17 @@ margin-top:.7rem;
   overflow-y: visible;
   height: auto;
   @include respond(phone) {
-    width: 95%!important
+    width: 95% !important;
   }
 }
 
 @include respond(tab-pot) {
   .project-page {
-    margin-left:1rem;
+    margin-left: 1rem;
   }
   .profile-page {
-      margin-left:.8rem;
-    }
+    margin-left: 0.8rem;
+  }
   .page {
     border-right: 0;
   }
@@ -1190,12 +1212,12 @@ button.gnuIjg {
   line-height: 1;
 }
 
-.badge-count{
+.badge-count {
   color: $color-white !important;
 }
 
 @include respond(tab-pot) {
-  .margin-small{
-    margin-left:0.85rem;
+  .margin-small {
+    margin-left: 0.85rem;
   }
 }

@@ -2,7 +2,7 @@
   margin: 0rem 2rem 2rem 2rem;
   &-link {
     &:hover {
-    color:$color-secondary !important;
+      color: $color-secondary !important;
       text-decoration: none !important;
     }
   }
@@ -10,7 +10,7 @@
     padding: 1.5rem;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     border-radius: 16px;
-      background: linear-gradient(135deg, $color-secondary 0%, lighten($color-secondary, 25%) 100%);
+    background: linear-gradient(135deg, $color-secondary 0%, lighten($color-secondary, 25%) 100%);
     color: white;
     font-size: 0.95rem;
     border: none;

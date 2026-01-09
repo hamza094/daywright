@@ -32,7 +32,9 @@
       border-radius: 0.6rem;
       background: $color-white;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-      transition: transform 140ms ease, box-shadow 140ms ease;
+      transition:
+        transform 140ms ease,
+        box-shadow 140ms ease;
 
       i {
         color: $color-secondary;
@@ -62,7 +64,9 @@
       max-width: 520px;
       border-radius: 0.75rem;
       box-shadow: 0 18px 48px rgba(0, 0, 0, 0.09);
-      transition: transform 200ms ease, box-shadow 200ms ease;
+      transition:
+        transform 200ms ease,
+        box-shadow 200ms ease;
     }
 
     img:hover {

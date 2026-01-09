@@ -6,7 +6,7 @@
 
   &::before,
   &::after {
-    content: "";
+    content: '';
     position: absolute;
     border-radius: 50%;
     filter: blur(40px);
@@ -87,7 +87,9 @@
       border: 1px solid rgba($color-light-grey, 0.9);
       padding: 0.75rem 0.85rem;
       font-size: 1rem;
-      transition: border-color 180ms ease, box-shadow 180ms ease;
+      transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease;
 
       &:focus {
         border-color: rgba($color-secondary, 0.45);
@@ -132,7 +134,10 @@
     font-size: 1rem;
     letter-spacing: 0.01em;
     box-shadow: 0 16px 32px rgba(0, 0, 0, 0.12);
-    transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+    transition:
+      transform 180ms ease,
+      box-shadow 180ms ease,
+      filter 180ms ease;
 
     &:hover,
     &:focus-visible {

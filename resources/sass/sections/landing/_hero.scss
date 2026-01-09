@@ -45,7 +45,11 @@
   border-radius: 0.4rem;
   font-weight: 700;
   font-size: 0.95rem;
-  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, color 140ms ease;
+  transition:
+    transform 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease,
+    color 140ms ease;
 
   &--primary {
     background: $color-secondary;

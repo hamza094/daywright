@@ -1,21 +1,12 @@
 <template>
   <div class="panel-left panel-drawer">
     <div class="panel-drawer_header">
-      <button
-        type="button"
-        class="panel-drawer_close"
-        aria-label="Close menu"
-        @click.prevent="closePanel">
+      <button type="button" class="panel-drawer_close" aria-label="Close menu" @click.prevent="closePanel">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
 
-    <sidebar-nav-menu
-      :user="user"
-      :loggedIn="loggedIn"
-      :onSignOut="onSignOut"
-      :onClose="closePanel"
-    />
+    <sidebar-nav-menu :user="user" :logged-in="loggedIn" :on-sign-out="onSignOut" :on-close="closePanel" />
   </div>
 </template>
 

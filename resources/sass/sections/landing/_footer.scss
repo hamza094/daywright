@@ -123,7 +123,11 @@
     border: 1px solid rgba($color-white, 0.3);
     color: $color-white;
     text-decoration: none;
-    transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease;
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      background-color 160ms ease,
+      border-color 160ms ease;
 
     i {
       font-size: 1.05rem;

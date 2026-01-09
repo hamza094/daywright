@@ -35,21 +35,27 @@
                     <i class="fa-solid fa-flag me-2 assigned_icon" aria-hidden="true"></i>
                     Stage:
                   </span>
-                  <span class="info-value"><b>{{ project.stage.name }}</b></span>
+                  <span class="info-value"
+                    ><b>{{ project.stage.name }}</b></span
+                  >
                 </div>
                 <div class="info-item">
                   <span class="info-label">
                     <i class="fa-solid fa-heart-pulse me-2 assigned_icon" aria-hidden="true"></i>
                     Health Status:
                   </span>
-                  <span class="info-value"><b>{{ capitalize(project.health_status) }}</b></span>
+                  <span class="info-value"
+                    ><b>{{ capitalize(project.health_status) }}</b></span
+                  >
                 </div>
                 <div class="info-item">
                   <span class="info-label">
                     <i class="fa-solid fa-clock me-2 assigned_icon" aria-hidden="true"></i>
                     Created:
                   </span>
-                  <span class="info-value"><b>{{ project.created_at }}</b></span>
+                  <span class="info-value"
+                    ><b>{{ project.created_at }}</b></span
+                  >
                 </div>
               </div>
             </div>
@@ -84,13 +90,6 @@ import TasksData from './TasksData.vue';
 import ActivityCalendar from './ActivityCalendar.vue';
 
 export default {
-  computed: {
-    user: {
-      get() {
-        return this.$store.state.currentUser.user;
-      },
-    },
-  },
   components: {
     ProjectChart,
     TasksData,
@@ -104,11 +103,18 @@ export default {
       message: '',
     };
   },
+  computed: {
+    user: {
+      get() {
+        return this.$store.state.currentUser.user;
+      },
+    },
+  },
   mounted() {
     this.loadDashboardProjects();
   },
   methods: {
-     resendMail() {
+    resendMail() {
       axios
         .post('/email/resend/' + this.user.uuid, {})
         .then(() => {

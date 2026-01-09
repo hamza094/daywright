@@ -34,7 +34,9 @@
     font-weight: 700;
     color: $color-secondary;
     padding: 0.5rem 0.75rem !important;
-    transition: color 120ms ease, transform 120ms ease;
+    transition:
+      color 120ms ease,
+      transform 120ms ease;
 
     &:hover,
     &:focus-visible {
@@ -55,7 +57,11 @@
     color: $color-secondary;
     background: rgba($color-secondary, 0.06);
     margin: 0 0.35rem;
-    transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, color 140ms ease;
+    transition:
+      transform 140ms ease,
+      box-shadow 140ms ease,
+      background-color 140ms ease,
+      color 140ms ease;
 
     &:hover,
     &:focus-visible {
@@ -79,7 +85,10 @@
     border: 1px solid rgba($color-secondary, 0.2);
     box-shadow: 0 12px 28px rgba($color-secondary, 0.2);
     text-decoration: none;
-    transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+    transition:
+      transform 140ms ease,
+      box-shadow 140ms ease,
+      filter 140ms ease;
 
     &:hover,
     &:focus-visible {

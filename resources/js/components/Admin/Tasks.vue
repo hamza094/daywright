@@ -83,7 +83,9 @@
                       }}</span>
                     </td>
                     <td>
-                      <router-link :to="{ name: 'Profile', params: { uuid: task.owner.uuid || task.owner.id } }" class="admin-panel-link">
+                      <router-link
+                        :to="{ name: 'Profile', params: { uuid: task.owner.uuid || task.owner.id } }"
+                        class="admin-panel-link">
                         <div>{{ task.owner.name }}</div>
                       </router-link>
                     </td>

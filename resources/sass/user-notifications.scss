@@ -1,6 +1,5 @@
 // User Notifications
 .user-notifications {
-
   // Override global utility `.btn-link` hover color (it forces $color-secondary with `!important`).
   // Keep notification dropdown icon buttons using the local (inherited) color.
   .btn.btn-link {
@@ -10,7 +9,7 @@
     &:focus,
     &:active {
       color: #0056b3 !important;
-      border:none
+      border: none;
     }
   }
 

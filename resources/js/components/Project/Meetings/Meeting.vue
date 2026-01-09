@@ -5,18 +5,10 @@
       <header class="meeting-panel_header">
         <h2 id="meetings-title" class="meeting-panel_title">Meetings</h2>
         <div>
-          <button
-            v-if="notAuthorize"
-            type="button"
-            class="btn btn-sm btn-secondary"
-            @click.prevent="authorize">
+          <button v-if="notAuthorize" type="button" class="btn btn-sm btn-secondary" @click.prevent="authorize">
             Authorize With Zoom
           </button>
-          <button
-            v-else
-            type="button"
-            class="btn btn-sm btn-primary"
-            @click.prevent="openMeetingModal()">
+          <button v-else type="button" class="btn btn-sm btn-primary" @click.prevent="openMeetingModal()">
             Create Meeting
           </button>
         </div>
@@ -36,7 +28,7 @@
           type="button"
           class="btn btn-link btn-sm meeting_button"
           :class="{ active: showPrevious }"
-          :aria-pressed="(showPrevious).toString()"
+          :aria-pressed="showPrevious.toString()"
           @click="showPreviousMeetings">
           Previous Meetings
         </button>
@@ -66,7 +58,8 @@
                     stroke-linecap="round"
                     stroke-linejoin="round">
                     <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                    <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"></path>
+                    <path
+                      d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"></path>
                     <path d="M9 17v1a3 3 0 0 0 6 0v-1"></path>
                   </svg>
                 </div>
@@ -81,7 +74,7 @@
               </div>
               <footer class="card-footer">
                 <button
-                   v-if="shouldShowStartButton(meeting, auth, notAuthorize)"
+                  v-if="shouldShowStartButton(meeting, auth, notAuthorize)"
                   class="btn btn-sm btn-primary"
                   @click.prevent="initializeMeeting('start', meeting)">
                   Start Meeting

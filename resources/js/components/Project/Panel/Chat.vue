@@ -20,8 +20,7 @@
           </div>
         </div>
 
-        <div
-          class="chat-wrapper">
+        <div class="chat-wrapper">
           <div class="card-body chat-panel">
             <ul class="chat">
               <li
@@ -31,7 +30,7 @@
                 <div class="chat-body clearfix">
                   <div class="header d-flex align-items-start">
                     <div class="d-flex align-items-center gap-2">
-                      <router-link :to="'/user/' + (conversation.user.uuid conversation.user.name) + '/profile'">
+                      <router-link :to="'/user/' + conversation.user.uuid + '/profile'">
                         <img
                           v-if="conversation.user.avatar"
                           :src="$options.filters.safeUrl(conversation.user.avatar)"
@@ -75,7 +74,6 @@
                   <span class="float-right chat-time">
                     <i>{{ conversation.created_at }}</i>
                   </span>
-
                 </div>
               </li>
               <div v-if="typing" class="chat-typing">
@@ -128,7 +126,13 @@
                   <div v-if="file" class="chat-file-chip ml-2 d-flex align-items-center">
                     <i class="fa-solid fa-file-alt mr-1"></i>
                     <span class="file-name mr-2">{{ fileName }}</span>
-                    <button type="button" @click="removeFile" class="btn btn-link p-0 file-close-btn" aria-label="Remove file">✖</button>
+                    <button
+                      type="button"
+                      @click="removeFile"
+                      class="btn btn-link p-0 file-close-btn"
+                      aria-label="Remove file">
+                      ✖
+                    </button>
                   </div>
                 </div>
 

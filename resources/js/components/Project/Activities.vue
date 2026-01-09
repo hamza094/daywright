@@ -21,7 +21,6 @@
       <div class="row">
         <!-- Main Section -->
         <main class="col-md-8 page pd-r order-2 order-md-1">
-
           <!-- Activities Section -->
           <section class="container">
             <div class="activity mb-4">
@@ -59,15 +58,14 @@
                   </p>
                 </li>
               </ul>
-                    </div>
-              </section>
+            </div>
+          </section>
 
-              <!-- Pagination (mobile only) placed after Activities section -->
-              <div class="w-100 p-4 d-block d-md-none">
-                <pagination :data="activities" @pagination-change-page="getResults"></pagination>
-              </div>
-
-            </main>
+          <!-- Pagination (mobile only) placed after Activities section -->
+          <div class="w-100 p-4 d-block d-md-none">
+            <pagination :data="activities" @pagination-change-page="getResults"></pagination>
+          </div>
+        </main>
         <!-- Sidebar Section -->
         <aside class="col-md-4 order-1 order-md-2">
           <section class="card">

@@ -11,7 +11,7 @@
         <div class="img-avatar_overlay-text">Update</div>
       </div>
     </div>
-         <modal name="avatar-file" height="auto" class="avatar-modal" :click-to-close="false">
+    <modal name="avatar-file" height="auto" class="avatar-modal" :click-to-close="false">
       <div class="p-3 bg-white shadow rounded-lg img_avatar">
         <button class="btn btn-sm float-right" @click="closeAvatarModal">❌</button>
         <input ref="fileInput" type="file" name="avatar" id="file" accept="image/*" @change="setImage" />

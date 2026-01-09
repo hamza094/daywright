@@ -1,4 +1,3 @@
-
 .task {
   margin-top: 1rem;
 
@@ -199,7 +198,6 @@
       }
     }
   }
-
 }
 
 .task-archive-btn {
@@ -215,7 +213,11 @@
   font-size: 0.85rem;
   border-radius: 0.4rem;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
-  transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.08s ease;
 
   &:hover,
   &:focus {
@@ -274,19 +276,19 @@
     border: 1px solid $color-light-grey;
   }
   @include respond(tab-pot) {
-      &_item {
-       bottom: 15vh;
-       top: auto;
-       left: auto;
-       right: 0.75rem;
-      }
+    &_item {
+      bottom: 15vh;
+      top: auto;
+      left: auto;
+      right: 0.75rem;
+    }
   }
   @include respond(phone) {
-      &_item {
-       bottom: 14vh;
-       top: auto;
-       left: 0.75rem;
-       right: 0.75rem;
-      }
-  } 
+    &_item {
+      bottom: 14vh;
+      top: auto;
+      left: 0.75rem;
+      right: 0.75rem;
+    }
+  }
 }
