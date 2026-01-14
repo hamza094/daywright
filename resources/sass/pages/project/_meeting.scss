@@ -127,8 +127,8 @@
 // Small and tablet portrait tweaks for meeting modals
 .model-desin {
   @include respond(tab-pot) {
+    /* stylelint-disable-next-line selector-class-pattern */
     .vm--modal {
-      /* stylelint-disable-line selector-class-pattern */
       width: 65vw !important;
       margin: 1.25rem;
       left: 50% !important;
@@ -137,8 +137,8 @@
   }
 
   @include respond(phone) {
+    /* stylelint-disable-next-line selector-class-pattern */
     .vm--modal {
-      /* stylelint-disable-line selector-class-pattern */
       width: 78vw !important;
       margin: 1rem;
     }

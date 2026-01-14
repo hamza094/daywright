@@ -2,8 +2,8 @@
 
 @include respond(phone) {
   .avatar-modal {
+    /* stylelint-disable-next-line selector-class-pattern */
     .vm--modal {
-      /* stylelint-disable-line selector-class-pattern */
       width: 90vw !important;
       margin-left: 10rem;
     }
