@@ -40,7 +40,7 @@
         <div v-for="plan in plans" :key="plan.name" class="col-md-6 mb-4">
           <div
             class="card text-center h-100 subscription-plan-card"
-            :class="{ 'subscription-plan-card--featured border border-primary': plan.featured }">
+            :class="{ 'subscription-plan-card-featured border border-primary': plan.featured }">
             <div class="card-body d-flex flex-column p-4">
               <div class="mb-3">
                 <p class="card-title subscription_heading mb-0">{{ plan.label }} Subscription</p>

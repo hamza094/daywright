@@ -1,0 +1,281 @@
+@use 'sass:color';
+
+// Panel layout shell
+.panel {
+  min-height: 100vh;
+
+  &-left {
+    background: #0f2435;
+    text-align: center;
+    padding: 1.1rem 0.85rem;
+    border-right: 1px solid rgb(255 255 255 / 4%);
+
+    .panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .icon-logo {
+      width: 2rem;
+      height: 2rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.08rem;
+      border-radius: 50%;
+      padding: 0.35rem;
+      color: #0f2636;
+      background: linear-gradient(135deg, rgb(255 255 255 / 96%) 0%, rgb(245 245 250 / 96%) 100%);
+      border: 1px solid rgb(0 0 0 / 6%);
+      box-shadow:
+        0 6px 14px rgb(15 36 53 / 8%),
+        inset 0 1px 0 rgb(255 255 255 / 60%);
+      transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        transform 0.12s ease,
+        box-shadow 0.12s ease;
+      box-sizing: border-box;
+    }
+
+    .icon-name {
+      color: inherit;
+      font-size: 0.96rem;
+    }
+  }
+
+  &-right {
+    background-color: $color-white;
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  &-drawer {
+    position: relative;
+
+    &_header {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 0.35rem;
+    }
+
+    &_close {
+      width: 2.2rem;
+      height: 2.2rem;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.65rem;
+      color: $color-white;
+      background: rgba($color-white, 0.08);
+      border: 1px solid rgba($color-white, 0.18);
+      box-shadow: 0 8px 18px rgb(0 0 0 / 18%);
+      transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        transform 0.12s ease,
+        box-shadow 0.12s ease;
+
+      &:hover,
+      &:focus {
+        background: rgba($color-white, 0.16);
+        color: $color-white;
+        transform: translateY(-1px) scale(1.02);
+        box-shadow: 0 12px 24px rgb(0 0 0 / 20%);
+        outline: none;
+        text-decoration: none;
+      }
+
+      i {
+        font-size: 1.05rem;
+        line-height: 1;
+      }
+    }
+  }
+
+  &-menu {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0 0.2rem 0.75rem;
+  }
+
+  &-list_item {
+    display: block;
+    text-decoration: none !important;
+    padding: 0.6rem 0.65rem;
+    border-radius: 0.6rem;
+    color: #d9e5ef;
+    background: transparent;
+    transition: all 0.18s ease;
+    text-align: left;
+    border-left: 3px solid transparent;
+
+    &:hover,
+    &.router-link-active,
+    &.router-link-exact-active {
+      background: rgb(255 255 255 / 8%);
+      color: #fff;
+      border-left-color: color.adjust($color-secondary, $lightness: 12%);
+    }
+
+    .panel-left & {
+      &:hover,
+      &.router-link-active,
+      &.router-link-exact-active {
+        .icon-logo {
+          background: linear-gradient(135deg, #fff 0%, color.adjust($color-secondary, $lightness: 40%) 100%);
+          color: $color-secondary;
+          transform: translateY(-1px) scale(1.04);
+          box-shadow:
+            0 10px 20px rgb(15 36 53 / 12%),
+            inset 0 1px 0 rgb(255 255 255 / 70%);
+        }
+      }
+    }
+
+    .icon {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      letter-spacing: 0.01em;
+      font-weight: 600;
+    }
+  }
+
+  &-brand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.25rem 0;
+    font-size: 1.2rem;
+    text-decoration: none !important;
+
+    .main-img {
+      border-radius: 50%;
+      border: 3px solid rgb(255 255 255 / 8%);
+      padding: 3px;
+      background: linear-gradient(180deg, rgb(255 255 255 / 95%), rgb(240 240 255 / 90%));
+      box-shadow:
+        0 10px 30px rgb(12 30 45 / 12%),
+        0 2px 6px rgb(0 0 0 / 6%) inset;
+      transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease;
+    }
+
+    &:hover,
+    &:focus {
+      .main-img {
+        transform: translateY(-2px) scale(1.02);
+        box-shadow:
+          0 16px 40px rgb(12 30 45 / 16%),
+          0 2px 6px rgb(0 0 0 / 6%) inset;
+      }
+    }
+  }
+
+  &-list_action {
+    padding: 0;
+    border-left: none;
+    background: transparent;
+
+    project-button,
+    > * {
+      width: 100%;
+      display: block;
+    }
+  }
+
+  &-top {
+    border-bottom: 1px solid #cfd7df;
+    border-top: 1px solid #cfd7df;
+    background-color: #fdfdfd;
+
+    &_content {
+      padding: 1rem;
+    }
+  }
+
+  &-bottom {
+    border-bottom: 1px solid #cfd7df;
+    border-top: 1px solid #cfd7df;
+    background-color: #fdfdfd;
+  }
+
+  &-heading {
+    text-transform: uppercase;
+    color: #999;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  &-exit {
+    font-size: 1.1rem;
+    background: transparent;
+    border: none;
+    padding: 0.15rem 0.35rem;
+    color: #555;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.35rem;
+    transition:
+      color 0.15s ease,
+      background-color 0.15s ease,
+      transform 0.12s ease;
+
+    &:hover,
+    &:focus {
+      color: #12344d;
+      background-color: rgb(0 0 0 / 5%);
+      outline: none;
+      transform: translateY(-1px);
+    }
+  }
+
+  &-btn_save {
+    background-color: #1d4967 !important;
+    color: $color-white !important;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: #12344d !important;
+    }
+  }
+
+  &-btn_close {
+    background-color: #e3e7ea !important;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: #cbcbd4 !important;
+    }
+  }
+
+  @include respond(tab-pot) {
+    &-left {
+      padding: 0.9rem 0.75rem;
+
+      .panel {
+        gap: 0.75rem;
+      }
+    }
+  }
+}
+
+.side_panel {
+  overflow-y: visible;
+  height: auto;
+
+  @include respond(phone) {
+    width: 95% !important;
+  }
+}

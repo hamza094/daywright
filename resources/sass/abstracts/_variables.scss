@@ -1,0 +1,48 @@
+@use 'sass:color';
+
+// Body
+$body-bg: #f8fafc;
+
+// Typography
+$font-family-sans-serif: 'Nunito', sans-serif;
+$font-size-base: 0.9rem;
+$line-height-base: 1.6;
+
+// Colors
+$color-primary: #ffa800;
+$color-secondary: #12344d;
+$color-white: #fff;
+$color-light: #e5f2fd;
+$color-hot: #27ae60;
+$color-cold: #2b87f4;
+$color-warm: #f26b21;
+$color-grey: #999;
+$color-dark-grey: #5f5e5e;
+$color-light-grey: #e5e5ee;
+$laravel-border-color: color.adjust($body-bg, $lightness: -10%);
+$list-group-border: $laravel-border-color;
+$text-color: #636b6f;
+
+// Inputs
+$input-border: color.adjust($text-color, $lightness: 40%);
+
+// --------------------------------------------------
+// Insight Feature Specific Variables
+// (Used by `/_insights.scss` to avoid hard-coded values)
+// --------------------------------------------------
+$insight-gradient-start: #667eea;
+$insight-gradient-end: #764ba2;
+$insight-health: #27ae60;
+$insight-completion: #3498db;
+$insight-critical: #dc3545; // Bootstrap danger tone
+$insight-warning: #ffc107; // Bootstrap warning tone
+$insight-success: #198754; // Bootstrap success tone
+$insight-info: #0dcaf0; // Bootstrap info tone
+$insight-accent: #1d4967; // Deep accent used for controls
+$insight-accent-dark: #163a50;
+$insight-accent-alt: #2a5a73; // Gradient secondary stop
+$insight-btn-hover-start: #234a5a;
+$insight-btn-hover-end: #326680;
+$insight-header-color: #2f2536;
+$insight-border-light: #f0f0f0;
+$insight-avatar-text: $color-white;

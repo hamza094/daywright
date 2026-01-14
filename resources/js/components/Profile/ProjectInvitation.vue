@@ -3,7 +3,7 @@
     <p class="pro-info">Project Invitations</p>
     <div v-if="loading" class="text-center my-4">
       <div class="d-inline-flex align-items-center">
-        <span class="spinner-border spinner-border-sm text-secondary mr-2" role="status" aria-hidden="true"></span>
+        <output class="spinner-border spinner-border-sm text-secondary mr-2" aria-hidden="true"></output>
         <span>Loading invitations...</span>
       </div>
     </div>

@@ -1,10 +1,8 @@
-// Landing page styles are split into section partials under resources/sass/sections
-@import 'sections/utilities';
-@import 'sections/landing/header';
-@import 'sections/landing/hero';
-@import 'sections/landing/about';
-@import 'sections/landing/features';
-@import 'sections/landing/pricing';
-@import 'sections/landing/subscribe';
-@import 'sections/landing/footer';
-@import 'sections/auth';
+// Landing page styles are split into partials under resources/sass/pages/landing
+@import 'pages/landing/header';
+@import 'pages/landing/hero';
+@import 'pages/landing/about';
+@import 'pages/landing/features';
+@import 'pages/landing/pricing';
+@import 'pages/landing/subscribe';
+@import 'pages/landing/footer';

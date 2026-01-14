@@ -1,0 +1,74 @@
+@use 'sass:color';
+
+@include respond(phone) {
+  .avatar-modal {
+    .vm--modal {
+      /* stylelint-disable-line selector-class-pattern */
+      width: 90vw !important;
+      margin-left: 10rem;
+    }
+  }
+}
+
+.img-avatar {
+  position: relative;
+  cursor: pointer;
+
+  img {
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    width: 5.5rem;
+
+    // height: 6rem;
+    border-radius: 2.5rem;
+    display: block;
+    overflow: hidden;
+  }
+
+  &_overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #12344d;
+    width: 5.5rem;
+    height: 0;
+    transition: 0.5s ease;
+    overflow: hidden;
+    clip-path: polygon(0% 0, 100% 0%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    border-bottom-left-radius: 2.5rem;
+    border-bottom-right-radius: 2.5rem;
+
+    &-text {
+      color: white;
+      font-size: 0.7rem;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+  }
+}
+
+.img-avatar:hover .img-avatar_overlay {
+  height: 20%;
+  opacity: 0.9;
+  overflow: hidden;
+}
+
+.img_avarar input[type='file'] {
+  font-size: 15px;
+  color: $color-secondary;
+}
+
+.btn-app-secondary {
+  border: 1px solid $color-secondary !important;
+
+  &:hover,
+  &:focus,
+  &:active {
+    background-color: color.adjust($color-secondary, $lightness: -5%);
+    border-color: color.adjust($color-secondary, $lightness: -5%);
+    color: $color-white !important;
+  }
+}

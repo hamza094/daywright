@@ -57,9 +57,9 @@
     ".cursor": true,
     "stubs": true,
     "config": true,
-    //"database": true,
+    "database": true,
     ".phpstan-cache": true,
-    //"app": true,
+    "app": true,
     "tests": true,
     "routes": true,
     "public": true

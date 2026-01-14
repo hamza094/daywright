@@ -45,7 +45,7 @@
               </div>
 
               <!-- Tasks Lists -->
-              <ul class="task-list_items" role="list">
+              <ul class="task-list_items">
                 <li v-for="task in tasks.data" :key="task.id" class="task-list_item">
                   <article class="card task-card_style" @click="openModal(task)">
                     <div

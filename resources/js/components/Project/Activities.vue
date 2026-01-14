@@ -78,7 +78,7 @@
                 <li v-for="activity in activityTypes" :key="activity.status">
                   <a
                     href="#"
-                    :class="['activity-icon_' + activity.color, { Activityfont: status === activity.status }]"
+                    :class="['activity-icon_' + activity.color, { 'activity-font': status === activity.status }]"
                     @click.prevent="fetchActivities(activity)">
                     <i :class="['fa-solid', activity.icon, 'mr-2', 'activity-icon_' + activity.color]"></i>
                     {{ activity.label }}

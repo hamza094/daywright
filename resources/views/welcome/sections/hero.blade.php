@@ -6,8 +6,8 @@
         <h1 class="landing-hero_title mb-3">Work on big ideas, without the busy work.</h1>
         <p class="landing-hero_subtitle mb-4">DayWright is an open-source project workspace to plan, track, and deliver without the clutter.</p>
         <div class="landing-hero_ctas d-flex gap-3 flex-wrap">
-          <a class="landing-btn landing-btn--primary" href="/dashboard">Get started</a>
-          <a class="landing-btn landing-btn--demo" href="/" target="_blank" rel="noopener noreferrer">
+          <a class="landing-btn landing-btn-primary" href="/dashboard">Get started</a>
+          <a class="landing-btn landing-btn-demo" href="/" target="_blank" rel="noopener noreferrer">
             Demo <i class="fa-solid fa-circle-play ms-2" aria-hidden="true"></i>
           </a>
         </div>

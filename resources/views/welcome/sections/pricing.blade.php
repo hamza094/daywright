@@ -29,7 +29,7 @@
         </article>
       </div>
       <div class="col-lg-4">
-        <article class="landing-pricing_card landing-pricing_card--accent h-100">
+        <article class="landing-pricing_card landing-pricing_card-accent h-100">
           <div class="landing-pricing_plan d-flex align-items-center gap-2 mb-2">
             <span class="landing-pricing_icon" aria-hidden="true">🚀</span>
             <div>
@@ -47,7 +47,7 @@
             <li><i class="fa-solid fa-check" aria-hidden="true"></i>Priority performance</li>
             <li><i class="fa-solid fa-check" aria-hidden="true"></i>Email support</li>
           </ul>
-          <a class="landing-pricing_cta landing-pricing_cta--accent" href="/subscribe">Subscribe Monthly</a>
+          <a class="landing-pricing_cta landing-pricing_cta-accent" href="/subscribe">Subscribe Monthly</a>
         </article>
       </div>
       <div class="col-lg-4">

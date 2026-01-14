@@ -1,6 +1,6 @@
 <template>
   <div class="auth-page">
-    <div class="auth-card auth-card--narrow">
+    <div class="auth-card auth-card-narrow">
       <div class="auth-form">
         <div class="text-center mb-4">
           <a href="/" aria-label="Back to home">

@@ -1,0 +1,151 @@
+.vue-dropdown {
+  position: relative;
+
+  &_item {
+    position: absolute;
+    border-radius: 0.4rem;
+    margin-top: 0.2rem;
+    box-shadow: 0 0 10px rgb(0 0 0 / 20%);
+    z-index: 2000 !important;
+    background-color: $color-white;
+    width: 12vw;
+    height: 52vh;
+    right: -1rem;
+    overflow: hidden;
+
+    &_list {
+      display: block;
+      color: black;
+      padding: 0.2rem 0;
+      text-align: center;
+
+      &:hover {
+        text-decoration: none;
+        background: rgb(0 0 0 / 10%);
+        box-shadow: 0 0 10px rgb(0 0 0 / 20%);
+        color: black;
+      }
+    }
+  }
+}
+
+.coo {
+  transition: all 0.2s;
+  margin-top: 0.7rem;
+  margin-right: 0.5rem;
+  margin-left: 0.5rem;
+  padding: 0.3rem 0.3rem 0.6rem;
+
+  &:hover {
+    background-color: #e5f2fd;
+    border-radius: 0.3rem;
+  }
+
+  a {
+    text-decoration: none !important;
+  }
+
+  i {
+    display: block;
+    text-align: center;
+    font-size: 1.5rem;
+    padding: 0.6rem;
+    border-radius: 0.5rem;
+    color: #637e92;
+  }
+
+  span {
+    color: #333;
+    display: block;
+    text-align: center;
+  }
+}
+
+.top {
+  background: #f5f7f9;
+  color: #999;
+  padding: 0.2rem 0.5rem;
+
+  &-sales {
+    margin-top: 1rem;
+  }
+}
+
+.nav-btn {
+  background-color: $color-secondary;
+  color: $color-white;
+  width: 2rem;
+  height: 2rem;
+  transition: #12344d 150ms ease-in-out;
+  border: 1px solid #e5e5e5;
+  border-radius: 50%;
+  display: inline-block;
+  font-size: 24px;
+  line-height: 12px;
+  padding: 8px 0 0;
+  text-align: center;
+}
+
+[v-cloak] {
+  display: none;
+}
+
+.label-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0 !important;
+}
+
+.main-img {
+  margin-top: 0.7rem;
+  width: 4.3rem;
+  height: 4.3rem;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.page-top {
+  background: #f5f7f9;
+  color: #1d4967;
+  padding: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  border-bottom: 1px solid #ebeff3;
+
+  &_heading {
+    padding-right: 0.5rem;
+    color: #2f80ed !important;
+  }
+
+  &_arrow {
+    padding-right: 0.5rem;
+  }
+}
+
+.bisu {
+  height: 100%;
+}
+
+.container-fluid {
+  padding-left: 0 !important;
+}
+
+.subscription {
+  &_heading {
+    font-weight: bold;
+    font-size: 1.6rem;
+    letter-spacing: 0.2rem;
+  }
+
+  &_value {
+    font-weight: bold;
+    font-size: 1.8rem;
+  }
+}
+
+button.gnuIjg {
+  /* stylelint-disable-line selector-class-pattern */
+  display: none !important;
+}

@@ -22,8 +22,8 @@
           </li>
         </ul>
         <div class="d-flex gap-3 flex-wrap">
-          <a class="landing-btn landing-btn--primary" href="/dashboard">Get started</a>
-          <a class="landing-btn landing-btn--demo" href="https://github.com/hamza094/daywright" target="_blank" rel="noopener noreferrer">View on GitHub</a>
+          <a class="landing-btn landing-btn-primary" href="/dashboard">Get started</a>
+          <a class="landing-btn landing-btn-demo" href="https://github.com/hamza094/daywright" target="_blank" rel="noopener noreferrer">View on GitHub</a>
         </div>
       </div>
       <div class="col-lg-6">

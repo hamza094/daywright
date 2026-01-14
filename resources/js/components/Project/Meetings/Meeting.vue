@@ -39,7 +39,7 @@
           {{ message }}
         </div>
 
-        <ul class="list-unstyled mb-0" role="list">
+        <ul class="list-unstyled mb-0">
           <li v-for="meeting in meetings.data" :key="meeting.id">
             <article class="card mt-3 card-hover" @click.prevent="getMeeting(meeting.id)">
               <div :class="['ribbon', ribbonColor(meeting.status)]">{{ meeting.status }}</div>

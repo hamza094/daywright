@@ -13,8 +13,7 @@ trait HasSubscription
      */
     public function isSubscribed(): bool
     {
-        return true;
-        // (bool) $this->getSubscription();
+        return (bool) $this->getSubscription();
     }
 
     /**
