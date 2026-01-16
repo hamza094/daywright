@@ -5,7 +5,7 @@
     "build": "vite build",
     "lint": "eslint *.js resources",
     "format": "prettier --write '**/*.{js,vue,css,scss,json,yml,md}'",
-    "stylelint": "stylelint \"resources/sass/**/*.scss\"",
+    "stylelint": "stylelint \"resources/sass/**/*.scss\" --fix",
     "postinstall": "husky install",
     "dev:all": "concurrently \"php artisan serve --host=127.0.0.1 --port=8000\" \"npm run dev\""
   },
