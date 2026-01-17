@@ -38,7 +38,10 @@ class TaskAssigned extends Notification implements ShouldBroadcast, ShouldQueue
     }
 
     /**
-     * Get the mail representation of the notification.
+     * Builds the email used to notify a user that a task was assigned to them.
+     *
+     * @param mixed $notifiable The entity that will receive the notification.
+     * @return MailMessage A mail message containing the assigner's name, task and project details, and a link to the project.
      */
     public function toMail(mixed $notifiable): MailMessage
     {

@@ -13,7 +13,17 @@ use Illuminate\Support\Str;
 class NotificationSeeder extends Seeder
 {
     /**
-     * Run the database seeds.
+     * Seed notification records directly into the notifications table.
+     *
+     * Inserts rows that match the ProjectInvitation notification payload for users.
+     * Loads projects with their owner data, processes users in chunks of 200, and
+     * generates up to 50 notification rows per user which are inserted in bulk.
+     *
+     * Each inserted notification contains:
+     * - `id`, `type` = 'App\\Notifications\\ProjectInvitation'
+     * - `notifiable_type` = User::class and `notifiable_id`
+     * - `data` with keys `message`, `notifier`, and `link`
+     * - `read_at` = null, `created_at` and `updated_at` timestamps, and a `signature`
      */
     public function run(): void
     {

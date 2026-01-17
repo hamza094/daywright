@@ -69,6 +69,13 @@ class CreatePlan extends Paypal
         return Plan::get($createdPlan->getId(), $this->apiContext);
     }
 
+    /**
+     * Create a PayPal Plan preconfigured for the DayWright online subscription.
+     *
+     * The returned Plan has its name, description, and type set for a fixed subscription.
+     *
+     * @return Plan The configured Plan object.
+     */
     protected function Plan(): Plan
     {
         $plan = new Plan;

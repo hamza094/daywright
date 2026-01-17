@@ -9,7 +9,9 @@ trait HasSubscription
     private const SUBSCRIPTION_NAME = 'DayWright';
 
     /**
-     * Check if the user is subscribed to the DayWright plan.
+     * Determine whether the user has an active DayWright subscription.
+     *
+     * @return bool `true` if the user has an active DayWright subscription, `false` otherwise.
      */
     public function isSubscribed(): bool
     {
@@ -37,7 +39,9 @@ trait HasSubscription
     }
 
     /**
-     * Determine if the user's subscription is in a grace period.
+     * Determine whether the user's DayWright subscription is currently in its grace period.
+     *
+     * @return bool `true` if the subscription exists and is in a grace period, `false` otherwise.
      */
     public function hasGracePeriod(): bool
     {
@@ -47,7 +51,9 @@ trait HasSubscription
     }
 
     /**
-     * Get the user's next payment for the DayWright subscription, or a message if not subscribed.
+     * Retrieve the user's next payment for the DayWright subscription or indicate absence of an active subscription.
+     *
+     * @return mixed The subscription's next payment value if subscribed; otherwise the string 'No active subscription'.
      */
     public function payment(): mixed
     {
@@ -57,7 +63,9 @@ trait HasSubscription
     }
 
     /**
-     * Helper to get the DayWright subscription instance.
+     * Retrieve the user's DayWright subscription instance.
+     *
+     * @return mixed The subscription instance for "DayWright", or `null` if not found.
      */
     public function getSubscription(): mixed
     {

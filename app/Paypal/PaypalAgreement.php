@@ -28,6 +28,14 @@ class PaypalAgreement extends Paypal
         }
     }
 
+    /**
+     * Create a PayPal billing agreement for the given plan ID and return the approval URL.
+     *
+     * The agreement is initialized with the plan, payer, shipping address, and a start date set to 24 hours from now (UTC).
+     *
+     * @param string $id PayPal billing plan ID used to configure the agreement.
+     * @return string The approval URL to which the user must be redirected to approve the agreement.
+     */
     protected function agreement($id): string
     {
         $agreement = new Agreement;
