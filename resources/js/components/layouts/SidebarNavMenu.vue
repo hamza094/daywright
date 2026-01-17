@@ -1,6 +1,6 @@
 <template>
   <div class="panel">
-    <a href="/" class="panel-brand" aria-label="DayWright home" @click.prevent="goHome">
+    <a href="/" class="panel-brand" aria-label="DayWright home">
       <img src="/img/D1.png" class="main-img" alt="DayWright" />
     </a>
 
@@ -86,10 +86,6 @@ export default {
       if (typeof this.onClose === 'function') {
         this.onClose();
       }
-    },
-    goHome() {
-      this.handleNavigate();
-      this.$router.push({ name: 'Home' });
     },
     handleLogout() {
       if (typeof this.onSignOut === 'function') {

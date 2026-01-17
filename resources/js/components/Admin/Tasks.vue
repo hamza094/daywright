@@ -84,7 +84,7 @@
                     </td>
                     <td>
                       <router-link
-                        :to="{ name: 'Profile', params: { uuid: task.owner.uuid || task.owner.id } }"
+                        :to="{ name: 'Profile', params: { uuid: task.owner.uuid } }"
                         class="admin-panel-link">
                         <div>{{ task.owner.name }}</div>
                       </router-link>

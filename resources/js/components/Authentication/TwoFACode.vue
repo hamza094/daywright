@@ -25,6 +25,7 @@
                 type="text"
                 v-model="code"
                 class="form-control text-center"
+                aria-label="Two-factor code"
                 maxlength="6"
                 placeholder="6-digit code"
                 autocomplete="one-time-code"

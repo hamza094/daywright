@@ -1,13 +1,7 @@
-export function permission(auth, members, user, isAdmin) {
-  const access =
-    members?.some(
-      (member) =>
-        // Support both numeric IDs and UUID-based auth
-        member?.id === auth || member?.uuid === auth,
-    ) ||
-    user === auth ||
-    isAdmin;
-  const owner = user === auth;
+export function permission(authId, members, userId, isAdmin) {
+  const isMember = members?.some(({ id, uuid }) => id === authId || uuid === authId);
+  const owner = userId === authId;
+  const access = isMember || owner || isAdmin;
 
   return { access, owner };
 }

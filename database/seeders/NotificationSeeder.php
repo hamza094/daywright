@@ -56,7 +56,7 @@ class NotificationSeeder extends Seeder
 
                         $projectName = $project?->name ?? 'Unknown project';
                         $projectPath = $project ? $project->path() : '/api/v1/projects/'.Str::uuid();
-                        $notifierData = $project?->user?->getNotifierData() ?? $user->getNotifierData();
+                        $notifierData = $project?->user?->getNotifierData();
 
                         $rows[] = [
                             'id' => (string) Str::uuid(),
