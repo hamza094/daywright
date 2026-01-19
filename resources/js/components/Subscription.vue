@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Page Title -->
-    <div class="page-top">Your Membership</div>
+    <div class="page-top margin-small">Your Membership</div>
 
     <div class="container">
       <!-- If user is subscribed, show subscription info and actions -->
@@ -15,7 +15,7 @@
           that during this time, you still have access to all subscription benefits.
         </div>
         <div v-if="subscription" class="alert alert-success" role="alert">
-          <i class="fa-solid fa-exclamation-circle"> </i> You have created ProFresh Subscription
+          <i class="fa-solid fa-exclamation-circle"> </i> You have created DayWright Subscription
           <b> {{ subscription.created_at }}</b>
         </div>
 
@@ -23,10 +23,10 @@
         <div v-if="!subscription.grace_period">
           <p>
             <button v-if="subscription.plan === 'monthly'" class="btn btn-lg btn-link" @click.prevent="swap('yearly')">
-              Change Subscription to Yearly with $100
+              Change Subscription to Yearly ($100/year)
             </button>
             <button v-else class="btn btn-lg btn-link" @click.prevent="swap('monthly')">
-              Change Subscription to Monthly with $12
+              Change Subscription to Monthly ($12/month)
             </button>
           </p>
           <p>
@@ -36,17 +36,23 @@
       </div>
 
       <!-- If not subscribed, show available plans -->
-      <div v-else class="row m-5">
-        <div v-for="plan in plans" :key="plan.name" class="col-md-6">
-          <div class="card text-center">
-            <div class="card-body">
-              <p class="card-title subscription_heading">{{ plan.label }} Subscription</p>
-              <p class="card-text">
-                <span class="subscription_value">${{ plan.price }}</span> /
-                <span>{{ plan.name }}</span>
-              </p>
+      <div v-else class="row m-5 subscription-plans align-items-stretch">
+        <div v-for="plan in plans" :key="plan.name" class="col-md-6 mb-4">
+          <div
+            class="card text-center h-100 subscription-plan-card"
+            :class="{ 'subscription-plan-card-featured border border-primary': plan.featured }">
+            <div class="card-body d-flex flex-column p-4">
+              <div class="mb-3">
+                <p class="card-title subscription_heading mb-0">{{ plan.label }} Subscription</p>
+              </div>
+
+              <div class="mb-4">
+                <span class="subscription_value">${{ plan.price }}</span>
+                <span class="text-muted ml-2">/ {{ plan.intervalLabel }}</span>
+              </div>
+
               <button
-                class="btn btn-block btn-primary"
+                class="btn btn-primary btn-lg btn-block mt-auto"
                 @click="subscribe(plan.name)"
                 :disabled="isIframeOpen || isOpeningIframe">
                 Subscribe
@@ -106,7 +112,7 @@
             </div>
           </div>
         </div>
-        <div v-else class="col-md-6">
+        <div v-else class="margin-small col-md-6">
           <h3>Receipts</h3>
           <div class="alert alert-info">Your receipts will appear here after your first payment is processed.</div>
         </div>
@@ -144,8 +150,8 @@ export default {
 
       // Available plans
       plans: [
-        { name: 'monthly', label: 'Monthly', price: 12 },
-        { name: 'yearly', label: 'Yearly', price: 100 },
+        { name: 'monthly', label: 'Monthly', intervalLabel: 'month', price: 12, featured: false },
+        { name: 'yearly', label: 'Yearly', intervalLabel: 'year', price: 100, featured: true },
       ],
     };
   },

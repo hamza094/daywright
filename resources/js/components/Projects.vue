@@ -1,7 +1,7 @@
 <template>
   <div class="projects-container">
     <!-- Page Header -->
-    <div class="page-top">My Projects</div>
+    <div class="page-top margin-small">My Projects</div>
 
     <!-- Tab Navigation -->
     <div class="container-fluid mt-4 ml-2">
@@ -18,7 +18,7 @@
                 @click="switchTab(tab.key)">
                 <i :class="`fa-solid ${tab.icon} me-2`"></i>
                 {{ tab.label }}
-                <span :class="`badge bg-${tab.badge} ms-2`">
+                <span :class="`badge badge-count bg-${tab.badge} ms-2`">
                   {{ tabData[tab.key].count }}
                 </span>
               </button>

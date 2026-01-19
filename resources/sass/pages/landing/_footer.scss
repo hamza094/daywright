@@ -1,0 +1,153 @@
+.landing-footer {
+  background: $color-secondary;
+  color: $color-white;
+  position: relative;
+
+  &_brand {
+    max-width: 420px;
+  }
+
+  &_logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 800;
+    font-size: 1.05rem;
+    color: $color-white;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      color: $color-white;
+      text-decoration: none;
+    }
+
+    &-img {
+      width: 2.75rem;
+      height: auto;
+      border-radius: 0.6rem;
+      background: $color-white;
+      padding: 0.35rem;
+      box-shadow: 0 12px 28px rgb(0 0 0 / 14%);
+    }
+  }
+
+  &_mark {
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 0.75rem;
+    background: rgba($color-white, 0.12);
+    color: $color-white;
+    letter-spacing: 0.04em;
+    box-shadow: inset 0 1px 0 rgba($color-white, 0.18);
+  }
+
+  &_name {
+    letter-spacing: 0.03em;
+  }
+
+  &_text {
+    color: rgba($color-white, 0.86);
+    margin: 0.75rem 0 0.5rem;
+    line-height: 1.5;
+  }
+
+  &_meta {
+    display: grid;
+    gap: 0.35rem;
+    color: rgba($color-white, 0.8);
+    font-weight: 600;
+
+    a {
+      color: rgba($color-white, 0.9);
+      text-decoration: none;
+
+      &:hover,
+      &:focus-visible {
+        color: $color-white;
+        text-decoration: none;
+      }
+    }
+  }
+
+  &_contact {
+    color: rgba($color-white, 0.9);
+  }
+
+  &_group {
+    color: $color-white;
+  }
+
+  &_heading {
+    font-size: 1.05rem;
+    font-weight: 800;
+    margin-bottom: 0.6rem;
+  }
+
+  &_list {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+
+    a {
+      color: rgba($color-white, 0.86);
+      text-decoration: none;
+      font-weight: 600;
+
+      &:hover,
+      &:focus-visible {
+        color: $color-white;
+        text-decoration: none;
+      }
+    }
+
+    li {
+      line-height: 1.5;
+    }
+  }
+
+  &_social {
+    gap: 0.6rem;
+  }
+
+  &_social-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    border: 1px solid rgba($color-white, 0.3);
+    color: $color-white;
+    text-decoration: none;
+    transition:
+      transform 160ms ease,
+      box-shadow 160ms ease,
+      background-color 160ms ease,
+      border-color 160ms ease;
+
+    i {
+      font-size: 1.05rem;
+    }
+
+    &:hover,
+    &:focus-visible {
+      transform: translateY(-2px);
+      background: rgba($color-white, 0.12);
+      border-color: rgba($color-white, 0.55);
+      box-shadow: 0 12px 30px rgb(0 0 0 / 16%);
+      color: $color-white;
+      text-decoration: none;
+    }
+  }
+
+  &_bottom {
+    border-top: 1px solid rgba($color-white, 0.18);
+    color: rgba($color-white, 0.8);
+    font-weight: 600;
+    font-size: 0.96rem;
+  }
+}

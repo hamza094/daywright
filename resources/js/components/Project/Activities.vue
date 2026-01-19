@@ -1,29 +1,29 @@
 <template>
   <div>
     <div class="container-fluid">
+      <!-- Breadcrumb Navigation -->
+      <nav aria-label="breadcrumb" class="pl-1">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item">Projects</li>
+          <li class="breadcrumb-item">
+            <router-link :to="{ name: 'ProjectPage', params: { slug: $route.params.slug } }" class="dashboard-link">
+              {{ $route.params.name }}
+            </router-link>
+          </li>
+          <li class="breadcrumb-item active text-primary" aria-current="page">
+            Activities
+            <span class="text-muted">/</span>
+            <span class="ml-1">{{ currentTitle }}</span>
+          </li>
+        </ol>
+      </nav>
+
       <div class="row">
         <!-- Main Section -->
-        <main class="col-md-8 page pd-r">
-          <!-- Breadcrumb Navigation -->
-          <nav aria-label="breadcrumb" class="page-top">
-            <ol class="breadcrumb">
-              <li class="breadcrumb-item">Projects</li>
-              <li class="breadcrumb-item">
-                <router-link :to="{ name: 'ProjectPage', params: { slug: $route.params.slug } }" class="dashboard-link">
-                  {{ $route.params.name }}
-                </router-link>
-              </li>
-              <li class="breadcrumb-item active text-primary" aria-current="page">
-                Activities
-                <span class="text-muted">/</span>
-                <span class="ml-1">{{ currentTitle }}</span>
-              </li>
-            </ol>
-          </nav>
-
+        <main class="col-md-8 page pd-r order-2 order-md-1">
           <!-- Activities Section -->
-          <section class="container mt-3">
-            <div class="activity mb-5">
+          <section class="container">
+            <div class="activity mb-4">
               <div class="mt-3" v-if="!activities.data">
                 <h3>No related activities found</h3>
               </div>
@@ -60,9 +60,14 @@
               </ul>
             </div>
           </section>
+
+          <!-- Pagination (mobile only) placed after Activities section -->
+          <div class="w-100 p-4 d-block d-md-none">
+            <pagination :data="activities" @pagination-change-page="getResults"></pagination>
+          </div>
         </main>
         <!-- Sidebar Section -->
-        <aside class="col-md-4">
+        <aside class="col-md-4 order-1 order-md-2">
           <section class="card">
             <header class="card-header">
               <p>Search Related Activities:</p>
@@ -73,9 +78,9 @@
                 <li v-for="activity in activityTypes" :key="activity.status">
                   <a
                     href="#"
-                    :class="['activity-icon_' + activity.color, { Activityfont: status === activity.status }]"
+                    :class="['activity-icon_' + activity.color, { 'activity-font': status === activity.status }]"
                     @click.prevent="fetchActivities(activity)">
-                    <i :class="['fa-solid', activity.icon, 'mr-3', 'activity-icon_' + activity.color]"></i>
+                    <i :class="['fa-solid', activity.icon, 'mr-2', 'activity-icon_' + activity.color]"></i>
                     {{ activity.label }}
                   </a>
                 </li>
@@ -83,8 +88,8 @@
             </div>
           </section>
 
-          <!-- Pagination -->
-          <div class="mt-4">
+          <!-- Pagination (desktop only) -->
+          <div class="mt-4 d-none d-md-block">
             <pagination :data="activities" @pagination-change-page="getResults"></pagination>
           </div>
         </aside>

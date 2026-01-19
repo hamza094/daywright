@@ -1,5 +1,5 @@
 <template>
-  <div class="container mt-4">
+  <div class="container mt-4 user-notifications">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h1>Notifications</h1>
       <div class="dropdown">
@@ -70,7 +70,7 @@
             aria-expanded="false">
             <i class="fa-solid fa-cog"></i>
           </button>
-          <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+          <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenuButton">
             <button v-if="notification.read_at" class="dropdown-item" @click="markAsUnread(notification)">
               Mark as unread
             </button>

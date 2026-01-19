@@ -9,7 +9,9 @@
         </div>
         <h5 class="card-title mb-0 fw-semibold">{{ insight.title || getTypeLabel(insight.type) }}</h5>
       </div>
-      <span class="badge" :class="getBootstrapBadgeClass(insight.type)">{{ getTypeLabel(insight.type) }}</span>
+      <span class="badge text-white" :class="getBootstrapBadgeClass(insight.type)">{{
+        getTypeLabel(insight.type)
+      }}</span>
     </div>
 
     <div class="card-body">

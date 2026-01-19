@@ -4,13 +4,12 @@ import store from './store';
 
 Vue.use(Router);
 
-import Home from './components/Home.vue';
 import Register from './components/Authentication/Register.vue';
 import Login from './components/Authentication/Login.vue';
 import TwoFACode from './components/Authentication/TwoFACode.vue';
 import OAuth from './components/Authentication/OAuth.vue';
 import ZoomAuth from './components/Authentication/ZoomAuth.vue';
-import Dashboard from './components/Dashboard/ProjectDashboard.vue';
+import Dashboard from './components/Dashboard/Dashboard.vue';
 import ForgotPassword from './components/Authentication/ForgotPassword.vue';
 import ResetPassword from './components/Authentication/ResetPassword.vue';
 import VerifyPassword from './components/Authentication/VerifyPassword.vue';
@@ -30,7 +29,7 @@ const guest = (to, from, next) => {
   if (!store.state.currentUser.loggedIn) {
     return next();
   }
-  return next('/home');
+  return next('/dashboard');
 };
 
 const auth = (to, from, next) => {
@@ -61,7 +60,7 @@ const twofaGuard = (to, from, next) => {
     return next();
   }
   if (store.state.currentUser.loggedIn) {
-    return next('/home');
+    return next('/dashboard');
   }
   return next('/login');
 };
@@ -79,17 +78,12 @@ let router = new Router({
       component: OAuth,
       name: 'OAuth',
       beforeEnter: guest,
+      meta: { layout: 'auth' },
     },
     {
       path: '/oauth/zoom/callback',
       component: ZoomAuth,
       name: 'ZoomAuth',
-      beforeEnter: auth,
-    },
-    {
-      path: '/home',
-      component: Home,
-      name: 'Home',
       beforeEnter: auth,
     },
     {
@@ -121,35 +115,41 @@ let router = new Router({
       component: Register,
       name: 'Register',
       beforeEnter: guest,
+      meta: { layout: 'auth' },
     },
     {
       path: '/login',
       component: Login,
       name: 'Login',
       beforeEnter: guest,
+      meta: { layout: 'auth' },
     },
     {
       path: '/2fa/code',
       component: TwoFACode,
       name: 'TwoFACode',
       beforeEnter: twofaGuard,
+      meta: { layout: 'auth' },
     },
     {
       path: '/forgot-password',
       component: ForgotPassword,
       name: 'Forgot',
       beforeEnter: guest,
+      meta: { layout: 'auth' },
     },
     {
       path: '/api/v1/password/reset/:token',
       component: ResetPassword,
       name: 'Reset',
       beforeEnter: guest,
+      meta: { layout: 'auth' },
     },
     {
       path: '/api/v1/email/verify/:user',
       component: VerifyPassword,
       name: 'verification.verify',
+      meta: { layout: 'auth' },
     },
     {
       path: '/dashboard',

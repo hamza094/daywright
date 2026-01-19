@@ -1,0 +1,416 @@
+@use 'sass:color';
+
+// Insights Modal
+.insights-modal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: $color-white;
+}
+
+// Project avatar gradient
+.project-avatar {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, $insight-gradient-start 0%, $insight-gradient-end 100%);
+  color: $insight-avatar-text;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+// Enhanced Insight Card Design
+.insight-detail-card {
+  border: 1px solid rgb(0 0 0 / 8%) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 4%) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+
+  // Enhanced Border Colors with gradients
+  &_critical {
+    border-left: 4px solid $insight-critical !important;
+    background: linear-gradient(135deg, rgba($insight-critical, 0.02) 0%, rgb(255 255 255 / 100%) 100%);
+  }
+
+  &_warning {
+    border-left: 4px solid $insight-warning !important;
+    background: linear-gradient(135deg, rgba($insight-warning, 0.02) 0%, rgb(255 255 255 / 100%) 100%);
+  }
+
+  &_success {
+    border-left: 4px solid $insight-success !important;
+    background: linear-gradient(135deg, rgba($insight-success, 0.02) 0%, rgb(255 255 255 / 100%) 100%);
+  }
+
+  &_info {
+    border-left: 4px solid $insight-info !important;
+    background: linear-gradient(135deg, rgba($insight-info, 0.02) 0%, rgb(255 255 255 / 100%) 100%);
+  }
+
+  // Enhanced Header Styling
+  .card-header {
+    background: rgb(248 250 252 / 60%) !important;
+    border-bottom: 1px solid rgb(0 0 0 / 6%) !important;
+    backdrop-filter: blur(10px);
+
+    .insight-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      margin-right: 12px;
+      font-size: 16px;
+
+      // Icon colors by type
+      &.critical {
+        background: linear-gradient(135deg, $insight-critical, color.adjust($insight-critical, $lightness: -10%));
+        color: white;
+        box-shadow: 0 4px 12px rgba($insight-critical, 0.25);
+      }
+
+      &.warning {
+        background: linear-gradient(135deg, $insight-warning, color.adjust($insight-warning, $lightness: -10%));
+        color: white;
+        box-shadow: 0 4px 12px rgba($insight-warning, 0.25);
+      }
+
+      &.success {
+        background: linear-gradient(135deg, $insight-success, color.adjust($insight-success, $lightness: -10%));
+        color: white;
+        box-shadow: 0 4px 12px rgba($insight-success, 0.25);
+      }
+
+      &.info {
+        background: linear-gradient(135deg, $insight-info, color.adjust($insight-info, $lightness: -10%));
+        color: white;
+        box-shadow: 0 4px 12px rgba($insight-info, 0.25);
+      }
+
+      &.health {
+        background: linear-gradient(135deg, $insight-health, color.adjust($insight-health, $lightness: -10%));
+        color: white;
+        box-shadow: 0 4px 12px rgba($insight-health, 0.25);
+      }
+
+      // Keep only supported types: health, task-health, collaboration, risk, stage
+      &.collaboration {
+        background: linear-gradient(135deg, #8b5cf6, color.adjust(#8b5cf6, $lightness: -10%));
+        color: white;
+        box-shadow: 0 4px 12px rgba(#8b5cf6, 0.25);
+      }
+
+      &.risk {
+        background: linear-gradient(135deg, #ef4444, color.adjust(#ef4444, $lightness: -10%));
+        color: white;
+        box-shadow: 0 4px 12px rgba(#ef4444, 0.25);
+      }
+
+      &.stage {
+        background: linear-gradient(135deg, #06b6d4, color.adjust(#06b6d4, $lightness: -10%));
+        color: white;
+        box-shadow: 0 4px 12px rgba(#06b6d4, 0.25);
+      }
+
+      /* task-health uses the same token as the previous 'completion' visual style */
+      &.task-health {
+        background: linear-gradient(135deg, $insight-completion, color.adjust($insight-completion, $lightness: -10%));
+        color: white;
+        box-shadow: 0 4px 12px rgba($insight-completion, 0.25);
+      }
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 0;
+    }
+  }
+
+  // Enhanced Hover Effects
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgb(0 0 0 / 10%) !important;
+
+    .card-header .insight-icon {
+      transform: scale(1.05);
+    }
+
+    &_critical {
+      box-shadow: 0 12px 24px rgba($insight-critical, 0.15) !important;
+    }
+
+    &_warning {
+      box-shadow: 0 12px 24px rgba($insight-warning, 0.15) !important;
+    }
+
+    &_success {
+      box-shadow: 0 12px 24px rgba($insight-success, 0.15) !important;
+    }
+
+    &_info {
+      box-shadow: 0 12px 24px rgba($insight-info, 0.15) !important;
+    }
+  }
+
+  // Enhanced Card Body
+  .card-body {
+    padding: 1.5rem;
+  }
+}
+
+// Enhanced Primary Value Styling
+.primary-value {
+  line-height: 1;
+  padding: 1rem;
+  background: linear-gradient(135deg, rgb(99 102 241 / 3%) 0%, rgb(139 92 246 / 3%) 100%);
+  border-radius: 8px;
+  border: 1px solid rgb(99 102 241 / 8%);
+
+  .display-6 {
+    background: linear-gradient(135deg, #1e293b 0%, #475569 100%);
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+  }
+}
+
+// Loading Spinner Keyframes (kept in global styles so any custom spinner can use it)
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+// Enhanced Badge Styling
+.insight-badge {
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 8px !important;
+  border: none !important;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+}
+
+// Enhanced Metadata Display
+.insight-metadata {
+  .metadata-item {
+    background: rgb(248 250 252 / 80%);
+    border: 1px solid rgb(148 163 184 / 12%);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    color: #475569;
+    font-weight: 500;
+
+    .metadata-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      margin-right: 8px;
+      font-size: 12px;
+
+      &.trend {
+        background: linear-gradient(135deg, #10b981, color.adjust(#10b981, $lightness: -10%));
+        color: white;
+      }
+
+      &.target {
+        background: linear-gradient(135deg, #f59e0b, color.adjust(#f59e0b, $lightness: -10%));
+        color: white;
+      }
+
+      &.score {
+        background: linear-gradient(135deg, #8b5cf6, color.adjust(#8b5cf6, $lightness: -10%));
+        color: white;
+      }
+    }
+  }
+}
+
+// Enhanced Recommendations Styling
+.recommendations {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid rgb(148 163 184 / 15%);
+  border-radius: 10px;
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%);
+  }
+
+  h6 {
+    color: #475569;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+
+    i {
+      color: #f59e0b;
+      margin-right: 8px;
+    }
+  }
+
+  ul {
+    margin-bottom: 0;
+    padding-left: 1.5rem;
+  }
+
+  li {
+    line-height: 1.5;
+    color: #64748b;
+    margin-bottom: 0.5rem;
+    position: relative;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &::marker {
+      color: #6366f1;
+    }
+  }
+}
+
+// Responsive Adjustments for Mobile - specific footer/button handling
+@include respond(phone) {
+  .insights-modal-footer {
+    .d-flex {
+      flex-direction: column !important;
+      gap: 0.5rem;
+
+      &.gap-2 {
+        width: 100%;
+      }
+    }
+
+    .btn {
+      width: 100%;
+    }
+  }
+}
+
+// Inline / dropdown insights (moved from _components.scss)
+.insights-section {
+  border-top: 1px solid $color-light-grey;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+}
+
+.insights-header {
+  // Structural flex/spacing handled via Bootstrap utilities in template
+  h5 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: $insight-header-color;
+
+    i {
+      color: $insight-accent;
+    }
+  }
+}
+
+.insights-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid rgb(29 73 103 / 12%);
+  color: $insight-accent;
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  box-shadow: 0 1px 2px rgb(16 24 40 / 3%);
+
+  i {
+    font-size: 0.85rem;
+    line-height: 1;
+  }
+
+  &:hover {
+    background: rgba($insight-accent, 0.04);
+    transform: translateY(-1px);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba($insight-accent, 0.12);
+  }
+
+  &.active {
+    background: linear-gradient(180deg, $insight-accent, $insight-accent-dark);
+    color: $color-white;
+    border-color: transparent;
+
+    &:hover {
+      background: linear-gradient(180deg, $insight-accent, $insight-accent-dark);
+      color: $color-white;
+      border-color: transparent;
+    }
+
+    i {
+      transform: rotate(0deg);
+    }
+  }
+}
+
+.insights-actions {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid $insight-border-light;
+  text-align: right;
+}
+
+.btn-full-insights {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, $insight-accent 0%, $insight-accent-alt 100%);
+  border: none;
+  border-radius: 0.375rem;
+  color: $color-white;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  outline: none;
+  box-shadow: 0 2px 4px rgba($insight-accent, 0.25);
+
+  i {
+    font-size: 0.85rem;
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, $insight-btn-hover-start 0%, $insight-btn-hover-end 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba($insight-accent, 0.35);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba($insight-accent, 0.25);
+  }
+}

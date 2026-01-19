@@ -12,9 +12,9 @@ discussions.
 
 ## Pull Requests
 
-We very much appreciate any help with [open issues labeled with "help wanted"](https://github.com/hamza094/ProFresh/issues?q=state%3Aopen%20label%3A%22help%20wanted%22).
+We very much appreciate any help with [open issues labeled with "help wanted"](https://github.com/hamza094/daywright/issues?q=state%3Aopen%20label%3A%22help%20wanted%22).
 
-- **Feature requests** we're welcoming pull requests for new features (although we might not accept every single one). You can also first discuss new feature requests [through an issue](https://github.com/hamza094/ProFresh/issues) before sending in a pull request
+- **Feature requests** we're welcoming pull requests for new features (although we might not accept every single one). You can also first discuss new feature requests [through an issue](https://github.com/hamza094/daywright/issues) before sending in a pull request
 - **Bug fixes** should contain regression tests
 - All pull requests should follow the [coding standards](#coding-standards)
 - Pull requests will be merged after being reviewed by [the maintainers](README.md#maintainers)
@@ -25,7 +25,7 @@ We very much appreciate any help with [open issues labeled with "help wanted"](h
 
 - It's a good practice to write tests for your contribution
 - Write the full namespace in DocBlocks for `@param`, `@var` or `@return` tags
-- The rest of the coding standards will automatically be fixed by [GitHub Actions](https://github.com/hamza094/ProFresh/actions)
+- The rest of the coding standards will automatically be fixed by [GitHub Actions](https://github.com/hamza094/daywright/actions)
 
 ## Testing
 

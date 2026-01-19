@@ -2,35 +2,44 @@
 @import '@tabler/core/dist/css/tabler-flags.min.css';
 @import '@tabler/core/dist/css/tabler-payments.min.css';
 @import '@tabler/core/dist/css/tabler-vendors.min.css';
+@import 'abstracts/mixins';
 
 // Variables
-@import 'variables';
+@import 'abstracts/variables';
+
+// Base resets & typography
+@import 'base/base';
+
+// Layout
+@import 'layout/panel';
 
 // Componenets
-@import 'components';
+@import 'components/components';
+@import 'components/notifications';
+@import 'components/tooltip';
 
-// Main home page
+// Project
+@import 'pages/project/components';
+@import 'pages/project/task';
+@import 'pages/project/meeting';
+@import 'pages/project/members';
+@import 'pages/project/chat';
+@import 'pages/project/insights';
+
+// Landing page (sectioned)
+@import 'utilities/utilities';
+@import 'pages/auth/auth';
 @import 'main';
 
 // Dashboard
-@import 'dashboard';
+@import 'pages/dashboard/dashboard';
 
 // Admin
-@import 'admin';
-
-// Vue-tooltip
-@import 'tooltip';
-
-// User Notifications
-@import 'user-notifications';
-
-@import 'subscriptionModal';
-
-@import 'twoFactorAuth';
-
-@import 'user-activities';
-
-@import 'insights';
-
-// Bootstrap
+@import 'pages/admin/admin';
+@import 'pages/activities';
+@import 'pages/subscription/subscriptionModal';
+@import 'pages/profile/twoFactorAuth';
+@import 'pages/profile/component';
+@import 'pages/dashboard/user-activities';
+@import 'pages/subscription/subscription';
 @import '~bootstrap/scss/bootstrap';

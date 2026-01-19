@@ -11,15 +11,10 @@
         <div class="img-avatar_overlay-text">Update</div>
       </div>
     </div>
-
-    <modal name="avatar-file" height="auto" :click-to-close="false">
-      <div class="p-3 bg-white shadow rounded-lg img_avarar">
+    <modal name="avatar-file" height="auto" class="avatar-modal" :click-to-close="false">
+      <div class="p-3 bg-white shadow rounded-lg">
         <button class="btn btn-sm float-right" @click="closeAvatarModal">❌</button>
         <input ref="fileInput" type="file" name="avatar" id="file" accept="image/*" @change="setImage" />
-
-        <!-- Image previewer -->
-        <!-- Preview of selected image (object URL preferred, falls back to data URL). -->
-        <img :src="imageSrc" width="100" v-if="imageSrc" />
 
         <!-- Cropper container -->
         <div v-if="imageSrc" class="my-3 d-flex align-items-center justify-content-center mx-auto">

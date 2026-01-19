@@ -151,6 +151,7 @@ Vue.directive('safe-html', safeHtml);
 const components = [
   ['project-button', './components/ProjectButton.vue'],
   ['archive-tasks', './components/Project/Panel/ArchiveTasks.vue'],
+  ['project-chat', './components/Project/Panel/ProjectChatPanel.vue'],
   ['project-form', './components/ProjectForm.vue'],
   ['project-status', './components/Project/Status.vue'],
   ['project-features', './components/Project/Feature/FeatureSection.vue'],
@@ -158,6 +159,7 @@ const components = [
   ['notifications', './components/Notification.vue'],
   ['profile', './components/Profile/ProfilePge.vue'],
   ['navbar', './components/Navbar.vue'],
+  ['sidebar-nav-panel', './components/layouts/SidebarNavPanel.vue'],
 ];
 
 components.forEach(([name, path]) => {

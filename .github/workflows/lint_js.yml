@@ -28,6 +28,10 @@ jobs:
       - name: Run ESLint
         run: npx eslint "resources/**/*.{vue,js}" --max-warnings=0
 
+      # Run Stylelint on SCSS files
+      - name: Run Stylelint
+        run: npm run stylelint
+
       # Run Prettier check (without modifying files)
       - name: Run Prettier check
         run: npx prettier --check "resources/**/*.{vue,js,css,scss,json,md,yml}"

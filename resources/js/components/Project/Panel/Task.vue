@@ -1,6 +1,6 @@
 <template>
-  <div class="task">
-    <div class="task-top">
+  <section class="task">
+    <header class="task-top">
       <span>
         <i class="fa-solid fa-tasks"></i> <b>Tasks</b>
         <button
@@ -10,15 +10,15 @@
           data-target="#taskProject"
           aria-expanded="false"
           aria-controls="taskProject">
-          <i class="fa-solid fa-angle-down float-right"></i>
+          <i class="fa-solid fa-angle-down"></i>
         </button>
       </span>
-    </div>
+    </header>
 
     <!--Task Section-->
-    <div class="collapse" id="taskProject">
+    <section class="collapse" id="taskProject">
       <SubscriptionCheck>
-        <div class="card card-body">
+        <article class="card card-body">
           <div v-if="!access">Only the project owner and members are allowed to access this feature.</div>
           <div v-if="access">
             <!-- Add new Task -->
@@ -31,31 +31,38 @@
               </form>
             </div>
 
-            <p class="task-list_heading">{{ message }}</p>
-            <div v-if="tasks" class="task-list">
-              <span class="float-right">
-                <a @click.prevent="archiveTasks" class="panel-list_item">
-                  <i class="fa-solid fa-tasks"></i>
-                </a>
-              </span>
+            <section v-if="tasks" class="task-list" aria-label="Task list">
+              <div class="task-list_header">
+                <p class="task-list_heading mb-0">Project Tasks</p>
+                <button
+                  type="button"
+                  class="task-archive-btn"
+                  @click.prevent="archiveTasks"
+                  title="View archived tasks">
+                  <i class="fa-solid fa-box-archive" aria-hidden="true"></i>
+                  <span class="task-archive-label d-none d-sm-inline ml-1">Archived</span>
+                </button>
+              </div>
 
               <!-- Tasks Lists -->
-              <section v-for="task in tasks.data" :key="task.id">
-                <div class="card task-card_style" @click="openModal(task)">
-                  <div
-                    v-if="task.status"
-                    class="task-card_border"
-                    :style="{
-                      borderColor: task.status.color,
-                    }"></div>
-                  <div class="card-body task-card_body">
-                    <span>{{ task.title }}</span>
-                    <span class="float-right mt-4"
-                      ><small><i class="fa-regular fa-clock"> </i> {{ task.created_at | shortDate }}</small></span
-                    >
-                  </div>
-                </div>
-              </section>
+              <ul class="task-list_items">
+                <li v-for="task in tasks.data" :key="task.id" class="task-list_item">
+                  <article class="card task-card_style" @click="openModal(task)">
+                    <div
+                      v-if="task.status"
+                      class="task-card_border"
+                      :style="{
+                        borderColor: task.status.color,
+                      }"></div>
+                    <div class="card-body task-card_body">
+                      <span>{{ task.title }}</span>
+                      <span class="float-right mt-4"
+                        ><small><i class="fa-regular fa-clock"> </i> {{ task.created_at | shortDate }}</small></span
+                      >
+                    </div>
+                  </article>
+                </li>
+              </ul>
 
               <!-- Task Modal -->
               <modal
@@ -66,23 +73,23 @@
                 class="model-desin"
                 :click-to-close="false"
                 @modal-closed="closeModal">
-                <TaskModal :slug="slug" :state="state"></TaskModal>
+                <TaskDetailModal :slug="slug" :state="state"></TaskDetailModal>
               </modal>
 
               <pagination :data="tasks" @pagination-change-page="getResults"></pagination>
-            </div>
+            </section>
           </div>
-        </div>
+        </article>
       </SubscriptionCheck>
-    </div>
-  </div>
+    </section>
+  </section>
 </template>
 <script>
-import TaskModal from './Modal.vue';
+import TaskDetailModal from './TaskDetailModal.vue';
 import { mapMutations, mapActions, mapState } from 'vuex';
 import SubscriptionCheck from '../../SubscriptionChecker.vue';
 export default {
-  components: { TaskModal, SubscriptionCheck },
+  components: { TaskDetailModal, SubscriptionCheck },
   props: {
     slug: {
       type: String,

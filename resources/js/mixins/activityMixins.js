@@ -2,7 +2,7 @@ export default {
   data() {
     return {
       activityTypes: [
-        { status: 'all', label: 'All Activities', icon: 'fa-solid fa-layer-group', color: 'secondary', query: '' },
+        { status: 'all', label: 'All Activities', icon: 'fa-solid fa-layer-group', color: 'main', query: '' },
         { status: 'my', label: 'My Activities', icon: 'fa-solid fa-user', color: 'purple', query: '?mine=1' },
         {
           status: 'project',

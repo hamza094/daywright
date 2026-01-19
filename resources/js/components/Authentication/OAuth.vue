@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <div class="text-center mt-5">
-      <h3>Please wait while we sign you into ProFresh</h3>
+      <h3>Please wait while we sign you into DayWright</h3>
       <div class="d-flex mt-3 justify-content-center align-items-center">
         <ring-loader :color="color" :size="100" />
       </div>

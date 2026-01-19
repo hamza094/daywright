@@ -31,8 +31,8 @@ class PaypalAgreement extends Paypal
     protected function agreement($id): string
     {
         $agreement = new Agreement;
-        $agreement->setName('ProFresh Agreement')
-            ->setDescription('ProFresh Agreement')
+        $agreement->setName('DayWright Agreement')
+            ->setDescription('DayWright Agreement')
             ->setStartDate(gmdate("Y-m-d\TH:i:s\Z", strtotime('+1 day')));
 
         $agreement->setPlan($this->plan($id));

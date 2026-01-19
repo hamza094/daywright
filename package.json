@@ -5,12 +5,16 @@
     "build": "vite build",
     "lint": "eslint *.js resources",
     "format": "prettier --write '**/*.{js,vue,css,scss,json,yml,md}'",
-    "postinstall": "husky install"
+    "stylelint": "stylelint \"resources/sass/**/*.scss\"",
+    "stylelint:fix": "stylelint \"resources/sass/**/*.scss\" --fix",
+    "postinstall": "husky install",
+    "dev:all": "concurrently \"php artisan serve --host=127.0.0.1 --port=8000\" \"npm run dev\""
   },
   "devDependencies": {
     "@vitejs/plugin-vue2": "^2.3.3",
     "axios": "^1.13",
     "bootstrap": "^4.6.0",
+    "concurrently": "^9.2.1",
     "cross-env": "^7.0.3",
     "eslint": "^9.38.0",
     "eslint-config-prettier": "^10.1.8",
@@ -26,6 +30,8 @@
     "sass": "^1.34.0",
     "sass-embedded": "^1.86.3",
     "sass-loader": "^8.0.0",
+    "stylelint": "^16.26.1",
+    "stylelint-config-standard-scss": "^16.0.0",
     "vite": "^6.2.6",
     "vue": "^2.7.0",
     "vue2-slideout-panel": "^2.13.0"

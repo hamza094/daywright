@@ -1,0 +1,93 @@
+%landing-section-badge {
+  display: inline-block;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  background: rgba($color-secondary, 0.08);
+  color: $color-secondary;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+%landing-section-title {
+  font-size: clamp(1.9rem, 2.8vw, 2.4rem);
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+%landing-section-subtitle {
+  font-size: 1.05rem;
+  color: $color-grey;
+  max-width: 44rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+%badge {
+  font-size: 0.7rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+}
+
+.padding-0 {
+  padding-right: 0;
+}
+
+.btn-link {
+  text-decoration: none !important;
+  color: inherit;
+
+  &:hover,
+  &:focus,
+  &:active {
+    background-color: transparent !important;
+    color: $color-secondary !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+  }
+}
+
+.btn-fix {
+  &:hover,
+  &:focus,
+  &:active {
+    color: $color-white !important;
+  }
+}
+
+.pagination {
+  margin-top: 0.5rem;
+
+  .page-link {
+    color: #12344d;
+    background-color: #fff;
+    border: 1px solid #dce1e5;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.85rem;
+    line-height: 1.1;
+
+    &:hover,
+    &:focus {
+      color: $color-secondary;
+      background-color: #f5f7f9;
+      text-decoration: none;
+      outline: none;
+      box-shadow: 0 2px 6px rgb(0 0 0 / 8%);
+    }
+  }
+
+  .page-item.active .page-link {
+    color: #fff;
+    background-color: $color-secondary;
+    border-color: $color-secondary;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 12%);
+  }
+
+  .page-item.disabled .page-link {
+    color: #9aa5b1;
+    background-color: #f5f7f9;
+    border-color: #e5e9ed;
+    box-shadow: none;
+  }
+}

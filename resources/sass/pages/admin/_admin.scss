@@ -1,0 +1,122 @@
+.admin {
+  &-dashboard {
+    &-link {
+      color: black;
+
+      &:hover {
+        text-decoration: none;
+        color: black;
+      }
+    }
+  }
+
+  &-panel {
+    &-link {
+      color: grey;
+      font-weight: 900;
+
+      &:hover {
+        text-decoration: none;
+        color: $color-secondary;
+        font-weight: 900;
+      }
+    }
+  }
+}
+
+.angle-pointer {
+  cursor: pointer;
+}
+
+.filter {
+  color: $color-secondary;
+  cursor: pointer;
+
+  // dropdown
+  &-dropdown {
+    &_item {
+      position: absolute;
+      border-radius: 0.2rem;
+      box-shadow: 0 0 10px rgb(0 0 0 / 20%);
+      z-index: 2000 !important;
+      background-color: $color-white;
+      width: 32rem;
+      height: auto;
+      overflow: hidden;
+      top: 2.8rem;
+      border: 1px solid $color-light-grey;
+      padding: 0.2rem;
+    }
+  }
+
+  &-list {
+    list-style-type: none;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: -0.5rem;
+
+    &_item {
+      margin-right: 2.3rem;
+      margin-top: 0.5rem;
+    }
+  }
+
+  &-content {
+    padding: 0.8rem;
+
+    &_border {
+      border: none;
+      border-top: 0.2rem solid $color-secondary;
+      margin-bottom: 1rem;
+    }
+  }
+}
+
+.form-date_close {
+  cursor: pointer;
+  color: red;
+}
+
+.form-check-input {
+  border: 1px solid #b0e0e6;
+  padding: 5px;
+}
+
+.status-color {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  margin-left: 0.5rem;
+}
+
+.role-dropdown {
+  &_item {
+    position: absolute;
+    border-radius: 0.2rem;
+    box-shadow: 0 0 10px rgb(0 0 0 / 20%);
+    z-index: 2000 !important;
+    background-color: $color-white;
+    width: 12rem;
+    height: auto;
+    right: 0;
+    overflow: hidden;
+    border: 1px solid $color-light-grey;
+  }
+}
+
+.role-list {
+  list-style: none;
+}
+
+.role-list_items {
+  display: inline-block;
+  padding: 0.5rem 0.2rem 0.2rem;
+}
+
+.cursor {
+  &:hover {
+    cursor: pointer;
+  }
+}

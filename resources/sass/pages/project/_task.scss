@@ -1,0 +1,295 @@
+.task {
+  margin-top: 1rem;
+
+  &-top {
+    background-color: #f5f7f9;
+    padding: 0.5rem;
+
+    a {
+      text-decoration: none;
+
+      i {
+        color: black;
+      }
+    }
+  }
+
+  &-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+
+    &_header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    &_text {
+      font-size: 1rem;
+
+      &-body {
+        text-decoration: line-through 2px $color-secondary;
+      }
+    }
+
+    &_heading {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    &_time {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #524e4e;
+    }
+
+    i {
+      cursor: pointer;
+    }
+  }
+
+  &-list_items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  &-list_item {
+    list-style: none;
+  }
+
+  &-card {
+    &_style {
+      width: 100%;
+      max-width: 100%;
+      margin-bottom: 1rem;
+      cursor: pointer;
+    }
+
+    &_body {
+      padding: 0.5rem 1rem 1rem !important;
+      font-size: 1rem;
+    }
+
+    &_border {
+      border: 0.3rem solid;
+      width: 25%;
+      margin: 0.5rem 0 0 0.5rem;
+      border-radius: 0.5rem;
+    }
+  }
+
+  &-modal {
+    &_title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 0.1rem;
+      color: #4c4a4a;
+      cursor: pointer;
+    }
+
+    &_close {
+      font-size: 1.5rem;
+      margin-top: -1rem;
+    }
+
+    &_content {
+      padding: 0.5rem;
+    }
+  }
+
+  &-option {
+    &_labels {
+      list-style-type: none;
+      margin-bottom: 1.5rem;
+
+      &-component {
+        cursor: pointer;
+        color: white;
+        padding: 0.2rem;
+        text-align: center;
+        border-radius: 0.2rem;
+      }
+    }
+
+    &_features {
+      list-style-type: none;
+
+      li {
+        &:not(:last-child) {
+          margin-bottom: 0.5rem;
+        }
+      }
+    }
+  }
+
+  &-member {
+    margin-right: 0.2rem;
+    display: inline-block;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    text-decoration: none;
+
+    &_avatar {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    &_name {
+      background-color: $color-secondary;
+      color: white;
+      display: inline-block;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      text-align: center;
+      line-height: 30px;
+    }
+
+    &:hover {
+      text-decoration: none;
+      color: white;
+    }
+
+    &_username {
+      font-size: 14px;
+      color: #333;
+    }
+
+    &-container {
+      display: inline-block;
+      text-align: center;
+      margin-right: 8.8px;
+    }
+  }
+
+  &-description {
+    &_container {
+      margin-bottom: 0.6rem;
+    }
+
+    margin-top: 2rem;
+
+    &_heading {
+      font-weight: 600;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2rem;
+    }
+
+    &_content {
+      font-size: 1rem;
+
+      &-link {
+        cursor: pointer;
+
+        &:hover {
+          text-decoration: none;
+        }
+      }
+    }
+  }
+}
+
+.task-archive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid #dce1e5;
+  color: #12344d;
+  background: #f7f9fb;
+  padding: 0.15rem 0.4rem;
+  height: 28px;
+  line-height: 1;
+  font-size: 0.85rem;
+  border-radius: 0.4rem;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
+  transition:
+    background 0.12s ease,
+    color 0.12s ease,
+    box-shadow 0.12s ease,
+    transform 0.08s ease;
+
+  &:hover,
+  &:focus {
+    background: #e9f1fa;
+    color: $color-secondary;
+    box-shadow: 0 3px 8px rgb(0 0 0 / 6%);
+    transform: translateY(-1px);
+    text-decoration: none;
+    outline: none;
+  }
+
+  i {
+    font-size: 0.85rem;
+    line-height: 1;
+  }
+}
+
+.task-archive-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.title-form {
+  width: 50% !important;
+  display: inherit !important;
+}
+
+.unassign-cross {
+  position: relative;
+  top: -8px;
+  right: 4px;
+  font-size: 1rem;
+  color: red;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.task-member-username:hover .unassign-cross {
+  opacity: 1;
+}
+
+// Task Model due_date dropdown
+.member-dropdown {
+  &_item {
+    padding: 0.5rem;
+    position: fixed;
+    border-radius: 0.2rem;
+    box-shadow: 0 0 10px rgb(0 0 0 / 20%);
+    z-index: 2000 !important;
+    background-color: $color-white;
+    width: 18rem;
+    height: auto;
+    overflow: hidden;
+    border: 1px solid $color-light-grey;
+  }
+
+  @include respond(tab-pot) {
+    &_item {
+      inset: auto 0.75rem 15vh auto;
+    }
+  }
+
+  @include respond(phone) {
+    &_item {
+      inset: auto 0.75rem 14vh;
+    }
+  }
+}

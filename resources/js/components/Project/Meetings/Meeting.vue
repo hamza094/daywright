@@ -1,21 +1,26 @@
 <template>
   <div>
     <div id="meetingSDKElement"></div>
-    <div class="project-info">
-      <div class="project-info_socre">
-        <p class="project-info_score-heading">Meetings</p>
-        <p v-if="notAuthorize" class="btn btn-sm btn-secondary" @click.prevent="authorize">Authorize With Zoom</p>
-        <button v-if="!notAuthorize" class="btn btn-sm btn-primary" @click.prevent="openMeetingModal()">
-          Create Meeting
-        </button>
-      </div>
+    <section class="project-info meeting-panel" aria-labelledby="meetings-title">
+      <header class="meeting-panel_header">
+        <h2 id="meetings-title" class="meeting-panel_title">Meetings</h2>
+        <div>
+          <button v-if="notAuthorize" type="button" class="btn btn-sm btn-secondary" @click.prevent="authorize">
+            Authorize With Zoom
+          </button>
+          <button v-else type="button" class="btn btn-sm btn-primary" @click.prevent="openMeetingModal()">
+            Create Meeting
+          </button>
+        </div>
+      </header>
       <hr />
 
-      <div class="btn-group" role="group">
+      <nav class="meeting-panel_tabs" aria-label="Meetings filter">
         <button
           type="button"
           class="btn btn-link btn-sm meeting_button"
           :class="{ active: !showPrevious }"
+          :aria-pressed="(!showPrevious).toString()"
           @click="showCurrentMeetings">
           Current Meetings
         </button>
@@ -23,63 +28,69 @@
           type="button"
           class="btn btn-link btn-sm meeting_button"
           :class="{ active: showPrevious }"
+          :aria-pressed="showPrevious.toString()"
           @click="showPreviousMeetings">
           Previous Meetings
         </button>
-      </div>
+      </nav>
 
-      <div v-if="message" class="alert alert-info">
-        {{ message }}
-      </div>
+      <div class="meeting-show">
+        <div v-if="message" class="alert alert-info mb-2">
+          {{ message }}
+        </div>
 
-      <div v-for="meeting in meetings.data" :key="meeting.id">
-        <div class="card mt-3 card-hover" @click.prevent="getMeeting(meeting.id)">
-          <div :class="['ribbon', ribbonColor(meeting.status)]">{{ meeting.status }}</div>
-          <div class="card-stamp">
-            <div class="card-stamp-icon bg-yellow">
-              <!-- Download SVG icon from http://tabler-icons.io/i/bell -->
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="icon"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                stroke-width="2"
-                stroke="currentColor"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                <path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"></path>
-                <path d="M9 17v1a3 3 0 0 0 6 0v-1"></path>
-              </svg>
-            </div>
-          </div>
-          <div v-if="meeting.status.toLowerCase() === 'started'" class="glowing-dot"></div>
-          <div class="card-body">
-            <h3 class="card-title">{{ meeting.topic }}</h3>
-            <p class="text-secondary">{{ meeting.agenda }}</p>
-            <p><b>Start Time:</b> {{ meeting.start_time }}</p>
-            <p><b>Timezone:</b> {{ meeting.timezone }}</p>
-            <p><b>Created At:</b> {{ meeting.created_at }}</p>
-          </div>
-        </div>
-        <div class="card-footer">
-          <button
-            v-if="shouldShowStartButton(meeting, auth, notAuthorize)"
-            class="btn btn-sm btn-primary"
-            @click.prevent="initializeMeeting('start', meeting)">
-            Start Meeting
-          </button>
-          <button
-            v-else-if="shouldShowJoinButton(meeting, auth, members)"
-            class="btn btn-sm btn-warning text-white"
-            @click.prevent="initializeMeeting('join', meeting)">
-            Join Meeting
-          </button>
-        </div>
+        <ul class="list-unstyled mb-0">
+          <li v-for="meeting in meetings.data" :key="meeting.id">
+            <article class="card mt-3 card-hover" @click.prevent="getMeeting(meeting.id)">
+              <div :class="['ribbon', ribbonColor(meeting.status)]">{{ meeting.status }}</div>
+              <div class="card-stamp">
+                <div class="card-stamp-icon bg-yellow">
+                  <!-- Download SVG icon from http://tabler-icons.io/i/bell -->
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="icon"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    stroke-width="2"
+                    stroke="currentColor"
+                    fill="none"
+                    stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                    <path
+                      d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6"></path>
+                    <path d="M9 17v1a3 3 0 0 0 6 0v-1"></path>
+                  </svg>
+                </div>
+              </div>
+              <div v-if="meeting.status.toLowerCase() === 'started'" class="glowing-dot"></div>
+              <div class="card-body">
+                <h3 class="card-title">{{ meeting.topic }}</h3>
+                <p class="text-secondary">{{ meeting.agenda }}</p>
+                <p><b>Start Time:</b> {{ meeting.start_time }}</p>
+                <p><b>Timezone:</b> {{ meeting.timezone }}</p>
+                <p><b>Created At:</b> {{ meeting.created_at }}</p>
+              </div>
+              <footer class="card-footer">
+                <button
+                  v-if="shouldShowStartButton(meeting, auth, notAuthorize)"
+                  class="btn btn-sm btn-primary"
+                  @click.prevent="initializeMeeting('start', meeting)">
+                  Start Meeting
+                </button>
+                <button
+                  v-else-if="shouldShowJoinButton(meeting, auth, members)"
+                  class="btn btn-sm btn-warning text-white"
+                  @click.prevent="initializeMeeting('join', meeting)">
+                  Join Meeting
+                </button>
+              </footer>
+            </article>
+          </li>
+        </ul>
       </div>
-    </div>
+    </section>
     <pagination :data="meetings" @pagination-change-page="getResults"></pagination>
     <MeetingModal :project-slug="projectSlug"></MeetingModal>
     <ViewModal :project-slug="projectSlug" :members="members" :not-authorize="notAuthorize"></ViewModal>

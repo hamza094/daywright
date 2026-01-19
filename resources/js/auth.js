@@ -1,6 +1,7 @@
-export function permission(auth, members, user, isAdmin) {
-  const access = (members && members.some((member) => member.id === auth)) || user === auth || isAdmin;
-  const owner = user === auth;
+export function permission(authId, members, userId, isAdmin) {
+  const isMember = members?.some(({ id, uuid }) => id === authId || uuid === authId);
+  const owner = userId === authId;
+  const access = isMember || owner || isAdmin;
 
   return { access, owner };
 }

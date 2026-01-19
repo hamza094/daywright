@@ -33,18 +33,18 @@
         class="model-desin archive-modal"
         :click-to-close="false"
         @modal-closed="closeModal">
-        <TaskModal :slug="slug" :state="state" />
+        <TaskDetailModal :slug="slug" :state="state" />
       </modal>
     </div>
   </div>
 </template>
 
 <script>
-import TaskModal from './Modal.vue';
+import TaskDetailModal from './TaskDetailModal.vue';
 import { mapState, mapMutations, mapActions } from 'vuex';
 
 export default {
-  components: { TaskModal },
+  components: { TaskDetailModal },
   props: {
     slug: {
       type: String,

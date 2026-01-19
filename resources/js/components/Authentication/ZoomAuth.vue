@@ -39,7 +39,7 @@ export default {
           this.$vToastify.success(response.data.success);
         })
         .catch((error) => {
-          this.$router.push('/home');
+          this.$router.push('/dashboard');
           this.$vToastify.warning(error?.response?.data?.error || 'An error occurred during Zoom authentication.');
         })
         .finally(() => {

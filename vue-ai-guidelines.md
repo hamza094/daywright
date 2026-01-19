@@ -1,6 +1,6 @@
 # Vue 2.6 Guidelines for AI Code Assistants
 
-This file contains Vue 2.6 coding standards optimized for AI code assistants like Claude Code, GitHub Copilot, and Cursor. These guidelines are derived from industry best practices and tailored specifically for the ProFresh project management application.
+This file contains Vue 2.6 coding standards optimized for AI code assistants like Claude Code, GitHub Copilot, and Cursor. These guidelines are derived from industry best practices and tailored specifically for the DayWright project management application.
 
 ## Core Vue Principle
 
@@ -90,7 +90,7 @@ data() {
 
 ### Store Module Structure
 
-Follow the ProFresh pattern with namespaced modules:
+Follow the DayWright pattern with namespaced modules:
 
 ```javascript
 const state = {
@@ -152,7 +152,7 @@ this.$bus.on('project-updated', (projectData) => {
 
 - Use consistent error handling patterns
 - Display validation errors clearly
-- Use the `errors` object pattern from ProFresh
+- Use the `errors` object pattern from DayWright
 
 ```javascript
 data() {
@@ -211,7 +211,7 @@ export default { mixins: [errorHandling] };
 
 ### Route Guards
 
-- Use the authentication guard pattern from ProFresh
+- Use the authentication guard pattern from DayWright
 - Handle route transitions properly
 - Use navigation guards for protected routes
 
@@ -359,7 +359,7 @@ export default {
 
 ### Modal Usage
 
-- Use the `vue-js-modal` pattern from ProFresh
+- Use the `vue-js-modal` pattern from DayWright
 - Handle modal state properly
 - Clean up on modal close
 
@@ -835,4 +835,4 @@ components: {
 
 ---
 
-_These guidelines are optimized for AI code assistants and align with the ProFresh project architecture._
+_These guidelines are optimized for AI code assistants and align with the DayWright project architecture._

@@ -54,7 +54,15 @@
     "bootstrap/cache": true,
     "public/packages": true,
     ".idea": true,
-    ".cursor": true
+    ".cursor": true,
+    "stubs": true,
+    "config": true,
+    "database": true,
+    ".phpstan-cache": true,
+    "app": true,
+    "tests": true,
+    "routes": true,
+    "public": true
   },
 
   // Exclude from search index
