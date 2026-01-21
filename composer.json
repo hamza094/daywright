@@ -20,7 +20,7 @@
     "guzzlehttp/guzzle": "^7.0.1",
     "intervention/image": "^2.5",
     "laragear/two-factor": "^3.0",
-    "laravel/cashier-paddle": "^1.8",
+    "laravel/cashier-paddle": "^2.6",
     "laravel/framework": "^11.0",
     "laravel/helpers": "^1.4",
     "laravel/sanctum": "^4.0",
