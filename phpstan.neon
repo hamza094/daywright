@@ -15,9 +15,6 @@ parameters:
     level: 6
 
     excludePaths:
-         -   */app/Paypal/CreatePlan.php
-         -   */app/Paypal/Paypal.php
-         -   */app/Paypal/PaypalAgreement.php
          -   */app/Channels/DatabaseChannel.php
          -   */app/Http/Controllers/Api/V1/Admin/*
          -   */app/Repository/Admin/*
