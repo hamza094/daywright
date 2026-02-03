@@ -5,7 +5,7 @@ Concise design guardrails for the Daywright landing page so humans and the assis
 How to use
 
 - Follow **general rules** for structural decisions.
-- Follow the **section checklist** when touching a specific area (Header, Hero, About, Features, Pricing, Subscription, Footer).
+
 - The assistant implements only one section per approval cycle.
 
 General rules
@@ -21,6 +21,12 @@ General rules
 - Class naming: do not use double underscores `__` or double hyphens `--` in class names; use a single underscore `_` separator only (e.g., `landing-hero_title`, not `landing-hero__title` or `landing-hero--title`).
 - When i provide an image per section as inspiration, the assistant may adapt that design (layout, spacing, colors, and assets) to match the app's standards and sync it according to my app design.
 - Section headings: except for the Hero, Navbar,Subscrbe and Footer, every section must use a consistent section-heading design (badge/heading/border pattern) and follow the project's heading styles.
+
+Frontend styling & accessibility
+
+- Use scoped styles where appropriate and keep landing styles inside `.landing-*` selectors.
+- Provide ARIA labels when icons/buttons lack visible text.
+- Prefer stable keys when rendering lists (never use array index if data can change).
 
 Assistant workflow
 
@@ -41,7 +47,3 @@ Approval keywords
 - `approve` — implement proposed section changes.
 - `revise` — adjust proposal before coding.
 - `next` — move to another section after successful delivery.
-
-Next step
-
-- Tell the assistant which section to start with (e.g., `Hero`).
