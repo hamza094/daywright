@@ -65,8 +65,8 @@ class ZoomConnector extends Connector
         $redirect = (string) config('services.zoom.redirect');
 
         if ($redirect === '') {
-            $appUrl = (string) config('app.url', 'http://localhost:8000');
-            $redirect = rtrim($appUrl !== '' ? $appUrl : 'http://localhost:8000', '/').'/oauth/zoom/callback';
+            $appUrl = (string) config('app.url');
+            $redirect = rtrim($appUrl, '/').'/oauth/zoom/callback';
         }
 
         if ($clientId === '' || $clientId === '0' || ($clientSecret === '' || $clientSecret === '0')) {

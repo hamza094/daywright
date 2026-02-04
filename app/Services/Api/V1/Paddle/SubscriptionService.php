@@ -16,8 +16,10 @@ final class SubscriptionService implements Paddle
             throw new SubscriptionException('You are already subscribed to this plan.');
         }
 
+        $appUrl = rtrim((string) config('app.url'), '/');
+
         return $user->newSubscription('DayWright', config('services.paddle.'.$plan))
-            ->returnTo('http://localhost:8000/subscriptions')
+            ->returnTo($appUrl.'/subscriptions')
             ->create();
     }
 

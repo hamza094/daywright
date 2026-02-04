@@ -44,13 +44,16 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 window.Pusher = Pusher;
 
+const appUrl = import.meta.env?.VITE_APP_URL;
+const broadcastAuthEndpoint = appUrl ? `${appUrl.replace(/\/$/, '')}/api/broadcasting/auth` : '/api/broadcasting/auth';
+
 window.Echo = new Echo({
   broadcaster: 'pusher',
   key: import.meta.env.VITE_PUSHER_APP_KEY,
   cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
   encrypted: true,
   forceTLS: false, // true for production
-  authEndpoint: 'http://localhost:8000/api/broadcasting/auth',
+  authEndpoint: broadcastAuthEndpoint,
   auth: {
     headers: {
       Accept: 'application/json',
