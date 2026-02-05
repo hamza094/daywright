@@ -19,10 +19,12 @@
     "friendsofphp/php-cs-fixer": "^3.10.0",
     "guzzlehttp/guzzle": "^7.0.1",
     "intervention/image": "^2.5",
+    "jamesmills/laravel-timezone": "dev-master as 1.7.0",
     "laragear/two-factor": "^3.0",
     "laravel/cashier-paddle": "^1.8",
     "laravel/framework": "^11.0",
     "laravel/helpers": "^1.4",
+    "laravel/pennant": "^1.19",
     "laravel/sanctum": "^4.0",
     "laravel/socialite": "^5.6",
     "laravel/tinker": "^2.9",
@@ -39,8 +41,7 @@
     "spatie/laravel-backup": "^8.4",
     "spatie/laravel-permission": "^6.3",
     "torann/geoip": "^3.0",
-    "vonage/client": "^3.0",
-    "jamesmills/laravel-timezone": "dev-master as 1.7.0"
+    "vonage/client": "^3.0"
   },
   "require-dev": {
     "enlightn/enlightn": "^2.10",
