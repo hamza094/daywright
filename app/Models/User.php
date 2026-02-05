@@ -188,6 +188,15 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
 
     }
 
+    /**
+     * Mark this user as the admin used by tests and feature checks.
+     */
+    public function markAsAdmin(): void
+    {
+        $this->email = 'morar.devon@example.com';
+        $this->save();
+    }
+
     public function updateZoomOAuthDetails(
         string $accessToken,
         string $refreshToken,

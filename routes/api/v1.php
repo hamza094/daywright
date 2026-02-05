@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\Zoom\ZoomTokenController;
 use App\Http\Controllers\Api\V1\ZoomMeetingController;
 use App\Http\Middleware\VerifyZoomWebhook;
 use Illuminate\Support\Facades\Route;
+use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 
 /*
 |--------------------------------------------------------------------------
@@ -102,15 +103,23 @@ Route::middleware(['auth:sanctum'/* ,\App\Http\Middleware\TrackLastActiveAt::cla
 
                 // Project Feature Routes
                 Route::controller(FeaturesController::class)->group(function (): void {
-                    Route::get('export', 'export')->middleware('subscription');
+                    Route::get('export', 'export')->middleware([
+                        'subscription',
+                        EnsureFeaturesAreActive::using('project-export'),
+                    ]);
                     Route::patch('stage', 'stage');
                 });
 
-                Route::controller(MessageController::class)->group(function (): void {
-                    Route::post('message', 'message');
-                    Route::get('messages/scheduled', 'scheduled');
-                    Route::delete('messages/{message}/delete', 'delete');
-                })->middleware('subscription');
+                Route::controller(MessageController::class)
+                    ->middleware([
+                        'subscription',
+                        EnsureFeaturesAreActive::using('project-messaging'),
+                    ])
+                    ->group(function (): void {
+                        Route::post('message', 'message');
+                        Route::get('messages/scheduled', 'scheduled');
+                        Route::delete('messages/{message}/delete', 'delete');
+                    });
 
                 // Chat Conversation Routes
                 Route::apiResource('/conversations', ConversationController::class)

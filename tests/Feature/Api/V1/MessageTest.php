@@ -14,7 +14,18 @@ use function Safe\json_encode;
 
 class MessageTest extends TestCase
 {
-    use ProjectSetup,RefreshDatabase;
+    use ProjectSetup, RefreshDatabase {
+        ProjectSetup::setUp as projectSetUp;
+    }
+
+    protected function setUp(): void
+    {
+        // Run the trait setup (creates user, project, Sanctum acting, etc.)
+        $this->projectSetUp();
+
+        // Mark the test user as admin for all tests in this class
+        $this->user->markAsAdmin();
+    }
 
     /** @test */
     public function operation_on_send_message(): void

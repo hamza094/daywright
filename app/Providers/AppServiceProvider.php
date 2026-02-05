@@ -7,6 +7,7 @@ namespace App\Providers;
 use App\Interfaces\Paddle;
 use App\Interfaces\SendSmsInterface;
 use App\Interfaces\Zoom;
+use App\Models\User;
 use App\Services\Api\V1\Paddle\SubscriptionService;
 use App\Services\Api\V1\PaginationService;
 use App\Services\Api\V1\SendSmsService;
@@ -15,11 +16,15 @@ use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Http\Response;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Pennant\Feature;
+use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 use Opcodes\LogViewer\Facades\LogViewer;
 
 class AppServiceProvider extends ServiceProvider
@@ -51,6 +56,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Feature::define('project-export', fn (User $user): bool => $user->isAdmin());
+        Feature::define('project-messaging', fn (User $user): bool => $user->isAdmin());
+
+        EnsureFeaturesAreActive::whenInactive(function (Request $request, array $features): Response {
+            return new Response(status: 403);
+        });
+
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
             $openApi->secure(
                 SecurityScheme::http('bearer')
@@ -65,6 +77,9 @@ class AppServiceProvider extends ServiceProvider
                 'api/v1/user/token',
                 'api/v1/user/jwt/token',
                 'api/v1/users/search',
+                'api/v1/projects/{project}/export',
+                'api/v1/projects/{project}/message',
+                'api/v1/projects/{project}/messages',
             ];
 
             return Str::startsWith($route->uri, 'api/v1') &&

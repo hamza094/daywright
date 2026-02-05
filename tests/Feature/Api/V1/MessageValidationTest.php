@@ -13,7 +13,18 @@ use function Safe\json_encode;
 
 class MessageValidationTest extends TestCase
 {
-    use ProjectSetup,RefreshDatabase;
+    use ProjectSetup, RefreshDatabase {
+        ProjectSetup::setUp as projectSetUp;
+    }
+
+    protected function setUp(): void
+    {
+        // Run the trait setup (creates user, project, Sanctum acting, etc.)
+        $this->projectSetUp();
+
+        // Ensure the user is admin for message-related validation tests
+        $this->user->markAsAdmin();
+    }
 
     /** @test */
     public function validate_message_errors(): void

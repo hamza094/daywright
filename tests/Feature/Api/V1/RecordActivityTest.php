@@ -181,6 +181,8 @@ class RecordActivityTest extends TestCase
     /** @test */
     public function it_records_activity_on_creating_message(): void
     {
+        $this->user->markAsAdmin();
+
         $this->postJson($this->project->path().'/message', [
             'message' => 'this is project message',
             'users' => json_encode([User::first()->id]),
