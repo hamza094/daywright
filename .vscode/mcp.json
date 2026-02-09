@@ -8,7 +8,7 @@
       "command": "php",
       "args": ["C:/Users/Hamza/.config/herd/bin/herd-mcp.phar"],
       "env": {
-        "SITE_PATH": "C:\\Users\\Hamza\\Herd\\daywright"
+        "SITE_PATH": "C:\\Users\\Hamza\\daywright"
       }
     }
   }

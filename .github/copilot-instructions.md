@@ -765,8 +765,9 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
-- php - 8.2.30
+- php - 8.3.29
 - laravel/framework (LARAVEL) - v11
+- laravel/pennant (PENNANT) - v1
 - laravel/prompts (PROMPTS) - v0
 - laravel/sanctum (SANCTUM) - v4
 - laravel/socialite (SOCIALITE) - v5
@@ -784,6 +785,8 @@ This application is a Laravel application and its main Laravel ecosystems packag
 ## Skills Activation
 
 This project has domain-specific skills available. You MUST activate the relevant skill whenever you work in that domain—don't wait until you're stuck.
+
+- `pennant-development` — Manages feature flags with Laravel Pennant. Activates when creating, checking, or toggling feature flags; showing or hiding features conditionally; implementing A/B testing; working with @feature directive; or when the user mentions feature flags, feature toggles, Pennant, conditional features, rollouts, or gradually enabling features.
 
 ## Conventions
 
@@ -988,6 +991,14 @@ protected function isAccessible(User $user, ?string $path = null): bool
   - `php artisan make:enum`
   - `php artisan make:class`
   - `php artisan make:interface`
+
+=== pennant/core rules ===
+
+# Laravel Pennant
+
+- This application uses Laravel Pennant for feature flag management, providing a flexible system for controlling feature availability across different organizations and user types.
+- IMPORTANT: Always use `search-docs` tool for version-specific Pennant documentation and updated code examples.
+- IMPORTANT: Activate `pennant-development` every time you're working with a Pennant or feature-flag-related task.
 
 === pint/core rules ===
 

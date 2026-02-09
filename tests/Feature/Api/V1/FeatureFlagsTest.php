@@ -44,4 +44,29 @@ class FeatureFlagsTest extends TestCase
         $this->getJson($this->project->path().'/export')
             ->assertOk();
     }
+
+    #[Test]
+    public function me_response_not_includes_feature_flags_for_non_admin_user_if_not_active(): void
+    {
+        $this->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJson([
+                'features' => [],
+            ]);
+    }
+
+    #[Test]
+    public function me_response_includes_feature_flags_for_admin_user(): void
+    {
+        $this->user->markAsAdmin();
+
+        $this->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJson([
+                'features' => [
+                    'project_export' => true,
+                    'project_messaging' => true,
+                ],
+            ]);
+    }
 }

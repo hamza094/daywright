@@ -113,5 +113,8 @@
     "**/.git/**",
     "**/bootstrap/cache/**",
     "**/public/build/**"
-  ]
+  ],
+  "chat.restoreLastPanelSession": true,
+  "chat.agent.enabled": true,
+  "editor.fontSize": 21
 }

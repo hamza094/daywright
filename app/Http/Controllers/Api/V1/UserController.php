@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\UserRequest;
+use App\Http\Resources\Api\V1\FeatureFlagsResource;
 use App\Http\Resources\Api\V1\UserResource;
 use App\Http\Resources\Api\V1\UsersResource;
 use App\Models\User;
@@ -39,6 +40,7 @@ class UserController extends ApiController
         return response()->json([
             'message' => 'Authenticated user data',
             'user' => $user ? new UsersResource($user) : null,
+            'features' => new FeatureFlagsResource($user),
         ], 200);
     }
 

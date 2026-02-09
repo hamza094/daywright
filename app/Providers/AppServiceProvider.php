@@ -18,7 +18,6 @@ use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Http\Response;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Collection;
 use Illuminate\Support\ServiceProvider;
@@ -26,6 +25,7 @@ use Illuminate\Support\Str;
 use Laravel\Pennant\Feature;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 use Opcodes\LogViewer\Facades\LogViewer;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -59,8 +59,10 @@ class AppServiceProvider extends ServiceProvider
         Feature::define('project-export', fn (User $user): bool => $user->isAdmin());
         Feature::define('project-messaging', fn (User $user): bool => $user->isAdmin());
 
-        EnsureFeaturesAreActive::whenInactive(function (Request $request, array $features): Response {
-            return new Response(status: 403);
+        EnsureFeaturesAreActive::whenInactive(function (Request $request, array $features): SymfonyResponse {
+            return response()->json([
+                'message' => 'Feature not available.',
+            ], 403);
         });
 
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {

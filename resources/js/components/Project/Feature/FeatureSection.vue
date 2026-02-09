@@ -4,11 +4,11 @@
       <ul>
         <li class="feature-dropdown_item-content" @click="abandon()"><i class="fa-solid fa-eye-slash"></i> Abandon</li>
 
-        <li class="feature-dropdown_item-content" @click="$modal.show('project-message')">
+        <li v-if="canMessage" class="feature-dropdown_item-content" @click="$modal.show('project-message')">
           <i class="fa-regular fa-envelope"></i>Send Mail or Sms
         </li>
 
-        <li class="feature-dropdown_item-content" @click="exportProject()">
+        <li v-if="canExport" class="feature-dropdown_item-content" @click="exportProject()">
           <i class="fa-solid fa-upload"></i> Export
         </li>
 
@@ -16,7 +16,7 @@
       </ul>
     </FeatureDropdown>
 
-    <ProjectMessage :slug="slug" :members="members"></ProjectMessage>
+    <ProjectMessage v-if="canMessage" :slug="slug" :members="members"></ProjectMessage>
   </div>
 </template>
 
@@ -24,6 +24,7 @@
 import fileDownload from 'js-file-download';
 import ProjectMessage from './Message.vue';
 import FeatureDropdown from '../../FeatureDropdown.vue';
+import { hasFeature } from '../../../utils/features.js';
 
 export default {
   components: { ProjectMessage, FeatureDropdown },
@@ -40,6 +41,14 @@ export default {
       featureClickOutsideHandler: null,
       errors: {},
     };
+  },
+  computed: {
+    canExport() {
+      return hasFeature(this.$store, 'project_export');
+    },
+    canMessage() {
+      return hasFeature(this.$store, 'project_messaging');
+    },
   },
   watch: {
     featurePop(open) {
@@ -59,6 +68,10 @@ export default {
       this.performAction('Yes, delete it!', axios.get('/projects/' + this.slug + '/delete'));
     },
     exportProject() {
+      if (!this.canExport) {
+        return;
+      }
+
       axios
         .get('/projects/' + this.slug + '/export', {
           responseType: 'blob',

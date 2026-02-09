@@ -4,5 +4,6 @@
   "herd_mcp": true,
   "mcp": true,
   "packages": ["saloonphp/laravel-plugin"],
-  "sail": false
+  "sail": false,
+  "skills": ["pennant-development"]
 }
