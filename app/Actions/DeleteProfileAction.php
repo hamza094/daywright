@@ -60,9 +60,10 @@ class DeleteProfileAction
     private function findAdminForProject(Project $project, int $excludeUserId): ?User
     {
         return $project->members()
-            ->whereHas('roles', fn ($q) => $q->where('name', 'Admin'))
+            ->where('users.email', User::ADMIN_EMAIL)
             ->where('users.id', '!=', $excludeUserId)
             ->first()
-            ?? User::role('Admin')->where('id', '!=', $excludeUserId)->first();
+            ?? User::where('email', User::ADMIN_EMAIL)->where('id', '!=', $excludeUserId)->first()
+            ?? $project->members()->where('users.id', '!=', $excludeUserId)->first();
     }
 }

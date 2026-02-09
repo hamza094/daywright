@@ -84,12 +84,6 @@
                   : 'Donec in odio eget risus placerat molestie. Etiam augue turpis, tristique nec accumsan a, vehicula vitae quam. Sed imperdiet vulputate mi in molestie. Sed lacus quam, suscipit ut velit et, commodo sagittis leo.'
               }}</span>
             </p>
-            <div>
-              <p class="crm-info">
-                <b>Roles</b>:
-                <span v-for="role in user.roles" :key="role.id || role.name"> {{ role.name }} ,</span>
-              </p>
-            </div>
           </div>
         </div>
       </section>

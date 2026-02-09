@@ -22,11 +22,12 @@ use Laragear\TwoFactor\Contracts\TwoFactorAuthenticatable;
 use Laragear\TwoFactor\TwoFactorAuthentication;
 use Laravel\Paddle\Billable;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenticatable
 {
-    use Billable, HasApiTokens, HasFactory, HasRoles, HasSubscription, Notifiable, SoftDeletes, TwoFactorAuthentication;
+    use Billable, HasApiTokens, HasFactory, HasSubscription, Notifiable, SoftDeletes, TwoFactorAuthentication;
+
+    public const ADMIN_EMAIL = 'morar.devon@example.com';
 
     protected $guarded = [];
 
@@ -59,11 +60,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         'zoom_refresh_token' => 'encrypted',
         'zoom_expires_at' => 'datetime',
     ];
-
-    public function guardName(): string
-    {
-        return 'sanctum';
-    }
 
     public function getRouteKeyName(): string
     {
@@ -171,8 +167,7 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
 
     public function isAdmin(): bool
     {
-        // return $this->hasRole('Admin');
-        return $this->email === 'morar.devon@example.com';
+        return $this->email === self::ADMIN_EMAIL;
 
     }
 
@@ -181,7 +176,7 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
      */
     public function markAsAdmin(): void
     {
-        $this->email = 'morar.devon@example.com';
+        $this->email = self::ADMIN_EMAIL;
         $this->save();
     }
 

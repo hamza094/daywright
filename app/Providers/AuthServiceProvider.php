@@ -45,7 +45,7 @@ class AuthServiceProvider extends ServiceProvider
                 ->symbols()
         );
 
-        Gate::before(fn ($user, $ability): ?true => $user->hasRole('Admin') ? true : null);
+        Gate::before(fn ($user, $ability): ?true => $user->isAdmin() ? true : null);
 
         Gate::define('forbid-when-archived', fn ($user, Task $task): true => $task->trashed()
         ? throw ValidationException::withMessages(['task' => 'Task is archived. Activate the task to proceed.']) : true);

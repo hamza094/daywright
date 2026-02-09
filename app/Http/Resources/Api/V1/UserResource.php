@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
-use App\Http\Resources\Api\V1\Admin\RolesResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
@@ -76,11 +75,6 @@ class UserResource extends JsonResource
              * Additional user info (profile details)
              */
             'info' => new UserInfoResource($this->info),
-
-            /**
-             * User roles (if loaded)
-             */
-            'roles' => RolesResource::collection($this->whenLoaded('roles')),
 
             /**
              * Account creation date (human readable)

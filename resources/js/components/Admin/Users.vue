@@ -37,7 +37,6 @@
                     <th>Timezone</th>
                     <th>Created At</th>
                     <th>IsSubscribed</th>
-                    <th>Roles</th>
                     <th>Active Projects Count</th>
                     <th>Project Member</th>
                   </tr>
@@ -59,35 +58,6 @@
                     <td>{{ user.timezone }}</td>
                     <td>{{ user.created_at }}</td>
                     <td>{{ user.isSubscribed }}</td>
-                    <td>
-                      <div class="dropdown">
-                        <a
-                          class="dropdown-toggle text-secondary"
-                          href="#"
-                          data-bs-toggle="dropdown"
-                          aria-haspopup="true"
-                          aria-expanded="false">
-                          <span v-if="!user.roles || user.roles.length === 0"> Not Defined </span>
-                          <span v-else>
-                            <span v-for="role in user.roles">
-                              {{ role.name }}
-                            </span>
-                          </span>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-end" style="">
-                          <div v-for="role in roles" :key="role.id">
-                            <a
-                              :class="{
-                                'dropdown-item': true,
-                                active: user && user.roles && hasRole(user.roles, role),
-                              }"
-                              @click="assignUserRole(role.id, user.id)"
-                              >{{ role.name }}</a
-                            >
-                          </div>
-                        </div>
-                      </div>
-                    </td>
                     <td>{{ user.projects_count }}</td>
                     <td>{{ user.projects_member }}</td>
                   </tr>
@@ -103,17 +73,13 @@
           </div>
         </div>
       </div>
-      <RolesAndPermissions></RolesAndPermissions>
     </div>
   </div>
 </template>
 <script>
 import { debounce } from 'lodash';
-import RolesAndPermissions from './RolesAndPermissions.vue';
-import { mapState } from 'vuex';
 
 export default {
-  components: { RolesAndPermissions },
   data() {
     return {
       users: [],
@@ -122,9 +88,6 @@ export default {
       total: 0,
       searchTerm: '',
     };
-  },
-  computed: {
-    ...mapState('roles', ['roles']),
   },
   methods: {
     getResults(page = 1) {
@@ -149,30 +112,12 @@ export default {
         })
         .catch((error) => {});
     },
-    assignUserRole(roleId, userId) {
-      axios
-        .get('/admin/assign/users/' + userId + '/roles/' + roleId)
-        .then((response) => {
-          this.$vToastify.success(response.data.message);
-          this.handleUpdateUser(response.data.user);
-        })
-        .catch((error) => {
-          if (error.response.status === 422) {
-            this.$vToastify.warning(error.response.data.errors.role[0]);
-          } else {
-            this.$vToastify.warning('Error! Contact Admin support');
-          }
-        });
-    },
     handleUpdateUser(user) {
       const index = this.users.data.findIndex((existingUser) => existingUser.id === user.id);
 
       if (index !== -1) {
         this.users.data.splice(index, 1, user);
       }
-    },
-    hasRole(userRoles, loopRole) {
-      return userRoles && userRoles.some((userRole) => userRole.id === loopRole.id);
     },
     searchUsers: debounce(function () {
       this.getResults();
@@ -183,29 +128,3 @@ export default {
   },
 };
 </script>
-
-<style>
-.role-container {
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px; /* Adjust as needed */
-}
-
-.role-content {
-  display: flex;
-  align-items: center;
-}
-
-.button-group {
-  display: flex;
-  align-items: center;
-}
-
-.role-dropdown {
-  /* Your existing styles for dropdown */
-}
-
-.btn-danger {
-  margin-left: 10px; /* Adjust margin as needed */
-}
-</style>

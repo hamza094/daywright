@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class UserTest extends TestCase
@@ -137,12 +136,10 @@ class UserTest extends TestCase
     #[Test]
     public function it_permanently_deletes_user_and_handles_projects_after_15_days(): void
     {
-        Role::findOrCreate('Admin', 'sanctum');
-
         // Create a user and soft delete them 16 days ago
         $user = User::factory()->create(['deleted_at' => now()->subDays(16)]);
         $admin = User::factory()->create();
-        $admin->assignRole('Admin');
+        $admin->markAsAdmin();
 
         $projectNoMembers = Project::factory()->create(['user_id' => $user->id]);
 

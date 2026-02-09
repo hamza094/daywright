@@ -92,8 +92,8 @@
               <div class="card-body">
                 <h3 class="card-title">Users</h3>
                 <p class="text-secondary">
-                  The Users section manages user accounts, roles, permissions, and login options, maintaining a secure
-                  and organized user environment.
+                  The Users section manages user accounts and login options, maintaining a secure and organized user
+                  environment.
                 </p>
               </div>
             </div>
