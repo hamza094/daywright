@@ -40,7 +40,6 @@
                     <th>Roles</th>
                     <th>Active Projects Count</th>
                     <th>Project Member</th>
-                    <th>Last Active</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -91,7 +90,6 @@
                     </td>
                     <td>{{ user.projects_count }}</td>
                     <td>{{ user.projects_member }}</td>
-                    <td>{{ user.last_active }}</td>
                   </tr>
                 </tbody>
               </table>

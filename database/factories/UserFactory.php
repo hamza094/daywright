@@ -32,7 +32,6 @@ class UserFactory extends Factory
             'username' => $this->faker->userName,
             'avatar_path' => 'https://eu.ui-avatars.com/api/?name='.$name,
             'email' => $this->faker->unique()->safeEmail,
-            // 'last_active_at' =>'',
             'email_verified_at' => now(),
             'password' => Hash::make('Berry@999'),
             'remember_token' => Str::random(10),

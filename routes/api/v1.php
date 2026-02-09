@@ -49,7 +49,7 @@ Route::controller(ZoomWebhookController::class)
 
     });
 
-Route::middleware(['auth:sanctum'/* ,\App\Http\Middleware\TrackLastActiveAt::class */])->group(function (): void {
+Route::middleware(['auth:sanctum'])->group(function (): void {
 
     Route::get('/me', [UserController::class, 'me'])->name('user.me');
 

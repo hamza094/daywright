@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Laragear\TwoFactor\Contracts\TwoFactorAuthenticatable;
 use Laragear\TwoFactor\TwoFactorAuthentication;
@@ -27,7 +26,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenticatable
 {
-    use Billable, HasApiTokens, HasFactory, HasRoles, HasSubscription, Notifiable, SoftDeletes,TwoFactorAuthentication;
+    use Billable, HasApiTokens, HasFactory, HasRoles, HasSubscription, Notifiable, SoftDeletes, TwoFactorAuthentication;
 
     protected $guarded = [];
 
@@ -56,7 +55,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         'oauth_provider' => OAuthProvider::class,
         'oauth_token' => 'encrypted',
         'oauth_refresh_token' => 'encrypted',
-        'last_active_at' => 'datetime',
         'zoom_access_token' => 'encrypted',
         'zoom_refresh_token' => 'encrypted',
         'zoom_expires_at' => 'datetime',
@@ -99,11 +97,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         return $this->hasMany(Project::class);
     }
 
-    /*public function lastseen() {
-           $redis = Redis::connection();
-           return $redis->get('last_active_' . $this->id);
-    }*/
-
     public function activities()
     {
         return $this->hasMany(Activity::class);
@@ -140,11 +133,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
             ->wherePivot('active', $active)
             ->withTimestamps();
     }
-
-    /*public function getlastSeenAttribute()
-    {
-      return  $this->lastseen();
-    }*/
 
     public function getAvatarAttribute(): string|bool
     {
@@ -238,8 +226,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
             'email' => $this->email,
         ];
     }
-
-    // protected $appends = ['LastSeen'];
 
     /**
      * The attributes that are mass assignable.

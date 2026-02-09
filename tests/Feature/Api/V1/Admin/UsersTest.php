@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1\Admin;
 
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -13,26 +12,17 @@ use Tests\TestCase;
 class UsersTest extends TestCase
 {
     use RefreshDatabase;
-    /**
-     * A user activity test.
-     */
 
     /** @test */
-    public function record_user_last_activity(): void
+    public function admin_users_response_excludes_last_active(): void
     {
         $user = User::factory()->create();
 
-        Carbon::setTestNow(Carbon::now()->startOfMinute());
+        Sanctum::actingAs($user);
 
-        $this->assertEquals($user->last_active_at, null);
+        $response = $this->getJson('api/v1/admin/users');
 
-        Sanctum::actingAs(
-            $user,
-        );
-
-        $this->getJson('api/v1/admin/tasks');
-
-        $this->assertEquals($user->last_active_at, Carbon::now());
-
+        $response->assertOk();
+        $response->assertJsonMissingPath('data.0.last_active');
     }
 }
