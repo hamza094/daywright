@@ -85,6 +85,8 @@ class TwoFactorController extends Controller
     {
         $user = $request->user();
 
+        $this->loginUserService->dispatchTimezoneIfNeeded($user);
+
         $payload = $this->loginUserService->performSessionLogin($user, $request);
 
         return response()->json($payload->toArray(), 200);

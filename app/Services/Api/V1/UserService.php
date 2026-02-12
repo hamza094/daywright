@@ -20,7 +20,7 @@ class UserService
     {
         DB::transaction(function () use ($user, $data): void {
             $data = collect($data);
-            $userKeys = ['name', 'email', 'username'];
+            $userKeys = ['name', 'email', 'username', 'timezone'];
 
             $user->update($data->only($userKeys)->toArray());
 

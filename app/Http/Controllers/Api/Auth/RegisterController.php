@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\Auth\RegisterUserRequest;
 use App\Http\Resources\Api\V1\UsersResource;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
+use App\Services\Api\V1\Auth\LoginUserService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -41,7 +42,7 @@ class RegisterController extends ApiController
      *
      * Registers a new user and returns the user API resource.
      */
-    public function register(RegisterUserRequest $request): JsonResponse
+    public function register(RegisterUserRequest $request, LoginUserService $loginUserService): JsonResponse
     {
 
         $validatedData = $request->validated();
@@ -51,6 +52,8 @@ class RegisterController extends ApiController
         try {
             $user = User::create($validatedData);
             event(new Registered($user));
+
+            $loginUserService->dispatchTimezoneIfNeeded($user);
 
             return response()->json([
                 'message' => 'User Registered Successfully',

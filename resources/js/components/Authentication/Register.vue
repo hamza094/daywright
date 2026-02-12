@@ -122,7 +122,7 @@ export default {
       this.errors = {};
       this.$Progress.start();
       axios
-        .post('/register', this.form, {})
+        .post('/register', this.form)
         .then(() => {
           this.$Progress.finish();
           swal.fire('Account Registered', 'Please Verify your account and login', 'success');

@@ -58,6 +58,10 @@ class UserRequest extends FormRequest
              */
             'position' => ['sometimes', 'nullable', 'string', 'max:100'],
             /*
+             * @example "America/New_York"
+             */
+            'timezone' => ['sometimes', 'nullable', 'string', 'timezone:all'],
+            /*
              * Current password is required when updating the `password`
              * and must match the user's current password.
              */

@@ -27,7 +27,7 @@ class UsersResource extends JsonResource
             'created_at' => $this->created_at->diffForHumans(),
             'projects_count' => $this->whenCounted('projects'),
             'projects_member' => $this->members(true)->count(),
-            'timezone' => $this->timezone,
+            'timezone' => $this->timezone ?? config('app.timezone', 'UTC'),
         ];
     }
 }

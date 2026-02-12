@@ -8,8 +8,11 @@ use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use Torann\GeoIP\Facades\GeoIP;
+use Torann\GeoIP\Location;
 
 class AuthenticationTest extends TestCase
 {
@@ -20,6 +23,8 @@ class AuthenticationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->withoutDefer();
 
         // create a user
         User::factory()->create([
@@ -53,6 +58,56 @@ class AuthenticationTest extends TestCase
         $response->assertOk()
             ->assertJsonStructure(['user', 'access_token', 'message', 'status'])
             ->assertJsonFragment(['status' => 'success']);
+    }
+
+    /** @test */
+    public function api_login_stores_timezone_from_geoip_when_missing(): void
+    {
+        Http::fake([
+            'https://ipecho.net/plain' => Http::response('8.8.8.8', 200),
+        ]);
+
+        GeoIP::shouldReceive('getLocation')
+            ->once()
+            ->with('8.8.8.8')
+            ->andReturn(new Location(['timezone' => 'Europe/London']));
+
+        $response = $this->postJson(route('auth.login'), [
+            'email' => 'johndoe@example.org',
+            'password' => self::TEST_PASSWORD,
+        ]);
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'johndoe@example.org',
+            'timezone' => 'Europe/London',
+        ]);
+    }
+
+    /** @test */
+    public function register_stores_timezone_from_geoip_when_missing(): void
+    {
+        Http::fake([
+            'https://ipecho.net/plain' => Http::response('8.8.4.4', 200),
+        ]);
+
+        GeoIP::shouldReceive('getLocation')
+            ->once()
+            ->with('8.8.4.4')
+            ->andReturn(new Location(['timezone' => 'Europe/Paris']));
+
+        $this->postJson(route('auth.register'), [
+            'name' => 'Elvis William',
+            'email' => 'mihupocob@mailinator.com',
+            'password' => 'Password4!',
+            'password_confirmation' => 'Password4!',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'mihupocob@mailinator.com',
+            'timezone' => 'Europe/Paris',
+        ]);
     }
 
     /** @test */

@@ -55,7 +55,7 @@ class UserResource extends JsonResource
              *
              * @example Asia/Karachi
              */
-            'timezone' => $this->timezone,
+            'timezone' => $this->timezone ?? config('app.timezone', 'UTC'),
 
             /**
              * User email address

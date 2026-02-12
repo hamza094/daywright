@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Actions\OAuthAction;
 use App\Enums\OAuthProvider;
-use App\Events\UserLogin;
 use App\Http\Controllers\Api\ApiController;
 use App\Services\Api\V1\Auth\LoginUserService;
 use Illuminate\Http\JsonResponse;
@@ -52,15 +51,15 @@ class OAuthController extends ApiController
 
             $user = $action->createUpdateUser($oAuthUser, $provider);
 
-            if ($this->loginUserService->initializeTwoFactorState($user)) {
+            $result = $this->loginUserService->startLoginFlow($user->email);
+
+            if ($result->twoFactor) {
                 return $this->loginUserService->buildTwoFactorRequiredResponse();
             }
 
-            event(new UserLogin($user));
-
             $payload = $this->loginUserService->performSessionLogin($user, $request);
 
-            return response()->json($payload, 200);
+            return response()->json($payload->toArray(), 200);
         } catch (Throwable $e) {
             Log::error('OAuth callback failed', [
                 'provider' => $provider->value,

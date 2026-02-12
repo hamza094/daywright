@@ -47,7 +47,7 @@ class UsersResource extends JsonResource
             /**
              *  @example Asia/Karachi
              * */
-            'timezone' => $this->timezone,
+            'timezone' => $this->timezone ?? config('app.timezone', 'UTC'),
 
             /**
              * Indicates whether the user is an admin.

@@ -5,52 +5,64 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Events\UserLogin;
-use Exception;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Torann\GeoIP\Facades\GeoIP;
 
+use function Illuminate\Support\defer;
+
+/**
+ * Persist a user's timezone after login.
+ *
+ * The lookup is performed deferred (after the response) to avoid blocking
+ * the login flow. If an IP is provided on the event it will be used for
+ * GeoIP lookup; otherwise the listener will attempt to resolve the
+ * server's public IP and use that as a fallback.
+ */
 class SaveUserTimezone
 {
-    /**
-     * Create the event listener.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    /**
-     * Handle the event.
-     */
     public function handle(UserLogin $event): void
     {
-        try {
-            $ip = Http::get('https://ipecho.net/plain')->body();
+        if ($event->user->timezone) {
+            return;
+        }
 
-            $response = Http::get("http://ip-api.com/json/{$ip}?fields=status,message,timezone");
+        $user = $event->user;
+        $ip = $event->ip;
 
-            if (! $response->successful()) {
-                Log::warning('Could not determine timezone for IP lookup failure', [
-                    'reason' => $response->status(),
-                ]);
+        defer(function () use ($user, $ip): void {
 
+            if ($user->timezone) {
                 return;
             }
 
-            $timezone = $response->json('timezone');
+            $timezone = $this->resolveTimezone($ip);
 
             if (! $timezone) {
-                Log::warning('Could not determine timezone from API response');
-
                 return;
             }
 
-            $event->user->timezone = $timezone;
-            $event->user->save();
-        } catch (Exception $e) {
-            Log::error('Failed to update user timezone', ['error' => $e->getMessage()]);
+            $user->timezone = $timezone;
+            $user->save();
+        });
+    }
+
+    private function resolveTimezone(?string $ip = null): ?string
+    {
+        $resolvedIp = $ip ?: $this->resolvePublicIp();
+
+        if (! $resolvedIp) {
+            return null;
         }
+
+        return rescue(fn () => GeoIP::getLocation($resolvedIp)->timezone ?? null, null, true);
+    }
+
+    private function resolvePublicIp(): ?string
+    {
+        $response = rescue(fn () => Http::timeout(2)->get('https://ipecho.net/plain'), null, true);
+
+        $ip = $response?->successful() ? trim($response->body()) : null;
+
+        return $ip && filter_var($ip, FILTER_VALIDATE_IP) ? $ip : null;
     }
 }

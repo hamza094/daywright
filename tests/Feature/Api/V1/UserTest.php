@@ -52,6 +52,8 @@ class UserTest extends TestCase
     #[Test]
     public function auth_user_can_get_his_data(): void
     {
+        $defaultTimezone = config('app.timezone', 'UTC');
+
         $response = $this->getJson($this->user->path());
 
         $response->assertStatus(200)
@@ -59,6 +61,7 @@ class UserTest extends TestCase
                 'id' => $this->user->id,
                 'name' => $this->user->name,
                 'email' => $this->user->email,
+                'timezone' => $defaultTimezone,
             ]);
     }
 
@@ -93,6 +96,26 @@ class UserTest extends TestCase
                 'company' => $newCompany,
                 'mobile' => $newMobile,
             ]);
+    }
+
+    #[Test]
+    public function owner_can_update_timezone(): void
+    {
+        UserInfo::factory()->for($this->user)->create();
+
+        $response = $this->patchJson($this->user->path(), [
+            'timezone' => 'America/Los_Angeles',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonFragment([
+                'timezone' => 'America/Los_Angeles',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'timezone' => 'America/Los_Angeles',
+        ]);
     }
 
     #[Test]

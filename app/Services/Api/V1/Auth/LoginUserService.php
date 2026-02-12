@@ -25,9 +25,20 @@ class LoginUserService
         $user = User::where('email', $email)->first();
         $twoFactor = $this->initializeTwoFactorState($user);
 
-        UserLogin::dispatchIf(! $user->timezone, $user);
+        $clientPublicIp = $this->detectPublicRequestIp();
+
+        $this->dispatchTimezoneIfNeeded($user, $clientPublicIp);
 
         return new LoginResult($user, $twoFactor);
+    }
+
+    public function dispatchTimezoneIfNeeded(User $user, ?string $ip = null): void
+    {
+        if ($user->timezone) {
+            return;
+        }
+
+        UserLogin::dispatch($user, $ip);
     }
 
     /**
@@ -114,5 +125,19 @@ class LoginUserService
             'message' => 'Two-factor authentication is enabled. Please provide the verification code.',
             'status' => '2fa_required',
         ], 200);
+    }
+
+    /**
+     * Return the request's public IP or null when the IP is private/invalid.
+     */
+    private function detectPublicRequestIp(): ?string
+    {
+        $ip = request()->ip();
+
+        if (! $ip) {
+            return null;
+        }
+
+        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) ? $ip : null;
     }
 }

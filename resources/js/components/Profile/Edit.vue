@@ -32,6 +32,17 @@
             <form-input label="Address:" v-model="form.address" :error="errors.address" id="address" />
 
             <div class="form-group">
+              <label for="timezone" class="label-name">Timezone:</label>
+              <select id="timezone" v-model="form.timezone" class="form-control">
+                <option value="" disabled>Select your timezone</option>
+                <option v-for="timezone in timezones" :key="timezone" :value="timezone">
+                  {{ timezone }}
+                </option>
+              </select>
+              <span class="text-danger font-italic" v-if="errors.timezone" v-text="errors.timezone[0]"></span>
+            </div>
+
+            <div class="form-group">
               <label for="bio" class="label-name">Your Bio:</label>
               <textarea v-model="form.bio" id="bio" name="bio" class="form-control"></textarea>
               <span class="text-danger font-italic" v-if="errors.bio" v-text="errors.bio[0]"></span>
@@ -92,6 +103,7 @@ export default {
       showPassword: false,
       owner: this.user,
       errors: {},
+      timezones: [],
       form: {
         name: '',
         username: '',
@@ -100,6 +112,7 @@ export default {
         mobile: '',
         position: '',
         address: '',
+        timezone: '',
         current_password: '',
         password: '',
         bio: '',
@@ -129,7 +142,10 @@ export default {
     this.form.mobile = this.user.info.mobile;
     this.form.position = this.user.info.position;
     this.form.address = this.user.info.address;
+    this.form.timezone = this.user.timezone || '';
     this.form.bio = this.user.info.bio;
+
+    this.timezones = this.resolveTimezones();
 
     // Prefer structuredClone (native, faster). Fallback to JSON clone for older browsers.
     this.originalData =
@@ -137,6 +153,15 @@ export default {
   },
   methods: {
     ...mapMutations('profile', ['updateUser']),
+    resolveTimezones() {
+      if (typeof Intl !== 'undefined' && typeof Intl.supportedValuesOf === 'function') {
+        return Intl.supportedValuesOf('timeZone');
+      }
+
+      const fallback = [this.user.timezone].filter(Boolean);
+
+      return [...new Set(fallback)];
+    },
     modalClose() {
       this.$modal.hide('edit-profile');
       this.resetForm();
@@ -176,6 +201,7 @@ export default {
         mobile: this.user.info.mobile,
         position: this.user.info.position,
         address: this.user.info.address,
+        timezone: this.user.timezone || '',
         current_password: '',
         password: '',
         bio: this.user.info.bio,
