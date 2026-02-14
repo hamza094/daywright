@@ -81,16 +81,7 @@ export default {
           fileDownload(response.data, 'Project ' + this.slug + '.xls');
         })
         .catch((error) => {
-          const msg = error?.response?.data?.message || error?.message || 'Export failed';
-          // Show a user-friendly message
-          if (this && this.$vToastify) {
-            this.$vToastify.error(msg);
-          }
-          // Keep a dev-only console error for debugging
-          const isDev = typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production';
-          if (isDev) {
-            console.error(error);
-          }
+          this.handleErrorResponse(error);
         });
     },
     async addFeatureClickOutsideListener() {

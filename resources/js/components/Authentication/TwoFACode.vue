@@ -67,6 +67,7 @@ export default {
         await this.twoFactorLogin({ code: this.code, vm: this });
         await this.fetch2FAStatus();
       } catch (e) {
+        this.handleErrorResponse(e);
         if (e.response?.status === 422) {
           this.error = e.response?.data?.errors?.code?.[0] || 'Invalid code format';
         } else if (e.response?.status === 401) {

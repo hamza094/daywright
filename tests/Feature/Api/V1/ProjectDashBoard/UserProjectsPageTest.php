@@ -25,7 +25,7 @@ class UserProjectsPageTest extends TestCase
             ->assertJson([
                 'message' => 'Validation Error',
                 'errors' => [
-                    'sort' => ['Sort must be either latest or oldest'],
+                    'sort' => ['Sort must be one of: latest, oldest, or name'],
                 ],
             ]);
     }
@@ -43,6 +43,15 @@ class UserProjectsPageTest extends TestCase
                     'member' => ['The member field must be true or false.'],
                 ],
             ]);
+    }
+
+    /** @test */
+    public function it_accepts_string_true_member_parameter(): void
+    {
+        $response = $this->getJson(route('user.projects', ['member' => 'true']));
+
+        $response->assertOk()
+            ->assertJsonMissingValidationErrors(['member']);
     }
 
     /** @test */
@@ -125,6 +134,27 @@ class UserProjectsPageTest extends TestCase
         $response = $this->getJson(route('user.projects', ['sort' => 'oldest']));
         $projects = $response->json('projects.data');
         $this->assertEquals('Old Project', $projects[0]['name']);
+    }
+
+    /** @test */
+    public function auth_user_can_sort_projects_by_name(): void
+    {
+        Project::factory()->create([
+            'name' => 'Zoo Project',
+            'user_id' => $this->user->id,
+        ]);
+
+        Project::factory()->create([
+            'name' => 'Alpha Project',
+            'user_id' => $this->user->id,
+        ]);
+
+        $response = $this->getJson(route('user.projects', ['sort' => 'name']));
+
+        $response->assertOk();
+
+        $projects = $response->json('projects.data');
+        $this->assertEquals('Alpha Project', $projects[0]['name']);
     }
 
     /** @test */

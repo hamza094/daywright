@@ -189,7 +189,8 @@ export default {
           this.modalClose();
         })
         .catch((error) => {
-          this.errors = error.response.data.errors;
+          this.handleErrorResponse(error);
+          this.errors = error?.response?.data?.errors || {};
         });
     },
     resetForm() {

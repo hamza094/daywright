@@ -121,8 +121,7 @@ export default {
           this.$vToastify.success('Verification link sent successfully');
         })
         .catch((error) => {
-          const msg = error?.response?.data?.message || error?.message || 'Error! Please try again';
-          this.$vToastify.warning(msg);
+          this.handleErrorResponse(error);
         });
     },
     loadDashboardProjects() {

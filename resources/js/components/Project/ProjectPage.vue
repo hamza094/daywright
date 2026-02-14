@@ -468,16 +468,7 @@ export default {
 
     //show error messages
     showError(err) {
-      const {
-        data: { errors, error },
-      } = err.response;
-      if (errors) {
-        Object.keys(errors).forEach((field) => {
-          this.$vToastify.warning(errors[field][0]);
-        });
-      } else if (error) {
-        this.$vToastify.warning(error);
-      }
+      this.handleErrorResponse(err);
     },
 
     listenForActivity() {

@@ -42,6 +42,7 @@ export default {
       });
     } catch (e) {
       next((vm) => {
+        vm.handleErrorResponse(e);
         vm.error = e.response?.data?.status || 'verification.invalid';
       });
     }

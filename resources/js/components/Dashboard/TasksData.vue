@@ -202,7 +202,7 @@ export default {
           this.totalTasks = response.data.meta?.total || 0;
         })
         .catch((error) => {
-          console.error('Error loading tasks:', error);
+          this.handleErrorResponse(error);
           this.userTasks = [];
           this.appliedFilters = [];
           this.totalTasks = 0;

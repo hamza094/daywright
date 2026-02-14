@@ -12,7 +12,6 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password;
-use Illuminate\Validation\ValidationException;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -46,9 +45,6 @@ class AuthServiceProvider extends ServiceProvider
         );
 
         Gate::before(fn ($user, $ability): ?true => $user->isAdmin() ? true : null);
-
-        Gate::define('forbid-when-archived', fn ($user, Task $task): true => $task->trashed()
-        ? throw ValidationException::withMessages(['task' => 'Task is archived. Activate the task to proceed.']) : true);
 
         VerifyEmail::toMailUsing(fn (object $notifiable, string $url) => (new MailMessage)
             ->subject('Verify Email Address')

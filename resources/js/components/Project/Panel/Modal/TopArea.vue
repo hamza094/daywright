@@ -26,7 +26,7 @@
 
 <script>
 import { mapMutations, mapState } from 'vuex';
-import { url, ErrorHandling } from '../../../../utils/TaskUtils';
+import { url } from '../../../../utils/TaskUtils';
 import { modalClose } from '../../../../mixins/modalClose';
 
 export default {
@@ -78,7 +78,8 @@ export default {
           this.updateTask(response.data.task);
         })
         .catch((error) => {
-          ErrorHandling(this, error);
+          this.handleErrorResponse(error);
+          this.setErrors(error?.response?.data?.errors || {});
         });
     },
 

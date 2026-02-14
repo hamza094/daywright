@@ -340,14 +340,7 @@ export default {
           this.removeFile();
         })
         .catch((error) => {
-          if (error.response && error.response.data.errors) {
-            this.errors = error.response.data.errors; // Store errors
-            Object.values(this.errors).forEach((err) => {
-              this.$vToastify.warning(err[0]); // Show each error as a toast
-            });
-          } else {
-            this.$vToastify.error('Failed to send message.');
-          }
+          this.handleErrorResponse(error);
         })
         .finally(() => {
           this.isSending = false;
@@ -370,8 +363,7 @@ export default {
           this.$vToastify.info('Conversation deleted sucessfully');
         })
         .catch((error) => {
-          const msg = error?.response?.data?.message || error?.message || 'Failed to delete project conversation';
-          this.$vToastify.warning(msg);
+          this.handleErrorResponse(error);
         });
     },
 

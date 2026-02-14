@@ -162,6 +162,7 @@ export default {
         const arr = Array.isArray(result.insights) ? result.insights : [];
         this.healthInsight = arr[0] || null;
       } catch (e) {
+        this.handleErrorResponse(e);
         this.healthError = e && e.message ? e.message : 'Failed to load health insight';
       } finally {
         this.healthLoading = false;

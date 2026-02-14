@@ -261,17 +261,7 @@ export default {
 
     // Show error messages from API responses
     showError(error) {
-      let message = 'An error occurred.';
-      if (error.response && error.response.data) {
-        if (error.response.data.errors) {
-          // Show the first validation error
-          const firstError = Object.values(error.response.data.errors)[0][0];
-          message = firstError;
-        } else if (error.response.data.message) {
-          message = error.response.data.message;
-        }
-      }
-      this.$vToastify.error(message);
+      this.handleErrorResponse(error);
     },
   },
 };

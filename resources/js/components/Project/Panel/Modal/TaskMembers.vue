@@ -41,7 +41,7 @@
 
 <script type="text/javascript">
 import { mapMutations, mapState } from 'vuex';
-import { url, ErrorHandling } from '../../../../utils/TaskUtils';
+import { url } from '../../../../utils/TaskUtils';
 import { debounce } from 'lodash';
 
 export default {
@@ -88,7 +88,7 @@ export default {
           this.searchResults = response.data;
         })
         .catch((error) => {
-          console.log(error);
+          this.handleErrorResponse(error);
         });
     },
     addMember(member) {
@@ -126,7 +126,8 @@ export default {
           this.assignSuccessfull(response);
         })
         .catch((error) => {
-          ErrorHandling(this, error);
+          this.handleErrorResponse(error);
+          this.setErrors(error?.response?.data?.errors || {});
         });
     },
 

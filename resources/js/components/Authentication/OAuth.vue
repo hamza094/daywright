@@ -33,7 +33,7 @@ export default {
             this.handleLoginResponse(response);
           })
           .catch((error) => {
-            this.$vToastify.warning(error.response.data.error);
+            this.handleErrorResponse(error);
           });
       }
     },

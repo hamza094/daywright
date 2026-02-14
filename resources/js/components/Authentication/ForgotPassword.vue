@@ -57,7 +57,8 @@ export default {
           this.$vToastify.success('Reset Email sent successfully check your inbox');
         })
         .catch((error) => {
-          this.errors = error.response.data.errors;
+          this.errors = error?.response?.data?.errors || {};
+          this.handleErrorResponse(error);
         });
     },
   },

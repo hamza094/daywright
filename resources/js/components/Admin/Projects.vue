@@ -325,8 +325,8 @@ export default {
         .then((response) => {
           this.stages = response.data;
         })
-        .catch(() => {
-          // Failed to load stages; keep current state
+        .catch((error) => {
+          this.handleErrorResponse(error);
         });
     },
 
@@ -388,8 +388,8 @@ export default {
           this.appliedFilters = response.data.appliedFilters;
           this.message = response.data.projects ? '' : response.data.message;
         })
-        .catch(() => {
-          this.$vToastify.warning('Error! Please review and correct the fields.');
+        .catch((error) => {
+          this.handleErrorResponse(error);
         });
     },
 
@@ -416,8 +416,8 @@ export default {
               this.$vToastify.success(response.data.message);
               this.getResults();
             })
-            .catch(() => {
-              swal.fire('Failed!', 'There was something wrong.', 'warning');
+            .catch((error) => {
+              this.handleErrorResponse(error);
             });
         }
         this.selectedProjects = [];

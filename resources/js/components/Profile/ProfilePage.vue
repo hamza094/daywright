@@ -139,7 +139,7 @@ export default {
           this.owner = this.user.uuid === this.auth;
         })
         .catch((error) => {
-          this.$vToastify.warning(error?.response?.data?.message || 'Failed to load user');
+          this.handleErrorResponse(error);
         });
     },
     deleteAvatar() {
@@ -155,8 +155,7 @@ export default {
               this.userAvatar = null;
             })
             .catch((error) => {
-              const msg = error?.response?.data?.message || error?.message || 'There was something wrong.';
-              swal.fire('Failed!', msg, 'warning');
+              this.handleErrorResponse(error);
             })
             .finally(() => {
               this.$vToastify.stopLoader();
@@ -175,8 +174,7 @@ export default {
               this.$store.dispatch('currentUser/deleteUser');
             })
             .catch((error) => {
-              const msg = error?.response?.data?.message || error?.message || 'There was something wrong.';
-              swal.fire('Failed!', msg, 'warning');
+              this.handleErrorResponse(error);
             });
         }
       });

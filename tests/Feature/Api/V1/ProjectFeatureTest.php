@@ -179,6 +179,18 @@ class ProjectFeatureTest extends TestCase
         $this->assertSoftDeleted($this->project);
     }
 
+    /** @test */
+    public function trashed_project_activity_request_returns_project_not_active_message(): void
+    {
+        $this->project->delete();
+
+        $this->getJson("/api/v1/projects/{$this->project->slug}/activities")
+            ->assertForbidden()
+            ->assertJson([
+                'message' => 'Sorry, project is not active. Restore it to perform this activity.',
+            ]);
+    }
+
     public function project_owner_can_restore_project(): void
     {
         $this->project->touch('deleted_at');

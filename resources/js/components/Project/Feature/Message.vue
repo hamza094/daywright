@@ -187,8 +187,8 @@ export default {
           this.modalClose();
         })
         .catch((error) => {
-          this.errors = error.response.data.errors;
-          this.$vToastify.warning('Failed To Send Message');
+          this.errors = error?.response?.data?.errors || {};
+          this.handleErrorResponse(error);
         });
     },
 

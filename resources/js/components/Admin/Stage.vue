@@ -88,11 +88,7 @@ export default {
         this.form.name = '';
         this.$vToastify.success('Stage added successfully');
       } catch (error) {
-        if (error.response) {
-          this.$vToastify.error(error.response.data.message);
-        } else {
-          this.$vToastify.error('Error! Try again later');
-        }
+        this.handleErrorResponse(error);
         this.form.name = '';
       }
     },
@@ -109,7 +105,7 @@ export default {
           this.$vToastify.success(response.data.message);
         })
         .catch((error) => {
-          this.$vToastify.error('Failed to update! Try again Later');
+          this.handleErrorResponse(error);
         });
     },
     deleteStage(stageId) {
@@ -122,7 +118,7 @@ export default {
           this.$vToastify.success(response.data.success);
         })
         .catch((error) => {
-          this.$vToastify.error('Failed to delete! Try again Later');
+          this.handleErrorResponse(error);
         });
     },
   },

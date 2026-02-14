@@ -130,7 +130,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
             Route::middleware(['can:access,project', 'subscription'])->group(function (): void {
                 Route::apiResource('/tasks', TaskController::class)
                     ->except(['destroy'])
-                    ->withTrashed();
+                    ->withTrashed(['show', 'index']);
             });
 
             Route::controller(TaskFeaturesController::class)
@@ -141,23 +141,19 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                     Route::middleware(['can:manage,task'])->group(function (): void {
 
                         Route::patch('assign', 'assign')
-                            ->name('assign')
-                            ->withTrashed();
+                            ->name('assign');
 
                         Route::patch('unassign', 'unassign')
-                            ->name('unassign')
-                            ->withTrashed();
+                            ->name('unassign');
 
                         Route::delete('/remove', 'remove')
                             ->name('remove')
                             ->withTrashed();
-
                     });
 
                     Route::middleware(['can:access,task'])->group(function (): void {
                         Route::delete('archive', 'archive')
-                            ->name('archive')
-                            ->withTrashed();
+                            ->name('archive');
 
                         Route::get('unarchive', 'unarchive')
                             ->name('unarchive')

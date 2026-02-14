@@ -161,8 +161,8 @@ export default {
         .then((res) => {
           this.tokens = res.data.tokens;
         })
-        .catch(() => {
-          this.$vToastify.error('Failed to load tokens.');
+        .catch((error) => {
+          this.handleErrorResponse(error);
         })
         .finally(() => {
           this.loading = false;
@@ -190,7 +190,7 @@ export default {
           this.loadTokens();
         })
         .catch((err) => {
-          this.$vToastify.error(err.response?.data?.message || 'Failed to create token.');
+          this.handleErrorResponse(err);
         })
         .finally(() => {
           this.$Progress.finish();
@@ -207,7 +207,7 @@ export default {
               this.loadTokens();
             })
             .catch((err) => {
-              this.$vToastify.error(err.response?.data?.message || 'Failed to delete token.');
+              this.handleErrorResponse(err);
             })
             .finally(() => {
               this.$Progress.finish();

@@ -157,7 +157,7 @@
 </template>
 
 <script>
-import { calculateRemainingTime, url, ErrorHandling } from '../../../utils/TaskUtils';
+import { calculateRemainingTime, url } from '../../../utils/TaskUtils';
 import { mapMutations, mapActions, mapState } from 'vuex';
 import TopPanel from './Modal/TopArea.vue';
 import TaskDescription from './Modal/TaskDescription.vue';
@@ -233,7 +233,8 @@ export default {
           this.updateTask(response.data.task);
         })
         .catch((error) => {
-          ErrorHandling(this, error);
+          this.handleErrorResponse(error);
+          this.setErrors(error?.response?.data?.errors || {});
         });
     },
 
@@ -252,7 +253,8 @@ export default {
           this.cancelDue();
         })
         .catch((error) => {
-          ErrorHandling(this, error);
+          this.handleErrorResponse(error);
+          this.setErrors(error?.response?.data?.errors || {});
         });
     },
 
@@ -277,7 +279,8 @@ export default {
           this.setErrors([]);
         })
         .catch((error) => {
-          ErrorHandling(this, error);
+          this.handleErrorResponse(error);
+          this.setErrors(error?.response?.data?.errors || {});
         });
     },
     archive(task, taskId) {
@@ -291,7 +294,8 @@ export default {
           modalClose(this);
         })
         .catch((error) => {
-          ErrorHandling(this, error);
+          this.handleErrorResponse(error);
+          this.setErrors(error?.response?.data?.errors || {});
         });
     },
     unArchive(task, taskId) {
@@ -305,7 +309,8 @@ export default {
           this.$bus.emit('unarchiveTask', { task });
         })
         .catch((error) => {
-          ErrorHandling(this, error);
+          this.handleErrorResponse(error);
+          this.setErrors(error?.response?.data?.errors || {});
         });
     },
     trash(taskId) {
@@ -317,7 +322,8 @@ export default {
           modalClose(this);
         })
         .catch((error) => {
-          ErrorHandling(this, error);
+          this.handleErrorResponse(error);
+          this.setErrors(error?.response?.data?.errors || {});
         });
     },
     toggleMemberPop() {

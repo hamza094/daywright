@@ -33,14 +33,3 @@ export function calculateRemainingTime(task, currentDate) {
 export function url($slug, $id) {
   return '/projects/' + $slug + '/tasks/' + $id;
 }
-
-export function ErrorHandling(component, error) {
-  const toastMessage =
-    error?.response?.data?.errors?.task?.[0] || error?.response?.data?.message || 'An error occurred';
-
-  component.$vToastify.warning(toastMessage);
-
-  if (error.response) {
-    return component.setErrors(error.response.data.errors);
-  }
-}

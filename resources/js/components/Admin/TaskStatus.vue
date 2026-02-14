@@ -120,11 +120,7 @@ export default {
         this.form.color = '';
         this.showForm = false;
       } catch (error) {
-        if (error.response) {
-          this.$vToastify.error(error.response.data.message);
-        } else {
-          this.$vToastify.error('Error! Try again later');
-        }
+        this.handleErrorResponse(error);
         this.form.label = '';
         this.form.color = '';
         this.showForm = false;
@@ -144,7 +140,7 @@ export default {
           this.$vToastify.success(response.data.message);
         })
         .catch((error) => {
-          this.$vToastify.error('Failed to update! Try again Later');
+          this.handleErrorResponse(error);
         });
     },
     deleteStatus(statusId) {
@@ -157,7 +153,7 @@ export default {
           this.$vToastify.success(response.data.success);
         })
         .catch((error) => {
-          this.$vToastify.error('Failed to delete! Try again Later');
+          this.handleErrorResponse(error);
         });
     },
   },

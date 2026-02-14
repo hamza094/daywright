@@ -110,7 +110,9 @@ export default {
           this.to = this.users.meta.to || '';
           this.total = this.users.meta.total || '';
         })
-        .catch((error) => {});
+        .catch((error) => {
+          this.handleErrorResponse(error);
+        });
     },
     handleUpdateUser(user) {
       const index = this.users.data.findIndex((existingUser) => existingUser.id === user.id);

@@ -10,7 +10,6 @@ use App\Models\Project;
 use App\Notifications\ProjectTask;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class TaskService
@@ -44,8 +43,6 @@ class TaskService
 
     public function checkValidation($request, $task): void
     {
-        Gate::authorize('forbid-when-archived', $task);
-
         if (! $request->validated()) {
             throw ValidationException::withMessages([
                 'task' => ['Field missing in task'],

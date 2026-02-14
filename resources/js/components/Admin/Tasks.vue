@@ -176,8 +176,8 @@ export default {
           this.total = this.tasks.meta.total || '';
           this.message = response.data.data ? '' : response.data.message;
         })
-        .catch(() => {
-          // Silent fail, leave existing state
+        .catch((error) => {
+          this.handleErrorResponse(error);
         });
     },
     searchTasks: debounce(function () {
@@ -202,8 +202,8 @@ export default {
               this.$vToastify.success(response.data.message);
               this.getResults();
             })
-            .catch(() => {
-              swal.fire('Failed!', 'There was something wrong.', 'warning');
+            .catch((error) => {
+              this.handleErrorResponse(error);
             });
         }
         this.selectedTasks = [];

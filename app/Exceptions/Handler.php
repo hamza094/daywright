@@ -7,9 +7,12 @@ namespace App\Exceptions;
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\UnauthorizedException;
 use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Models\Project;
+use App\Models\Task;
 use Aws\S3\Exception\S3Exception;
 use Exception;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Http\Request;
 use Laravel\Paddle\Exceptions\PaddleException as LaravelPaddleException;
 use Saloon\RateLimitPlugin\Exceptions\RateLimitReachedException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -59,6 +62,18 @@ class Handler extends ExceptionHandler
 
         $this->renderable(function (NotFoundHttpException $e, $request) {
             if ($request->is(self::API_PREFIX)) {
+                if ($this->trashedProjectRequested($request)) {
+                    return response()->json([
+                        'message' => 'Sorry, project is not active. Restore it to perform this activity.',
+                    ], 403);
+                }
+
+                if ($this->trashedTaskRequested($request)) {
+                    return response()->json([
+                        'message' => 'Sorry, task is not active. Restore it to perform this activity.',
+                    ], 403);
+                }
+
                 return response()->json([
                     'message' => 'Sorry Record not found.',
                 ], 404);
@@ -138,5 +153,43 @@ class Handler extends ExceptionHandler
             }
         });
 
+    }
+
+    private function trashedProjectRequested(Request $request): bool
+    {
+        $projectRouteParameter = $request->route('project');
+
+        if ($projectRouteParameter instanceof Project) {
+            return $projectRouteParameter->trashed();
+        }
+
+        if (! is_string($projectRouteParameter) || $projectRouteParameter === '') {
+            return false;
+        }
+
+        $routeKeyName = (new Project)->getRouteKeyName();
+
+        return Project::onlyTrashed()
+            ->where($routeKeyName, $projectRouteParameter)
+            ->exists();
+    }
+
+    private function trashedTaskRequested(Request $request): bool
+    {
+        $taskRouteParameter = $request->route('task');
+
+        if ($taskRouteParameter instanceof Task) {
+            return $taskRouteParameter->trashed();
+        }
+
+        if (! is_string($taskRouteParameter) || $taskRouteParameter === '') {
+            return false;
+        }
+
+        $routeKeyName = (new Task)->getRouteKeyName();
+
+        return Task::onlyTrashed()
+            ->where($routeKeyName, $taskRouteParameter)
+            ->exists();
     }
 }

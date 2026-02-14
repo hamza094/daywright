@@ -260,8 +260,7 @@ export default {
         this.$vToastify.success('Avatar Updated Successfully');
         this.closeAvatarModal();
       } catch (error) {
-        const msg = error?.response?.data?.message || error?.message || 'Failed To Update Avatar';
-        this.$vToastify.warning(msg);
+        this.handleErrorResponse(error);
       }
     },
   },

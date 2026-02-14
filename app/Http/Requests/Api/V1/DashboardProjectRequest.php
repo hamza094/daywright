@@ -31,7 +31,7 @@ class DashboardProjectRequest extends FormRequest
             /**
              * @example latest
              */
-            'sort' => 'nullable|string|in:latest,oldest',
+            'sort' => 'nullable|string|in:latest,oldest,name',
             /**
              * @example true
              */
@@ -53,8 +53,31 @@ class DashboardProjectRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'sort.in' => 'Sort must be either latest or oldest',
+            'sort.in' => 'Sort must be one of: latest, oldest, or name',
             'page.min' => 'Page must be at least 1',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'member' => $this->normalizeBooleanValue($this->input('member')),
+            'abandoned' => $this->normalizeBooleanValue($this->input('abandoned')),
+        ]);
+    }
+
+    /**
+     * @param  mixed  $value
+     * @return mixed
+     */
+    private function normalizeBooleanValue($value)
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $normalized = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+        return $normalized ?? $value;
     }
 }
