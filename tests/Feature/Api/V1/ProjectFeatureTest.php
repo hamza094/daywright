@@ -191,11 +191,12 @@ class ProjectFeatureTest extends TestCase
             ]);
     }
 
+    /** @test */
     public function project_owner_can_restore_project(): void
     {
         $this->project->touch('deleted_at');
 
-        $this->getJson($this->project->path().'/restore')->assertOk();
+        $this->patchJson($this->project->path().'/restore')->assertOk();
 
         $this->project->refresh();
 
@@ -204,9 +205,26 @@ class ProjectFeatureTest extends TestCase
         $this->assertEquals($this->project->deleted_at, null);
     }
 
-    public function project_owner_can_delete_project(): void
+    /** @test */
+    public function active_project_cannot_be_deleted_permanently(): void
     {
-        $this->getJson($this->project->path().'/delete');
+        $response = $this->deleteJson($this->project->path().'/force');
+
+        $response->assertForbidden()->assertJson([
+            'message' => 'Only abandoned projects can be deleted permanently.',
+        ]);
+
+        $this->assertDatabaseHas('projects', [
+            'id' => $this->project->id,
+        ]);
+    }
+
+    /** @test */
+    public function abandoned_project_can_be_deleted_permanently(): void
+    {
+        $this->project->delete();
+
+        $this->deleteJson($this->project->path().'/force')->assertOk();
 
         $this->assertModelMissing($this->project);
     }

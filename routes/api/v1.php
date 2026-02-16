@@ -53,9 +53,6 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
     Route::get('/me', [UserController::class, 'me'])->name('user.me');
 
-    // TwoFactor routes moved to `routes/web.php` to keep session-based
-    // endpoints (like `login-confirm`) under the `web` middleware group.
-
     Route::get('/user/token', [ZoomTokenController::class, 'getUserToken']);
 
     Route::get('/user/jwt/token', [ZoomTokenController::class, 'getJwtToken']);
@@ -94,8 +91,8 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
             Route::get('/insights', [ProjectInsightsController::class, 'index'])->name('projects.insights');
 
-            Route::get('/delete', [ProjectController::class, 'delete'])->can('manage', 'project');
-            Route::get('/restore', [ProjectController::class, 'restore'])->withTrashed()->can('manage', 'project');
+            Route::delete('/force', [ProjectController::class, 'delete'])->withTrashed()->can('manage', 'project');
+            Route::patch('/restore', [ProjectController::class, 'restore'])->withTrashed()->can('manage', 'project');
 
             Route::middleware(['can:access,project'])->group(function (): void {
 

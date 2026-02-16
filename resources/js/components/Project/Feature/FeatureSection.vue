@@ -2,7 +2,9 @@
   <div class="float-right">
     <FeatureDropdown :feature-pop.sync="featurePop">
       <ul>
-        <li class="feature-dropdown_item-content" @click="abandon()"><i class="fa-solid fa-eye-slash"></i> Abandon</li>
+        <li v-if="!isTrashed" class="feature-dropdown_item-content" @click="abandon()">
+          <i class="fa-solid fa-eye-slash"></i> Abandon
+        </li>
 
         <li v-if="canMessage" class="feature-dropdown_item-content" @click="$modal.show('project-message')">
           <i class="fa-regular fa-envelope"></i>Send Mail or Sms
@@ -12,7 +14,9 @@
           <i class="fa-solid fa-upload"></i> Export
         </li>
 
-        <li class="feature-dropdown_item-content" @click="deleteProject"><i class="fa-solid fa-ban"></i> Delete</li>
+        <li v-if="isTrashed" class="feature-dropdown_item-content" @click="deleteProject">
+          <i class="fa-solid fa-ban"></i> Delete
+        </li>
       </ul>
     </FeatureDropdown>
 
@@ -33,6 +37,7 @@ export default {
     slug: { type: String, required: true },
     members: { type: Array, default: () => [] },
     name: { type: String, default: '' },
+    isTrashed: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -65,7 +70,12 @@ export default {
     },
 
     deleteProject() {
-      this.performAction('Yes, delete it!', axios.get('/projects/' + this.slug + '/delete'));
+      if (!this.isTrashed) {
+        this.$vToastify.warning('Only abandoned projects can be deleted permanently.');
+        return;
+      }
+
+      this.performAction('Yes, delete it!', axios.delete('/projects/' + this.slug + '/force'));
     },
     exportProject() {
       if (!this.canExport) {

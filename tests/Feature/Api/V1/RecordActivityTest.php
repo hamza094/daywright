@@ -69,7 +69,7 @@ class RecordActivityTest extends TestCase
     {
         $this->project->delete();
 
-        $this->getJson($this->project->path().'/restore')->assertOk();
+        $this->patchJson($this->project->path().'/restore')->assertOk();
 
         $this->project->refresh();
 

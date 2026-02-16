@@ -72,6 +72,8 @@ class ProjectResource extends JsonResource
                 fn () => $this->deleted_at->diffforHumans()
             ),
 
+            'is_trashed' => $this->trashed(),
+
             /**
              * Date when the project's last stage was updated, formatted based on the application's date format configuration.
              *
