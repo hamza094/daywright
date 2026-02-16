@@ -237,4 +237,41 @@ class TaskTest extends TestCase
             'task' => $task->id,
         ]))->assertForbidden();
     }
+
+    /** @test */
+    public function updating_due_date_resets_task_notification(): void
+    {
+        $task = Task::factory()->for($this->project)->create([
+            'title' => 'Reminder task',
+            'user_id' => $this->user->id,
+            'due_at' => now()->addDay(),
+            'notified' => '1 Day Before',
+            'notify_sent' => true,
+        ]);
+
+        $this->putJson($task->path(), [
+            'due_at' => now()->addDays(3)->format('Y-m-d\TH:i:s'),
+        ])->assertOk();
+
+        $this->assertEquals(0, (int) $task->fresh()->notify_sent);
+    }
+
+    /** @test */
+    public function updating_notification_rule_resets_task_notification(): void
+    {
+        $task = Task::factory()->for($this->project)->create([
+            'title' => 'Reminder task',
+            'user_id' => $this->user->id,
+            'due_at' => now()->addDay(),
+            'notified' => '1 Day Before',
+            'notify_sent' => true,
+        ]);
+
+        $this->putJson($task->path(), [
+            'notified' => '5 Minutes Before',
+            'due_at' => $task->due_at->format('Y-m-d\TH:i:s'),
+        ])->assertOk();
+
+        $this->assertEquals(0, (int) $task->fresh()->notify_sent);
+    }
 }

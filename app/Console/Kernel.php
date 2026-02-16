@@ -27,8 +27,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('schedule:message')
-            ->when(fn () => Message::messageScheduled()->exists())->withoutOverlapping();
+        /*$schedule->command('schedule:message')
+            ->when(fn () => Message::messageScheduled()->exists())->withoutOverlapping();*/
 
         $schedule->command('tasks:notify')
             ->withoutOverlapping()

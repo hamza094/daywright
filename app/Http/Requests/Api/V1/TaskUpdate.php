@@ -67,7 +67,7 @@ class TaskUpdate extends FormRequest
         ];
     }
 
-    protected function prepareForValidation()
+    protected function prepareForValidation(): void
     {
         $dueAt = $this->input('due_at');
 

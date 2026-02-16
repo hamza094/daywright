@@ -26,7 +26,13 @@ class TaskDueAction
 
     public function sendNotification(Task $task): void
     {
-        DB::transaction(function () use ($task): void {
+        $project = $task->project;
+
+        if ($project === null) {
+            return;
+        }
+
+        DB::transaction(function () use ($task, $project): void {
             $task->notify_sent = true;
             $task->saveQuietly();
 
@@ -37,8 +43,8 @@ class TaskDueAction
                         $task->title,
                         $task->notified,
                         $task->owner->getNotifierData(),
-                        $task->project->name,
-                        $task->project->path()
+                        $project->name,
+                        $project->path()
                     ));
             }
         });

@@ -86,7 +86,7 @@ class TaskController extends ApiController
     {
         $taskService->checkValidation($request, $task);
 
-        $task->update($request->validated());
+        $taskService->updateTask($task, $request->validated());
 
         if ($request->safe()->has('status_id')) {
             $task->load('status');

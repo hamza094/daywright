@@ -27,6 +27,9 @@ class TaskNotify extends Command
     public function handle(): int
     {
         Task::dueForNotifications()
+            ->whereHas('project', function ($query): void {
+                $query->whereNull('deleted_at');
+            })
             ->with([
                 'assignee:id,name',
                 'project:id,name,slug',

@@ -18,8 +18,6 @@ use Illuminate\Support\Facades\DB;
 
 class ProjectController extends ApiController
 {
-    // ApiResponseHelpers trait removed - using explicit responses
-
     /**
      * Create a new project.
      *
