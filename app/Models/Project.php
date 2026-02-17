@@ -325,6 +325,7 @@ class Project extends Model
     protected static function boot(): void
     {
         parent::boot();
+
         static::forceDeleted(function ($project): void {
             $project->activities()->delete();
         });

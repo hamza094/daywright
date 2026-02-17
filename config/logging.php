@@ -111,6 +111,11 @@ return [
             'path' => storage_path('logs/webhook.log'),
             'level' => 'debug',
         ],
+        'zoom' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/zoom.log'),
+            'level' => 'warning',
+        ],
     ],
 
 ];

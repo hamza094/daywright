@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1;
 
+use App\Jobs\CancelZoomMeetingsJob;
+use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\User;
 use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ProjectFeatureTest extends TestCase
@@ -227,6 +231,53 @@ class ProjectFeatureTest extends TestCase
         $this->deleteJson($this->project->path().'/force')->assertOk();
 
         $this->assertModelMissing($this->project);
+    }
+
+    /** @test */
+    public function force_deleting_abandoned_project_dispatches_zoom_cancellation_job_with_meeting_primitives(): void
+    {
+        Queue::fake([CancelZoomMeetingsJob::class]);
+
+        $anotherUser = User::factory()->create();
+
+        $meetingOne = Meeting::factory()
+            ->for($this->project)
+            ->for($this->user)
+            ->create();
+
+        $meetingTwo = Meeting::factory()
+            ->for($this->project)
+            ->for($anotherUser)
+            ->create();
+
+        $this->project->delete();
+
+        $this->deleteJson($this->project->path().'/force')->assertOk();
+
+        Queue::assertPushed(
+            CancelZoomMeetingsJob::class,
+            function (CancelZoomMeetingsJob $job) use ($meetingOne, $meetingTwo, $anotherUser): bool {
+                $payload = collect($job->meetings);
+
+                return $payload->count() === 2
+                    && $payload->contains(fn (array $meeting): bool => $meeting['meeting_id'] === (int) $meetingOne->meeting_id
+                        && $meeting['user_id'] === (int) $this->user->id)
+                    && $payload->contains(fn (array $meeting): bool => $meeting['meeting_id'] === (int) $meetingTwo->meeting_id
+                        && $meeting['user_id'] === (int) $anotherUser->id);
+            }
+        );
+    }
+
+    /** @test */
+    public function force_deleting_abandoned_project_without_meetings_does_not_dispatch_zoom_cancellation_job(): void
+    {
+        Queue::fake([CancelZoomMeetingsJob::class]);
+
+        $this->project->delete();
+
+        $this->deleteJson($this->project->path().'/force')->assertOk();
+
+        Queue::assertNotPushed(CancelZoomMeetingsJob::class);
     }
 
     public function delete_abandon_projects_after_limit_past(): void

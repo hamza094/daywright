@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Api\V1;
 
 use App\Actions\NotificationAction;
+use App\Actions\Project\CancelProjectZoomMeetingsAction;
+use App\Jobs\CancelZoomMeetingsJob;
 use App\Models\Project;
 use App\Notifications\ProjectUpdated;
 
@@ -37,6 +39,12 @@ class ProjectService
     {
         if (! $project->trashed()) {
             return false;
+        }
+
+        $meetings = (new CancelProjectZoomMeetingsAction)->execute($project);
+
+        if ($meetings !== []) {
+            CancelZoomMeetingsJob::dispatch($meetings);
         }
 
         $project->forceDelete();
