@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\OAuthProvider;
 use App\Jobs\QueuedPasswordResetJob;
 use App\Jobs\QueuedVerifyEmailJob;
+use App\Traits\HasAdminAccess;
 use App\Traits\HasSubscription;
 use DateTimeImmutable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -25,9 +26,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenticatable
 {
-    use Billable, HasApiTokens, HasFactory, HasSubscription, Notifiable, SoftDeletes, TwoFactorAuthentication;
-
-    public const ADMIN_EMAIL = 'morar.devon@example.com';
+    use Billable, HasAdminAccess, HasApiTokens, HasFactory, HasSubscription, Notifiable, SoftDeletes, TwoFactorAuthentication;
 
     protected $guarded = [];
 
@@ -52,7 +51,9 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
      * @var array<string, string>
      */
     protected $casts = [
+        'admin_granted_at' => 'datetime',
         'email_verified_at' => 'datetime',
+        'is_admin' => 'boolean',
         'oauth_provider' => OAuthProvider::class,
         'oauth_token' => 'encrypted',
         'oauth_refresh_token' => 'encrypted',
@@ -163,21 +164,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     public function assigned(): BelongsToMany
     {
         return $this->belongsToMany(Task::class);
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this->email === self::ADMIN_EMAIL;
-
-    }
-
-    /**
-     * Mark this user as the admin used by tests and feature checks.
-     */
-    public function markAsAdmin(): void
-    {
-        $this->email = self::ADMIN_EMAIL;
-        $this->save();
     }
 
     public function updateZoomOAuthDetails(

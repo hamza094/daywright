@@ -145,6 +145,21 @@ export default {
     };
   },
   methods: {
+    canMutateAdmin() {
+      const user = this.$store.state.currentUser.user || {};
+
+      return !!user.isAdmin && !!user.twoFactorEnabled;
+    },
+    guardAdminMutation() {
+      if (this.canMutateAdmin()) {
+        return true;
+      }
+
+      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
+      this.$router.push({ name: 'Profile', params: { uuid: this.$store.state.currentUser.user?.uuid } });
+
+      return false;
+    },
     getResults(page = 1, filter = 'all') {
       const queryParameters = {
         page: page,
@@ -189,6 +204,10 @@ export default {
     },
 
     bulkDelete() {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       if (this.selectedTasks.length === 0) {
         return;
       }

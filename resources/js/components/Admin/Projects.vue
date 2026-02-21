@@ -319,6 +319,21 @@ export default {
     this.loadStages();
   },
   methods: {
+    canMutateAdmin() {
+      const user = this.$store.state.currentUser.user || {};
+
+      return !!user.isAdmin && !!user.twoFactorEnabled;
+    },
+    guardAdminMutation() {
+      if (this.canMutateAdmin()) {
+        return true;
+      }
+
+      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
+      this.$router.push({ name: 'Profile', params: { uuid: this.$store.state.currentUser.user?.uuid } });
+
+      return false;
+    },
     loadStages() {
       axios
         .get('/stages')
@@ -403,6 +418,10 @@ export default {
       this.isPop = false;
     },
     bulkDelete() {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       if (this.selectedProjects.length === 0) {
         return;
       }

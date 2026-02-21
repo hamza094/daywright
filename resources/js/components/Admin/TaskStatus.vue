@@ -84,6 +84,21 @@ export default {
   methods: {
     ...mapActions('status', ['loadStatuses', 'addNewStatus']),
     ...mapMutations('status', ['statusUpdate', 'statusDelete']),
+    canMutateAdmin() {
+      const user = this.$store.state.currentUser.user || {};
+
+      return !!user.isAdmin && !!user.twoFactorEnabled;
+    },
+    guardAdminMutation() {
+      if (this.canMutateAdmin()) {
+        return true;
+      }
+
+      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
+      this.$router.push({ name: 'Profile', params: { uuid: this.$store.state.currentUser.user?.uuid } });
+
+      return false;
+    },
     modalStatus() {
       this.$modal.show('status-modal');
     },
@@ -110,6 +125,10 @@ export default {
     },
 
     async addStatus() {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       try {
         const response = await this.addNewStatus({
           label: this.form.label,
@@ -128,6 +147,10 @@ export default {
     },
 
     updateStatus(status) {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       axios
         .put('/admin/statuses/' + status.id, {
           label: this.form.updateLabel,
@@ -144,6 +167,10 @@ export default {
         });
     },
     deleteStatus(statusId) {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       axios
         .delete('/admin/statuses/' + statusId, {
           label: this.form.label,
