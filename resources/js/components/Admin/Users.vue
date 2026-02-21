@@ -39,10 +39,11 @@
                     <th>IsSubscribed</th>
                     <th>Active Projects Count</th>
                     <th>Project Member</th>
+                    <th>Admin Access</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(user, index) in users.data" :key="user.id">
+                  <tr v-for="user in users.data" :key="user.id">
                     <td>
                       <router-link :to="{ name: 'Profile', params: { uuid: user.uuid } }" class="admin-panel-link">
                         <div>{{ user.name }}</div>
@@ -60,6 +61,16 @@
                     <td>{{ user.isSubscribed }}</td>
                     <td>{{ user.projects_count }}</td>
                     <td>{{ user.projects_member }}</td>
+                    <td>
+                      <span class="me-2">{{ user.isAdmin ? 'Yes' : 'No' }}</span>
+                      <button
+                        :disabled="adminActionUserId === user.id"
+                        class="btn btn-sm"
+                        :class="user.isAdmin ? 'btn-outline-danger' : 'btn-outline-success'"
+                        @click="toggleAdminAccess(user)">
+                        {{ user.isAdmin ? 'Revoke' : 'Grant' }}
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -87,10 +98,26 @@ export default {
       to: 0,
       total: 0,
       searchTerm: '',
+      adminActionUserId: null,
     };
   },
   methods: {
-    getResults(page = 1) {
+    canMutateAdmin() {
+      const user = this.$store.state.currentUser.user || {};
+
+      return !!user.isAdmin && !!user.twoFactorEnabled;
+    },
+    guardAdminMutation() {
+      if (this.canMutateAdmin()) {
+        return true;
+      }
+
+      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
+      this.$router.push({ name: 'Profile', params: { uuid: this.$store.state.currentUser.user?.uuid } });
+
+      return false;
+    },
+    async getResults(page = 1) {
       const queryParameters = {
         page: page,
         search: this.searchTerm,
@@ -100,25 +127,61 @@ export default {
         Object.entries(queryParameters).filter(([_, value]) => value !== undefined && value !== ''),
       );
 
-      axios
-        .get('/admin/users', {
+      try {
+        const response = await axios.get('/admin/users', {
           params: filteredParameters,
-        })
-        .then((response) => {
-          this.users = response.data || '';
-          this.from = this.users.meta.from || '';
-          this.to = this.users.meta.to || '';
-          this.total = this.users.meta.total || '';
-        })
-        .catch((error) => {
-          this.handleErrorResponse(error);
         });
+
+        this.users = response.data || '';
+        this.from = this.users.meta.from || '';
+        this.to = this.users.meta.to || '';
+        this.total = this.users.meta.total || '';
+      } catch (error) {
+        this.handleErrorResponse(error);
+      }
     },
     handleUpdateUser(user) {
       const index = this.users.data.findIndex((existingUser) => existingUser.id === user.id);
 
       if (index !== -1) {
         this.users.data.splice(index, 1, user);
+      }
+    },
+    async toggleAdminAccess(user) {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
+      if (this.adminActionUserId === user.id) {
+        return;
+      }
+
+      const actionLabel = user.isAdmin ? 'revoke admin access from' : 'grant admin access to';
+
+      if (!window.confirm(`Are you sure you want to ${actionLabel} ${user.name}?`)) {
+        return;
+      }
+
+      this.adminActionUserId = user.id;
+
+      try {
+        const endpoint = user.isAdmin
+          ? `/admin/users/${user.uuid}/revoke-admin`
+          : `/admin/users/${user.uuid}/grant-admin`;
+
+        const response = await axios.post(endpoint);
+
+        if (response?.data?.user) {
+          this.handleUpdateUser(response.data.user);
+        }
+
+        if (response?.data?.message) {
+          this.$vToastify.success(response.data.message);
+        }
+      } catch (error) {
+        this.handleErrorResponse(error);
+      } finally {
+        this.adminActionUserId = null;
       }
     },
     searchUsers: debounce(function () {

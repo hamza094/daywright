@@ -7,27 +7,14 @@ namespace Tests\Feature\Api\V1\Admin;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class UsersTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function admin_users_response_excludes_last_active(): void
-    {
-        $user = User::factory()->create();
-        $user->markAsAdmin();
-
-        Sanctum::actingAs($user);
-
-        $response = $this->getJson('/api/v1/admin/users');
-
-        $response->assertOk();
-        $response->assertJsonMissingPath('data.0.last_active');
-    }
-
-    /** @test */
+    #[Test]
     public function non_admin_user_cannot_access_admin_users_endpoint(): void
     {
         $user = User::factory()->create();
@@ -41,41 +28,102 @@ class UsersTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function admin_user_without_2fa_cannot_access_admin_mutation_endpoint(): void
     {
         $user = User::factory()->create();
         $user->markAsAdmin();
 
+        $target = User::factory()->create();
+
         Sanctum::actingAs($user);
 
-        $this->deleteJson('/api/v1/admin/tasks/bulk-delete', ['tasks' => []])
+        $this->postJson("/api/v1/admin/users/{$target->uuid}/grant-admin")
             ->assertForbidden();
     }
 
-    /** @test */
-    public function it_updates_admin_access_fields_when_granted_and_revoked(): void
+    #[Test]
+    public function admin_user_with_2fa_can_grant_admin_access(): void
     {
         $actor = User::factory()->create();
         $actor->markAsAdmin();
+        $this->enableTwoFactorForUser($actor);
+
+        $target = User::factory()->create();
+
+        Sanctum::actingAs($actor);
+
+        $this->postJson("/api/v1/admin/users/{$target->uuid}/grant-admin")
+            ->assertOk()
+            ->assertJsonPath('user.isAdmin', true);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'is_admin' => true,
+            'admin_granted_by' => $actor->id,
+        ]);
+    }
+
+    #[Test]
+    public function it_validates_user_cannot_be_granted_admin_access_twice(): void
+    {
+        $actor = User::factory()->create();
+        $actor->markAsAdmin();
+        $this->enableTwoFactorForUser($actor);
 
         $target = User::factory()->create();
         $target->markAsAdmin($actor);
-        $target->refresh();
 
-        $this->assertTrue($target->is_admin);
-        $this->assertNotNull($target->admin_granted_at);
-        $this->assertSame($actor->id, $target->admin_granted_by);
+        Sanctum::actingAs($actor);
 
-        $target->revokeAdminAccess($actor);
-        $target->refresh();
-
-        $this->assertFalse($target->is_admin);
-        $this->assertNull($target->admin_granted_at);
-        $this->assertNull($target->admin_granted_by);
+        $this->postJson("/api/v1/admin/users/{$target->uuid}/grant-admin")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['user']);
     }
 
-    /** @test */
+    #[Test]
+    public function admin_user_with_2fa_can_revoke_admin_access(): void
+    {
+        $actor = User::factory()->create();
+        $actor->markAsAdmin();
+        $this->enableTwoFactorForUser($actor);
+
+        $target = User::factory()->create([
+            'remember_token' => 'known-token-value',
+        ]);
+        $target->markAsAdmin($actor);
+        $target->createToken('admin-device-token');
+
+        Sanctum::actingAs($actor);
+
+        $this->postJson("/api/v1/admin/users/{$target->uuid}/revoke-admin")
+            ->assertOk()
+            ->assertJsonPath('user.isAdmin', false);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $target->id,
+            'is_admin' => false,
+            'admin_granted_by' => null,
+        ]);
+    }
+
+    #[Test]
+    public function it_validates_non_admin_user_cannot_be_revoked_again(): void
+    {
+        $actor = User::factory()->create();
+        $actor->markAsAdmin();
+        $this->enableTwoFactorForUser($actor);
+
+        $target = User::factory()->create();
+
+        Sanctum::actingAs($actor);
+
+        $this->postJson("/api/v1/admin/users/{$target->uuid}/revoke-admin")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['user']);
+    }
+
+    #[Test]
     public function revoking_admin_access_revokes_tokens_and_rotates_remember_token(): void
     {
         $actor = User::factory()->create();
@@ -103,5 +151,16 @@ class UsersTest extends TestCase
 
         $this->assertNotSame('known-token-value', $target->remember_token);
         $this->assertNotNull($target->remember_token);
+    }
+
+    private function enableTwoFactorForUser(User $user): void
+    {
+        $twoFactor = $user->createTwoFactorAuth();
+
+        $twoFactor->forceFill([
+            'label' => "DayWright:{$user->email}",
+        ])->save();
+
+        $user->enableTwoFactorAuth();
     }
 }

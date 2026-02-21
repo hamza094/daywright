@@ -19,10 +19,12 @@ class UsersResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'uuid' => $this->uuid,
             'name' => $this->name,
             'username' => $this->username,
             'email' => $this->email,
             'avatar' => $this->avatar,
+            'isAdmin' => $this->isAdmin(),
             'isSubscribed' => $this->isSubscribed() ? 'Subscribed' : 'Not Subscribed',
             'created_at' => $this->created_at->diffForHumans(),
             'projects_count' => $this->whenCounted('projects'),

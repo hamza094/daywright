@@ -27,6 +27,12 @@ Route::group(['prefix' => 'admin'], function (): void {
 
         Route::get('/users', [UserController::class, 'index']);
 
+        Route::post('/users/{user}/grant-admin', [UserController::class, 'grantAdminAccess'])
+            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
+
+        Route::post('/users/{user}/revoke-admin', [UserController::class, 'revokeAdminAccess'])
+            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
+
         Route::get('/backup/database', [DashBoardController::class, 'backup']);
 
         Route::apiResource('/stages', StageController::class)
