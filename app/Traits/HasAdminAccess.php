@@ -16,11 +16,11 @@ trait HasAdminAccess
 
     public function markAsAdmin(?User $grantedBy = null): void
     {
-        (new AdminAccessService)->grant($this, $grantedBy);
+        (new AdminAccessService)->grantAdminAccess($this, $grantedBy);
     }
 
     public function revokeAdminAccess(?User $revokedBy = null): void
     {
-        (new AdminAccessService)->revoke($this);
+        (new AdminAccessService)->revokeAdminAccess($this, $revokedBy);
     }
 }

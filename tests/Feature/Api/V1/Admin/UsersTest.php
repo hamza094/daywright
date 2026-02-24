@@ -103,8 +103,13 @@ class UsersTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $target->id,
             'is_admin' => false,
-            'admin_granted_by' => null,
+            'admin_granted_by' => $actor->id,
+            'admin_revoked_by' => $actor->id,
         ]);
+
+        $target->refresh();
+        $this->assertNotNull($target->admin_granted_at);
+        $this->assertNotNull($target->admin_revoked_at);
     }
 
     #[Test]
@@ -119,6 +124,20 @@ class UsersTest extends TestCase
         Sanctum::actingAs($actor);
 
         $this->postJson("/api/v1/admin/users/{$target->uuid}/revoke-admin")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['user']);
+    }
+
+    #[Test]
+    public function cannot_revoke_last_admin_account(): void
+    {
+        $actor = User::factory()->create();
+        $actor->markAsAdmin();
+        $this->enableTwoFactorForUser($actor);
+
+        Sanctum::actingAs($actor);
+
+        $this->postJson("/api/v1/admin/users/{$actor->uuid}/revoke-admin")
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['user']);
     }
@@ -151,6 +170,10 @@ class UsersTest extends TestCase
 
         $this->assertNotSame('known-token-value', $target->remember_token);
         $this->assertNotNull($target->remember_token);
+        $this->assertSame($actor->id, $target->admin_granted_by);
+        $this->assertSame($actor->id, $target->admin_revoked_by);
+        $this->assertNotNull($target->admin_granted_at);
+        $this->assertNotNull($target->admin_revoked_at);
     }
 
     private function enableTwoFactorForUser(User $user): void

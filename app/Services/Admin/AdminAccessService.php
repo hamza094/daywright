@@ -5,55 +5,105 @@ declare(strict_types=1);
 namespace App\Services\Admin;
 
 use App\Models\User;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AdminAccessService
 {
-    public function grant(User $target, ?User $grantedBy = null): void
+    public function grantAdminAccess(User $user, ?User $performedBy = null): void
     {
-        if ($target->isAdmin()) {
-            throw ValidationException::withMessages([
-                'user' => 'Selected user already has admin access.',
-            ]);
-        }
+        $this->ensureUserNotAdmin($user);
 
-        DB::transaction(function () use ($target, $grantedBy): void {
-            $target->is_admin = true;
-            $target->admin_granted_at = Carbon::now();
-            $target->admin_granted_by = $grantedBy?->id;
-            $target->save();
+        DB::transaction(function () use ($user, $performedBy): void {
+            $this->saveGrantAccess($user, $performedBy);
         });
     }
 
-    public function revoke(User $target): void
+    public function revokeAdminAccess(User $user, ?User $revokedBy = null): void
     {
-        if (! $target->isAdmin()) {
+        DB::transaction(function () use ($user, $revokedBy): void {
+            $lockedUser = $this->lockAndEnsureUserIsAdmin($user);
+
+            $this->ensureNotLastAdmin($lockedUser);
+
+            $this->clearGrantAccess($lockedUser, $revokedBy);
+
+            $this->deletePersonalAccessTokens($lockedUser);
+
+            $this->rotateRememberTokenForUser($lockedUser);
+        });
+    }
+
+    private function ensureNotLastAdmin(User $user): void
+    {
+        $hasAnotherAdmin = User::query()
+            ->where('is_admin', true)
+            ->where('id', '!=', $user->id)
+            ->lockForUpdate()
+            ->exists();
+
+        if (! $hasAnotherAdmin) {
+            throw ValidationException::withMessages([
+                'user' => 'Cannot revoke the last admin account.',
+            ]);
+        }
+    }
+
+    private function lockAndEnsureUserIsAdmin(User $user): User
+    {
+        $lockedUser = User::query()
+            ->whereKey($user->id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $lockedUser instanceof User || ! $lockedUser->isAdmin()) {
             throw ValidationException::withMessages([
                 'user' => 'Selected user does not have admin access.',
             ]);
         }
 
-        DB::transaction(function () use ($target): void {
-            $target->is_admin = false;
-            $target->admin_granted_at = null;
-            $target->admin_granted_by = null;
-            $target->save();
+        return $lockedUser;
+    }
 
-            $target->tokens()->delete();
+    private function ensureUserNotAdmin(User $user): void
+    {
+        if ($user->isAdmin()) {
+            throw ValidationException::withMessages([
+                'user' => 'Selected user already has admin access.',
+            ]);
+        }
+    }
 
-            $target->forceFill([
-                'remember_token' => Str::random(60),
-            ])->save();
+    private function saveGrantAccess(User $user, ?User $performedBy = null): void
+    {
+        $user->update([
+            'is_admin' => true,
+            'admin_granted_at' => now(),
+            'admin_granted_by' => $performedBy?->id,
+            'admin_revoked_at' => null,
+            'admin_revoked_by' => null,
+        ]);
+    }
 
-            if (Schema::hasTable('sessions')) {
-                DB::table('sessions')
-                    ->where('user_id', (string) $target->getAuthIdentifier())
-                    ->delete();
-            }
-        });
+    private function clearGrantAccess(User $user, ?User $revokedBy = null): void
+    {
+        $user->update([
+            'is_admin' => false,
+            'admin_revoked_at' => now(),
+            'admin_revoked_by' => $revokedBy?->id,
+        ]);
+    }
+
+    private function deletePersonalAccessTokens(User $user): void
+    {
+        $user->tokens()->delete();
+    }
+
+    private function rotateRememberTokenForUser(User $user): void
+    {
+        $user->update([
+            'remember_token' => Str::random(60),
+        ]);
     }
 }

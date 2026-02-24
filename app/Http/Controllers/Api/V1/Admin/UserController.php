@@ -19,7 +19,11 @@ class UserController extends Controller
     {
         $perPage = 7;
 
-        $users = User::with('subscriptions')
+        $users = User::with([
+            'subscriptions',
+            'adminGrantedBy:id,name',
+            'adminRevokedBy:id,name',
+        ])
             ->withCount('projects')
             ->when($request->search, function ($query) use ($request): void {
                 $query->where('name', 'like', '%'.$request->search.'%')
@@ -33,24 +37,27 @@ class UserController extends Controller
 
     public function grantAdminAccess(Request $request, User $user): JsonResponse
     {
-        $this->adminAccessService->grant(
-            target: $user,
-            grantedBy: $request->user(),
-        );
+        $this->adminAccessService->grantAdminAccess($user, $request->user());
 
         return response()->json([
             'message' => 'Admin access granted successfully.',
-            'user' => new UsersResource($user->fresh()),
+            'user' => new UsersResource($user->fresh([
+                'adminGrantedBy:id,name',
+                'adminRevokedBy:id,name',
+            ])),
         ]);
     }
 
     public function revokeAdminAccess(Request $request, User $user): JsonResponse
     {
-        $this->adminAccessService->revoke($user);
+        $this->adminAccessService->revokeAdminAccess($user, $request->user());
 
         return response()->json([
             'message' => 'Admin access revoked successfully.',
-            'user' => new UsersResource($user->fresh()),
+            'user' => new UsersResource($user->fresh([
+                'adminGrantedBy:id,name',
+                'adminRevokedBy:id,name',
+            ])),
         ]);
     }
 }

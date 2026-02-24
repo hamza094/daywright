@@ -12,6 +12,7 @@ use App\Traits\HasSubscription;
 use DateTimeImmutable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -52,6 +53,7 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
      */
     protected $casts = [
         'admin_granted_at' => 'datetime',
+        'admin_revoked_at' => 'datetime',
         'email_verified_at' => 'datetime',
         'is_admin' => 'boolean',
         'oauth_provider' => OAuthProvider::class,
@@ -117,6 +119,26 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     public function info(): HasOne
     {
         return $this->hasOne(UserInfo::class);
+    }
+
+    /**
+     * Get the user who granted admin access.
+     *
+     * @return BelongsTo<User, User>
+     */
+    public function adminGrantedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'admin_granted_by');
+    }
+
+    /**
+     * Get the user who revoked admin access.
+     *
+     * @return BelongsTo<User, User>
+     */
+    public function adminRevokedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'admin_revoked_by');
     }
 
     /**
