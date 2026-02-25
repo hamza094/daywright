@@ -19,6 +19,7 @@
                     placeholder="By Project"
                     name="search"
                     autocomplete="off"
+                    v-model="searchTerm"
                     @keydown="searchTasks()" />
                 </div>
 

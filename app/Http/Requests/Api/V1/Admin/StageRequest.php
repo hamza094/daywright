@@ -23,19 +23,24 @@ class StageRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => [
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('stages'),
-                function ($attribute, $value, $fail): void {
-                    if (Stage::count() >= 5) {
-                        $fail('Cannot add more than 5 stages.');
-                    }
-                },
+                Rule::unique('stages')->ignore($this->route('stage')),
             ],
         ];
+
+        if ($this->isMethod('post')) {
+            $rules['name'][] = function ($attribute, $value, $fail): void {
+                if (Stage::count() >= 5) {
+                    $fail('Cannot add more than 5 stages.');
+                }
+            };
+        }
+
+        return $rules;
     }
 
     public function messages()

@@ -146,11 +146,36 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
      *
      * @return BelongsToMany<Project>
      */
-    public function members(bool $active = false): BelongsToMany
+    public function members(?bool $active = null): BelongsToMany
     {
-        return $this->belongsToMany(Project::class, 'project_members')
-            ->wherePivot('active', $active)
+        $relation = $this->belongsToMany(Project::class, 'project_members')
             ->withTimestamps();
+
+        if ($active !== null) {
+            $relation->wherePivot('active', $active);
+        }
+
+        return $relation;
+    }
+
+    /**
+     * Get projects where the user is an active member.
+     *
+     * @return BelongsToMany<Project>
+     */
+    public function activeMembers(): BelongsToMany
+    {
+        return $this->members(true);
+    }
+
+    /**
+     * Get projects where the user is an inactive member.
+     *
+     * @return BelongsToMany<Project>
+     */
+    public function inactiveMembers(): BelongsToMany
+    {
+        return $this->members(false);
     }
 
     public function getAvatarAttribute(): string|bool

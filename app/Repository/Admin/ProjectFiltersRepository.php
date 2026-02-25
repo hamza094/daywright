@@ -70,7 +70,7 @@ class ProjectFiltersRepository
             ->when($request->status, function ($query) use ($request, &$appliedFilters): void {
                 $this->applyStatusFilter($query, $request->status, $appliedFilters);
             })
-            ->get();
+            ->paginate($perPage);
 
         return [
             'projects' => $projects,
@@ -106,16 +106,9 @@ class ProjectFiltersRepository
         $appliedFilters[] = 'Filter from '.$fromDate->format('Y-m-d').' to '.$toDate->format('Y-m-d');
     }
 
-    protected function applyStatusFilter($query, $status, &$appliedFilters)
+    protected function applyStatusFilter($query, $status, &$appliedFilters): void
     {
-        return $query->filter(function ($project) use ($status, &$appliedFilters): bool {
-            if ($project->status === $status) {
-                $appliedFilters[] = "Filter by status $status";
-
-                return true;
-            }
-
-            return false;
-        });
+        $query->where('health_status', $status);
+        $appliedFilters[] = "Filter by status $status";
     }
 }

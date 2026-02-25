@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Admin;
 
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -140,6 +141,34 @@ class UsersTest extends TestCase
         $this->postJson("/api/v1/admin/users/{$actor->uuid}/revoke-admin")
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['user']);
+    }
+
+    #[Test]
+    public function users_index_returns_active_member_projects_count(): void
+    {
+        $admin = User::factory()->create();
+        $admin->markAsAdmin();
+        $this->enableTwoFactorForUser($admin);
+
+        $target = User::factory()->create();
+
+        $activeProjectOne = Project::factory()->create();
+        $activeProjectOne->members()->attach($target->id, ['active' => true]);
+
+        $activeProjectTwo = Project::factory()->create();
+        $activeProjectTwo->members()->attach($target->id, ['active' => true]);
+
+        $inactiveProject = Project::factory()->create();
+        $inactiveProject->members()->attach($target->id, ['active' => false]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/v1/admin/users')->assertOk();
+
+        $targetPayload = collect($response->json('data'))->firstWhere('uuid', $target->uuid);
+
+        $this->assertNotNull($targetPayload);
+        $this->assertSame(2, $targetPayload['projects_member']);
     }
 
     #[Test]

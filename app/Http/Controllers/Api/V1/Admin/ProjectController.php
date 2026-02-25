@@ -37,7 +37,7 @@ class ProjectController extends ApiController
         }
 
         return $this->respondWithSuccess([
-            'projects' => ProjectResource::collection($projects)->paginate($perPage),
+            'projects' => ProjectResource::collection($projects),
             'appliedFilters' => $appliedFilters,
         ]);
     }

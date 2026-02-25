@@ -33,7 +33,7 @@ class UsersResource extends JsonResource
             'isSubscribed' => $this->isSubscribed() ? 'Subscribed' : 'Not Subscribed',
             'created_at' => $this->created_at->diffForHumans(),
             'projects_count' => $this->whenCounted('projects'),
-            'projects_member' => $this->members(true)->count(),
+            'projects_member' => $this->projects_member_count ?? 0,
             'timezone' => $this->timezone ?? config('app.timezone', 'UTC'),
         ];
     }

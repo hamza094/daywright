@@ -4,42 +4,16 @@ declare(strict_types=1);
 
 namespace App\Rules;
 
-use App\Model\TaskStatus as Status;
-use Illuminate\Contracts\Validation\Rule;
+use App\Models\TaskStatus;
+use Closure;
+use Illuminate\Contracts\Validation\ValidationRule;
 
-class maxStatusCount implements Rule
+class MaxStatusCount implements ValidationRule
 {
-    /**
-     * Create a new rule instance.
-     *
-     * @return void
-     */
-    public function __construct()
+    public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        //
-    }
-
-    /**
-     * Determine if the validation rule passes.
-     *
-     * @param  string  $attribute
-     * @param  mixed  $value
-     * @return bool
-     */
-    public function passes($attribute, $value)
-    {
-        $statusCount = Status::count();
-
-        return $statusCount < 6;
-    }
-
-    /**
-     * Get the validation error message.
-     *
-     * @return string
-     */
-    public function message()
-    {
-        return 'The maximum allowed number of statuses has been reached.';
+        if (TaskStatus::count() >= 6) {
+            $fail('The maximum allowed number of statuses has been reached.');
+        }
     }
 }

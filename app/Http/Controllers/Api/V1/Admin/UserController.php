@@ -25,6 +25,7 @@ class UserController extends Controller
             'adminRevokedBy:id,name',
         ])
             ->withCount('projects')
+            ->withCount('activeMembers as projects_member_count')
             ->when($request->search, function ($query) use ($request): void {
                 $query->where('name', 'like', '%'.$request->search.'%')
                     ->orWhere('username', 'like', '%'.$request->search.'%')

@@ -19,7 +19,7 @@ class UserInvitationsController extends Controller
         $user = auth()->user();
 
         // Eager load 'user' relation if ProjectInvitaionResource expects it
-        $pendingInvitations = $user->members(false)->with('user')->get();
+        $pendingInvitations = $user->inactiveMembers()->with('user')->get();
 
         if ($pendingInvitations->isEmpty()) {
             return response()->json([
