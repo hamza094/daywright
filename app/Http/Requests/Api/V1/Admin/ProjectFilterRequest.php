@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\Enums\ProjectHealthStatus;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ProjectFilterRequest extends FormRequest
@@ -26,11 +27,20 @@ class ProjectFilterRequest extends FormRequest
             'search' => ['sometimes'],
             'filter' => ['sometimes', 'in:active,trashed'],
             'members' => ['sometimes', 'required'],
-            'status' => ['sometimes', 'required', 'in:cold,hot'],
+            'status' => ['sometimes', 'required', 'in:'.implode(',', array_column(ProjectHealthStatus::cases(), 'value'))],
             'tasks' => ['sometimes', 'required'],
             'stage' => ['sometimes', 'required', 'int', 'min:0', 'max:6'],
             'from' => ['sometimes', 'required', 'date', 'required_with:to'],
             'to' => ['sometimes', 'required', 'date', 'required_with:from'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('status') && is_string($this->status)) {
+            $this->merge([
+                'status' => mb_strtolower($this->status),
+            ]);
+        }
     }
 }

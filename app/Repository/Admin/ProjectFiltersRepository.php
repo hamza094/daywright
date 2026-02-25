@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Repository\Admin;
 
+use App\Enums\ProjectHealthStatus;
 use App\Models\Project;
 use App\Models\Stage;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class ProjectFiltersRepository
@@ -106,9 +108,24 @@ class ProjectFiltersRepository
         $appliedFilters[] = 'Filter from '.$fromDate->format('Y-m-d').' to '.$toDate->format('Y-m-d');
     }
 
-    protected function applyStatusFilter($query, $status, &$appliedFilters): void
+    /**
+     * @param  Builder<Project>  $query
+     * @param  array<int, string>  $appliedFilters
+     */
+    protected function applyStatusFilter(Builder $query, string $status, array &$appliedFilters): void
     {
-        $query->where('health_status', $status);
-        $appliedFilters[] = "Filter by status $status";
+        $normalizedStatus = mb_strtolower($status);
+
+        match ($normalizedStatus) {
+            ProjectHealthStatus::HOT->value => $query->where('health_score', '>=', 75),
+            ProjectHealthStatus::WARM->value => $query->whereBetween('health_score', [45, 74.999999]),
+            ProjectHealthStatus::COLD->value => $query->where(function (Builder $subQuery): void {
+                $subQuery->whereNull('health_score')
+                    ->orWhere('health_score', '<', 45);
+            }),
+            default => null,
+        };
+
+        $appliedFilters[] = "Filter by status {$normalizedStatus}";
     }
 }
