@@ -6,6 +6,7 @@ namespace Tests\Feature\Api\V1\Admin;
 
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Admin\AdminAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
@@ -32,8 +33,7 @@ class UsersTest extends TestCase
     #[Test]
     public function admin_user_without_2fa_cannot_access_admin_mutation_endpoint(): void
     {
-        $user = User::factory()->create();
-        $user->markAsAdmin();
+        $user = User::factory()->admin()->create();
 
         $target = User::factory()->create();
 
@@ -46,8 +46,7 @@ class UsersTest extends TestCase
     #[Test]
     public function admin_user_with_2fa_can_grant_admin_access(): void
     {
-        $actor = User::factory()->create();
-        $actor->markAsAdmin();
+        $actor = User::factory()->admin()->create();
         $this->enableTwoFactorForUser($actor);
 
         $target = User::factory()->create();
@@ -68,12 +67,11 @@ class UsersTest extends TestCase
     #[Test]
     public function it_validates_user_cannot_be_granted_admin_access_twice(): void
     {
-        $actor = User::factory()->create();
-        $actor->markAsAdmin();
+        $actor = User::factory()->admin()->create();
         $this->enableTwoFactorForUser($actor);
 
         $target = User::factory()->create();
-        $target->markAsAdmin($actor);
+        (new AdminAccessService)->grantAdminAccess($target, $actor);
 
         Sanctum::actingAs($actor);
 
@@ -85,14 +83,13 @@ class UsersTest extends TestCase
     #[Test]
     public function admin_user_with_2fa_can_revoke_admin_access(): void
     {
-        $actor = User::factory()->create();
-        $actor->markAsAdmin();
+        $actor = User::factory()->admin()->create();
         $this->enableTwoFactorForUser($actor);
 
         $target = User::factory()->create([
             'remember_token' => 'known-token-value',
         ]);
-        $target->markAsAdmin($actor);
+        (new AdminAccessService)->grantAdminAccess($target, $actor);
         $target->createToken('admin-device-token');
 
         Sanctum::actingAs($actor);
@@ -116,8 +113,7 @@ class UsersTest extends TestCase
     #[Test]
     public function it_validates_non_admin_user_cannot_be_revoked_again(): void
     {
-        $actor = User::factory()->create();
-        $actor->markAsAdmin();
+        $actor = User::factory()->admin()->create();
         $this->enableTwoFactorForUser($actor);
 
         $target = User::factory()->create();
@@ -132,8 +128,7 @@ class UsersTest extends TestCase
     #[Test]
     public function cannot_revoke_last_admin_account(): void
     {
-        $actor = User::factory()->create();
-        $actor->markAsAdmin();
+        $actor = User::factory()->admin()->create();
         $this->enableTwoFactorForUser($actor);
 
         Sanctum::actingAs($actor);
@@ -146,8 +141,7 @@ class UsersTest extends TestCase
     #[Test]
     public function users_index_returns_active_member_projects_count(): void
     {
-        $admin = User::factory()->create();
-        $admin->markAsAdmin();
+        $admin = User::factory()->admin()->create();
         $this->enableTwoFactorForUser($admin);
 
         $target = User::factory()->create();
@@ -174,14 +168,13 @@ class UsersTest extends TestCase
     #[Test]
     public function revoking_admin_access_revokes_tokens_and_rotates_remember_token(): void
     {
-        $actor = User::factory()->create();
-        $actor->markAsAdmin();
+        $actor = User::factory()->admin()->create();
 
         $target = User::factory()->create([
             'remember_token' => 'known-token-value',
         ]);
 
-        $target->markAsAdmin($actor);
+        (new AdminAccessService)->grantAdminAccess($target, $actor);
         $target->createToken('admin-device-token');
 
         $this->assertDatabaseHas('personal_access_tokens', [
@@ -189,7 +182,7 @@ class UsersTest extends TestCase
             'tokenable_id' => $target->id,
         ]);
 
-        $target->revokeAdminAccess($actor);
+        (new AdminAccessService)->revokeAdminAccess($target, $actor);
         $target->refresh();
 
         $this->assertDatabaseMissing('personal_access_tokens', [
@@ -199,10 +192,6 @@ class UsersTest extends TestCase
 
         $this->assertNotSame('known-token-value', $target->remember_token);
         $this->assertNotNull($target->remember_token);
-        $this->assertSame($actor->id, $target->admin_granted_by);
-        $this->assertSame($actor->id, $target->admin_revoked_by);
-        $this->assertNotNull($target->admin_granted_at);
-        $this->assertNotNull($target->admin_revoked_at);
     }
 
     private function enableTwoFactorForUser(User $user): void

@@ -161,8 +161,7 @@ class UserTest extends TestCase
     {
         // Create a user and soft delete them 16 days ago
         $user = User::factory()->create(['deleted_at' => now()->subDays(16)]);
-        $admin = User::factory()->create();
-        $admin->markAsAdmin();
+        $admin = User::factory()->admin()->create();
 
         $projectNoMembers = Project::factory()->create(['user_id' => $user->id]);
 

@@ -21,8 +21,7 @@ class StagesTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create();
-        $this->admin->markAsAdmin();
+        $this->admin = User::factory()->admin()->create();
         $this->enableTwoFactorForUser($this->admin);
 
         Sanctum::actingAs($this->admin);

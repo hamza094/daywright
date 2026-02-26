@@ -43,7 +43,7 @@ class ApplicationTest extends TestCase
     /** @test */
     public function auth_user_can_export_project_file(): void
     {
-        $this->user->markAsAdmin();
+        $this->user->forceFill(['is_admin' => true])->save();
         Excel::fake();
         $this->withoutExceptionHandling()->getJson($this->project->path().'/export');
 
