@@ -47,7 +47,7 @@
         </span>
       </router-link>
 
-      <router-link :to="{ name: 'AdminPanel' }" class="panel-list_item" @click.native="handleNavigate">
+      <router-link v-if="isAdmin" :to="{ name: 'AdminPanel' }" class="panel-list_item" @click.native="handleNavigate">
         <span class="icon">
           <i class="icon-logo fa-solid fa-user-lock"></i>
           <span class="icon-name">Admin Panel</span>
@@ -79,6 +79,9 @@ export default {
       // prefer `uuid` where available (routes use :uuid), fall back to `id`
       if (!this.user) return null;
       return this.user.uuid || this.user.id || null;
+    },
+    isAdmin() {
+      return !!this.user?.isAdmin;
     },
   },
   methods: {

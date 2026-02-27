@@ -66,6 +66,21 @@ export default {
   methods: {
     ...mapActions('stage', ['loadStages', 'addNewStage']),
     ...mapMutations('stage', ['stageUpdate', 'stageDelete']),
+    canMutateAdmin() {
+      const user = this.$store.state.currentUser.user || {};
+
+      return !!user.isAdmin && !!user.twoFactorEnabled;
+    },
+    guardAdminMutation() {
+      if (this.canMutateAdmin()) {
+        return true;
+      }
+
+      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
+      this.$router.push({ name: 'Profile', params: { uuid: this.$store.state.currentUser.user?.uuid } });
+
+      return false;
+    },
     modalStage() {
       this.$modal.show('stage-modal');
     },
@@ -83,6 +98,10 @@ export default {
     },
 
     async addStage() {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       try {
         const response = await this.addNewStage({ name: this.form.name });
         this.form.name = '';
@@ -94,6 +113,10 @@ export default {
     },
 
     updateStage(stage) {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       axios
         .put('/admin/stages/' + stage.id, {
           name: this.form.updateName,
@@ -109,6 +132,10 @@ export default {
         });
     },
     deleteStage(stageId) {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       axios
         .delete('/admin/stages/' + stageId, {
           name: this.form.name,

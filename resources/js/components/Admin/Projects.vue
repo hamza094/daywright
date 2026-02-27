@@ -173,7 +173,17 @@
               </div>
             </div>
             <div class="table-responsive">
-              <div v-if="message" class="mt-3 text-center">
+              <div v-if="isLoading" class="mt-3 text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-secondary mt-2">Loading projects...</p>
+              </div>
+              <div v-else-if="errorMessage" class="mt-3 text-center py-4">
+                <h4 class="text-danger">{{ errorMessage }}</h4>
+                <button class="btn btn-sm btn-outline-primary mt-2" @click="getResults()">Retry</button>
+              </div>
+              <div v-else-if="message" class="mt-3 text-center">
                 <h4>{{ message }}</h4>
               </div>
               <table v-else class="table card-table table-vcenter text-nowrap datatable">
@@ -293,6 +303,8 @@ export default {
       total: 0,
       searchTerm: '',
       isPop: false,
+      isLoading: false,
+      errorMessage: '',
       message: '',
       form: {
         projects: '',
@@ -319,6 +331,21 @@ export default {
     this.loadStages();
   },
   methods: {
+    canMutateAdmin() {
+      const user = this.$store.state.currentUser.user || {};
+
+      return !!user.isAdmin && !!user.twoFactorEnabled;
+    },
+    guardAdminMutation() {
+      if (this.canMutateAdmin()) {
+        return true;
+      }
+
+      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
+      this.$router.push({ name: 'Profile', params: { uuid: this.$store.state.currentUser.user?.uuid } });
+
+      return false;
+    },
     loadStages() {
       axios
         .get('/stages')
@@ -375,6 +402,9 @@ export default {
         Object.entries(queryParameters).filter(([, value]) => value !== undefined && value !== ''),
       );
 
+      this.isLoading = true;
+      this.errorMessage = '';
+
       axios
         .get(`/admin/projects`, {
           params: filteredParameters,
@@ -389,7 +419,11 @@ export default {
           this.message = response.data.projects ? '' : response.data.message;
         })
         .catch((error) => {
+          this.errorMessage = 'Failed to load projects. Please try again.';
           this.handleErrorResponse(error);
+        })
+        .finally(() => {
+          this.isLoading = false;
         });
     },
 
@@ -403,6 +437,10 @@ export default {
       this.isPop = false;
     },
     bulkDelete() {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       if (this.selectedProjects.length === 0) {
         return;
       }

@@ -4,14 +4,20 @@ declare(strict_types=1);
 
 namespace App\Repository\Admin;
 
+use App\Enums\ProjectHealthStatus;
+use App\Http\Requests\Api\V1\Admin\ProjectFilterRequest;
 use App\Models\Project;
 use App\Models\Stage;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 
 class ProjectFiltersRepository
 {
-    public function filters(Request $request, $perPage, $appliedFilters): array
+    /**
+     * @param  array<int, string>  $appliedFilters
+     * @return array{projects: \Illuminate\Contracts\Pagination\LengthAwarePaginator, appliedFilters: array<int, string>}
+     */
+    public function filters(ProjectFilterRequest $request, int $perPage, array $appliedFilters): array
     {
 
         $projects = Project::with('stage', 'user')
@@ -70,7 +76,7 @@ class ProjectFiltersRepository
             ->when($request->status, function ($query) use ($request, &$appliedFilters): void {
                 $this->applyStatusFilter($query, $request->status, $appliedFilters);
             })
-            ->get();
+            ->paginate($perPage);
 
         return [
             'projects' => $projects,
@@ -79,24 +85,40 @@ class ProjectFiltersRepository
 
     }
 
-    protected function applySort($query, string $sortDirection, array &$appliedFilters): void
+    /**
+     * @param  Builder<Project>  $query
+     * @param  array<int, string>  $appliedFilters
+     */
+    protected function applySort(Builder $query, string $sortDirection, array &$appliedFilters): void
     {
         $query->orderBy('created_at', $sortDirection);
         $appliedFilters[] = "Sort by $sortDirection";
     }
 
-    protected function applySearchFilter($query, string $searchTerm, array &$appliedFilters): void
+    /**
+     * @param  Builder<Project>  $query
+     * @param  array<int, string>  $appliedFilters
+     */
+    protected function applySearchFilter(Builder $query, string $searchTerm, array &$appliedFilters): void
     {
-        $query->where('name', 'like', "%$searchTerm%")
-            ->orWhereHas('user', function ($query) use ($searchTerm): void {
-                $query->where('name', 'like', "%$searchTerm%")
-                    ->orWhere('username', 'like', "%$searchTerm%");
-            });
+        $escaped = str_replace(['%', '_'], ['\%', '\_'], $searchTerm);
+
+        $query->where(function (Builder $q) use ($escaped): void {
+            $q->where('name', 'like', "%{$escaped}%")
+                ->orWhereHas('user', function (Builder $subQuery) use ($escaped): void {
+                    $subQuery->where('name', 'like', "%{$escaped}%")
+                        ->orWhere('username', 'like', "%{$escaped}%");
+                });
+        });
 
         $appliedFilters[] = 'Search in all';
     }
 
-    protected function applyDateRangeFilter($query, string $from, string $to, array &$appliedFilters): void
+    /**
+     * @param  Builder<Project>  $query
+     * @param  array<int, string>  $appliedFilters
+     */
+    protected function applyDateRangeFilter(Builder $query, string $from, string $to, array &$appliedFilters): void
     {
         $query->whereBetween('created_at', [$from, $to]);
 
@@ -106,16 +128,24 @@ class ProjectFiltersRepository
         $appliedFilters[] = 'Filter from '.$fromDate->format('Y-m-d').' to '.$toDate->format('Y-m-d');
     }
 
-    protected function applyStatusFilter($query, $status, &$appliedFilters)
+    /**
+     * @param  Builder<Project>  $query
+     * @param  array<int, string>  $appliedFilters
+     */
+    protected function applyStatusFilter(Builder $query, string $status, array &$appliedFilters): void
     {
-        return $query->filter(function ($project) use ($status, &$appliedFilters): bool {
-            if ($project->status === $status) {
-                $appliedFilters[] = "Filter by status $status";
+        $normalizedStatus = mb_strtolower($status);
 
-                return true;
-            }
+        match ($normalizedStatus) {
+            ProjectHealthStatus::HOT->value => $query->where('health_score', '>=', 75),
+            ProjectHealthStatus::WARM->value => $query->whereBetween('health_score', [45, 74.999999]),
+            ProjectHealthStatus::COLD->value => $query->where(function (Builder $subQuery): void {
+                $subQuery->whereNull('health_score')
+                    ->orWhere('health_score', '<', 45);
+            }),
+            default => null,
+        };
 
-            return false;
-        });
+        $appliedFilters[] = "Filter by status {$normalizedStatus}";
     }
 }

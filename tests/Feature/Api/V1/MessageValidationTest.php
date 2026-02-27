@@ -23,7 +23,7 @@ class MessageValidationTest extends TestCase
         $this->projectSetUp();
 
         // Ensure the user is admin for message-related validation tests
-        $this->user->markAsAdmin();
+        $this->user->forceFill(['is_admin' => true])->save();
     }
 
     /** @test */

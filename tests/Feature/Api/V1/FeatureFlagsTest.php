@@ -23,7 +23,7 @@ class FeatureFlagsTest extends TestCase
     #[Test]
     public function admin_user_can_access_project_messaging_routes(): void
     {
-        $this->user->markAsAdmin();
+        $this->user->forceFill(['is_admin' => true])->save();
 
         $this->getJson($this->project->path().'/messages/scheduled')
             ->assertNoContent();
@@ -39,7 +39,7 @@ class FeatureFlagsTest extends TestCase
     #[Test]
     public function admin_user_can_access_project_export(): void
     {
-        $this->user->markAsAdmin();
+        $this->user->forceFill(['is_admin' => true])->save();
 
         $this->getJson($this->project->path().'/export')
             ->assertOk();
@@ -58,7 +58,7 @@ class FeatureFlagsTest extends TestCase
     #[Test]
     public function me_response_includes_feature_flags_for_admin_user(): void
     {
-        $this->user->markAsAdmin();
+        $this->user->forceFill(['is_admin' => true])->save();
 
         $this->getJson('/api/v1/me')
             ->assertOk()

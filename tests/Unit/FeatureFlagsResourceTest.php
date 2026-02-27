@@ -46,8 +46,7 @@ class FeatureFlagsResourceTest extends TestCase
     #[Test]
     public function it_returns_full_map_for_admin_users(): void
     {
-        $user = User::factory()->create();
-        $user->markAsAdmin();
+        $user = User::factory()->admin()->create();
 
         Feature::for($user)->activate(FeatureFlag::ProjectExport->pennantName());
         Feature::for($user)->deactivate(FeatureFlag::ProjectMessaging->pennantName());

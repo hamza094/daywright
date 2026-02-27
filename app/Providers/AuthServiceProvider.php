@@ -9,7 +9,6 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password;
 
@@ -43,8 +42,6 @@ class AuthServiceProvider extends ServiceProvider
                 ->numbers()
                 ->symbols()
         );
-
-        Gate::before(fn ($user, $ability): ?true => $user->isAdmin() ? true : null);
 
         VerifyEmail::toMailUsing(fn (object $notifiable, string $url) => (new MailMessage)
             ->subject('Verify Email Address')

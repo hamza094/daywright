@@ -24,7 +24,7 @@ class MessageTest extends TestCase
         $this->projectSetUp();
 
         // Mark the test user as admin for all tests in this class
-        $this->user->markAsAdmin();
+        $this->user->forceFill(['is_admin' => true])->save();
     }
 
     /** @test */

@@ -279,7 +279,18 @@
               <div class="card-activity">Activities</div>
             </div>
             <div class="card-body card-body-scrollable card-body-scrollable-shadow">
-              <div class="divide-y">
+              <div v-if="isLoadingActivities" class="text-center py-4">
+                <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                <p class="text-secondary mt-2 mb-0">Loading activities...</p>
+              </div>
+              <div v-else-if="activitiesError" class="text-center py-4">
+                <p class="text-danger mb-2">{{ activitiesError }}</p>
+                <button class="btn btn-sm btn-outline-primary" @click="loadActivities()">Retry</button>
+              </div>
+              <div v-else-if="activities.length === 0" class="text-center py-4">
+                <p class="text-secondary mb-0">No recent activities.</p>
+              </div>
+              <div v-else class="divide-y">
                 <div
                   v-for="activity in activities"
                   :key="activity.id || (activity.user && activity.user.id) || activity.time">
@@ -324,7 +335,15 @@
           <h3 class="card-title">Invoices</h3>
         </div>
         <div class="table-responsive">
-          <table class="table card-table table-vcenter text-nowrap datatable">
+          <div v-if="isLoadingSubscriptions" class="text-center py-4">
+            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+            <p class="text-secondary mt-2 mb-0">Loading subscriptions...</p>
+          </div>
+          <div v-else-if="subscriptionsError" class="text-center py-4">
+            <p class="text-danger mb-2">{{ subscriptionsError }}</p>
+            <button class="btn btn-sm btn-outline-primary" @click="subscriptionList()">Retry</button>
+          </div>
+          <table v-else class="table card-table table-vcenter text-nowrap datatable">
             <thead>
               <tr>
                 <th>User Id</th>
@@ -382,6 +401,10 @@ export default {
     return {
       activities: [],
       subscriptions: [],
+      isLoadingActivities: false,
+      isLoadingSubscriptions: false,
+      activitiesError: '',
+      subscriptionsError: '',
       auth: this.$store.state.currentUser.user,
     };
   },
@@ -407,23 +430,37 @@ export default {
         });
     },
     subscriptionList() {
+      this.isLoadingSubscriptions = true;
+      this.subscriptionsError = '';
+
       axios
         .get('/admin/subscriptions/list')
         .then((response) => {
           this.subscriptions = response.data.data;
         })
         .catch((error) => {
+          this.subscriptionsError = 'Failed to load subscriptions.';
           this.handleErrorResponse(error);
+        })
+        .finally(() => {
+          this.isLoadingSubscriptions = false;
         });
     },
     loadActivities() {
+      this.isLoadingActivities = true;
+      this.activitiesError = '';
+
       axios
         .get('/admin/dashboard/activities')
         .then((response) => {
           this.activities = response.data;
         })
         .catch((error) => {
+          this.activitiesError = 'Failed to load activities.';
           this.handleErrorResponse(error);
+        })
+        .finally(() => {
+          this.isLoadingActivities = false;
         });
     },
     /*listenForActivities() {

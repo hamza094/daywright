@@ -1,0 +1,182 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Api\V1\Admin;
+
+use App\Models\Project;
+use App\Models\User;
+use App\Services\Api\V1\Admin\DashboardService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
+use Mockery\MockInterface;
+use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
+use Tests\TestCase;
+
+class DashboardTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private const ACTIVITIES_ROUTE = '/api/v1/admin/dashboard/activities';
+
+    private const DATA_ROUTE = '/api/v1/admin/data';
+
+    private const BACKUP_ROUTE = '/api/v1/admin/backup/database';
+
+    private User $admin;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->admin = User::factory()->admin()->create();
+        $this->enableTwoFactorForUser($this->admin);
+
+        Sanctum::actingAs($this->admin);
+    }
+
+    // Authorization
+
+    #[Test]
+    public function non_admin_cannot_access_dashboard_activities(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->getJson(self::ACTIVITIES_ROUTE)
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function non_admin_cannot_access_dashboard_data(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->getJson(self::DATA_ROUTE)
+            ->assertForbidden();
+    }
+
+    // Activities
+
+    #[Test]
+    public function admin_can_view_recent_activities(): void
+    {
+        // Create a project which auto-records activity via RecordActivity trait
+        Project::factory()->create();
+
+        $response = $this->getJson(self::ACTIVITIES_ROUTE)
+            ->assertOk();
+
+        $this->assertNotEmpty($response->json());
+    }
+
+    #[Test]
+    public function activities_are_limited_to_fifteen(): void
+    {
+        // Create more than 15 projects to generate 15+ activities
+        Project::factory()->count(20)->create();
+
+        $response = $this->getJson(self::ACTIVITIES_ROUTE)
+            ->assertOk();
+
+        $data = $response->json();
+        $this->assertLessThanOrEqual(15, count($data));
+    }
+
+    #[Test]
+    public function activities_return_empty_when_none_exist(): void
+    {
+        $response = $this->getJson(self::ACTIVITIES_ROUTE)
+            ->assertOk();
+
+        $data = $response->json();
+        $this->assertEmpty($data);
+    }
+
+    // Dashboard Data (mocked — repository uses MySQL-specific DATE_FORMAT)
+
+    #[Test]
+    public function admin_can_view_dashboard_data_with_monthly_breakdown(): void
+    {
+        $this->mock(DashboardService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('fetchDataForMonths')
+                ->once()
+                ->andReturn([
+                    [
+                        'month' => now()->subMonth()->format('Y-m'),
+                        'projects_count' => 3,
+                        'active_projects' => 2,
+                        'trashed_projects' => 1,
+                        'tasks_count' => 10,
+                        'active_tasks' => 7,
+                        'trashed_tasks' => 3,
+                    ],
+                    [
+                        'month' => now()->format('Y-m'),
+                        'projects_count' => 1,
+                        'active_projects' => 1,
+                        'trashed_projects' => 0,
+                        'tasks_count' => 4,
+                        'active_tasks' => 4,
+                        'trashed_tasks' => 0,
+                    ],
+                ]);
+        });
+
+        $response = $this->getJson(self::DATA_ROUTE)
+            ->assertOk();
+
+        $data = $response->json();
+        $this->assertCount(2, $data);
+
+        $firstMonth = $data[0];
+        $this->assertArrayHasKey('month', $firstMonth);
+        $this->assertArrayHasKey('projects_count', $firstMonth);
+        $this->assertArrayHasKey('active_projects', $firstMonth);
+        $this->assertArrayHasKey('trashed_projects', $firstMonth);
+        $this->assertArrayHasKey('tasks_count', $firstMonth);
+        $this->assertArrayHasKey('active_tasks', $firstMonth);
+        $this->assertArrayHasKey('trashed_tasks', $firstMonth);
+    }
+
+    // Backup
+
+    #[Test]
+    public function non_admin_cannot_trigger_backup(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->getJson(self::BACKUP_ROUTE)
+            ->assertForbidden();
+    }
+
+    // Error Handling
+
+    #[Test]
+    public function dashboard_data_returns_500_json_on_service_failure(): void
+    {
+        $this->mock(DashboardService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('fetchDataForMonths')
+                ->once()
+                ->andThrow(new RuntimeException('Database connection lost'));
+        });
+
+        $this->getJson(self::DATA_ROUTE)
+            ->assertStatus(500)
+            ->assertJsonPath('message', 'Failed to load dashboard data.');
+    }
+
+    private function enableTwoFactorForUser(User $user): void
+    {
+        $twoFactor = $user->createTwoFactorAuth();
+
+        $twoFactor->forceFill([
+            'label' => "DayWright:{$user->email}",
+        ])->save();
+
+        $user->enableTwoFactorAuth();
+    }
+}

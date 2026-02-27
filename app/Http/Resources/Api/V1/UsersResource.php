@@ -55,6 +55,11 @@ class UsersResource extends JsonResource
             'isAdmin' => $this->isAdmin(),
 
             /**
+             * Indicates whether two-factor authentication is enabled.
+             */
+            'twoFactorEnabled' => $this->hasTwoFactorEnabled(),
+
+            /**
              * User's avatar URL (if exists).
              *
              * @example https://eu.ui-avatars.com/api/?name=Berry

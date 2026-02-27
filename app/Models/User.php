@@ -7,10 +7,12 @@ namespace App\Models;
 use App\Enums\OAuthProvider;
 use App\Jobs\QueuedPasswordResetJob;
 use App\Jobs\QueuedVerifyEmailJob;
+use App\Traits\HasAdminAccess;
 use App\Traits\HasSubscription;
 use DateTimeImmutable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -25,9 +27,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenticatable
 {
-    use Billable, HasApiTokens, HasFactory, HasSubscription, Notifiable, SoftDeletes, TwoFactorAuthentication;
-
-    public const ADMIN_EMAIL = 'morar.devon@example.com';
+    use Billable, HasAdminAccess, HasApiTokens, HasFactory, HasSubscription, Notifiable, SoftDeletes, TwoFactorAuthentication;
 
     protected $guarded = [];
 
@@ -52,7 +52,10 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
      * @var array<string, string>
      */
     protected $casts = [
+        'admin_granted_at' => 'datetime',
+        'admin_revoked_at' => 'datetime',
         'email_verified_at' => 'datetime',
+        'is_admin' => 'boolean',
         'oauth_provider' => OAuthProvider::class,
         'oauth_token' => 'encrypted',
         'oauth_refresh_token' => 'encrypted',
@@ -119,15 +122,60 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     }
 
     /**
+     * Get the user who granted admin access.
+     *
+     * @return BelongsTo<User, User>
+     */
+    public function adminGrantedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'admin_granted_by');
+    }
+
+    /**
+     * Get the user who revoked admin access.
+     *
+     * @return BelongsTo<User, User>
+     */
+    public function adminRevokedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'admin_revoked_by');
+    }
+
+    /**
      * Get projects which user is member of.
      *
      * @return BelongsToMany<Project>
      */
-    public function members(bool $active = false): BelongsToMany
+    public function members(?bool $active = null): BelongsToMany
     {
-        return $this->belongsToMany(Project::class, 'project_members')
-            ->wherePivot('active', $active)
+        $relation = $this->belongsToMany(Project::class, 'project_members')
             ->withTimestamps();
+
+        if ($active !== null) {
+            $relation->wherePivot('active', $active);
+        }
+
+        return $relation;
+    }
+
+    /**
+     * Get projects where the user is an active member.
+     *
+     * @return BelongsToMany<Project>
+     */
+    public function activeMembers(): BelongsToMany
+    {
+        return $this->members(true);
+    }
+
+    /**
+     * Get projects where the user is an inactive member.
+     *
+     * @return BelongsToMany<Project>
+     */
+    public function inactiveMembers(): BelongsToMany
+    {
+        return $this->members(false);
     }
 
     public function getAvatarAttribute(): string|bool
@@ -163,21 +211,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     public function assigned(): BelongsToMany
     {
         return $this->belongsToMany(Task::class);
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this->email === self::ADMIN_EMAIL;
-
-    }
-
-    /**
-     * Mark this user as the admin used by tests and feature checks.
-     */
-    public function markAsAdmin(): void
-    {
-        $this->email = self::ADMIN_EMAIL;
-        $this->save();
     }
 
     public function updateZoomOAuthDetails(

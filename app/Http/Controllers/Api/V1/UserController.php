@@ -23,7 +23,9 @@ class UserController extends ApiController
      */
     public function index(): JsonResponse
     {
-        $users = User::all();
+        $users = User::query()
+            ->with('twoFactorAuth')
+            ->get();
 
         return response()->json([
             'users' => UsersResource::collection($users),
@@ -36,6 +38,7 @@ class UserController extends ApiController
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
+        $user?->loadMissing('twoFactorAuth');
 
         return response()->json([
             'message' => 'Authenticated user data',

@@ -39,6 +39,18 @@ const auth = (to, from, next) => {
   return next('/login');
 };
 
+const admin = (to, from, next) => {
+  if (!store.state.currentUser.loggedIn) {
+    return next('/login');
+  }
+
+  if (store.state.currentUser.user?.isAdmin) {
+    return next();
+  }
+
+  return next('/dashboard');
+};
+
 // 2FA guard: only allow if twofa_pending is set and not logged in
 const twofaGuard = (to, from, next) => {
   const twofaPending = localStorage.getItem('twofa_pending');
@@ -90,25 +102,25 @@ let router = new Router({
       path: '/admin/panel',
       component: AdminPanel,
       name: 'AdminPanel',
-      beforeEnter: auth,
+      beforeEnter: admin,
     },
     {
       path: '/admin/projects',
       component: ProjectPanel,
       name: 'ProjectPanel',
-      beforeEnter: auth,
+      beforeEnter: admin,
     },
     {
       path: '/admin/tasks',
       component: TaskPanel,
       name: 'TaskPanel',
-      beforeEnter: auth,
+      beforeEnter: admin,
     },
     {
       path: '/admin/users',
       component: UserPanel,
       name: 'UserPanel',
-      beforeEnter: auth,
+      beforeEnter: admin,
     },
     {
       path: '/register',
