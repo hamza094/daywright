@@ -8,7 +8,7 @@ use App\Models\TaskStatus;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 
-class MaxStatusCount implements ValidationRule
+final class MaxStatusCount implements ValidationRule
 {
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {

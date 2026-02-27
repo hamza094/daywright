@@ -23,47 +23,39 @@ class AdminAccessService
     public function revokeAdminAccess(User $user, ?User $revokedBy = null): void
     {
         DB::transaction(function () use ($user, $revokedBy): void {
-            $lockedUser = $this->lockAndEnsureUserIsAdmin($user);
-
-            $this->ensureNotLastAdmin($lockedUser);
+            $lockedUser = $this->lockAdminUsersAndEnsureRevokeable($user);
 
             $this->clearGrantAccess($lockedUser, $revokedBy);
 
             $this->deletePersonalAccessTokens($lockedUser);
 
             $this->rotateRememberTokenForUser($lockedUser);
-        });
+        }, 3);
     }
 
-    private function ensureNotLastAdmin(User $user): void
+    private function lockAdminUsersAndEnsureRevokeable(User $user): User
     {
-        $hasAnotherAdmin = User::query()
+        $lockedAdmins = User::query()
             ->where('is_admin', true)
-            ->where('id', '!=', $user->id)
+            ->orderBy('id')
             ->lockForUpdate()
-            ->exists();
+            ->get(['id']);
 
-        if (! $hasAnotherAdmin) {
-            throw ValidationException::withMessages([
-                'user' => 'Cannot revoke the last admin account.',
-            ]);
-        }
-    }
-
-    private function lockAndEnsureUserIsAdmin(User $user): User
-    {
-        $lockedUser = User::query()
-            ->whereKey($user->id)
-            ->lockForUpdate()
-            ->first();
-
-        if (! $lockedUser instanceof User || ! $lockedUser->isAdmin()) {
+        if (! $lockedAdmins->contains('id', $user->id)) {
             throw ValidationException::withMessages([
                 'user' => 'Selected user does not have admin access.',
             ]);
         }
 
-        return $lockedUser;
+        if ($lockedAdmins->count() <= 1) {
+            throw ValidationException::withMessages([
+                'user' => 'Cannot revoke the last admin account.',
+            ]);
+        }
+
+        return User::query()
+            ->whereKey($user->id)
+            ->firstOrFail();
     }
 
     private function ensureUserNotAdmin(User $user): void
