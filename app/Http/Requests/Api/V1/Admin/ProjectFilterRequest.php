@@ -24,7 +24,7 @@ class ProjectFilterRequest extends FormRequest
     {
         return [
             'sort' => ['sometimes', 'required', 'in:asc,desc'],
-            'search' => ['sometimes'],
+            'search' => ['sometimes', 'string', 'max:255'],
             'filter' => ['sometimes', 'in:active,trashed'],
             'members' => ['sometimes', 'required'],
             'status' => ['sometimes', 'required', 'in:'.implode(',', array_column(ProjectHealthStatus::cases(), 'value'))],

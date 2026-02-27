@@ -1,44 +1,21 @@
-Your task is to resolve these issues in admin panel releated section one by one fix it review than move to next one add or update test if its critical
-if backend changes reflect on frontend then also make sure the frontend align with backend
+fix these issues releted to admin section one by one add or update any releated tests if its needed after make updates check its refrences correctly in frontend and backend
 
-1 - `UsersResource` has an N+1 query\*\*
+1- `ProjectFiltersRepository::applyStatusFilter` may still have issues\*\*
 
-In UsersResource.php:
+The recent fix changed `->filter()` to `->where()`, but the callback signature and logic need verification against the actual `status` column values and query builder state.
 
-```php
-'projects_member' => $this->members(true)->count(),
-```
+2 - `DashboardController` has no error handling\*\*
 
-This fires a new query for every user in the paginated result. Eager load the relationship count in `UserController::index()` instead.
+If `DashboardRepository` queries fail, the controller returns a raw 500. Wrap in try/catch or add a global admin exception handler.
 
-2 - `StageController::update` skips uniqueness
+3 - `TaskRepository` — verify pagination and search\*\*
 
-`store()` correctly uses `StageRequest` (which enforces uniqueness), but `update()` uses inline `$request->validate(['name' => 'required|string|max:255'])` — no uniqueness rule on the updated name, so two stages can end up with the same name.
+Similar to the `ProjectFiltersRepository` fix, ensure `TaskRepository` returns paginated results (not `->get()`) and search input is sanitized.
 
-3 - `maxStatusCount` blocks status updates
+4 - Frontend admin components have no loading/error states for some views\*\*
 
-`TaskStatusRequest` applies the `maxStatusCount` rule on both `POST` and `PUT/PATCH` requests. If you're at the count limit, updating an existing status's color/label will be incorrectly blocked.
+`Projects.vue`, `Tasks.vue`, `Dashboard.vue` — verify they handle API errors gracefully (show toast or fallback UI, not a blank screen).
 
-4 - `PaddleController` exception handling commented out
+5 - Add `FormRequest` for `ProjectController` bulk operations input validation (currently uses `ProjectBulkDeleteRequest` but verify search/filter params).
 
-The try/catch block is commented out:
-
-```php
-// try {
-$data = $paddle->SubscriptionUsersList(...);
-// } catch ...
-```
-
-A Paddle API failure will throw an unhandled exception, leaking a stack trace to the caller.
-
-5 - `ProjectFiltersRepository` uses `get()` but controller paginates
-
-In ProjectFiltersRepository.php the query ends with `->get()`, returning an `Illuminate\Support\Collection`. The controller then calls `ProjectResource::collection($projects)->paginate($perPage)` — calling `paginate()` on a `ResourceCollection` wrapping a plain Collection is not a real Laravel method and will silently return wrong data or throw at runtime, especially on large datasets.
-
-6 - Tasks search `v-model` missing — search broken
-
-In Tasks.vue, the search `<input>` uses `@keydown="searchTasks()"` but no `v-model`. The `searchTerm` data property is never populated from the input, so the search filter is effectively broken.
-
-7 - `maxStatusCount` class name violates PSR
-
-The Rule class `maxStatusCount` starts with a lowercase letter, which violates PSR-4 autoloading conventions and the project's own naming guidelines. It should be `MaxStatusCount`.
+6 - Add `index` return type to `UserController::index()` (`AnonymousResourceCollection`).

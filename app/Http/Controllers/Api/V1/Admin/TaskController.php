@@ -6,18 +6,20 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\TaskBulkDeleteRequest;
+use App\Http\Requests\Api\V1\Admin\TaskFilterRequest;
 use App\Http\Resources\Api\V1\Admin\TaskResource;
 use App\Models\Task;
 use App\Repository\Admin\TaskRepository;
 use F9Web\ApiResponseHelpers;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class TaskController extends Controller
 {
     use ApiResponseHelpers;
 
-    public function index(TaskRepository $taskRepository, Request $request)
+    public function index(TaskRepository $taskRepository, TaskFilterRequest $request): AnonymousResourceCollection|JsonResponse
     {
         $perPage = 50;
 
@@ -32,7 +34,7 @@ class TaskController extends Controller
         return TaskResource::collection($tasks);
     }
 
-    public function bulkDelete(TaskBulkDeleteRequest $request)
+    public function bulkDelete(TaskBulkDeleteRequest $request): JsonResponse
     {
         $taskIds = $request->validated('task_ids');
 

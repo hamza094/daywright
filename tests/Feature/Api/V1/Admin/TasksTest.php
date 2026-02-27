@@ -133,6 +133,18 @@ class TasksTest extends TestCase
         $this->assertCount(50, $tasks);
     }
 
+    #[Test]
+    public function validates_filter_and_search_params(): void
+    {
+        $this->getJson(self::TASKS_ROUTE.'?filter=invalid')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter');
+
+        $this->getJson(self::TASKS_ROUTE.'?search='.str_repeat('a', 256))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('search');
+    }
+
     // Bulk Delete
 
     #[Test]

@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
@@ -150,6 +151,22 @@ class DashboardTest extends TestCase
 
         $this->getJson(self::BACKUP_ROUTE)
             ->assertForbidden();
+    }
+
+    // Error Handling
+
+    #[Test]
+    public function dashboard_data_returns_500_json_on_service_failure(): void
+    {
+        $this->mock(DashboardService::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('fetchDataForMonths')
+                ->once()
+                ->andThrow(new RuntimeException('Database connection lost'));
+        });
+
+        $this->getJson(self::DATA_ROUTE)
+            ->assertStatus(500)
+            ->assertJsonPath('message', 'Failed to load dashboard data.');
     }
 
     private function enableTwoFactorForUser(User $user): void

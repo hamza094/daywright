@@ -38,7 +38,17 @@
             </div>
 
             <div class="table-responsive" style="max-height: 600px; overflow-y: auto">
-              <div v-if="message" class="mt-3 text-center">
+              <div v-if="isLoading" class="mt-3 text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-secondary mt-2">Loading tasks...</p>
+              </div>
+              <div v-else-if="errorMessage" class="mt-3 text-center py-4">
+                <h4 class="text-danger">{{ errorMessage }}</h4>
+                <button class="btn btn-sm btn-outline-primary mt-2" @click="getResults()">Retry</button>
+              </div>
+              <div v-else-if="message" class="mt-3 text-center">
                 <h4>{{ message }}</h4>
               </div>
               <table v-else class="table card-table table-vcenter text-nowrap datatable">
@@ -140,6 +150,8 @@ export default {
       selectedTasks: [],
       selectAll: false,
       message: '',
+      isLoading: false,
+      errorMessage: '',
       appliedFilter: '',
       filter: '',
       searchTerm: '',
@@ -181,6 +193,9 @@ export default {
         this.filter = 'active';
       }
 
+      this.isLoading = true;
+      this.errorMessage = '';
+
       axios
         .get('/admin/tasks', {
           params: queryParameters,
@@ -193,7 +208,11 @@ export default {
           this.message = response.data.data ? '' : response.data.message;
         })
         .catch((error) => {
+          this.errorMessage = 'Failed to load tasks. Please try again.';
           this.handleErrorResponse(error);
+        })
+        .finally(() => {
+          this.isLoading = false;
         });
     },
     searchTasks: debounce(function () {

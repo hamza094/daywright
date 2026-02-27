@@ -122,6 +122,14 @@ class ProjectsTest extends TestCase
     }
 
     #[Test]
+    public function validates_search_max_length(): void
+    {
+        $this->getJson(self::PROJECTS_ROUTE.'?search='.str_repeat('a', 256))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('search');
+    }
+
+    #[Test]
     public function validates_invalid_status_filter(): void
     {
         $this->getJson(self::PROJECTS_ROUTE.'?status=invalid')
@@ -141,6 +149,32 @@ class ProjectsTest extends TestCase
 
         $appliedFilters = $response->json('appliedFilters');
         $this->assertNotEmpty($appliedFilters);
+    }
+
+    #[Test]
+    public function search_filter_does_not_leak_across_other_filters(): void
+    {
+        $matchingUser = User::factory()->create(['name' => 'SearchableUser']);
+        $activeProject = Project::factory()->create([
+            'name' => 'Unrelated',
+            'user_id' => $matchingUser->id,
+        ]);
+
+        $trashedProject = Project::factory()->create([
+            'name' => 'TrashedSearchable',
+            'user_id' => $matchingUser->id,
+        ]);
+        $trashedProject->delete();
+
+        // Search by user name + active filter: should NOT return the trashed project
+        $response = $this->getJson(self::PROJECTS_ROUTE.'?search=SearchableUser&filter=active')
+            ->assertOk();
+
+        $projects = $response->json('projects');
+
+        $projectIds = collect($projects)->pluck('id')->toArray();
+        $this->assertContains($activeProject->id, $projectIds);
+        $this->assertNotContains($trashedProject->id, $projectIds);
     }
 
     #[Test]
