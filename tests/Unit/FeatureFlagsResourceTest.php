@@ -56,7 +56,7 @@ class FeatureFlagsResourceTest extends TestCase
         $result = $resource->toArray(request());
 
         $expectedKeys = array_map(
-            fn (FeatureFlag $flag) => $flag->key(),
+            fn (FeatureFlag $flag): string => $flag->key(),
             FeatureFlag::cases()
         );
 

@@ -25,8 +25,7 @@ class ProjectsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        $this->admin = User::factory()->admin()->create();
+        $this->admin = $this->createAdminUser();
         $this->enableTwoFactorForUser($this->admin);
 
         Sanctum::actingAs($this->admin);
@@ -37,7 +36,7 @@ class ProjectsTest extends TestCase
     #[Test]
     public function non_admin_cannot_access_projects_index(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         Sanctum::actingAs($user);
 
         $this->getJson(self::PROJECTS_ROUTE)
@@ -47,10 +46,11 @@ class ProjectsTest extends TestCase
     #[Test]
     public function non_admin_cannot_bulk_delete_projects(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         Sanctum::actingAs($user);
 
-        $project = Project::factory()->create();
+        /** @var Project $project */
+        $project = $this->createProject();
 
         $this->deleteJson(self::BULK_DELETE_ROUTE, ['project_ids' => [$project->id]])
             ->assertForbidden();
@@ -79,13 +79,14 @@ class ProjectsTest extends TestCase
     #[Test]
     public function can_filter_projects_by_search(): void
     {
-        Project::factory()->create(['name' => 'Alpha Project']);
-        Project::factory()->create(['name' => 'Beta Project']);
+        $this->createProject(['name' => 'Alpha Project']);
+        $this->createProject(['name' => 'Beta Project']);
 
         $response = $this->getJson(self::PROJECTS_ROUTE.'?search=Alpha')
             ->assertOk();
 
         $projects = $response->json('projects');
+        $this->assertIsArray($projects);
         $this->assertCount(1, $projects);
         $this->assertStringContainsString('Alpha', $projects[0]['name']);
     }
@@ -93,8 +94,8 @@ class ProjectsTest extends TestCase
     #[Test]
     public function can_filter_projects_by_active_and_trashed(): void
     {
-        Project::factory()->create();
-        $trashed = Project::factory()->create();
+        $this->createProject();
+        $trashed = $this->createProject();
         $trashed->delete();
 
         // Active filter
@@ -111,13 +112,14 @@ class ProjectsTest extends TestCase
     #[Test]
     public function can_filter_projects_by_health_status(): void
     {
-        Project::factory()->create(['health_score' => 80]);
-        Project::factory()->create(['health_score' => 20]);
+        $this->createProject(['health_score' => 80]);
+        $this->createProject(['health_score' => 20]);
 
         $response = $this->getJson(self::PROJECTS_ROUTE.'?status=hot')
             ->assertOk();
 
         $projects = $response->json('projects');
+        $this->assertIsArray($projects);
         $this->assertCount(1, $projects);
     }
 
@@ -140,9 +142,10 @@ class ProjectsTest extends TestCase
     #[Test]
     public function can_filter_projects_by_stage(): void
     {
+        /** @var Stage $stage */
         $stage = Stage::factory()->create();
-        Project::factory()->create(['stage_id' => $stage->id]);
-        Project::factory()->create();
+        $this->createProject(['stage_id' => $stage->id]);
+        $this->createProject();
 
         $response = $this->getJson(self::PROJECTS_ROUTE."?stage={$stage->id}")
             ->assertOk();
@@ -154,13 +157,15 @@ class ProjectsTest extends TestCase
     #[Test]
     public function search_filter_does_not_leak_across_other_filters(): void
     {
-        $matchingUser = User::factory()->create(['name' => 'SearchableUser']);
-        $activeProject = Project::factory()->create([
+        /** @var User $matchingUser */
+        $matchingUser = $this->createUser(['name' => 'SearchableUser']);
+        /** @var Project $activeProject */
+        $activeProject = $this->createProject([
             'name' => 'Unrelated',
             'user_id' => $matchingUser->id,
         ]);
 
-        $trashedProject = Project::factory()->create([
+        $trashedProject = $this->createProject([
             'name' => 'TrashedSearchable',
             'user_id' => $matchingUser->id,
         ]);
@@ -171,6 +176,7 @@ class ProjectsTest extends TestCase
             ->assertOk();
 
         $projects = $response->json('projects');
+        $this->assertIsArray($projects);
 
         $projectIds = collect($projects)->pluck('id')->toArray();
         $this->assertContains($activeProject->id, $projectIds);
@@ -186,6 +192,7 @@ class ProjectsTest extends TestCase
             ->assertOk();
 
         $projects = $response->json('projects');
+        $this->assertIsArray($projects);
         $this->assertCount(10, $projects);
     }
 
@@ -194,6 +201,7 @@ class ProjectsTest extends TestCase
     #[Test]
     public function admin_can_bulk_delete_projects(): void
     {
+        /** @var \Illuminate\Support\Collection<int, Project> $projects */
         $projects = Project::factory()->count(3)->create();
         $ids = $projects->pluck('id')->toArray();
 
@@ -209,7 +217,8 @@ class ProjectsTest extends TestCase
     #[Test]
     public function bulk_delete_can_delete_trashed_projects(): void
     {
-        $project = Project::factory()->create();
+        /** @var Project $project */
+        $project = $this->createProject();
         $project->delete();
 
         $this->deleteJson(self::BULK_DELETE_ROUTE, ['project_ids' => [$project->id]])
@@ -229,7 +238,8 @@ class ProjectsTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('project_ids.0');
 
-        $project = Project::factory()->create();
+        /** @var Project $project */
+        $project = $this->createProject();
 
         $this->deleteJson(self::BULK_DELETE_ROUTE, [
             'project_ids' => [$project->id, $project->id],
@@ -240,12 +250,41 @@ class ProjectsTest extends TestCase
 
     private function enableTwoFactorForUser(User $user): void
     {
-        $twoFactor = $user->createTwoFactorAuth();
-
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
+        $user->createTwoFactorAuth();
 
         $user->enableTwoFactorAuth();
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createUser(array $attributes = []): User
+    {
+        /** @var User $user */
+        $user = User::factory()->create($attributes);
+
+        return $user;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createAdminUser(array $attributes = []): User
+    {
+        /** @var User $user */
+        $user = User::factory()->admin()->create($attributes);
+
+        return $user;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createProject(array $attributes = []): Project
+    {
+        /** @var Project $project */
+        $project = Project::factory()->create($attributes);
+
+        return $project;
     }
 }

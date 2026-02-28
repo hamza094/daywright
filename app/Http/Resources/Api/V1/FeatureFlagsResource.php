@@ -51,7 +51,7 @@ class FeatureFlagsResource extends JsonResource
         }
 
         return collect(FeatureFlag::cases())
-            ->filter(fn (FeatureFlag $feature) => $feature->visibleToClient() && $map->get($feature->key(), false))
+            ->filter(fn (FeatureFlag $feature): bool => $feature->visibleToClient() && $map->get($feature->key(), false))
             ->mapWithKeys(fn (FeatureFlag $feature) => [$feature->key() => true])
             ->toArray();
     }

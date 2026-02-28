@@ -22,8 +22,9 @@ class ProjectController extends ApiController
     {
         $perPage = 10;
         $appliedFilters = [];
+        $filters = $request->validated();
 
-        $data = $repository->filters($request, $perPage, $appliedFilters);
+        $data = $repository->filters($filters, $perPage, $appliedFilters);
 
         $projects = $data['projects'];
         $appliedFilters = $data['appliedFilters'];

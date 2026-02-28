@@ -59,11 +59,9 @@ class AppServiceProvider extends ServiceProvider
         Feature::define('project-export', fn (User $user): bool => $user->isAdmin());
         Feature::define('project-messaging', fn (User $user): bool => $user->isAdmin());
 
-        EnsureFeaturesAreActive::whenInactive(function (Request $request, array $features): SymfonyResponse {
-            return response()->json([
-                'message' => 'Feature not available.',
-            ], 403);
-        });
+        EnsureFeaturesAreActive::whenInactive(fn (Request $request, array $features): SymfonyResponse => response()->json([
+            'message' => 'Feature not available.',
+        ], 403));
 
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
             $openApi->secure(

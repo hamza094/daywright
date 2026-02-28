@@ -26,7 +26,7 @@ class TasksTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->admin()->create();
+        $this->admin = $this->createAdminUser();
         $this->enableTwoFactorForUser($this->admin);
 
         Sanctum::actingAs($this->admin);
@@ -37,7 +37,7 @@ class TasksTest extends TestCase
     #[Test]
     public function non_admin_cannot_access_tasks_index(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         Sanctum::actingAs($user);
 
         $this->getJson(self::TASKS_ROUTE)
@@ -47,10 +47,11 @@ class TasksTest extends TestCase
     #[Test]
     public function non_admin_cannot_bulk_delete_tasks(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
         Sanctum::actingAs($user);
 
-        $task = Task::factory()->create();
+        /** @var Task $task */
+        $task = $this->createTask();
 
         $this->deleteJson(self::BULK_DELETE_ROUTE, ['task_ids' => [$task->id]])
             ->assertForbidden();
@@ -80,9 +81,10 @@ class TasksTest extends TestCase
     #[Test]
     public function can_search_tasks_by_project_name(): void
     {
-        $project = Project::factory()->create(['name' => 'Unique Searchable Project']);
-        Task::factory()->create(['project_id' => $project->id]);
-        Task::factory()->create(); // different project
+        /** @var Project $project */
+        $project = $this->createProject(['name' => 'Unique Searchable Project']);
+        $this->createTask(['project_id' => $project->id]);
+        $this->createTask(); // different project
 
         $response = $this->getJson(self::TASKS_ROUTE.'?search=Unique Searchable')
             ->assertOk();
@@ -150,6 +152,7 @@ class TasksTest extends TestCase
     #[Test]
     public function admin_can_bulk_delete_tasks(): void
     {
+        /** @var \Illuminate\Support\Collection<int, Task> $tasks */
         $tasks = Task::factory()->count(3)->create();
         $ids = $tasks->pluck('id')->toArray();
 
@@ -165,9 +168,11 @@ class TasksTest extends TestCase
     #[Test]
     public function bulk_delete_detaches_assignees_before_deleting(): void
     {
-        $task = Task::factory()->create();
-        $assignee = User::factory()->create();
-        $task->assignee()->attach($assignee);
+        /** @var Task $task */
+        $task = $this->createTask();
+        /** @var User $assignee */
+        $assignee = $this->createUser();
+        $task->assignee()->attach($assignee->id);
 
         $this->assertDatabaseHas('task_user', [
             'task_id' => $task->id,
@@ -194,7 +199,8 @@ class TasksTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('task_ids.0');
 
-        $task = Task::factory()->create();
+        /** @var Task $task */
+        $task = $this->createTask();
 
         $this->deleteJson(self::BULK_DELETE_ROUTE, [
             'task_ids' => [$task->id, $task->id],
@@ -205,12 +211,52 @@ class TasksTest extends TestCase
 
     private function enableTwoFactorForUser(User $user): void
     {
-        $twoFactor = $user->createTwoFactorAuth();
-
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
+        $user->createTwoFactorAuth();
 
         $user->enableTwoFactorAuth();
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createUser(array $attributes = []): User
+    {
+        /** @var User $user */
+        $user = User::factory()->create($attributes);
+
+        return $user;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createAdminUser(array $attributes = []): User
+    {
+        /** @var User $user */
+        $user = User::factory()->admin()->create($attributes);
+
+        return $user;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createTask(array $attributes = []): Task
+    {
+        /** @var Task $task */
+        $task = Task::factory()->create($attributes);
+
+        return $task;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createProject(array $attributes = []): Project
+    {
+        /** @var Project $project */
+        $project = Project::factory()->create($attributes);
+
+        return $project;
     }
 }

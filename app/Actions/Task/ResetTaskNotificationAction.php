@@ -8,6 +8,12 @@ use App\Models\Task;
 
 final class ResetTaskNotificationAction
 {
+    /**
+     * Apply notification reset rules to the validated payload.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
     public function apply(Task $task, array $validated): array
     {
         if (! $this->shouldResetNotification($task, $validated)) {
@@ -19,12 +25,18 @@ final class ResetTaskNotificationAction
         return $validated;
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     */
     private function shouldResetNotification(Task $task, array $validated): bool
     {
         return $this->dueDateChanged($task, $validated)
             || $this->notifyRuleChanged($task, $validated);
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     */
     private function dueDateChanged(Task $task, array $validated): bool
     {
         if (! isset($validated['due_at'])) {
@@ -36,6 +48,9 @@ final class ResetTaskNotificationAction
         return (string) $validated['due_at'] !== $oldDue;
     }
 
+    /**
+     * @param  array<string, mixed>  $validated
+     */
     private function notifyRuleChanged(Task $task, array $validated): bool
     {
         if (! array_key_exists('notified', $validated)) {

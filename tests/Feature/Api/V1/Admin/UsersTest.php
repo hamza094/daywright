@@ -19,7 +19,7 @@ class UsersTest extends TestCase
     #[Test]
     public function non_admin_user_cannot_access_admin_users_endpoint(): void
     {
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
         Sanctum::actingAs($user);
 
@@ -33,9 +33,9 @@ class UsersTest extends TestCase
     #[Test]
     public function admin_user_without_2fa_cannot_access_admin_mutation_endpoint(): void
     {
-        $user = User::factory()->admin()->create();
+        $user = $this->createAdminUser();
 
-        $target = User::factory()->create();
+        $target = $this->createUser();
 
         Sanctum::actingAs($user);
 
@@ -46,10 +46,10 @@ class UsersTest extends TestCase
     #[Test]
     public function admin_user_with_2fa_can_grant_admin_access(): void
     {
-        $actor = User::factory()->admin()->create();
+        $actor = $this->createAdminUser();
         $this->enableTwoFactorForUser($actor);
 
-        $target = User::factory()->create();
+        $target = $this->createUser();
 
         Sanctum::actingAs($actor);
 
@@ -67,10 +67,10 @@ class UsersTest extends TestCase
     #[Test]
     public function it_validates_user_cannot_be_granted_admin_access_twice(): void
     {
-        $actor = User::factory()->admin()->create();
+        $actor = $this->createAdminUser();
         $this->enableTwoFactorForUser($actor);
 
-        $target = User::factory()->create();
+        $target = $this->createUser();
         (new AdminAccessService)->grantAdminAccess($target, $actor);
 
         Sanctum::actingAs($actor);
@@ -83,10 +83,10 @@ class UsersTest extends TestCase
     #[Test]
     public function admin_user_with_2fa_can_revoke_admin_access(): void
     {
-        $actor = User::factory()->admin()->create();
+        $actor = $this->createAdminUser();
         $this->enableTwoFactorForUser($actor);
 
-        $target = User::factory()->create([
+        $target = $this->createUser([
             'remember_token' => 'known-token-value',
         ]);
         (new AdminAccessService)->grantAdminAccess($target, $actor);
@@ -113,10 +113,10 @@ class UsersTest extends TestCase
     #[Test]
     public function it_validates_non_admin_user_cannot_be_revoked_again(): void
     {
-        $actor = User::factory()->admin()->create();
+        $actor = $this->createAdminUser();
         $this->enableTwoFactorForUser($actor);
 
-        $target = User::factory()->create();
+        $target = $this->createUser();
 
         Sanctum::actingAs($actor);
 
@@ -128,7 +128,7 @@ class UsersTest extends TestCase
     #[Test]
     public function cannot_revoke_last_admin_account(): void
     {
-        $actor = User::factory()->admin()->create();
+        $actor = $this->createAdminUser();
         $this->enableTwoFactorForUser($actor);
 
         Sanctum::actingAs($actor);
@@ -141,36 +141,42 @@ class UsersTest extends TestCase
     #[Test]
     public function users_index_returns_active_member_projects_count(): void
     {
-        $admin = User::factory()->admin()->create();
+        $admin = $this->createAdminUser();
         $this->enableTwoFactorForUser($admin);
 
-        $target = User::factory()->create();
+        $target = $this->createUser();
 
-        $activeProjectOne = Project::factory()->create();
+        $activeProjectOne = $this->createProject();
         $activeProjectOne->members()->attach($target->id, ['active' => true]);
 
-        $activeProjectTwo = Project::factory()->create();
+        $activeProjectTwo = $this->createProject();
         $activeProjectTwo->members()->attach($target->id, ['active' => true]);
 
-        $inactiveProject = Project::factory()->create();
+        $inactiveProject = $this->createProject();
         $inactiveProject->members()->attach($target->id, ['active' => false]);
 
         Sanctum::actingAs($admin);
 
         $response = $this->getJson('/api/v1/admin/users')->assertOk();
 
-        $targetPayload = collect($response->json('data'))->firstWhere('uuid', $target->uuid);
+        $payload = $response->json('data');
+        $this->assertIsArray($payload);
+
+        /** @var array<int, array<string, mixed>> $payload */
+        $targetPayload = collect($payload)->firstWhere('uuid', $target->uuid);
 
         $this->assertNotNull($targetPayload);
+
+        /** @var array<string, mixed> $targetPayload */
         $this->assertSame(2, $targetPayload['projects_member']);
     }
 
     #[Test]
     public function revoking_admin_access_revokes_tokens_and_rotates_remember_token(): void
     {
-        $actor = User::factory()->admin()->create();
+        $actor = $this->createAdminUser();
 
-        $target = User::factory()->create([
+        $target = $this->createUser([
             'remember_token' => 'known-token-value',
         ]);
 
@@ -196,12 +202,41 @@ class UsersTest extends TestCase
 
     private function enableTwoFactorForUser(User $user): void
     {
-        $twoFactor = $user->createTwoFactorAuth();
-
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
+        $user->createTwoFactorAuth();
 
         $user->enableTwoFactorAuth();
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createUser(array $attributes = []): User
+    {
+        /** @var User $user */
+        $user = User::factory()->create($attributes);
+
+        return $user;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createAdminUser(array $attributes = []): User
+    {
+        /** @var User $user */
+        $user = User::factory()->admin()->create($attributes);
+
+        return $user;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createProject(array $attributes = []): Project
+    {
+        /** @var Project $project */
+        $project = Project::factory()->create($attributes);
+
+        return $project;
     }
 }

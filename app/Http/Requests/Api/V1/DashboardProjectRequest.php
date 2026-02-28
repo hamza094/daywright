@@ -67,10 +67,9 @@ class DashboardProjectRequest extends FormRequest
     }
 
     /**
-     * @param  mixed  $value
      * @return mixed
      */
-    private function normalizeBooleanValue($value)
+    private function normalizeBooleanValue(mixed $value)
     {
         if (! is_string($value)) {
             return $value;

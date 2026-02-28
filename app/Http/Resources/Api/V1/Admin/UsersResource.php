@@ -40,7 +40,7 @@ class UsersResource extends JsonResource
 
     private function formatDateInUserTimezone(?Carbon $date): ?string
     {
-        if ($date === null) {
+        if (! $date instanceof Carbon) {
             return null;
         }
 
