@@ -76,7 +76,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(task, index) in tasks.data" :key="task.id">
+                  <tr v-for="task in tasks.data" :key="task.id">
                     <td>
                       <input
                         class="form-check-input m-0 align-middle"
@@ -156,6 +156,9 @@ export default {
       filter: '',
       searchTerm: '',
     };
+  },
+  mounted() {
+    this.getResults();
   },
   methods: {
     canMutateAdmin() {
@@ -257,9 +260,6 @@ export default {
         this.selectedTasks = [];
       }
     },
-  },
-  mounted() {
-    this.getResults();
   },
 };
 </script>

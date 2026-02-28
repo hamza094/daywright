@@ -186,8 +186,15 @@
                       href=""
                       class="btn btn-outline-success w-100 btn-sm"
                       target="_blank"
+                      :disabled="isBackingUp"
                       @click.prevent="runBackup()">
-                      Run Backup
+                      <span
+                        v-if="isBackingUp"
+                        class="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"></span>
+                      <span v-if="isBackingUp">Running...</span>
+                      <span v-else>Run Backup</span>
                     </button>
                   </div>
                 </div>
@@ -405,6 +412,7 @@ export default {
       isLoadingSubscriptions: false,
       activitiesError: '',
       subscriptionsError: '',
+      isBackingUp: false,
       auth: this.$store.state.currentUser.user,
     };
   },
@@ -422,11 +430,21 @@ export default {
   },
   methods: {
     runBackup() {
+      this.$Progress.start();
+      this.isBackingUp = true;
+
       axios
         .get('/admin/subscriptions/list')
-        .then((response) => {})
+        .then((response) => {
+          this.$Progress.finish();
+          this.$vToastify.success(response?.data?.message || 'Backup completed successfully.');
+        })
         .catch((error) => {
+          this.$Progress.fail();
           this.handleErrorResponse(error);
+        })
+        .finally(() => {
+          this.isBackingUp = false;
         });
     },
     subscriptionList() {

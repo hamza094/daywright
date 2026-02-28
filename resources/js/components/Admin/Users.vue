@@ -109,6 +109,9 @@ export default {
       adminActionUserId: null,
     };
   },
+  mounted() {
+    this.getResults();
+  },
   methods: {
     getCurrentUser() {
       return this.$store.state.currentUser.user || {};
@@ -138,7 +141,7 @@ export default {
       };
 
       const filteredParameters = Object.fromEntries(
-        Object.entries(queryParameters).filter(([_, value]) => value !== undefined && value !== ''),
+        Object.entries(queryParameters).filter(([, value]) => value !== undefined && value !== ''),
       );
 
       try {
@@ -266,9 +269,6 @@ export default {
     searchUsers: debounce(function () {
       this.getResults();
     }, 1000),
-  },
-  mounted() {
-    this.getResults();
   },
 };
 </script>

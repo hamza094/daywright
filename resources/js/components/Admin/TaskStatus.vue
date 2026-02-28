@@ -1,6 +1,6 @@
 <template>
   <div>
-    <button class="btn btn-outline-dark w-100 btn-sm" @click.pervent="modalStatus()">View</button>
+    <button class="btn btn-outline-dark w-100 btn-sm" @click.prevent="modalStatus()">View</button>
 
     <modal name="status-modal" height="auto" :scrollable="true" width="40%" :click-to-close="false">
       <div class="container m-2">
@@ -21,10 +21,10 @@
               </div>
             </div>
             <div class="col-md-2">
-              <button class="btn btn-sm btn-primary" @click.pervent="addStatus">Add Status</button>
+              <button class="btn btn-sm btn-primary" @click.prevent="addStatus">Add Status</button>
             </div>
             <div class="col-md-2">
-              <button class="btn btn-sm btn-secondary" @click.pervent="closeForm">x</button>
+              <button class="btn btn-sm btn-secondary" @click.prevent="closeForm">x</button>
             </div>
           </div>
         </div>
@@ -48,8 +48,8 @@
               <span v-else
                 >{{ status.label }} <span class="status-color" :style="{ backgroundColor: status.color }"></span>
                 <span class="float-right">
-                  <button class="btn btn-link btn-sm" @click.pervent="editStatus(status)">Edit</button>
-                  <button class="btn btn-sm btn-danger" @click.pervent="deleteStatus(status.id)">x</button>
+                  <button class="btn btn-link btn-sm" @click.prevent="editStatus(status)">Edit</button>
+                  <button class="btn btn-sm btn-danger" @click.prevent="deleteStatus(status.id)">x</button>
                 </span>
               </span>
             </a>
@@ -80,6 +80,9 @@ export default {
   },
   computed: {
     ...mapState('status', ['statuses']),
+  },
+  mounted() {
+    this.loadStatuses();
   },
   methods: {
     ...mapActions('status', ['loadStatuses', 'addNewStatus']),
@@ -130,7 +133,7 @@ export default {
       }
 
       try {
-        const response = await this.addNewStatus({
+        await this.addNewStatus({
           label: this.form.label,
           color: this.form.color,
         });
@@ -183,9 +186,6 @@ export default {
           this.handleErrorResponse(error);
         });
     },
-  },
-  mounted() {
-    this.loadStatuses();
   },
 };
 </script>

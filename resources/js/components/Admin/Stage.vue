@@ -1,6 +1,6 @@
 <template>
   <div>
-    <button class="btn btn-outline-primary w-100 btn-sm" @click.pervent="modalStage()">View</button>
+    <button class="btn btn-outline-primary w-100 btn-sm" @click.prevent="modalStage()">View</button>
 
     <modal name="stage-modal" height="auto" :scrollable="true" width="40%" :click-to-close="false">
       <div class="container m-2">
@@ -16,7 +16,6 @@
                   id="colFormLabel"
                   placeholder="Stage Name"
                   v-model="form.name"
-                  @
                   @keypress.enter.prevent="addStage" />
               </div>
             </div>
@@ -33,8 +32,8 @@
               <span v-else
                 >{{ stage.name }}
                 <span class="float-right">
-                  <button class="btn btn-link btn-sm" @click.pervent="editStage(stage)">Edit</button>
-                  <button class="btn btn-sm btn-danger" @click.pervent="deleteStage(stage.id)">x</button>
+                  <button class="btn btn-link btn-sm" @click.prevent="editStage(stage)">Edit</button>
+                  <button class="btn btn-sm btn-danger" @click.prevent="deleteStage(stage.id)">x</button>
                 </span>
               </span>
             </a>
@@ -62,6 +61,9 @@ export default {
   },
   computed: {
     ...mapState('stage', ['stages']),
+  },
+  mounted() {
+    this.loadStages();
   },
   methods: {
     ...mapActions('stage', ['loadStages', 'addNewStage']),
@@ -103,7 +105,7 @@ export default {
       }
 
       try {
-        const response = await this.addNewStage({ name: this.form.name });
+        await this.addNewStage({ name: this.form.name });
         this.form.name = '';
         this.$vToastify.success('Stage added successfully');
       } catch (error) {
@@ -148,9 +150,6 @@ export default {
           this.handleErrorResponse(error);
         });
     },
-  },
-  mounted() {
-    this.loadStages();
   },
 };
 </script>
