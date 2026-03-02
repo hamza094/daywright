@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Api\V1\Admin\DashBoardController;
+use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\Integration\PaddleController;
 use App\Http\Controllers\Api\V1\Admin\ProjectController;
 use App\Http\Controllers\Api\V1\Admin\StageController;
@@ -33,7 +33,7 @@ Route::group(['prefix' => 'admin'], function (): void {
         Route::post('/users/{user}/revoke-admin', [UserController::class, 'revokeAdminAccess'])
             ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
 
-        Route::get('/backup/database', [DashBoardController::class, 'backup']);
+        Route::get('/backup/database', [DashboardController::class, 'backup']);
 
         Route::apiResource('/stages', StageController::class)
             ->middleware(['2fa.enabled', 'throttle:admin-mutations'])
@@ -49,9 +49,9 @@ Route::group(['prefix' => 'admin'], function (): void {
         Route::delete('/tasks/bulk-delete', [TaskController::class, 'bulkDelete'])
             ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
 
-        Route::get('dashboard/activities', [DashBoardController::class, 'activities']);
+        Route::get('dashboard/activities', [DashboardController::class, 'activities']);
 
-        Route::get('data', [DashBoardController::class, 'data']);
+        Route::get('data', [DashboardController::class, 'data']);
 
         Route::get('subscriptions/list', [PaddleController::class, 'subscribedUsers']);
 
