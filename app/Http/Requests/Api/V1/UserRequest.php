@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
+use Override;
 
 class UserRequest extends FormRequest
 {
@@ -84,6 +85,7 @@ class UserRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages()
     {
         return [

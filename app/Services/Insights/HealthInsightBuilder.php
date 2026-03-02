@@ -5,21 +5,23 @@ declare(strict_types=1);
 namespace App\Services\Insights;
 
 use App\Enums\InsightType;
+use Override;
 
 final class HealthInsightBuilder implements InsightBuilderInterface
 {
-    private const EXCELLENT_THRESHOLD = 85;
+    private const int EXCELLENT_THRESHOLD = 85;
 
-    private const GOOD_THRESHOLD = 65;
+    private const int GOOD_THRESHOLD = 65;
 
-    private const WARNING_THRESHOLD = 45;
+    private const int WARNING_THRESHOLD = 45;
 
-    private const CRITICAL_THRESHOLD = 20;
+    private const int CRITICAL_THRESHOLD = 20;
 
     /**
      * @param  array<string,mixed>  $context
      * @return array<string,mixed>
      */
+    #[Override]
     public function build(mixed $input, array $context = []): array
     {
         if ($input === null || ! is_numeric($input)) {

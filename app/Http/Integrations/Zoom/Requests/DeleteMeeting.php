@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Integrations\Zoom\Requests;
 
 use Illuminate\Support\Facades\Cache;
+use Override;
 use ReflectionClass;
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
@@ -29,6 +30,7 @@ class DeleteMeeting extends Request
     /**
      * The endpoint for the request
      */
+    #[Override]
     public function resolveEndpoint(): string
     {
         return '/meetings/'.$this->meetingId;
@@ -37,6 +39,7 @@ class DeleteMeeting extends Request
     /**
      * @return array<int, Limit>
      */
+    #[Override]
     protected function resolveLimits(): array
     {
         return [
@@ -45,6 +48,7 @@ class DeleteMeeting extends Request
         ];
     }
 
+    #[Override]
     protected function resolveRateLimitStore(): RateLimitStore
     {
         return new LaravelCacheStore(Cache::store(config('cache.default')));

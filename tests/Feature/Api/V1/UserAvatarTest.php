@@ -10,16 +10,18 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use Tests\TestCase;
 
 class UserAvatarTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const USER_AVATAR_ROUTE = 'user.avatar';
+    private const string USER_AVATAR_ROUTE = 'user.avatar';
 
-    private const USER_AVATAR_REMOVE_ROUTE = 'user.avatar.remove';
+    private const string USER_AVATAR_REMOVE_ROUTE = 'user.avatar.remove';
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

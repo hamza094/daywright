@@ -6,6 +6,7 @@ namespace App\Http\Integrations\Zoom\Requests;
 
 use App\DataTransferObjects\Zoom\Meeting;
 use Illuminate\Support\Facades\Cache;
+use Override;
 use ReflectionClass;
 use Safe\DateTimeImmutable;
 use Saloon\Contracts\Body\HasBody;
@@ -37,11 +38,13 @@ class CreateMeeting extends Request implements HasBody
     /**
      * The endpoint for the request
      */
+    #[Override]
     public function resolveEndpoint(): string
     {
         return '/users/me/meetings';
     }
 
+    #[Override]
     public function createDtoFromResponse(Response $response): mixed
     {
         return Meeting::fromResponse($response->json());
@@ -66,6 +69,7 @@ class CreateMeeting extends Request implements HasBody
     /**
      * @return array<int, Limit>
      */
+    #[Override]
     protected function resolveLimits(): array
     {
         return [
@@ -74,6 +78,7 @@ class CreateMeeting extends Request implements HasBody
         ];
     }
 
+    #[Override]
     protected function resolveRateLimitStore(): RateLimitStore
     {
         return new LaravelCacheStore(Cache::store(config('cache.default')));

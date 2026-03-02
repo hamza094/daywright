@@ -10,6 +10,7 @@ use App\Services\Api\V1\Admin\DashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
+use Override;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\TestCase;
@@ -18,14 +19,15 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const ACTIVITIES_ROUTE = '/api/v1/admin/dashboard/activities';
+    private const string ACTIVITIES_ROUTE = '/api/v1/admin/dashboard/activities';
 
-    private const DATA_ROUTE = '/api/v1/admin/data';
+    private const string DATA_ROUTE = '/api/v1/admin/data';
 
-    private const BACKUP_ROUTE = '/api/v1/admin/backup/database';
+    private const string BACKUP_ROUTE = '/api/v1/admin/backup/database';
 
     private User $admin;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

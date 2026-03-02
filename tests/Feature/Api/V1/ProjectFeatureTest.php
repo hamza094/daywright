@@ -18,7 +18,7 @@ class ProjectFeatureTest extends TestCase
 {
     use ProjectSetup,RefreshDatabase;
 
-    private const PROJECTS_ROUTE = 'projects.store';
+    private const string PROJECTS_ROUTE = 'projects.store';
 
     /** @test */
     public function auth_user_can_create_project(): void

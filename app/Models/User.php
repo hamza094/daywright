@@ -24,6 +24,7 @@ use Laragear\TwoFactor\Contracts\TwoFactorAuthenticatable;
 use Laragear\TwoFactor\TwoFactorAuthentication;
 use Laravel\Paddle\Billable;
 use Laravel\Sanctum\HasApiTokens;
+use Override;
 
 class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenticatable
 {
@@ -64,17 +65,20 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         'zoom_expires_at' => 'datetime',
     ];
 
+    #[Override]
     public function getRouteKeyName(): string
     {
         return 'uuid';
     }
 
+    #[Override]
     public function sendEmailVerificationNotification(): void
     {
         // dispactches the job to the queue passing it this User object
         QueuedVerifyEmailJob::dispatch($this);
     }
 
+    #[Override]
     public function sendPasswordResetNotification($token): void
     {
         // dispactches the job to the queue passing it this User object
@@ -260,6 +264,7 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
      *
      * @var array
      */
+    #[Override]
     protected static function boot()
     {
         parent::boot();

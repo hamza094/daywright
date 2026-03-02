@@ -5,21 +5,23 @@ declare(strict_types=1);
 namespace App\Services\Insights;
 
 use App\Enums\InsightType;
+use Override;
 
 final class TeamCollaborationInsightBuilder implements InsightBuilderInterface
 {
-    private const EXCELLENT_THRESHOLD = 85;
+    private const int EXCELLENT_THRESHOLD = 85;
 
-    private const GOOD_THRESHOLD = 65;
+    private const int GOOD_THRESHOLD = 65;
 
-    private const WARNING_THRESHOLD = 40;
+    private const int WARNING_THRESHOLD = 40;
 
-    private const LOW_PARTICIPATION_THRESHOLD = 0.3; // 30% participation rate
+    private const float LOW_PARTICIPATION_THRESHOLD = 0.3; // 30% participation rate
 
     /**
      * @param  array<string,mixed>  $context
      * @return array<string,mixed>
      */
+    #[Override]
     public function build(mixed $input, array $context = []): array
     {
         if ($input === null || ! is_numeric($input)) {

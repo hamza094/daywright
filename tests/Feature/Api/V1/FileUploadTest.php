@@ -9,6 +9,7 @@ use App\Services\Api\V1\FileService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
+use Override;
 use Tests\TestCase;
 
 class FileUploadTest extends TestCase
@@ -19,6 +20,7 @@ class FileUploadTest extends TestCase
 
     private string $fileType;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

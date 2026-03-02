@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Override;
 use Throwable;
 
 use function Safe\parse_url;
@@ -24,7 +25,7 @@ class Conversation extends Model
 {
     use HasFactory;
 
-    private const FILE_URL_TTL_MINUTES = 5;
+    private const int FILE_URL_TTL_MINUTES = 5;
 
     protected $guarded = [];
 
@@ -115,6 +116,7 @@ class Conversation extends Model
         }
     }
 
+    #[Override]
     protected static function booted(): void
     {
         static::deleted(function (self $conversation): void {

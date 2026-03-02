@@ -14,6 +14,7 @@ use Exception;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Request;
 use Laravel\Paddle\Exceptions\PaddleException as LaravelPaddleException;
+use Override;
 use Saloon\RateLimitPlugin\Exceptions\RateLimitReachedException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -21,7 +22,7 @@ use Throwable;
 
 class Handler extends ExceptionHandler
 {
-    private const API_PREFIX = 'api/*';
+    private const string API_PREFIX = 'api/*';
 
     /**
      * A list of the exception types that are not reported.
@@ -48,6 +49,7 @@ class Handler extends ExceptionHandler
      *
      * @throws Exception
      */
+    #[Override]
     public function report(Throwable $exception): void
     {
         parent::report($exception);
@@ -56,6 +58,7 @@ class Handler extends ExceptionHandler
     /**
      * Register the exception handling callbacks for the application.
      */
+    #[Override]
     public function register(): void
     {
         $this->reportable(function (Throwable $e): void {});

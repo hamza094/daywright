@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\TwoFactor\TwoFactorStateManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Override;
 use Tests\TestCase;
 
 class TwoFactorStateManagerTest extends TestCase
@@ -16,6 +17,7 @@ class TwoFactorStateManagerTest extends TestCase
 
     private TwoFactorStateManager $manager;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

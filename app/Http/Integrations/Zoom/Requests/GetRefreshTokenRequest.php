@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Integrations\Zoom\Requests;
 
+use Override;
 use Saloon\Contracts\Body\HasBody;
 use Saloon\Enums\Method;
 use Saloon\Helpers\OAuth2\OAuthConfig;
@@ -33,6 +34,7 @@ class GetRefreshTokenRequest extends Request implements HasBody
     /**
      * The endpoint for the request
      */
+    #[Override]
     public function resolveEndpoint(): string
     {
         return $this->oauthConfig->getTokenEndpoint();

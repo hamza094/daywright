@@ -8,6 +8,7 @@ use App\Enums\FeatureFlag;
 use App\Models\User;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Laravel\Pennant\Feature;
+use Override;
 
 class FeatureFlagsResource extends JsonResource
 {
@@ -17,6 +18,7 @@ class FeatureFlagsResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array<string, bool>
      */
+    #[Override]
     public function toArray($request): array
     {
         $user = $this->resource;

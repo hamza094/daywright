@@ -8,6 +8,7 @@ use App\Models\Project;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Override;
 
 class TaskRequest extends FormRequest
 {
@@ -49,6 +50,7 @@ class TaskRequest extends FormRequest
      *
      * @return array
      */
+    #[Override]
     public function messages()
     {
         return [
@@ -58,6 +60,7 @@ class TaskRequest extends FormRequest
         ];
     }
 
+    #[Override]
     protected function prepareForValidation(): void
     {
 

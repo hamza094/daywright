@@ -7,9 +7,11 @@ namespace App\Services\Api\V1\Paddle;
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Interfaces\Paddle;
 use App\Models\User;
+use Override;
 
 final class SubscriptionService implements Paddle
 {
+    #[Override]
     public function subscribe(User $user, string $plan): mixed
     {
         if ($user->subscribedPlan() === $plan) {
@@ -26,6 +28,7 @@ final class SubscriptionService implements Paddle
     /**
      * @return array{message: string}
      */
+    #[Override]
     public function swap(User $user, string $plan): array
     {
         $currentPlan = $user->subscribedPlan();
@@ -44,6 +47,7 @@ final class SubscriptionService implements Paddle
     /**
      * @return array{message: string}
      */
+    #[Override]
     public function cancel(User $user, string $plan): array
     {
         if ($user->subscribedPlan() !== $plan) {

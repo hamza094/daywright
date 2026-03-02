@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
+use Override;
 
 class RegisterUserRequest extends FormRequest
 {
@@ -56,6 +57,7 @@ class RegisterUserRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages()
     {
         return [

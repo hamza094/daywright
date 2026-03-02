@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Override;
 
 class ProjectInsightsRequest extends FormRequest
 {
@@ -46,6 +47,7 @@ class ProjectInsightsRequest extends FormRequest
      *
      * @return array<string,string>
      */
+    #[Override]
     public function messages(): array
     {
         $allowed = implode(', ', self::VALID_SECTIONS);
@@ -57,6 +59,7 @@ class ProjectInsightsRequest extends FormRequest
         ];
     }
 
+    #[Override]
     protected function prepareForValidation(): void
     {
         $rawSections = $this->input('sections');

@@ -7,10 +7,11 @@ namespace App\Http\Resources\Api\V1;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 use JsonSerializable;
+use Override;
 
 class UserActivitiesResource extends JsonResource
 {
-    private const DELETED = '(deleted)';
+    private const string DELETED = '(deleted)';
 
     /**
      * Transform the resource into an array.
@@ -18,6 +19,7 @@ class UserActivitiesResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
      */
+    #[Override]
     public function toArray($request)
     {
         return [

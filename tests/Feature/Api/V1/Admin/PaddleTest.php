@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
+use Override;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\TestCase;
@@ -17,10 +18,11 @@ class PaddleTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const SUBSCRIPTIONS_ROUTE = '/api/v1/admin/subscriptions/list';
+    private const string SUBSCRIPTIONS_ROUTE = '/api/v1/admin/subscriptions/list';
 
     private User $admin;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

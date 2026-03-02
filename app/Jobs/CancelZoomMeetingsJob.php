@@ -20,7 +20,7 @@ class CancelZoomMeetingsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private const LOG_CHANNEL = 'zoom';
+    private const string LOG_CHANNEL = 'zoom';
 
     public int $tries = 3;
 

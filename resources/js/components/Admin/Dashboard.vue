@@ -434,7 +434,7 @@ export default {
       this.isBackingUp = true;
 
       axios
-        .get('/admin/subscriptions/list')
+        .get('/admin/backup/database')
         .then((response) => {
           this.$Progress.finish();
           this.$vToastify.success(response?.data?.message || 'Backup completed successfully.');

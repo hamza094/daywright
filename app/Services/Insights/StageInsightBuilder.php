@@ -6,17 +6,19 @@ namespace App\Services\Insights;
 
 use App\Enums\InsightType;
 use App\Enums\ProjectStage;
+use Override;
 
 final class StageInsightBuilder implements InsightBuilderInterface
 {
-    private const SUCCESS_THRESHOLD = 70;
+    private const int SUCCESS_THRESHOLD = 70;
 
-    private const INFO_THRESHOLD = 40;
+    private const int INFO_THRESHOLD = 40;
 
     /**
      * @param  array<string,mixed>  $context
      * @return array<string,mixed>
      */
+    #[Override]
     public function build(mixed $input, array $context = []): array
     {
         if (! is_array($input) || ! isset($input['percentage'])) {

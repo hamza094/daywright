@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Override;
 
 /**
  * @mixin \Laravel\Sanctum\PersonalAccessToken
  */
 class TokenResource extends JsonResource
 {
-    private const DATETIME_FORMAT = 'Y-m-d H:i:s';
+    private const string DATETIME_FORMAT = 'Y-m-d H:i:s';
 
     /**
      * Transform the resource into an array.
@@ -19,6 +20,7 @@ class TokenResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array<string, mixed>
      */
+    #[Override]
     public function toArray($request): array
     {
         return [

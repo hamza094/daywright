@@ -7,6 +7,7 @@ namespace Tests\Unit\Repository;
 use App\Models\Project;
 use App\Repository\Admin\ProjectFiltersRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -16,6 +17,7 @@ class ProjectFiltersRepositoryTest extends TestCase
 
     private ProjectFiltersRepository $repository;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

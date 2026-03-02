@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Api\V1;
 
 use Illuminate\Pagination\LengthAwarePaginator;
+use Override;
 
 class PaginationService extends LengthAwarePaginator
 {
@@ -13,6 +14,7 @@ class PaginationService extends LengthAwarePaginator
         parent::__construct($items, $total, $perPage, $currentPage, $options);
     }
 
+    #[Override]
     public function toArray(): array
     {
         return [

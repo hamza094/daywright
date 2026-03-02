@@ -10,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use Tests\TestCase;
 use Torann\GeoIP\Facades\GeoIP;
 use Torann\GeoIP\Location;
@@ -18,8 +19,9 @@ class AuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const TEST_PASSWORD = 'Testpassword@3';
+    private const string TEST_PASSWORD = 'Testpassword@3';
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

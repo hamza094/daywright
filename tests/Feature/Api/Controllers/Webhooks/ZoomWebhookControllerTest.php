@@ -13,12 +13,14 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
+use Override;
 use Tests\TestCase;
 
 class ZoomWebhookControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

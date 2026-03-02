@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use Tests\TestCase;
 
 class StageTest extends TestCase
@@ -18,6 +19,7 @@ class StageTest extends TestCase
 
     public $project;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

@@ -7,6 +7,7 @@ namespace App\Http\Requests\Api\V1\Admin;
 use App\Models\Stage;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Override;
 
 class StageRequest extends FormRequest
 {
@@ -43,6 +44,7 @@ class StageRequest extends FormRequest
         return $rules;
     }
 
+    #[Override]
     public function messages()
     {
         return [

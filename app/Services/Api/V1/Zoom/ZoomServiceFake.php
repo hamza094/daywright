@@ -13,6 +13,7 @@ use App\Interfaces\Zoom;
 use App\Models\User;
 use Faker\Generator;
 use Illuminate\Support\Collection;
+use Override;
 use PHPUnit\Framework\Assert;
 
 /**
@@ -39,6 +40,7 @@ final class ZoomServiceFake implements Zoom
         $this->meetingsToCreate = new Collection;
     }
 
+    #[Override]
     public function getAuthRedirectDetails(): AuthorizationRedirectDetails
     {
         return new AuthorizationRedirectDetails(
@@ -48,6 +50,7 @@ final class ZoomServiceFake implements Zoom
         );
     }
 
+    #[Override]
     public function authorize(
         AuthorizationCallbackDetails $callbackDetails
     ): AccessTokenDetails {
@@ -90,6 +93,7 @@ final class ZoomServiceFake implements Zoom
     /**
      * @param  array<string, mixed>  $validated
      */
+    #[Override]
     public function createMeeting(array $validated, User $user): Meeting
     {
         if ($this->failureException instanceof ZoomException) {
@@ -103,6 +107,7 @@ final class ZoomServiceFake implements Zoom
     /**
      * @param  array<string, mixed>  $validated
      */
+    #[Override]
     public function updateMeeting(array $validated, User $user): \Illuminate\Http\JsonResponse
     {
         if ($this->failureException instanceof ZoomException) {
@@ -112,6 +117,7 @@ final class ZoomServiceFake implements Zoom
         return response()->json(204);
     }
 
+    #[Override]
     public function deleteMeeting(int $meetingId, User $user): \Illuminate\Http\JsonResponse
     {
         if ($this->failureException instanceof ZoomException) {
@@ -123,6 +129,7 @@ final class ZoomServiceFake implements Zoom
         return response()->json(null, 204);
     }
 
+    #[Override]
     public function getZakToken(User $user): string
     {
         return 'zak&token';

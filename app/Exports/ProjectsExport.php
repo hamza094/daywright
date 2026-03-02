@@ -10,6 +10,7 @@ use Maatwebsite\Excel\Concerns\Exportable;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
+use Override;
 
 // use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -25,6 +26,7 @@ class ProjectsExport implements FromQuery, WithHeadings, WithMapping
     /**
      * @return Builder<Project>
      */
+    #[Override]
     public function query(): Builder
     {
         return Project::query()->where('slug', $this->project->slug);
@@ -33,6 +35,7 @@ class ProjectsExport implements FromQuery, WithHeadings, WithMapping
     /**
      * @return array<int, string>
      */
+    #[Override]
     public function headings(): array
     {
         return [
@@ -55,6 +58,7 @@ class ProjectsExport implements FromQuery, WithHeadings, WithMapping
      * @param  Project  $row
      * @return array<int, string|int|null>
      */
+    #[Override]
     public function map($row): array
     {
         /** @var Project $project */

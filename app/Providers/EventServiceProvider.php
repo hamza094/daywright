@@ -16,6 +16,7 @@ use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvi
 use Illuminate\Support\Facades\Event;
 use Laravel\Paddle\Events\WebhookHandled;
 use Laravel\Paddle\Events\WebhookReceived;
+use Override;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -54,6 +55,7 @@ class EventServiceProvider extends ServiceProvider
     /**
      * Register any events for your application.
      */
+    #[Override]
     public function boot(): void
     {
         parent::boot();

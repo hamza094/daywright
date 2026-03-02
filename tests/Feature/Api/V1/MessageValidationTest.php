@@ -7,6 +7,7 @@ namespace Tests\Feature\Api\V1;
 use App\Models\User;
 use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Override;
 use Tests\TestCase;
 
 use function Safe\json_encode;
@@ -17,6 +18,7 @@ class MessageValidationTest extends TestCase
         ProjectSetup::setUp as projectSetUp;
     }
 
+    #[Override]
     protected function setUp(): void
     {
         // Run the trait setup (creates user, project, Sanctum acting, etc.)

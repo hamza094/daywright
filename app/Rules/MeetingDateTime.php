@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Rules;
 
 use Illuminate\Contracts\Validation\Rule;
+use Override;
 use Safe\DateTimeImmutable;
 
 class MeetingDateTime implements Rule
@@ -26,6 +27,7 @@ class MeetingDateTime implements Rule
      * @param  mixed  $value
      * @return bool
      */
+    #[Override]
     public function passes($attribute, $value)
     {
         if ($value instanceof DateTimeImmutable) {
@@ -42,6 +44,7 @@ class MeetingDateTime implements Rule
      *
      * @return string
      */
+    #[Override]
     public function message()
     {
         return 'The :attribute date and time and must be in the future.';

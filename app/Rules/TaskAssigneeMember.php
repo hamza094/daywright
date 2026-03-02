@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Rules;
 
 use Illuminate\Contracts\Validation\Rule;
+use Override;
 
 class TaskAssigneeMember implements Rule
 {
@@ -22,6 +23,7 @@ class TaskAssigneeMember implements Rule
      * @param  mixed  $value
      * @return bool
      */
+    #[Override]
     public function passes($attribute, $value)
     {
         return $this->task->assignee()->where('user_id', $value)->exists();
@@ -32,6 +34,7 @@ class TaskAssigneeMember implements Rule
      *
      * @return string
      */
+    #[Override]
     public function message()
     {
         return 'The selected user is not a current member of task.';

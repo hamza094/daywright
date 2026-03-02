@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Override;
 
 class TaskStatus extends Model
 {
@@ -37,6 +38,7 @@ class TaskStatus extends Model
         return $this->belongsTo(User::class);
     }
 
+    #[Override]
     protected static function boot(): void
     {
         parent::boot();

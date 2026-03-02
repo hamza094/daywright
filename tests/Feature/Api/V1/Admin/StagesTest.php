@@ -8,6 +8,7 @@ use App\Models\Stage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -17,6 +18,7 @@ class StagesTest extends TestCase
 
     private User $admin;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

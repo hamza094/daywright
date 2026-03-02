@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Middleware\Zoom;
 
+use Override;
 use Route;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -13,12 +14,13 @@ use function Safe\json_encode;
 
 class VerifyWebhookTest extends TestCase
 {
-    private const WEBHOOK_TEST_PATH = '/_test/webhook';
+    private const string WEBHOOK_TEST_PATH = '/_test/webhook';
 
     public $payload;
 
     public $timestamp;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

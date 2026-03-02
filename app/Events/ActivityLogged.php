@@ -11,6 +11,7 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Override;
 
 class ActivityLogged implements ShouldBroadcast
 {
@@ -26,6 +27,7 @@ class ActivityLogged implements ShouldBroadcast
     /**
      * Get the channels the event should broadcast on.
      */
+    #[Override]
     public function broadcastOn(): Channel
     {
         return new Channel('activities.project.'.$this->projectId);

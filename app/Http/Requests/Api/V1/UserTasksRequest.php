@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
+use Override;
 
 class UserTasksRequest extends FormRequest
 {
@@ -48,6 +49,7 @@ class UserTasksRequest extends FormRequest
     /**
      * Handle a passed validation attempt.
      */
+    #[Override]
     protected function passedValidation(): void
     {
         if (

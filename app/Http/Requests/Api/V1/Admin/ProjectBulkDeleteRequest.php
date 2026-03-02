@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class ProjectBulkDeleteRequest extends FormRequest
 {
@@ -27,6 +28,7 @@ class ProjectBulkDeleteRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages(): array
     {
         return [

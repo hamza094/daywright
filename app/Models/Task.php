@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Override;
 
 class Task extends Model
 {
@@ -35,6 +36,7 @@ class Task extends Model
     /**
      * Create a new Eloquent query builder for the model.
      */
+    #[Override]
     public function newEloquentBuilder($query): TaskQueryBuilder
     {
         return new TaskQueryBuilder($query);
@@ -96,6 +98,7 @@ class Task extends Model
         return $this->trashed() ? 'trashed' : 'active';
     }
 
+    #[Override]
     protected static function booted(): void
     {
         static::creating(function ($task): void {

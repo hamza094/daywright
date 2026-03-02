@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Integrations\Zoom\Requests;
 
 use Illuminate\Support\Facades\Cache;
+use Override;
 use ReflectionClass;
 use Safe\DateTimeImmutable;
 use Saloon\Contracts\Body\HasBody;
@@ -35,6 +36,7 @@ class UpdateMeeting extends Request implements HasBody
     /**
      * The endpoint for the request
      */
+    #[Override]
     public function resolveEndpoint(): string
     {
         return '/meetings/'.$this->validated['meeting_id'];
@@ -59,6 +61,7 @@ class UpdateMeeting extends Request implements HasBody
     /**
      * @return array<int, Limit>
      */
+    #[Override]
     protected function resolveLimits(): array
     {
         return [
@@ -67,6 +70,7 @@ class UpdateMeeting extends Request implements HasBody
         ];
     }
 
+    #[Override]
     protected function resolveRateLimitStore(): RateLimitStore
     {
         return new LaravelCacheStore(Cache::store(config('cache.default')));

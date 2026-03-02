@@ -7,6 +7,7 @@ namespace App\Http\Requests\Api\V1;
 use App\Models\Project;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class ProjectUpdateRequest extends FormRequest
 {
@@ -61,6 +62,7 @@ class ProjectUpdateRequest extends FormRequest
         ];
     }
 
+    #[Override]
     public function messages()
     {
         return [

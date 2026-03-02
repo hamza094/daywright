@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use Tests\Support\BuildsInsightTestData;
 use Tests\TestCase;
 
@@ -29,6 +30,7 @@ class ProjectInsightsApiTest extends TestCase
 
     private TaskStatus $status;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

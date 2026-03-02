@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http;
 
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Override;
 
 class Kernel extends HttpKernel
 {
@@ -73,6 +74,7 @@ class Kernel extends HttpKernel
         'guest.authenticated' => Middleware\AllowGuestOrAuthenticated::class,
     ];
 
+    #[Override]
     protected function bootstrappers()
     {
         return array_merge(

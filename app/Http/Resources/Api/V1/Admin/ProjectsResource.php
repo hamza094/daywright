@@ -6,6 +6,7 @@ namespace App\Http\Resources\Api\V1\Admin;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
+use Override;
 
 class ProjectsResource extends JsonResource
 {
@@ -15,6 +16,7 @@ class ProjectsResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
      */
+    #[Override]
     public function toArray($request)
     {
         return [

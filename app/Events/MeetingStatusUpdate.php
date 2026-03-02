@@ -11,6 +11,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Override;
 
 class MeetingStatusUpdate implements ShouldBroadcast
 {
@@ -23,6 +24,7 @@ class MeetingStatusUpdate implements ShouldBroadcast
      */
     public function __construct(public Meeting $meeting) {}
 
+    #[Override]
     public function broadcastOn()
     {
         return new PrivateChannel('meetingStatus.'.$this->meeting->id);

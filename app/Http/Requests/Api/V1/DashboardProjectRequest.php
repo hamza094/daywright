@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class DashboardProjectRequest extends FormRequest
 {
@@ -50,6 +51,7 @@ class DashboardProjectRequest extends FormRequest
     /**
      * Get custom messages for validator errors.
      */
+    #[Override]
     public function messages(): array
     {
         return [
@@ -58,6 +60,7 @@ class DashboardProjectRequest extends FormRequest
         ];
     }
 
+    #[Override]
     protected function prepareForValidation(): void
     {
         $this->merge([

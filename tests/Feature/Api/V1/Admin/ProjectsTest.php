@@ -9,6 +9,7 @@ use App\Models\Stage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -16,12 +17,13 @@ class ProjectsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const PROJECTS_ROUTE = '/api/v1/admin/projects';
+    private const string PROJECTS_ROUTE = '/api/v1/admin/projects';
 
-    private const BULK_DELETE_ROUTE = '/api/v1/admin/projects/bulk-delete';
+    private const string BULK_DELETE_ROUTE = '/api/v1/admin/projects/bulk-delete';
 
     private User $admin;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

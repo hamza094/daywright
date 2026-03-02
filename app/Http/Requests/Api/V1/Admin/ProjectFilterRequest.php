@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\Admin;
 
 use App\Enums\ProjectHealthStatus;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class ProjectFilterRequest extends FormRequest
 {
@@ -35,6 +36,7 @@ class ProjectFilterRequest extends FormRequest
         ];
     }
 
+    #[Override]
     protected function prepareForValidation(): void
     {
         if ($this->has('status') && is_string($this->status)) {
