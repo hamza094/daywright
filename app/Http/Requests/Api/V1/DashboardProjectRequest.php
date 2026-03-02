@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class DashboardProjectRequest extends FormRequest
 {
@@ -31,7 +32,7 @@ class DashboardProjectRequest extends FormRequest
             /**
              * @example latest
              */
-            'sort' => 'nullable|string|in:latest,oldest',
+            'sort' => 'nullable|string|in:latest,oldest,name',
             /**
              * @example true
              */
@@ -50,11 +51,35 @@ class DashboardProjectRequest extends FormRequest
     /**
      * Get custom messages for validator errors.
      */
+    #[Override]
     public function messages(): array
     {
         return [
-            'sort.in' => 'Sort must be either latest or oldest',
+            'sort.in' => 'Sort must be one of: latest, oldest, or name',
             'page.min' => 'Page must be at least 1',
         ];
+    }
+
+    #[Override]
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'member' => $this->normalizeBooleanValue($this->input('member')),
+            'abandoned' => $this->normalizeBooleanValue($this->input('abandoned')),
+        ]);
+    }
+
+    /**
+     * @return mixed
+     */
+    private function normalizeBooleanValue(mixed $value)
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $normalized = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+        return $normalized ?? $value;
     }
 }

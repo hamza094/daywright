@@ -13,15 +13,11 @@ use App\Models\Project;
 use App\Services\Api\V1\ProjectService;
 use Auth;
 use Exception;
-use F9Web\ApiResponseHelpers;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ProjectController extends ApiController
 {
-    use ApiResponseHelpers;
-
     /**
      * Create a new project.
      *
@@ -79,13 +75,14 @@ class ProjectController extends ApiController
      *
      * @response array{message: 'Project Updated Successfully',project:array{id:1, slug:'the-dimension', name:'The Dimension', about:'This is the project dimension description', score:5, created_at:'5 days ago', updated_at:'few seconds ago',links:array{self:'api/v1/projects/the-dimension'}}}
      */
-    public function update(Project $project, ProjectUpdateRequest $request, ProjectService $service)
+    public function update(Project $project, ProjectUpdateRequest $request, ProjectService $service): JsonResponse
     {
         $this->authorize('access', $project);
 
         if (empty($request->validated())) {
-
-            return $this->respondError("You haven't changed anything.");
+            return response()->json([
+                'error' => "You haven't changed anything.",
+            ], 400);
         }
 
         $project->update($request->validated());
@@ -106,29 +103,32 @@ class ProjectController extends ApiController
     public function destroy(Project $project): JsonResponse
     {
         $this->authorize('manage', $project);
-
         $project->delete();
 
-        return $this->respondWithSuccess([
+        return response()->json([
             'message' => $project->name.' abandoned successfully',
-        ]);
+        ], 200);
     }
 
     public function restore(Project $project): JsonResponse
     {
         $project->restore();
 
-        return $this->respondWithSuccess([
+        return response()->json([
             'message' => $project->name.' restored successfully',
-        ]);
+        ], 200);
     }
 
-    public function delete(Project $project): JsonResponse
+    public function delete(Project $project, ProjectService $service): JsonResponse
     {
-        $project->forceDelete();
+        $deleted = $service->forceDeleteIfAbandoned($project);
 
-        return $this->respondWithSuccess([
+        if (! $deleted) {
+            return response()->json(['message' => 'Only abandoned projects can be deleted permanently.'], 403);
+        }
+
+        return response()->json([
             'message' => 'Project deleted successfully',
-        ]);
+        ], 200);
     }
 }

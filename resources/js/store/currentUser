@@ -1,6 +1,17 @@
 import router from '../router.js';
 import Vue from 'vue';
 import { clearTwoFaState, markTwoFaPending, pushRoute, getErrorMessage } from '../utils/auth.js';
+import { getFeaturesFromStore } from '../utils/features.js';
+
+const normalizeUser = (user, features = null) => {
+  const baseUser = user ?? {};
+  const mergedFeatures = features ?? baseUser.features ?? {};
+
+  return {
+    ...baseUser,
+    features: mergedFeatures,
+  };
+};
 
 const resetAuthState = (commit, dispatch, { notify = true } = {}) => {
   commit('setUser', {});
@@ -24,7 +35,7 @@ const getters = {};
 const actions = {
   finalizeLogin({ commit, dispatch }, { response, vm, toastMsg }) {
     clearTwoFaState();
-    commit('setUser', response.data.user);
+    commit('setUser', normalizeUser(response.data.user, response.data.features));
     commit('loggedIn', true);
     commit('clearErrors');
 
@@ -91,7 +102,7 @@ const actions = {
       const { data } = await axios.get('/me');
 
       if (data?.user) {
-        commit('setUser', data.user);
+        commit('setUser', normalizeUser(data.user, data.features));
         commit('loggedIn', true);
         commit('clearErrors');
         try {
@@ -121,7 +132,7 @@ const mutations = {
     state.errors = {};
   },
   setUser(state, data) {
-    state.user = data || {};
+    state.user = normalizeUser(data, data?.features);
   },
   loggedIn(state, data) {
     state.loggedIn = data;

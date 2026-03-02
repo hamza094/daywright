@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1;
 
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class StageRequest extends FormRequest
 {
@@ -43,6 +44,7 @@ class StageRequest extends FormRequest
         ];
     }
 
+    #[Override]
     public function messages()
     {
         return [

@@ -278,11 +278,7 @@ export default {
           this.$vToastify.success(response.data.message);
         })
         .catch((error) => {
-          const msg =
-            error.response && error.response.data && error.response.data.message
-              ? error.response.data.message
-              : 'Meeting deletion failed';
-          this.$vToastify.error(msg);
+          this.handleErrorResponse(error);
         })
         .finally(() => {
           this.setLoading('', 'stop');
@@ -302,11 +298,7 @@ export default {
         })
         .catch((error) => {
           this.$Progress.finish();
-          const msg =
-            error.response && error.response.data && error.response.data.message
-              ? error.response.data.message
-              : 'Meeting Loading failed';
-          this.$vToastify.error(msg);
+          this.handleErrorResponse(error);
         });
     },
 

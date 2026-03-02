@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
+use Override;
 use Tests\TestCase;
 
 /**
@@ -22,7 +23,7 @@ class TwoFactorAuthenticationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const TWO_FA_SESSION = '2fa_login';
+    private const string TWO_FA_SESSION = '2fa_login';
 
     protected User $user;
 
@@ -30,12 +31,14 @@ class TwoFactorAuthenticationTest extends TestCase
 
     protected string $testEmail = '2fauser@example.com';
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();
         $this->createTestUser();
     }
 
+    #[Override]
     protected function tearDown(): void
     {
         Mockery::close();

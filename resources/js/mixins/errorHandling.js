@@ -18,6 +18,21 @@ export default {
         if (this.errors !== undefined) {
           this.errors = data.errors;
         }
+
+        const firstValidationMessage = Object.values(data.errors)
+          .flat()
+          .find((message) => typeof message === 'string' && message.trim() !== '');
+
+        if (firstValidationMessage) {
+          this.$vToastify.error(firstValidationMessage);
+          return;
+        }
+
+        if (data?.message) {
+          this.$vToastify.error(data.message);
+          return;
+        }
+
         return;
       }
 

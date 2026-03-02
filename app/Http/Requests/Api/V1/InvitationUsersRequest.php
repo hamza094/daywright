@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class InvitationUsersRequest extends FormRequest
 {
@@ -38,6 +39,7 @@ class InvitationUsersRequest extends FormRequest
      *
      * @return array<string, string>
      */
+    #[Override]
     public function messages()
     {
         return [

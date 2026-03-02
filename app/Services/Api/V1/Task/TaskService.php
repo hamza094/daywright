@@ -5,16 +5,19 @@ declare(strict_types=1);
 namespace App\Services\Api\V1\Task;
 
 use App\Actions\NotificationAction;
+use App\Actions\Task\ResetTaskNotificationAction;
 use App\Http\Resources\Api\V1\TasksResource;
 use App\Models\Project;
+use App\Models\Task;
 use App\Notifications\ProjectTask;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class TaskService
 {
+    public function __construct(private readonly ResetTaskNotificationAction $resetTaskNotificationAction) {}
+
     public function getTasksData(Project $project, bool $isArchived): array
     {
         $query = $this->getTasks($project, $isArchived);
@@ -44,8 +47,6 @@ class TaskService
 
     public function checkValidation($request, $task): void
     {
-        Gate::authorize('forbid-when-archived', $task);
-
         if (! $request->validated()) {
             throw ValidationException::withMessages([
                 'task' => ['Field missing in task'],
@@ -63,6 +64,16 @@ class TaskService
                 $project->path(),
                 $notifier
             ), $project);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    public function updateTask(Task $task, array $validated): void
+    {
+        $payload = $this->resetTaskNotificationAction->apply($task, $validated);
+
+        $task->update($payload);
     }
 
     private function getTasks(Project $project, bool $isArchived): HasMany

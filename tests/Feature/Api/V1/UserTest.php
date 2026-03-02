@@ -17,7 +17,6 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class UserTest extends TestCase
@@ -53,6 +52,8 @@ class UserTest extends TestCase
     #[Test]
     public function auth_user_can_get_his_data(): void
     {
+        $defaultTimezone = config('app.timezone', 'UTC');
+
         $response = $this->getJson($this->user->path());
 
         $response->assertStatus(200)
@@ -60,6 +61,7 @@ class UserTest extends TestCase
                 'id' => $this->user->id,
                 'name' => $this->user->name,
                 'email' => $this->user->email,
+                'timezone' => $defaultTimezone,
             ]);
     }
 
@@ -94,6 +96,26 @@ class UserTest extends TestCase
                 'company' => $newCompany,
                 'mobile' => $newMobile,
             ]);
+    }
+
+    #[Test]
+    public function owner_can_update_timezone(): void
+    {
+        UserInfo::factory()->for($this->user)->create();
+
+        $response = $this->patchJson($this->user->path(), [
+            'timezone' => 'America/Los_Angeles',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonFragment([
+                'timezone' => 'America/Los_Angeles',
+            ]);
+
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'timezone' => 'America/Los_Angeles',
+        ]);
     }
 
     #[Test]
@@ -137,12 +159,9 @@ class UserTest extends TestCase
     #[Test]
     public function it_permanently_deletes_user_and_handles_projects_after_15_days(): void
     {
-        Role::findOrCreate('Admin', 'sanctum');
-
         // Create a user and soft delete them 16 days ago
         $user = User::factory()->create(['deleted_at' => now()->subDays(16)]);
-        $admin = User::factory()->create();
-        $admin->assignRole('Admin');
+        $admin = User::factory()->admin()->create();
 
         $projectNoMembers = Project::factory()->create(['user_id' => $user->id]);
 

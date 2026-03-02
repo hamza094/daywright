@@ -9,6 +9,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Override;
 
 class DeleteConversation implements ShouldBroadcast
 {
@@ -24,6 +25,7 @@ class DeleteConversation implements ShouldBroadcast
     /**
      * Get the channels the event should broadcast on.
      */
+    #[Override]
     public function broadcastOn(): PrivateChannel
     {
         return new PrivateChannel('deleteConversation.'.$this->projectSlug);

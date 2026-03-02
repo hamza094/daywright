@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
+use Override;
 
 class Project extends Model
 {
@@ -85,6 +86,7 @@ class Project extends Model
      *
      * @return array<string, array<string, string>>
      */
+    #[Override]
     public function sluggable(): array
     {
         return [
@@ -94,6 +96,7 @@ class Project extends Model
         ];
     }
 
+    #[Override]
     public function getRouteKeyName(): string
     {
         return 'slug';
@@ -102,6 +105,7 @@ class Project extends Model
     /**
      * Create a new Eloquent query builder for the model.
      */
+    #[Override]
     public function newEloquentBuilder($query): ProjectQueryBuilder
     {
         return new ProjectQueryBuilder($query);
@@ -322,9 +326,11 @@ class Project extends Model
         return $query;
     }
 
+    #[Override]
     protected static function boot(): void
     {
         parent::boot();
+
         static::forceDeleted(function ($project): void {
             $project->activities()->delete();
         });

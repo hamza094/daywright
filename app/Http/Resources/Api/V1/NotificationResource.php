@@ -6,6 +6,7 @@ namespace App\Http\Resources\Api\V1;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
+use Override;
 
 class NotificationResource extends JsonResource
 {
@@ -15,6 +16,7 @@ class NotificationResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
      */
+    #[Override]
     public function toArray($request)
     {
         return [

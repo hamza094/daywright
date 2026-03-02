@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Override;
 
 /**
  * @mixin \App\Models\User
@@ -17,6 +18,7 @@ class UsersResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array<string, mixed>
      */
+    #[Override]
     public function toArray($request)
     {
         if ($request->is('api/v1/tasksdata')) {
@@ -47,12 +49,17 @@ class UsersResource extends JsonResource
             /**
              *  @example Asia/Karachi
              * */
-            'timezone' => $this->timezone,
+            'timezone' => $this->timezone ?? config('app.timezone', 'UTC'),
 
             /**
              * Indicates whether the user is an admin.
              * */
             'isAdmin' => $this->isAdmin(),
+
+            /**
+             * Indicates whether two-factor authentication is enabled.
+             */
+            'twoFactorEnabled' => $this->hasTwoFactorEnabled(),
 
             /**
              * User's avatar URL (if exists).

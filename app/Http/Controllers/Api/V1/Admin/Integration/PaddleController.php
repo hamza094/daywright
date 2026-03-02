@@ -7,24 +7,25 @@ namespace App\Http\Controllers\Api\V1\Admin\Integration;
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
 use App\Http\Controllers\Controller;
 use App\Interfaces\Paddle;
+use Illuminate\Http\JsonResponse;
+use Throwable;
 
 class PaddleController extends Controller
 {
-    public function subscribedUsers(Paddle $paddle)
+    public function subscribedUsers(Paddle $paddle): JsonResponse
     {
-        // try {
-        $data = $paddle->SubscriptionUsersList(
-            new UserSubscriptionData(
-                vendorID: (int) config('services.paddle.vendor_id'),
-                vendorAuthCode: config('services.paddle.vendor_auth_code'),
-                resultsPerPage: config('services.paddle.results_per_page')
-            )
-        );
-        // } catch(GitHubException $exception){
-        // return response()->json(['error'=>$exception->getMessage()]);
-        // }
+        try {
+            $data = $paddle->SubscriptionUsersList(
+                new UserSubscriptionData(
+                    vendorID: (int) config('services.paddle.vendor_id'),
+                    vendorAuthCode: config('services.paddle.vendor_auth_code'),
+                    resultsPerPage: config('services.paddle.results_per_page')
+                )
+            );
 
-        return response()->json(['data' => $data]);
-
+            return response()->json(['data' => $data]);
+        } catch (Throwable $exception) {
+            return response()->json(['error' => $exception->getMessage()], 500);
+        }
     }
 }

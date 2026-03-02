@@ -11,6 +11,7 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Override;
 
 class DashboardActivity implements ShouldBroadcast
 {
@@ -36,6 +37,7 @@ class DashboardActivity implements ShouldBroadcast
      *
      * @return Channel|array
      */
+    #[Override]
     public function broadcastOn()
     {
         return new Channel('activities');

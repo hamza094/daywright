@@ -6,6 +6,7 @@ namespace App\Http\Resources\Api\V1;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
+use Override;
 
 /**
  * @mixin \App\Models\Stage
@@ -18,6 +19,7 @@ class StageResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
      */
+    #[Override]
     public function toArray($request)
     {
         return [

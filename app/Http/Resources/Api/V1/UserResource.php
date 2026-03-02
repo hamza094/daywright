@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
-use App\Http\Resources\Api\V1\Admin\RolesResource;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Override;
 
 /**
  * @mixin \App\Models\User
@@ -18,6 +18,7 @@ class UserResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array<string, mixed>
      */
+    #[Override]
     public function toArray($request)
     {
         return [
@@ -56,7 +57,7 @@ class UserResource extends JsonResource
              *
              * @example Asia/Karachi
              */
-            'timezone' => $this->timezone,
+            'timezone' => $this->timezone ?? config('app.timezone', 'UTC'),
 
             /**
              * User email address
@@ -76,11 +77,6 @@ class UserResource extends JsonResource
              * Additional user info (profile details)
              */
             'info' => new UserInfoResource($this->info),
-
-            /**
-             * User roles (if loaded)
-             */
-            'roles' => RolesResource::collection($this->whenLoaded('roles')),
 
             /**
              * Account creation date (human readable)

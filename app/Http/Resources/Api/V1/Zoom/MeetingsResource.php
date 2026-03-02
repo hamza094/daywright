@@ -6,6 +6,7 @@ namespace App\Http\Resources\Api\V1\Zoom;
 
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Override;
 
 /**
  * @mixin \App\Models\Meeting
@@ -18,6 +19,7 @@ class MeetingsResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array<string, mixed>
      */
+    #[Override]
     public function toArray($request): array
     {
         return [

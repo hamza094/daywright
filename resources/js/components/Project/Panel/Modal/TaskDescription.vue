@@ -32,7 +32,7 @@
 <script>
 import { VueEditor } from 'vue2-editor';
 import { mapMutations, mapState } from 'vuex';
-import { url, ErrorHandling } from '../../../../utils/TaskUtils';
+import { url } from '../../../../utils/TaskUtils';
 export default {
   components: { VueEditor },
   props: {
@@ -81,7 +81,8 @@ export default {
           this.updateTaskDescription(response.data.task.description);
         })
         .catch((error) => {
-          ErrorHandling(this, error);
+          this.handleErrorResponse(error);
+          this.setErrors(error?.response?.data?.errors || {});
         });
     },
 

@@ -54,12 +54,14 @@ class AuthorizeTest extends TestCase
         );
 
         // Assert our request was sent with the correct code verifier.
+        $appUrl = rtrim((string) config('app.url'), '/');
+
         Saloon::assertSent(static fn (GetAccessTokenRequest $request): bool => $request->resolveEndpoint() ===
         'https://zoom.us/oauth/token'
         && $request->body()->all() === [
             'grant_type' => 'authorization_code',
             'code' => 'dummy-code',
-            'redirect_uri' => 'http://localhost:8000/oauth/zoom/callback',
+            'redirect_uri' => $appUrl.'/oauth/zoom/callback',
             'code_verifier' => 'dummy-code-verifier',
         ]);
     }

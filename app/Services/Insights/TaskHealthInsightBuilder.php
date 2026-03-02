@@ -5,23 +5,25 @@ declare(strict_types=1);
 namespace App\Services\Insights;
 
 use App\Enums\InsightType;
+use Override;
 
 final class TaskHealthInsightBuilder implements InsightBuilderInterface
 {
-    private const EXCELLENT_THRESHOLD = 90;
+    private const int EXCELLENT_THRESHOLD = 90;
 
-    private const GOOD_THRESHOLD = 70;
+    private const int GOOD_THRESHOLD = 70;
 
-    private const WARNING_THRESHOLD = 40;
+    private const int WARNING_THRESHOLD = 40;
 
-    private const HIGH_OVERDUE_THRESHOLD = 25;      // mirrors penalty for overdue in action
+    private const int HIGH_OVERDUE_THRESHOLD = 25;      // mirrors penalty for overdue in action
 
-    private const HIGH_ABANDONMENT_THRESHOLD = 15;  // mirrors penalty for abandonment in action
+    private const int HIGH_ABANDONMENT_THRESHOLD = 15;  // mirrors penalty for abandonment in action
 
     /**
      * @param  array<string,mixed>  $context
      * @return array<string,mixed>
      */
+    #[Override]
     public function build(mixed $input, array $context = []): array
     {
         if ($input === null || ! is_numeric($input)) {

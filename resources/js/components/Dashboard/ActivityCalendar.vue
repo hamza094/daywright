@@ -137,7 +137,7 @@ export default {
           if (axios.isCancel(error)) {
             // canceled
           } else {
-            console.error('Failed to load activities', error);
+            this.handleErrorResponse(error);
             this.activities = [];
             this.errorMessage = 'Unable to load activities. Please try again later.';
           }

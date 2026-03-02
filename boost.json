@@ -1,0 +1,9 @@
+{
+  "agents": ["copilot"],
+  "guidelines": true,
+  "herd_mcp": true,
+  "mcp": true,
+  "packages": ["saloonphp/laravel-plugin"],
+  "sail": false,
+  "skills": ["pennant-development"]
+}

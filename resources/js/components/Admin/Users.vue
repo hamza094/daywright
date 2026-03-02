@@ -37,14 +37,13 @@
                     <th>Timezone</th>
                     <th>Created At</th>
                     <th>IsSubscribed</th>
-                    <th>Roles</th>
                     <th>Active Projects Count</th>
                     <th>Project Member</th>
-                    <th>Last Active</th>
+                    <th>Admin Access</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(user, index) in users.data" :key="user.id">
+                  <tr v-for="user in users.data" :key="user.uuid">
                     <td>
                       <router-link :to="{ name: 'Profile', params: { uuid: user.uuid } }" class="admin-panel-link">
                         <div>{{ user.name }}</div>
@@ -60,38 +59,26 @@
                     <td>{{ user.timezone }}</td>
                     <td>{{ user.created_at }}</td>
                     <td>{{ user.isSubscribed }}</td>
-                    <td>
-                      <div class="dropdown">
-                        <a
-                          class="dropdown-toggle text-secondary"
-                          href="#"
-                          data-bs-toggle="dropdown"
-                          aria-haspopup="true"
-                          aria-expanded="false">
-                          <span v-if="!user.roles || user.roles.length === 0"> Not Defined </span>
-                          <span v-else>
-                            <span v-for="role in user.roles">
-                              {{ role.name }}
-                            </span>
-                          </span>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-end" style="">
-                          <div v-for="role in roles" :key="role.id">
-                            <a
-                              :class="{
-                                'dropdown-item': true,
-                                active: user && user.roles && hasRole(user.roles, role),
-                              }"
-                              @click="assignUserRole(role.id, user.id)"
-                              >{{ role.name }}</a
-                            >
-                          </div>
-                        </div>
-                      </div>
-                    </td>
                     <td>{{ user.projects_count }}</td>
                     <td>{{ user.projects_member }}</td>
-                    <td>{{ user.last_active }}</td>
+                    <td>
+                      <span class="me-2">{{ user.isAdmin ? 'Yes' : 'No' }}</span>
+                      <div class="small text-muted">
+                        <div v-if="user.admin_granted_by && user.admin_granted_at">
+                          Granted by {{ user.admin_granted_by }} on {{ user.admin_granted_at }}
+                        </div>
+                        <div v-if="user.admin_revoked_by && user.admin_revoked_at">
+                          Revoked by {{ user.admin_revoked_by }} on {{ user.admin_revoked_at }}
+                        </div>
+                      </div>
+                      <button
+                        :disabled="adminActionUserId === user.uuid"
+                        class="btn btn-sm"
+                        :class="user.isAdmin ? 'btn-outline-danger' : 'btn-outline-success'"
+                        @click="toggleAdminAccess(user)">
+                        {{ user.isAdmin ? 'Revoke' : 'Grant' }}
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -105,17 +92,13 @@
           </div>
         </div>
       </div>
-      <RolesAndPermissions></RolesAndPermissions>
     </div>
   </div>
 </template>
 <script>
 import { debounce } from 'lodash';
-import RolesAndPermissions from './RolesAndPermissions.vue';
-import { mapState } from 'vuex';
 
 export default {
-  components: { RolesAndPermissions },
   data() {
     return {
       users: [],
@@ -123,91 +106,169 @@ export default {
       to: 0,
       total: 0,
       searchTerm: '',
+      adminActionUserId: null,
     };
   },
-  computed: {
-    ...mapState('roles', ['roles']),
+  mounted() {
+    this.getResults();
   },
   methods: {
-    getResults(page = 1) {
+    getCurrentUser() {
+      return this.$store.state.currentUser.user || {};
+    },
+
+    canMutateAdmin() {
+      const user = this.getCurrentUser();
+
+      return !!user.isAdmin && !!user.twoFactorEnabled;
+    },
+
+    guardAdminMutation() {
+      if (this.canMutateAdmin()) {
+        return true;
+      }
+
+      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
+      this.$router.push({ name: 'Profile', params: { uuid: this.getCurrentUser()?.uuid } });
+
+      return false;
+    },
+
+    async getResults(page = 1) {
       const queryParameters = {
         page: page,
         search: this.searchTerm,
       };
 
       const filteredParameters = Object.fromEntries(
-        Object.entries(queryParameters).filter(([_, value]) => value !== undefined && value !== ''),
+        Object.entries(queryParameters).filter(([, value]) => value !== undefined && value !== ''),
       );
 
-      axios
-        .get('/admin/users', {
+      try {
+        const response = await axios.get('/admin/users', {
           params: filteredParameters,
-        })
-        .then((response) => {
-          this.users = response.data || '';
-          this.from = this.users.meta.from || '';
-          this.to = this.users.meta.to || '';
-          this.total = this.users.meta.total || '';
-        })
-        .catch((error) => {});
-    },
-    assignUserRole(roleId, userId) {
-      axios
-        .get('/admin/assign/users/' + userId + '/roles/' + roleId)
-        .then((response) => {
-          this.$vToastify.success(response.data.message);
-          this.handleUpdateUser(response.data.user);
-        })
-        .catch((error) => {
-          if (error.response.status === 422) {
-            this.$vToastify.warning(error.response.data.errors.role[0]);
-          } else {
-            this.$vToastify.warning('Error! Contact Admin support');
-          }
         });
+
+        this.users = response.data || '';
+        this.from = this.users.meta.from || '';
+        this.to = this.users.meta.to || '';
+        this.total = this.users.meta.total || '';
+      } catch (error) {
+        this.handleErrorResponse(error);
+      }
     },
+
     handleUpdateUser(user) {
-      const index = this.users.data.findIndex((existingUser) => existingUser.id === user.id);
+      const index = this.users.data.findIndex((existingUser) => existingUser.uuid === user.uuid);
 
       if (index !== -1) {
         this.users.data.splice(index, 1, user);
       }
     },
-    hasRole(userRoles, loopRole) {
-      return userRoles && userRoles.some((userRole) => userRole.id === loopRole.id);
+
+    isCurrentUser(updatedUser) {
+      const currentUser = this.getCurrentUser();
+
+      return !!updatedUser?.uuid && updatedUser.uuid === currentUser.uuid;
+    },
+
+    isAdminActionInProgress(user) {
+      return this.adminActionUserId === user.uuid;
+    },
+
+    isAdminRevokeAction(user) {
+      return Boolean(user.isAdmin);
+    },
+
+    getAdminActionLabel(isRevoking) {
+      return isRevoking ? 'revoke admin access from' : 'grant admin access to';
+    },
+
+    confirmAdminAction(user, isRevoking) {
+      const actionLabel = this.getAdminActionLabel(isRevoking);
+
+      return window.confirm(`Are you sure you want to ${actionLabel} ${user.name}?`);
+    },
+
+    getAdminMutationEndpoint(user, isRevoking) {
+      if (isRevoking) {
+        return `/admin/users/${user.uuid}/revoke-admin`;
+      }
+
+      return `/admin/users/${user.uuid}/grant-admin`;
+    },
+
+    async refreshCurrentUserIfNeeded(updatedUser) {
+      if (!this.isCurrentUser(updatedUser)) {
+        return false;
+      }
+
+      await this.$store.dispatch('currentUser/bootstrapSession');
+
+      return true;
+    },
+
+    shouldRedirectAfterSelfRevoke(isRevoking) {
+      return isRevoking && !this.getCurrentUser()?.isAdmin;
+    },
+
+    getAdminSuccessMessage(responseMessage, user, isRevoking) {
+      if (responseMessage) {
+        return responseMessage;
+      }
+
+      if (isRevoking) {
+        return `Admin access revoked for ${user.name}.`;
+      }
+
+      return `Admin access granted to ${user.name}.`;
+    },
+
+    async toggleAdminAccess(user) {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
+      if (this.isAdminActionInProgress(user)) {
+        return;
+      }
+
+      const isRevoking = this.isAdminRevokeAction(user);
+
+      if (!this.confirmAdminAction(user, isRevoking)) {
+        return;
+      }
+
+      this.adminActionUserId = user.uuid;
+
+      try {
+        const endpoint = this.getAdminMutationEndpoint(user, isRevoking);
+
+        const response = await axios.post(endpoint);
+        const updatedUser = response?.data?.user;
+
+        if (updatedUser) {
+          this.handleUpdateUser(updatedUser);
+
+          const refreshedCurrentUser = await this.refreshCurrentUserIfNeeded(updatedUser);
+
+          if (refreshedCurrentUser && this.shouldRedirectAfterSelfRevoke(isRevoking)) {
+            this.$vToastify.success('Your admin access has been revoked. Redirecting to dashboard.');
+            await this.$router.push({ name: 'Dashboard' });
+            return;
+          }
+        }
+
+        this.$vToastify.success(this.getAdminSuccessMessage(response?.data?.message, user, isRevoking));
+      } catch (error) {
+        this.handleErrorResponse(error);
+      } finally {
+        this.adminActionUserId = null;
+      }
     },
     searchUsers: debounce(function () {
       this.getResults();
     }, 1000),
   },
-  mounted() {
-    this.getResults();
-  },
 };
 </script>
-
-<style>
-.role-container {
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px; /* Adjust as needed */
-}
-
-.role-content {
-  display: flex;
-  align-items: center;
-}
-
-.button-group {
-  display: flex;
-  align-items: center;
-}
-
-.role-dropdown {
-  /* Your existing styles for dropdown */
-}
-
-.btn-danger {
-  margin-left: 10px; /* Adjust margin as needed */
-}
-</style>

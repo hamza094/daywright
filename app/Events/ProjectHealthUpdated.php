@@ -9,6 +9,7 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Queue\SerializesModels;
+use Override;
 
 class ProjectHealthUpdated implements ShouldBroadcast
 {
@@ -18,6 +19,7 @@ class ProjectHealthUpdated implements ShouldBroadcast
 
     public function __construct(public Project $project) {}
 
+    #[Override]
     public function broadcastOn(): PrivateChannel
     {
         // Use a dedicated channel for health updates so listeners can subscribe specifically

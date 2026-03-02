@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
-use App\Rules\maxStatusCount;
+use App\Models\TaskStatus;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 class TaskStatusRequest extends FormRequest
@@ -25,7 +26,23 @@ class TaskStatusRequest extends FormRequest
         return [
             'label' => $this->isMethod('post') ? 'required|max:25|min:3' : 'sometimes|max:25|min:3',
             'color' => $this->isMethod('post') ? 'required|hex_color' : 'sometimes|hex_color',
-            'status_count_check' => [new maxStatusCount],
+        ];
+    }
+
+    /**
+     * @return array<int, Closure>
+     */
+    public function after(): array
+    {
+        return [
+            function ($validator): void {
+                if ($this->isMethod('post') && TaskStatus::count() >= 6) {
+                    $validator->errors()->add(
+                        'label',
+                        'The maximum allowed number of statuses has been reached.'
+                    );
+                }
+            },
         ];
     }
 }

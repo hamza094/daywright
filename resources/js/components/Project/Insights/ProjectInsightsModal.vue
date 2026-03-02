@@ -167,6 +167,7 @@ export default {
             ? useSections
             : [];
       } catch (e) {
+        this.handleErrorResponse(e);
         this.error = (e && e.message) || 'Failed to load project insights';
       } finally {
         this.loading = false;

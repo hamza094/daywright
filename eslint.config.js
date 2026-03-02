@@ -4,9 +4,6 @@ import pluginVue from 'eslint-plugin-vue';
 import globals from 'globals';
 
 export default [
-  {
-    ignores: ['resources/js/components/Admin/**'],
-  },
   js.configs.recommended,
   ...pluginVue.configs['flat/vue2-essential'],
   ...pluginVue.configs['flat/vue2-recommended'],

@@ -2,12 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\Api\V1\Admin\DashBoardController;
+use App\Http\Controllers\Api\V1\Admin\DashboardController;
 use App\Http\Controllers\Api\V1\Admin\Integration\PaddleController;
-use App\Http\Controllers\Api\V1\Admin\PermissionsController;
 use App\Http\Controllers\Api\V1\Admin\ProjectController;
-use App\Http\Controllers\Api\V1\Admin\RolePermissionController;
-use App\Http\Controllers\Api\V1\Admin\RolesController;
 use App\Http\Controllers\Api\V1\Admin\StageController;
 use App\Http\Controllers\Api\V1\Admin\StatusController;
 use App\Http\Controllers\Api\V1\Admin\TaskController;
@@ -21,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['prefix' => 'admin'], function (): void {
 
-    Route::middleware(['auth:sanctum', 'verified'/* \App\Http\Middleware\TrackLastActiveAt::class,'role:Admin' */])->group(function (): void {
+    Route::middleware(['auth:sanctum', 'verified', 'admin', 'throttle:admin-api'])->group(function (): void {
 
         // Project Api Resource Routes
         Route::get('/projects', [ProjectController::class, 'index']);
@@ -30,31 +27,33 @@ Route::group(['prefix' => 'admin'], function (): void {
 
         Route::get('/users', [UserController::class, 'index']);
 
-        Route::get('/backup/database', [DashBoardController::class, 'backup']);
+        Route::post('/users/{user}/grant-admin', [UserController::class, 'grantAdminAccess'])
+            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
 
-        Route::apiResource('/stages', StageController::class);
+        Route::post('/users/{user}/revoke-admin', [UserController::class, 'revokeAdminAccess'])
+            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
 
-        Route::apiResource('/statuses', StatusController::class);
+        Route::get('/backup/database', [DashboardController::class, 'backup']);
 
-        Route::delete('/projects/bulk-delete', [ProjectController::class, 'bulkDelete']);
+        Route::apiResource('/stages', StageController::class)
+            ->middleware(['2fa.enabled', 'throttle:admin-mutations'])
+            ->except(['index', 'show']);
 
-        Route::delete('/tasks/bulk-delete', [TaskController::class, 'bulkDelete']);
+        Route::apiResource('/statuses', StatusController::class)
+            ->middleware(['2fa.enabled', 'throttle:admin-mutations'])
+            ->except(['index', 'show']);
 
-        Route::get('dashboard/activities', [DashBoardController::class, 'activities']);
+        Route::delete('/projects/bulk-delete', [ProjectController::class, 'bulkDelete'])
+            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
 
-        Route::get('data', [DashBoardController::class, 'data']);
+        Route::delete('/tasks/bulk-delete', [TaskController::class, 'bulkDelete'])
+            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
+
+        Route::get('dashboard/activities', [DashboardController::class, 'activities']);
+
+        Route::get('data', [DashboardController::class, 'data']);
 
         Route::get('subscriptions/list', [PaddleController::class, 'subscribedUsers']);
 
-        Route::apiResource('/roles', RolesController::class)->except(['show']);
-
-        Route::apiResource('/permissions', PermissionsController::class)
-            ->except(['show']);
-
-        Route::get('/assign/roles/{role}/permissions/{permission}', [RolePermissionController::class, 'assignRolePermission']);
-
-        Route::get('/unAssign/roles/{role}/permissions/{permission}', [RolePermissionController::class, 'unAssignPermission']);
-
-        Route::get('assign/users/{user}/roles/{role}', [RolePermissionController::class, 'assignUserRole']);
     });
 });

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\UserRequest;
+use App\Http\Resources\Api\V1\FeatureFlagsResource;
 use App\Http\Resources\Api\V1\UserResource;
 use App\Http\Resources\Api\V1\UsersResource;
 use App\Models\User;
@@ -22,7 +23,9 @@ class UserController extends ApiController
      */
     public function index(): JsonResponse
     {
-        $users = User::all();
+        $users = User::query()
+            ->with('twoFactorAuth')
+            ->get();
 
         return response()->json([
             'users' => UsersResource::collection($users),
@@ -35,10 +38,12 @@ class UserController extends ApiController
     public function me(Request $request): JsonResponse
     {
         $user = $request->user();
+        $user?->loadMissing('twoFactorAuth');
 
         return response()->json([
             'message' => 'Authenticated user data',
             'user' => $user ? new UsersResource($user) : null,
+            'features' => new FeatureFlagsResource($user),
         ], 200);
     }
 
@@ -49,8 +54,6 @@ class UserController extends ApiController
      */
     public function show(User $user): JsonResponse
     {
-        $user->loadMissing('roles');
-
         return response()->json([
             'message' => 'User Data',
             'user' => new UserResource($user),

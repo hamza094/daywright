@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
+use Override;
 
 /**
  * @mixin \App\Models\User
@@ -19,6 +20,7 @@ class InvitedUserResource extends JsonResource
      *
      * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
      */
+    #[Override]
     public function toArray(Request $request): array
     {
         return [

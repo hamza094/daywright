@@ -8,6 +8,7 @@ use App\Actions\ZoomAction;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Support\Facades\Config;
+use Override;
 use Tests\TestCase;
 
 class ZoomActionTest extends TestCase
@@ -18,6 +19,7 @@ class ZoomActionTest extends TestCase
 
     protected $action;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

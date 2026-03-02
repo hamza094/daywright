@@ -5,19 +5,21 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Admin\TaskBulkDeleteRequest;
+use App\Http\Requests\Api\V1\Admin\TaskFilterRequest;
 use App\Http\Resources\Api\V1\Admin\TaskResource;
 use App\Models\Task;
 use App\Repository\Admin\TaskRepository;
-use Exception;
 use F9Web\ApiResponseHelpers;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
 class TaskController extends Controller
 {
     use ApiResponseHelpers;
 
-    public function index(TaskRepository $taskRepository, Request $request)
+    public function index(TaskRepository $taskRepository, TaskFilterRequest $request): AnonymousResourceCollection|JsonResponse
     {
         $perPage = 50;
 
@@ -32,33 +34,20 @@ class TaskController extends Controller
         return TaskResource::collection($tasks);
     }
 
-    public function bulkDelete(Request $request)
+    public function bulkDelete(TaskBulkDeleteRequest $request): JsonResponse
     {
-        $taskIds = $request->input('task_ids', []);
+        $taskIds = $request->validated('task_ids');
 
-        DB::beginTransaction();
-
-        try {
+        DB::transaction(function () use ($taskIds): void {
             Task::withTrashed()->whereIn('id', $taskIds)->each(function ($task): void {
-                // Detach assignees before force deleting
                 $task->assignee()->detach();
-
-                // Force delete the task
                 $task->forceDelete();
             });
+        });
 
-            DB::commit(); // Commit the transaction
-
-            return $this->respondWithSuccess([
-                'message' => 'Tasks deleted Successfully',
-            ]);
-        } catch (Exception $e) {
-            DB::rollBack(); // Roll back the transaction on exception
-
-            return $this->respondWithError([
-                'message' => 'Failed to delete tasks: '.$e->getMessage(),
-            ]);
-        }
+        return $this->respondWithSuccess([
+            'message' => 'Tasks deleted Successfully',
+        ]);
 
     }
 }

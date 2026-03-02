@@ -10,9 +10,11 @@ use App\DataTransferObjects\Paddle\UserSubscriptionData;
 use App\Http\Integrations\Paddle\PaddleConnector;
 use App\Http\Integrations\Paddle\Requests\SubscriptionUsersList;
 use App\Interfaces\PaddleApi;
+use Override;
 
 final class PaddleService implements PaddleApi
 {
+    #[Override]
     public function subscriptionUsersList(UserSubscriptionData $listData): DataCollection
     {
         $subscriptionsData = $this->connector()

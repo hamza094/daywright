@@ -56,12 +56,12 @@
     ".idea": true,
     ".cursor": true,
     "stubs": true,
-    "config": true,
-    "database": true,
+    //"config": true,
+    //"database": true,
     ".phpstan-cache": true,
-    "app": true,
-    "tests": true,
-    "routes": true,
+    //"app": true,
+    //"tests": true,
+    //"routes": true,
     "public": true
   },
 
@@ -113,5 +113,8 @@
     "**/.git/**",
     "**/bootstrap/cache/**",
     "**/public/build/**"
-  ]
+  ],
+  "chat.restoreLastPanelSession": true,
+  "chat.agent.enabled": true,
+  "editor.fontSize": 21
 }

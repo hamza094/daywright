@@ -7,6 +7,7 @@ namespace App\Http\Requests\Api\V1\Admin;
 use App\Models\Stage;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Override;
 
 class StageRequest extends FormRequest
 {
@@ -23,21 +24,27 @@ class StageRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => [
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('stages'),
-                function ($attribute, $value, $fail): void {
-                    if (Stage::count() >= 5) {
-                        $fail('Cannot add more than 5 stages.');
-                    }
-                },
+                Rule::unique('stages')->ignore($this->route('stage')),
             ],
         ];
+
+        if ($this->isMethod('post')) {
+            $rules['name'][] = function ($attribute, $value, $fail): void {
+                if (Stage::count() >= 5) {
+                    $fail('Cannot add more than 5 stages.');
+                }
+            };
+        }
+
+        return $rules;
     }
 
+    #[Override]
     public function messages()
     {
         return [

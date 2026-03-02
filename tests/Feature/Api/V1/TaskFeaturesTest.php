@@ -50,6 +50,25 @@ class TaskFeaturesTest extends TestCase
     }
 
     /** @test */
+    public function members_cannot_assign_task_when_project_is_abandoned(): void
+    {
+        $task = $this->project->addTask('test task');
+
+        $user = User::factory()->create();
+
+        $this->project->members()->attach($user->id, ['active' => true]);
+
+        $this->project->delete();
+
+        $this->assignMembersToTask($task, [$user->id])->assertForbidden();
+
+        $this->assertDatabaseMissing('task_user', [
+            'task_id' => $task->id,
+            'user_id' => $user->id,
+        ]);
+    }
+
+    /** @test */
     public function it_unassigns_a_member_from_a_task_and_handles_invalid_requests(): void
     {
         $task = $this->project->addTask('test task');

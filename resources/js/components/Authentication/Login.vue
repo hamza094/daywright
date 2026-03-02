@@ -120,7 +120,7 @@ export default {
           window.location.href = response.data.redirect_url;
         })
         .catch((error) => {
-          console.error(error);
+          this.handleErrorResponse(error);
         });
     },
   },

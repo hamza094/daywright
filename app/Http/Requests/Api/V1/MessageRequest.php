@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Override;
 
 use function Safe\json_decode;
 
@@ -51,6 +52,7 @@ class MessageRequest extends FormRequest
         ];
     }
 
+    #[Override]
     public function messages()
     {
         return [

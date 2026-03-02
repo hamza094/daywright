@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
+use Override;
 
 class UserRequest extends FormRequest
 {
@@ -58,6 +59,10 @@ class UserRequest extends FormRequest
              */
             'position' => ['sometimes', 'nullable', 'string', 'max:100'],
             /*
+             * @example "America/New_York"
+             */
+            'timezone' => ['sometimes', 'nullable', 'string', 'timezone:all'],
+            /*
              * Current password is required when updating the `password`
              * and must match the user's current password.
              */
@@ -80,6 +85,7 @@ class UserRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages()
     {
         return [

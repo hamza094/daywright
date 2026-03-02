@@ -17,7 +17,6 @@ use App\Services\Api\V1\Task\TaskFeatureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\Gate;
 
 class TaskFeaturesController extends Controller
 {
@@ -33,8 +32,6 @@ class TaskFeaturesController extends Controller
      * */
     public function assign(Project $project, Task $task, TaskMembersRequest $request, TaskFeatureService $service): JsonResponse
     {
-        Gate::authorize('forbid-when-archived', $task);
-
         $members = $request->validated(['members']);
 
         $service->assignMembers($task, $members, $project);
@@ -57,8 +54,6 @@ class TaskFeaturesController extends Controller
      * */
     public function unassign(Project $project, Task $task, Request $request): JsonResponse
     {
-        Gate::authorize('forbid-when-archived', $task);
-
         $request->validate([
             /**
              * The user to be unassigned must:
@@ -95,8 +90,6 @@ class TaskFeaturesController extends Controller
      * */
     public function archive(Project $project, Task $task, TaskFeatureService $service): JsonResponse
     {
-        Gate::authorize('forbid-when-archived', $task);
-
         $service->archiveTask($task);
 
         return response()->json([
@@ -142,8 +135,6 @@ class TaskFeaturesController extends Controller
      * */
     public function search(Project $project, Task $task, Request $request, TaskRepository $repository): AnonymousResourceCollection
     {
-        Gate::authorize('forbid-when-archived', $task);
-
         $request->validate([
             'search' => ['required', 'string', 'min:1'],
         ]);

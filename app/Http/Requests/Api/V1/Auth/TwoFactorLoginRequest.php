@@ -18,9 +18,9 @@ use Illuminate\Validation\Validator;
  */
 class TwoFactorLoginRequest extends FormRequest
 {
-    private const SESSION_ERROR_MESSAGE = 'Your session verification window expired. Please log in again.';
+    private const string SESSION_ERROR_MESSAGE = 'Your session verification window expired. Please log in again.';
 
-    private const CODE_ERROR_MESSAGE = 'That verification code is incorrect or has expired.';
+    private const string CODE_ERROR_MESSAGE = 'That verification code is incorrect or has expired.';
 
     private ?string $twoFactorToken = null;
 

@@ -18,13 +18,15 @@ use App\Http\Integrations\Zoom\ZoomConnector;
 use App\Interfaces\Zoom;
 use App\Models\User;
 use Illuminate\Support\Str;
+use Override;
 use Saloon\Http\Auth\AccessTokenAuthenticator;
 use Saloon\Http\Response as SaloonResponse;
 
 final class ZoomService implements Zoom
 {
-    private const USER_NOT_CONNECTED = 'User is not connected to Zoom.';
+    private const string USER_NOT_CONNECTED = 'User is not connected to Zoom.';
 
+    #[Override]
     public function getAuthRedirectDetails(): AuthorizationRedirectDetails
     {
         $codeVerifier = Str::random(random_int(43, 128));
@@ -52,6 +54,7 @@ final class ZoomService implements Zoom
         );
     }
 
+    #[Override]
     public function authorize(
         AuthorizationCallbackDetails $callbackDetails
     ): AccessTokenDetails {
@@ -80,6 +83,7 @@ final class ZoomService implements Zoom
     /**
      * @param  array<string, mixed>  $validated
      */
+    #[Override]
     public function createMeeting(array $validated, User $user): Meeting
     {
         if (! $user->isConnectedToZoom()) {
@@ -94,6 +98,7 @@ final class ZoomService implements Zoom
     /**
      * @param  array<string, mixed>  $validated
      */
+    #[Override]
     public function updateMeeting(array $validated, User $user): SaloonResponse
     {
         if (! $user->isConnectedToZoom()) {
@@ -105,6 +110,7 @@ final class ZoomService implements Zoom
             ->throw();
     }
 
+    #[Override]
     public function deleteMeeting(int $meetingId, User $user): SaloonResponse
     {
         if (! $user->isConnectedToZoom()) {
@@ -116,6 +122,7 @@ final class ZoomService implements Zoom
             ->throw();
     }
 
+    #[Override]
     public function getZakToken(User $user): string
     {
         if (! $user->isConnectedToZoom()) {

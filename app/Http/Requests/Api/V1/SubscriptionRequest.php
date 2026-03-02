@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class SubscriptionRequest extends FormRequest
 {
@@ -28,6 +29,7 @@ class SubscriptionRequest extends FormRequest
         ];
     }
 
+    #[Override]
     protected function prepareForValidation()
     {
         // Merge the route parameter "plan" into the request data if it's not already present.

@@ -48,7 +48,7 @@ export default {
 
         this.renderChart(this.chartData, this.options);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        this.handleErrorResponse(error);
       }
     },
   },

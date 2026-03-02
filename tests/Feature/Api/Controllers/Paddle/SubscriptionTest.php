@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithPaddle;
 
@@ -16,6 +17,7 @@ class SubscriptionTest extends TestCase
 {
     use InteractsWithPaddle, RefreshDatabase;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

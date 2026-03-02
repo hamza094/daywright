@@ -7,27 +7,28 @@ namespace App\Models;
 use App\Enums\OAuthProvider;
 use App\Jobs\QueuedPasswordResetJob;
 use App\Jobs\QueuedVerifyEmailJob;
+use App\Traits\HasAdminAccess;
 use App\Traits\HasSubscription;
 use DateTimeImmutable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Laragear\TwoFactor\Contracts\TwoFactorAuthenticatable;
 use Laragear\TwoFactor\TwoFactorAuthentication;
 use Laravel\Paddle\Billable;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
+use Override;
 
 class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenticatable
 {
-    use Billable, HasApiTokens, HasFactory, HasRoles, HasSubscription, Notifiable, SoftDeletes,TwoFactorAuthentication;
+    use Billable, HasAdminAccess, HasApiTokens, HasFactory, HasSubscription, Notifiable, SoftDeletes, TwoFactorAuthentication;
 
     protected $guarded = [];
 
@@ -52,32 +53,32 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
      * @var array<string, string>
      */
     protected $casts = [
+        'admin_granted_at' => 'datetime',
+        'admin_revoked_at' => 'datetime',
         'email_verified_at' => 'datetime',
+        'is_admin' => 'boolean',
         'oauth_provider' => OAuthProvider::class,
         'oauth_token' => 'encrypted',
         'oauth_refresh_token' => 'encrypted',
-        'last_active_at' => 'datetime',
         'zoom_access_token' => 'encrypted',
         'zoom_refresh_token' => 'encrypted',
         'zoom_expires_at' => 'datetime',
     ];
 
-    public function guardName(): string
-    {
-        return 'sanctum';
-    }
-
+    #[Override]
     public function getRouteKeyName(): string
     {
         return 'uuid';
     }
 
+    #[Override]
     public function sendEmailVerificationNotification(): void
     {
         // dispactches the job to the queue passing it this User object
         QueuedVerifyEmailJob::dispatch($this);
     }
 
+    #[Override]
     public function sendPasswordResetNotification($token): void
     {
         // dispactches the job to the queue passing it this User object
@@ -98,11 +99,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     {
         return $this->hasMany(Project::class);
     }
-
-    /*public function lastseen() {
-           $redis = Redis::connection();
-           return $redis->get('last_active_' . $this->id);
-    }*/
 
     public function activities()
     {
@@ -130,21 +126,61 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     }
 
     /**
+     * Get the user who granted admin access.
+     *
+     * @return BelongsTo<User, User>
+     */
+    public function adminGrantedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'admin_granted_by');
+    }
+
+    /**
+     * Get the user who revoked admin access.
+     *
+     * @return BelongsTo<User, User>
+     */
+    public function adminRevokedBy(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'admin_revoked_by');
+    }
+
+    /**
      * Get projects which user is member of.
      *
      * @return BelongsToMany<Project>
      */
-    public function members(bool $active = false): BelongsToMany
+    public function members(?bool $active = null): BelongsToMany
     {
-        return $this->belongsToMany(Project::class, 'project_members')
-            ->wherePivot('active', $active)
+        $relation = $this->belongsToMany(Project::class, 'project_members')
             ->withTimestamps();
+
+        if ($active !== null) {
+            $relation->wherePivot('active', $active);
+        }
+
+        return $relation;
     }
 
-    /*public function getlastSeenAttribute()
+    /**
+     * Get projects where the user is an active member.
+     *
+     * @return BelongsToMany<Project>
+     */
+    public function activeMembers(): BelongsToMany
     {
-      return  $this->lastseen();
-    }*/
+        return $this->members(true);
+    }
+
+    /**
+     * Get projects where the user is an inactive member.
+     *
+     * @return BelongsToMany<Project>
+     */
+    public function inactiveMembers(): BelongsToMany
+    {
+        return $this->members(false);
+    }
 
     public function getAvatarAttribute(): string|bool
     {
@@ -179,12 +215,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     public function assigned(): BelongsToMany
     {
         return $this->belongsToMany(Task::class);
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this->hasRole('Admin');
-
     }
 
     public function updateZoomOAuthDetails(
@@ -229,13 +259,12 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         ];
     }
 
-    // protected $appends = ['LastSeen'];
-
     /**
      * The attributes that are mass assignable.
      *
      * @var array
      */
+    #[Override]
     protected static function boot()
     {
         parent::boot();

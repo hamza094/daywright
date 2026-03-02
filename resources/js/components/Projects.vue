@@ -279,9 +279,8 @@ export default {
      * @param {Error} error - API error
      * @param {string} type - Tab type
      */
-    handleApiError(error, type) {
-      this.$vToastify.error(`Failed to load ${type} projects`);
-      console.error('API Error:', error);
+    handleApiError(error) {
+      this.handleErrorResponse(error);
     },
 
     /**

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <button class="btn btn-outline-primary w-100 btn-sm" @click.pervent="modalStage()">View</button>
+    <button class="btn btn-outline-primary w-100 btn-sm" @click.prevent="modalStage()">View</button>
 
     <modal name="stage-modal" height="auto" :scrollable="true" width="40%" :click-to-close="false">
       <div class="container m-2">
@@ -16,7 +16,6 @@
                   id="colFormLabel"
                   placeholder="Stage Name"
                   v-model="form.name"
-                  @
                   @keypress.enter.prevent="addStage" />
               </div>
             </div>
@@ -33,8 +32,8 @@
               <span v-else
                 >{{ stage.name }}
                 <span class="float-right">
-                  <button class="btn btn-link btn-sm" @click.pervent="editStage(stage)">Edit</button>
-                  <button class="btn btn-sm btn-danger" @click.pervent="deleteStage(stage.id)">x</button>
+                  <button class="btn btn-link btn-sm" @click.prevent="editStage(stage)">Edit</button>
+                  <button class="btn btn-sm btn-danger" @click.prevent="deleteStage(stage.id)">x</button>
                 </span>
               </span>
             </a>
@@ -63,9 +62,27 @@ export default {
   computed: {
     ...mapState('stage', ['stages']),
   },
+  mounted() {
+    this.loadStages();
+  },
   methods: {
     ...mapActions('stage', ['loadStages', 'addNewStage']),
     ...mapMutations('stage', ['stageUpdate', 'stageDelete']),
+    canMutateAdmin() {
+      const user = this.$store.state.currentUser.user || {};
+
+      return !!user.isAdmin && !!user.twoFactorEnabled;
+    },
+    guardAdminMutation() {
+      if (this.canMutateAdmin()) {
+        return true;
+      }
+
+      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
+      this.$router.push({ name: 'Profile', params: { uuid: this.$store.state.currentUser.user?.uuid } });
+
+      return false;
+    },
     modalStage() {
       this.$modal.show('stage-modal');
     },
@@ -83,21 +100,25 @@ export default {
     },
 
     async addStage() {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       try {
-        const response = await this.addNewStage({ name: this.form.name });
+        await this.addNewStage({ name: this.form.name });
         this.form.name = '';
         this.$vToastify.success('Stage added successfully');
       } catch (error) {
-        if (error.response) {
-          this.$vToastify.error(error.response.data.message);
-        } else {
-          this.$vToastify.error('Error! Try again later');
-        }
+        this.handleErrorResponse(error);
         this.form.name = '';
       }
     },
 
     updateStage(stage) {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       axios
         .put('/admin/stages/' + stage.id, {
           name: this.form.updateName,
@@ -109,10 +130,14 @@ export default {
           this.$vToastify.success(response.data.message);
         })
         .catch((error) => {
-          this.$vToastify.error('Failed to update! Try again Later');
+          this.handleErrorResponse(error);
         });
     },
     deleteStage(stageId) {
+      if (!this.guardAdminMutation()) {
+        return;
+      }
+
       axios
         .delete('/admin/stages/' + stageId, {
           name: this.form.name,
@@ -122,12 +147,9 @@ export default {
           this.$vToastify.success(response.data.success);
         })
         .catch((error) => {
-          this.$vToastify.error('Failed to delete! Try again Later');
+          this.handleErrorResponse(error);
         });
     },
-  },
-  mounted() {
-    this.loadStages();
   },
 };
 </script>

@@ -7,6 +7,7 @@ namespace App\Console;
 use App\Models\Task;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Override;
 
 class Kernel extends ConsoleKernel
 {
@@ -25,10 +26,11 @@ class Kernel extends ConsoleKernel
      *
      * @return void
      */
+    #[Override]
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('schedule:message')
-            ->when(fn () => Message::messageScheduled()->exists())->withoutOverlapping();
+        /*$schedule->command('schedule:message')
+            ->when(fn () => Message::messageScheduled()->exists())->withoutOverlapping();*/
 
         $schedule->command('tasks:notify')
             ->withoutOverlapping()
@@ -55,6 +57,7 @@ class Kernel extends ConsoleKernel
      *
      * @return void
      */
+    #[Override]
     protected function commands()
     {
         $this->load(__DIR__.'/Commands');
@@ -62,6 +65,7 @@ class Kernel extends ConsoleKernel
         require base_path('routes/console.php');
     }
 
+    #[Override]
     protected function bootstrappers()
     {
         return array_merge(

@@ -52,7 +52,7 @@ class DashboardService
         $filters = $this->getFilters($request);
 
         $query = $filters['member']
-            ? $user->members(true)
+            ? $user->activeMembers()
             : $user->projects();
 
         return $query

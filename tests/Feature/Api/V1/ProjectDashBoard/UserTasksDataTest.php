@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use Tests\TestCase;
 
 class UserTasksDataTest extends TestCase
@@ -25,6 +26,7 @@ class UserTasksDataTest extends TestCase
 
     public $status;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

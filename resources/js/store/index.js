@@ -10,7 +10,6 @@ import task from './task';
 import SingleTask from './SingleTask';
 import stage from './stage';
 import status from './status';
-import roles from './roles';
 import meeting from './meeting';
 import conversations from './conversations';
 import notifications from './notifications';
@@ -28,7 +27,6 @@ export default new Vuex.Store({
     SingleTask,
     stage,
     status,
-    roles,
     meeting,
     conversations,
     notifications,

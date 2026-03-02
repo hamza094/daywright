@@ -9,6 +9,7 @@ use App\Exceptions\Integrations\Zoom\UnauthorizedException;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Http\Integrations\Zoom\Requests\GetAccessTokenRequest;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
+use Override;
 use Saloon\Helpers\OAuth2\OAuthConfig;
 use Saloon\Http\Connector;
 use Saloon\Http\Request;
@@ -25,11 +26,13 @@ class ZoomConnector extends Connector
     /**
      * The Base URL of the API.
      */
+    #[Override]
     public function resolveBaseUrl(): string
     {
         return 'https://api.zoom.us/v2/';
     }
 
+    #[Override]
     public function getRequestException(
         Response $response, ?Throwable $senderException
     ): ?Throwable {
@@ -65,8 +68,8 @@ class ZoomConnector extends Connector
         $redirect = (string) config('services.zoom.redirect');
 
         if ($redirect === '') {
-            $appUrl = (string) config('app.url', 'http://localhost:8000');
-            $redirect = rtrim($appUrl !== '' ? $appUrl : 'http://localhost:8000', '/').'/oauth/zoom/callback';
+            $appUrl = (string) config('app.url');
+            $redirect = rtrim($appUrl, '/').'/oauth/zoom/callback';
         }
 
         if ($clientId === '' || $clientId === '0' || ($clientSecret === '' || $clientSecret === '0')) {

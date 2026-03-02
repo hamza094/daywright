@@ -2,21 +2,25 @@
   <div class="float-right">
     <FeatureDropdown :feature-pop.sync="featurePop">
       <ul>
-        <li class="feature-dropdown_item-content" @click="abandon()"><i class="fa-solid fa-eye-slash"></i> Abandon</li>
+        <li v-if="!isTrashed" class="feature-dropdown_item-content" @click="abandon()">
+          <i class="fa-solid fa-eye-slash"></i> Abandon
+        </li>
 
-        <li class="feature-dropdown_item-content" @click="$modal.show('project-message')">
+        <li v-if="canMessage" class="feature-dropdown_item-content" @click="$modal.show('project-message')">
           <i class="fa-regular fa-envelope"></i>Send Mail or Sms
         </li>
 
-        <li class="feature-dropdown_item-content" @click="exportProject()">
+        <li v-if="canExport" class="feature-dropdown_item-content" @click="exportProject()">
           <i class="fa-solid fa-upload"></i> Export
         </li>
 
-        <li class="feature-dropdown_item-content" @click="deleteProject"><i class="fa-solid fa-ban"></i> Delete</li>
+        <li v-if="isTrashed" class="feature-dropdown_item-content" @click="deleteProject">
+          <i class="fa-solid fa-ban"></i> Delete
+        </li>
       </ul>
     </FeatureDropdown>
 
-    <ProjectMessage :slug="slug" :members="members"></ProjectMessage>
+    <ProjectMessage v-if="canMessage" :slug="slug" :members="members"></ProjectMessage>
   </div>
 </template>
 
@@ -24,6 +28,7 @@
 import fileDownload from 'js-file-download';
 import ProjectMessage from './Message.vue';
 import FeatureDropdown from '../../FeatureDropdown.vue';
+import { hasFeature } from '../../../utils/features.js';
 
 export default {
   components: { ProjectMessage, FeatureDropdown },
@@ -32,6 +37,7 @@ export default {
     slug: { type: String, required: true },
     members: { type: Array, default: () => [] },
     name: { type: String, default: '' },
+    isTrashed: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -40,6 +46,14 @@ export default {
       featureClickOutsideHandler: null,
       errors: {},
     };
+  },
+  computed: {
+    canExport() {
+      return hasFeature(this.$store, 'project_export');
+    },
+    canMessage() {
+      return hasFeature(this.$store, 'project_messaging');
+    },
   },
   watch: {
     featurePop(open) {
@@ -56,9 +70,18 @@ export default {
     },
 
     deleteProject() {
-      this.performAction('Yes, delete it!', axios.get('/projects/' + this.slug + '/delete'));
+      if (!this.isTrashed) {
+        this.$vToastify.warning('Only abandoned projects can be deleted permanently.');
+        return;
+      }
+
+      this.performAction('Yes, delete it!', axios.delete('/projects/' + this.slug + '/force'));
     },
     exportProject() {
+      if (!this.canExport) {
+        return;
+      }
+
       axios
         .get('/projects/' + this.slug + '/export', {
           responseType: 'blob',
@@ -68,16 +91,7 @@ export default {
           fileDownload(response.data, 'Project ' + this.slug + '.xls');
         })
         .catch((error) => {
-          const msg = error?.response?.data?.message || error?.message || 'Export failed';
-          // Show a user-friendly message
-          if (this && this.$vToastify) {
-            this.$vToastify.error(msg);
-          }
-          // Keep a dev-only console error for debugging
-          const isDev = typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production';
-          if (isDev) {
-            console.error(error);
-          }
+          this.handleErrorResponse(error);
         });
     },
     async addFeatureClickOutsideListener() {

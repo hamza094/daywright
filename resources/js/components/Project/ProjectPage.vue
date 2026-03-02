@@ -13,7 +13,11 @@
                 </span>
 
                 <div class="d-flex align-items-center">
-                  <project-features :slug="project.slug" :members="project.members" :name="project.name">
+                  <project-features
+                    :slug="project.slug"
+                    :members="project.members"
+                    :name="project.name"
+                    :is-trashed="Boolean(project.is_trashed ?? project.deleted_at)">
                   </project-features>
                 </div>
               </div>
@@ -463,21 +467,12 @@ export default {
     },
 
     restore() {
-      this.performAction('Yes, Make live again!', axios.get(`/projects/${this.project.slug}/restore`));
+      this.performAction('Yes, Make live again!', axios.patch(`/projects/${this.project.slug}/restore`));
     },
 
     //show error messages
     showError(err) {
-      const {
-        data: { errors, error },
-      } = err.response;
-      if (errors) {
-        Object.keys(errors).forEach((field) => {
-          this.$vToastify.warning(errors[field][0]);
-        });
-      } else if (error) {
-        this.$vToastify.warning(error);
-      }
+      this.handleErrorResponse(err);
     },
 
     listenForActivity() {

@@ -6,6 +6,7 @@ namespace App\Http\Resources\Api\V1;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
+use Override;
 
 /**
  * @mixin \App\Models\Project
@@ -18,6 +19,7 @@ class ProjectResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
      */
+    #[Override]
     public function toArray($request)
     {
         $showRoute = $request->routeIs('projects.show');
@@ -71,6 +73,8 @@ class ProjectResource extends JsonResource
                 ! empty($this->deleted_at),
                 fn () => $this->deleted_at->diffforHumans()
             ),
+
+            'is_trashed' => $this->trashed(),
 
             /**
              * Date when the project's last stage was updated, formatted based on the application's date format configuration.

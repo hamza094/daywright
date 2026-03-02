@@ -56,11 +56,6 @@ parameters:
 			path: app/Console/Commands/TaskNotify.php
 
 		-
-			message: "#^Call to static method messageScheduled\\(\\) on an unknown class App\\\\Console\\\\Message\\.$#"
-			count: 1
-			path: app/Console/Kernel.php
-
-		-
 			message: "#^Method App\\\\Console\\\\Kernel\\:\\:bootstrappers\\(\\) return type has no value type specified in iterable type array\\.$#"
 			count: 1
 			path: app/Console/Kernel.php
@@ -69,6 +64,11 @@ parameters:
 			message: "#^Property App\\\\Console\\\\Kernel\\:\\:\\$commands type has no value type specified in iterable type array\\.$#"
 			count: 1
 			path: app/Console/Kernel.php
+
+		-
+			message: "#^Match arm is unreachable because previous comparison is always true\\.$#"
+			count: 1
+			path: app/Enums/FeatureFlag.php
 
 		-
 			message: "#^Method App\\\\Enums\\\\TaskDueNotifies\\:\\:values\\(\\) return type has no value type specified in iterable type array\\.$#"
@@ -136,6 +136,26 @@ parameters:
 			path: app/Http/Controllers/Api/V1/ActivityController.php
 
 		-
+			message: "#^Method App\\\\Http\\\\Controllers\\\\Api\\\\V1\\\\Admin\\\\DashboardController\\:\\:backup\\(\\) has no return type specified\\.$#"
+			count: 1
+			path: app/Http/Controllers/Api/V1/Admin/DashboardController.php
+
+		-
+			message: "#^Call to an undefined method App\\\\Interfaces\\\\Paddle\\:\\:SubscriptionUsersList\\(\\)\\.$#"
+			count: 1
+			path: app/Http/Controllers/Api/V1/Admin/Integration/PaddleController.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Controllers\\\\Api\\\\V1\\\\Admin\\\\StageController\\:\\:index\\(\\) has no return type specified\\.$#"
+			count: 1
+			path: app/Http/Controllers/Api/V1/Admin/StageController.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Controllers\\\\Api\\\\V1\\\\Admin\\\\StatusController\\:\\:index\\(\\) has no return type specified\\.$#"
+			count: 1
+			path: app/Http/Controllers/Api/V1/Admin/StatusController.php
+
+		-
 			message: "#^Parameter \\#2 \\$user of method App\\\\Services\\\\Api\\\\V1\\\\InvitationService\\:\\:rejectInvitation\\(\\) expects App\\\\Models\\\\User, Illuminate\\\\Contracts\\\\Auth\\\\Authenticatable\\|null given\\.$#"
 			count: 1
 			path: app/Http/Controllers/Api/V1/InvitationController.php
@@ -179,11 +199,6 @@ parameters:
 			message: "#^Method App\\\\Http\\\\Controllers\\\\Api\\\\V1\\\\NotificationsController\\:\\:updateStatus\\(\\) has parameter \\$notification with no type specified\\.$#"
 			count: 1
 			path: app/Http/Controllers/Api/V1/NotificationsController.php
-
-		-
-			message: "#^Method App\\\\Http\\\\Controllers\\\\Api\\\\V1\\\\ProjectController\\:\\:update\\(\\) has no return type specified\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/V1/ProjectController.php
 
 		-
 			message: "#^Method App\\\\Http\\\\Controllers\\\\Api\\\\V1\\\\StageController\\:\\:index\\(\\) has no return type specified\\.$#"
@@ -314,6 +329,26 @@ parameters:
 			message: "#^Property App\\\\Http\\\\Middleware\\\\VerifyCsrfToken\\:\\:\\$except type has no value type specified in iterable type array\\.$#"
 			count: 1
 			path: app/Http/Middleware/VerifyCsrfToken.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Requests\\\\Api\\\\V1\\\\Admin\\\\ProjectFilterRequest\\:\\:rules\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Requests/Api/V1/Admin/ProjectFilterRequest.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Requests\\\\Api\\\\V1\\\\Admin\\\\StageRequest\\:\\:messages\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Requests/Api/V1/Admin/StageRequest.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Requests\\\\Api\\\\V1\\\\Admin\\\\StageRequest\\:\\:rules\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Requests/Api/V1/Admin/StageRequest.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Requests\\\\Api\\\\V1\\\\Admin\\\\TaskStatusRequest\\:\\:rules\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Requests/Api/V1/Admin/TaskStatusRequest.php
 
 		-
 			message: "#^Method App\\\\Http\\\\Requests\\\\Api\\\\V1\\\\ConversationRequest\\:\\:messages\\(\\) return type has no value type specified in iterable type array\\.$#"
@@ -469,6 +504,331 @@ parameters:
 			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\ActivityResource\\:\\:loadAffectedUsers\\(\\) return type has no value type specified in iterable type array\\.$#"
 			count: 1
 			path: app/Http/Resources/Api/V1/ActivityResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ActivitiesResource\\:\\:\\$changes\\.$#"
+			count: 2
+			path: app/Http/Resources/Api/V1/Admin/ActivitiesResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ActivitiesResource\\:\\:\\$created_at\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ActivitiesResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ActivitiesResource\\:\\:\\$description\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ActivitiesResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ActivitiesResource\\:\\:\\$info\\.$#"
+			count: 3
+			path: app/Http/Resources/Api/V1/Admin/ActivitiesResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ActivitiesResource\\:\\:\\$project\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ActivitiesResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ActivitiesResource\\:\\:\\$subject\\.$#"
+			count: 7
+			path: app/Http/Resources/Api/V1/Admin/ActivitiesResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ActivitiesResource\\:\\:\\$subject_type\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ActivitiesResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ActivitiesResource\\:\\:toArray\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ActivitiesResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ActivitiesResource\\:\\:toArray\\(\\) return type with generic interface Illuminate\\\\Contracts\\\\Support\\\\Arrayable does not specify its types\\: TKey, TValue$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ActivitiesResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:\\$about\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:\\$created_at\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:\\$health_score\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:\\$health_score_calculated_at\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:\\$health_status\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:\\$id\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:\\$name\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:\\$slug\\.$#"
+			count: 2
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Call to an undefined method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:state\\(\\)\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:toArray\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectResource\\:\\:toArray\\(\\) return type with generic interface Illuminate\\\\Contracts\\\\Support\\\\Arrayable does not specify its types\\: TKey, TValue$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectsResource\\:\\:\\$id\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectsResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectsResource\\:\\:\\$name\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectsResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectsResource\\:\\:\\$slug\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectsResource.php
+
+		-
+			message: "#^Call to an undefined method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectsResource\\:\\:state\\(\\)\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectsResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectsResource\\:\\:toArray\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectsResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\ProjectsResource\\:\\:toArray\\(\\) return type with generic interface Illuminate\\\\Contracts\\\\Support\\\\Arrayable does not specify its types\\: TKey, TValue$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/ProjectsResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\StageResource\\:\\:toArray\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/StageResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\StageResource\\:\\:toArray\\(\\) return type with generic interface Illuminate\\\\Contracts\\\\Support\\\\Arrayable does not specify its types\\: TKey, TValue$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/StageResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskProjectResource\\:\\:\\$name\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskProjectResource\\:\\:\\$slug\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskProjectResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskProjectResource\\:\\:toArray\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskProjectResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskProjectResource\\:\\:toArray\\(\\) return type with generic interface Illuminate\\\\Contracts\\\\Support\\\\Arrayable does not specify its types\\: TKey, TValue$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskProjectResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:\\$created_at\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:\\$description\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:\\$due_at\\.$#"
+			count: 3
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:\\$id\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:\\$notified\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:\\$status_id\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:\\$title\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:\\$updated_at\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Call to an undefined method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:state\\(\\)\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Call to static method parse\\(\\) on an unknown class App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\Carbon\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:toArray\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:toArray\\(\\) return type with generic interface Illuminate\\\\Contracts\\\\Support\\\\Arrayable does not specify its types\\: TKey, TValue$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UserResource\\:\\:\\$avatar\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UserResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UserResource\\:\\:\\$avatar_path\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UserResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UserResource\\:\\:\\$id\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UserResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UserResource\\:\\:\\$name\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UserResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UserResource\\:\\:\\$username\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UserResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UserResource\\:\\:toArray\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UserResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UserResource\\:\\:toArray\\(\\) return type with generic interface Illuminate\\\\Contracts\\\\Support\\\\Arrayable does not specify its types\\: TKey, TValue$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UserResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$adminGrantedBy\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$adminRevokedBy\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$admin_granted_at\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$admin_revoked_at\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$avatar\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$created_at\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$email\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$name\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$username\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:\\$uuid\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Call to an undefined method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:isAdmin\\(\\)\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Call to an undefined method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:isSubscribed\\(\\)\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:toArray\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
+
+		-
+			message: "#^Method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\UsersResource\\:\\:toArray\\(\\) return type with generic interface Illuminate\\\\Contracts\\\\Support\\\\Arrayable does not specify its types\\: TKey, TValue$#"
+			count: 1
+			path: app/Http/Resources/Api/V1/Admin/UsersResource.php
 
 		-
 			message: "#^Access to an undefined property App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\InvitedUserResource\\:\\:\\$pivot\\.$#"
@@ -946,16 +1306,6 @@ parameters:
 			path: app/Models/Message.php
 
 		-
-			message: "#^Class App\\\\Models\\\\Paypal uses generic trait Illuminate\\\\Database\\\\Eloquent\\\\Factories\\\\HasFactory but does not specify its types\\: TFactory$#"
-			count: 1
-			path: app/Models/Paypal.php
-
-		-
-			message: "#^Method App\\\\Models\\\\Paypal\\:\\:user\\(\\) has no return type specified\\.$#"
-			count: 1
-			path: app/Models/Paypal.php
-
-		-
 			message: "#^Access to an undefined property App\\\\Models\\\\Project\\:\\:\\$project_id\\.$#"
 			count: 1
 			path: app/Models/Project.php
@@ -1202,7 +1552,7 @@ parameters:
 
 		-
 			message: "#^Generic type Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\<App\\\\Models\\\\Project\\> in PHPDoc tag @return does not specify all template types of class Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsToMany\\: TRelatedModel, TDeclaringModel$#"
-			count: 1
+			count: 3
 			path: app/Models/User.php
 
 		-
@@ -1237,6 +1587,16 @@ parameters:
 
 		-
 			message: "#^Method App\\\\Models\\\\User\\:\\:activities\\(\\) has no return type specified\\.$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Method App\\\\Models\\\\User\\:\\:adminGrantedBy\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\User\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\User\\)\\>\\.$#"
+			count: 1
+			path: app/Models/User.php
+
+		-
+			message: "#^Method App\\\\Models\\\\User\\:\\:adminRevokedBy\\(\\) should return Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, App\\\\Models\\\\User\\> but returns Illuminate\\\\Database\\\\Eloquent\\\\Relations\\\\BelongsTo\\<App\\\\Models\\\\User, \\$this\\(App\\\\Models\\\\User\\)\\>\\.$#"
 			count: 1
 			path: app/Models/User.php
 
@@ -1351,6 +1711,36 @@ parameters:
 			path: app/Providers/AppServiceProvider.php
 
 		-
+			message: "#^Method App\\\\Repository\\\\Admin\\\\DashboardRepository\\:\\:fetchDataForMonths\\(\\) has parameter \\$endDate with no type specified\\.$#"
+			count: 1
+			path: app/Repository/Admin/DashboardRepository.php
+
+		-
+			message: "#^Method App\\\\Repository\\\\Admin\\\\DashboardRepository\\:\\:fetchDataForMonths\\(\\) has parameter \\$startDate with no type specified\\.$#"
+			count: 1
+			path: app/Repository/Admin/DashboardRepository.php
+
+		-
+			message: "#^Method App\\\\Repository\\\\Admin\\\\DashboardRepository\\:\\:fetchDataForMonths\\(\\) return type has no value type specified in iterable type array\\.$#"
+			count: 1
+			path: app/Repository/Admin/DashboardRepository.php
+
+		-
+			message: "#^Method App\\\\Repository\\\\Admin\\\\ProjectFiltersRepository\\:\\:filters\\(\\) return type with generic interface Illuminate\\\\Contracts\\\\Pagination\\\\LengthAwarePaginator does not specify its types\\: TItem$#"
+			count: 1
+			path: app/Repository/Admin/ProjectFiltersRepository.php
+
+		-
+			message: "#^Generic type Illuminate\\\\Contracts\\\\Pagination\\\\LengthAwarePaginator\\<int, App\\\\Models\\\\Task\\> in PHPDoc tag @return specifies 2 template types, but interface Illuminate\\\\Contracts\\\\Pagination\\\\LengthAwarePaginator supports only 1\\: TItem$#"
+			count: 1
+			path: app/Repository/Admin/TaskRepository.php
+
+		-
+			message: "#^Method App\\\\Repository\\\\Admin\\\\TaskRepository\\:\\:getTasksWithFilter\\(\\) should return Illuminate\\\\Contracts\\\\Pagination\\\\LengthAwarePaginator\\<int, App\\\\Models\\\\Task\\> but returns Illuminate\\\\Pagination\\\\LengthAwarePaginator\\<App\\\\Models\\\\Task\\>\\.$#"
+			count: 1
+			path: app/Repository/Admin/TaskRepository.php
+
+		-
 			message: "#^Call to an undefined method Illuminate\\\\Database\\\\Eloquent\\\\Builder\\:\\:completed\\(\\)\\.$#"
 			count: 1
 			path: app/Repository/DashboardInsightsRepository.php
@@ -1459,11 +1849,6 @@ parameters:
 			message: "#^Method App\\\\Rules\\\\TaskAssigneeMember\\:\\:__construct\\(\\) has parameter \\$task with no type specified\\.$#"
 			count: 1
 			path: app/Rules/TaskAssigneeMember.php
-
-		-
-			message: "#^Call to static method count\\(\\) on an unknown class App\\\\Model\\\\TaskStatus\\.$#"
-			count: 1
-			path: app/Rules/maxStatusCount.php
 
 		-
 			message: "#^Method App\\\\Services\\\\Api\\\\V1\\\\Admin\\\\DashboardService\\:\\:fetchDataForMonths\\(\\) has parameter \\$endDate with no type specified\\.$#"
@@ -1631,17 +2016,7 @@ parameters:
 			path: app/Services/Api/V1/PaginationService.php
 
 		-
-			message: "#^Method App\\\\Services\\\\Api\\\\V1\\\\ProjectService\\:\\:addTasksToProject\\(\\) has parameter \\$project with no type specified\\.$#"
-			count: 1
-			path: app/Services/Api/V1/ProjectService.php
-
-		-
 			message: "#^Method App\\\\Services\\\\Api\\\\V1\\\\ProjectService\\:\\:addTasksToProject\\(\\) has parameter \\$tasks with no value type specified in iterable type array\\.$#"
-			count: 1
-			path: app/Services/Api/V1/ProjectService.php
-
-		-
-			message: "#^Method App\\\\Services\\\\Api\\\\V1\\\\ProjectService\\:\\:sendNotification\\(\\) has parameter \\$project with no type specified\\.$#"
 			count: 1
 			path: app/Services/Api/V1/ProjectService.php
 
@@ -2231,14 +2606,94 @@ parameters:
 			path: tests/Feature/Api/V1/ActivityTest.php
 
 		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$last_active_at\\.$#"
+			message: "#^Call to an undefined method Laragear\\\\TwoFactor\\\\Contracts\\\\TwoFactorTotp\\:\\:forceFill\\(\\)\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/DashboardTest.php
+
+		-
+			message: "#^Call to an undefined method Mockery\\\\ExpectationInterface\\|Mockery\\\\HigherOrderMessage\\:\\:once\\(\\)\\.$#"
 			count: 2
-			path: tests/Feature/Api/V1/Admin/UsersTest.php
+			path: tests/Feature/Api/V1/Admin/DashboardTest.php
+
+		-
+			message: "#^Parameter \\#1 \\$user of method Tests\\\\Feature\\\\Api\\\\V1\\\\Admin\\\\DashboardTest\\:\\:enableTwoFactorForUser\\(\\) expects App\\\\Models\\\\User, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/DashboardTest.php
+
+		-
+			message: "#^Parameter \\#1 \\$user of static method Laravel\\\\Sanctum\\\\Sanctum\\<Laravel\\\\Sanctum\\\\PersonalAccessToken\\>\\:\\:actingAs\\(\\) expects Illuminate\\\\Contracts\\\\Auth\\\\Authenticatable\\|Laravel\\\\Sanctum\\\\HasApiTokens, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
+			count: 3
+			path: tests/Feature/Api/V1/Admin/DashboardTest.php
+
+		-
+			message: "#^Property Tests\\\\Feature\\\\Api\\\\V1\\\\Admin\\\\DashboardTest\\:\\:\\$admin \\(App\\\\Models\\\\User\\) does not accept Illuminate\\\\Database\\\\Eloquent\\\\Model\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/DashboardTest.php
+
+		-
+			message: "#^Call to an undefined method Laragear\\\\TwoFactor\\\\Contracts\\\\TwoFactorTotp\\:\\:forceFill\\(\\)\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/PaddleTest.php
+
+		-
+			message: "#^Call to an undefined method Mockery\\\\ExpectationInterface\\|Mockery\\\\HigherOrderMessage\\:\\:once\\(\\)\\.$#"
+			count: 2
+			path: tests/Feature/Api/V1/Admin/PaddleTest.php
+
+		-
+			message: "#^Parameter \\#1 \\$user of method Tests\\\\Feature\\\\Api\\\\V1\\\\Admin\\\\PaddleTest\\:\\:enableTwoFactorForUser\\(\\) expects App\\\\Models\\\\User, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/PaddleTest.php
 
 		-
 			message: "#^Parameter \\#1 \\$user of static method Laravel\\\\Sanctum\\\\Sanctum\\<Laravel\\\\Sanctum\\\\PersonalAccessToken\\>\\:\\:actingAs\\(\\) expects Illuminate\\\\Contracts\\\\Auth\\\\Authenticatable\\|Laravel\\\\Sanctum\\\\HasApiTokens, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
 			count: 1
-			path: tests/Feature/Api/V1/Admin/UsersTest.php
+			path: tests/Feature/Api/V1/Admin/PaddleTest.php
+
+		-
+			message: "#^Property Tests\\\\Feature\\\\Api\\\\V1\\\\Admin\\\\PaddleTest\\:\\:\\$admin \\(App\\\\Models\\\\User\\) does not accept Illuminate\\\\Database\\\\Eloquent\\\\Model\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/PaddleTest.php
+
+		-
+			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
+			count: 3
+			path: tests/Feature/Api/V1/Admin/StagesTest.php
+
+		-
+			message: "#^Call to an undefined method Laragear\\\\TwoFactor\\\\Contracts\\\\TwoFactorTotp\\:\\:forceFill\\(\\)\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/StagesTest.php
+
+		-
+			message: "#^Parameter \\#1 \\$user of method Tests\\\\Feature\\\\Api\\\\V1\\\\Admin\\\\StagesTest\\:\\:enableTwoFactorForUser\\(\\) expects App\\\\Models\\\\User, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/StagesTest.php
+
+		-
+			message: "#^Property Tests\\\\Feature\\\\Api\\\\V1\\\\Admin\\\\StagesTest\\:\\:\\$admin \\(App\\\\Models\\\\User\\) does not accept Illuminate\\\\Database\\\\Eloquent\\\\Model\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/StagesTest.php
+
+		-
+			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
+			count: 4
+			path: tests/Feature/Api/V1/Admin/StatusesTest.php
+
+		-
+			message: "#^Call to an undefined method Laragear\\\\TwoFactor\\\\Contracts\\\\TwoFactorTotp\\:\\:forceFill\\(\\)\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/StatusesTest.php
+
+		-
+			message: "#^Parameter \\#1 \\$user of method Tests\\\\Feature\\\\Api\\\\V1\\\\Admin\\\\StatusesTest\\:\\:enableTwoFactorForUser\\(\\) expects App\\\\Models\\\\User, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/StatusesTest.php
+
+		-
+			message: "#^Property Tests\\\\Feature\\\\Api\\\\V1\\\\Admin\\\\StatusesTest\\:\\:\\$admin \\(App\\\\Models\\\\User\\) does not accept Illuminate\\\\Database\\\\Eloquent\\\\Model\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/Admin/StatusesTest.php
 
 		-
 			message: "#^Called 'contains' on Laravel collection, but could have been retrieved as a query\\.$#"
@@ -2294,6 +2749,26 @@ parameters:
 			message: "#^Property Tests\\\\Feature\\\\Api\\\\V1\\\\ConversationTest\\:\\:\\$user has no type specified\\.$#"
 			count: 1
 			path: tests/Feature/Api/V1/ConversationTest.php
+
+		-
+			message: "#^Parameter \\#1 \\$user of static method Laravel\\\\Sanctum\\\\Sanctum\\<Laravel\\\\Sanctum\\\\PersonalAccessToken\\>\\:\\:actingAs\\(\\) expects Illuminate\\\\Contracts\\\\Auth\\\\Authenticatable\\|Laravel\\\\Sanctum\\\\HasApiTokens, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/FeatureFlagsTest.php
+
+		-
+			message: "#^Property Tests\\\\Feature\\\\Api\\\\V1\\\\FeatureFlagsTest\\:\\:\\$project has no type specified\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/FeatureFlagsTest.php
+
+		-
+			message: "#^Property Tests\\\\Feature\\\\Api\\\\V1\\\\FeatureFlagsTest\\:\\:\\$status has no type specified\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/FeatureFlagsTest.php
+
+		-
+			message: "#^Property Tests\\\\Feature\\\\Api\\\\V1\\\\FeatureFlagsTest\\:\\:\\$user has no type specified\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/FeatureFlagsTest.php
 
 		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$email\\.$#"
@@ -2661,6 +3136,16 @@ parameters:
 			path: tests/Feature/Api/V1/ProjectDashBoard/UserTasksDataTest.php
 
 		-
+			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/ProjectFeatureTest.php
+
+		-
+			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$meeting_id\\.$#"
+			count: 2
+			path: tests/Feature/Api/V1/ProjectFeatureTest.php
+
+		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$name\\.$#"
 			count: 1
 			path: tests/Feature/Api/V1/ProjectFeatureTest.php
@@ -2852,7 +3337,7 @@ parameters:
 
 		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
-			count: 8
+			count: 11
 			path: tests/Feature/Api/V1/TaskFeaturesTest.php
 
 		-
@@ -2911,21 +3396,6 @@ parameters:
 			path: tests/Feature/Api/V1/TaskFeaturesTest.php
 
 		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
-			count: 1
-			path: tests/Feature/Api/V1/TaskNotifyTest.php
-
-		-
-			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$notify_sent\\.$#"
-			count: 1
-			path: tests/Feature/Api/V1/TaskNotifyTest.php
-
-		-
-			message: "#^Call to an undefined method Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:assignee\\(\\)\\.$#"
-			count: 1
-			path: tests/Feature/Api/V1/TaskNotifyTest.php
-
-		-
 			message: "#^Parameter \\#1 \\$user of static method Laravel\\\\Sanctum\\\\Sanctum\\<Laravel\\\\Sanctum\\\\PersonalAccessToken\\>\\:\\:actingAs\\(\\) expects Illuminate\\\\Contracts\\\\Auth\\\\Authenticatable\\|Laravel\\\\Sanctum\\\\HasApiTokens, Illuminate\\\\Database\\\\Eloquent\\\\Model given\\.$#"
 			count: 1
 			path: tests/Feature/Api/V1/TaskNotifyTest.php
@@ -2946,13 +3416,23 @@ parameters:
 			path: tests/Feature/Api/V1/TaskNotifyTest.php
 
 		-
+			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$due_at\\.$#"
+			count: 1
+			path: tests/Feature/Api/V1/TaskTest.php
+
+		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
 			count: 4
 			path: tests/Feature/Api/V1/TaskTest.php
 
 		-
+			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$notify_sent\\.$#"
+			count: 2
+			path: tests/Feature/Api/V1/TaskTest.php
+
+		-
 			message: "#^Call to an undefined method Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:path\\(\\)\\.$#"
-			count: 3
+			count: 4
 			path: tests/Feature/Api/V1/TaskTest.php
 
 		-
@@ -3093,11 +3573,6 @@ parameters:
 		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"
 			count: 8
-			path: tests/Feature/Api/V1/UserTest.php
-
-		-
-			message: "#^Call to an undefined method Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:assignRole\\(\\)\\.$#"
-			count: 1
 			path: tests/Feature/Api/V1/UserTest.php
 
 		-

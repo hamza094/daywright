@@ -7,9 +7,11 @@ namespace App\Channels;
 use Illuminate\Notifications\Channels\DatabaseChannel as Channel;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Override;
 
 class DatabaseChannel extends Channel
 {
+    #[Override]
     public function send($notifiable, Notification $notification): void
     {
         $data = json_encode($this->getData($notifiable, $notification));

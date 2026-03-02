@@ -9,7 +9,6 @@ use App\Http\Requests\Api\V1\Admin\StageRequest;
 use App\Http\Resources\Api\V1\Admin\StageResource;
 use App\Models\Stage;
 use F9Web\ApiResponseHelpers;
-use Illuminate\Http\Request;
 
 class StageController extends Controller
 {
@@ -32,9 +31,9 @@ class StageController extends Controller
         ]);
     }
 
-    public function update(Request $request, Stage $stage): \Illuminate\Http\JsonResponse
+    public function update(StageRequest $request, Stage $stage): \Illuminate\Http\JsonResponse
     {
-        $stage->update($request->validate(['name' => 'required|string|max:255']));
+        $stage->update($request->validated());
 
         return $this->respondWithSuccess([
             'message' => 'Stage updated successfully',

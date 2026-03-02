@@ -8,6 +8,7 @@ use App\Enums\TaskDueNotifies;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Override;
 use Timezone;
 
 class TaskUpdate extends FormRequest
@@ -67,7 +68,8 @@ class TaskUpdate extends FormRequest
         ];
     }
 
-    protected function prepareForValidation()
+    #[Override]
+    protected function prepareForValidation(): void
     {
         $dueAt = $this->input('due_at');
 

@@ -11,12 +11,12 @@ use App\Listeners\PaddleEventListener;
 use App\Listeners\SaveUserTimezone;
 use App\Listeners\SendPasswordUpdateEmail;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Auth\Events\Verified;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use Laravel\Paddle\Events\WebhookHandled;
 use Laravel\Paddle\Events\WebhookReceived;
+use Override;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -55,6 +55,7 @@ class EventServiceProvider extends ServiceProvider
     /**
      * Register any events for your application.
      */
+    #[Override]
     public function boot(): void
     {
         parent::boot();

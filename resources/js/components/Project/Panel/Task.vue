@@ -154,8 +154,8 @@ export default {
           this.setTask(response.data);
           this.$modal.show('task-modal');
         })
-        .catch(() => {
-          //this.$Progress.fail();
+        .catch((error) => {
+          this.handleErrorResponse(error);
         });
     },
 
@@ -170,7 +170,7 @@ export default {
         })
         .catch((error) => {
           this.form.title = '';
-          this.$vToastify.warning(error.response.data.message);
+          this.handleErrorResponse(error);
         });
     },
 

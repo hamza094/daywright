@@ -107,6 +107,16 @@ DayWright is built with a few clear goals in mind:
 - **Friendly for contributors**: We aim to keep the codebase straightforward and easy to navigate. This helps new contributors onboard quickly and ensures long-term maintainability.
 - **Accessible anywhere**: Whether you're working on a laptop, tablet, or phone, DayWright should feel fast and comfortable to use. Our goal is to support a smooth experience across different environments.
 
+## Configuration
+
+The application uses an environment variable called `ADMIN_EMAILS` to identify administrator accounts.
+
+- Format: a comma-separated list of email addresses. Example: `ADMIN_EMAILS=admin@example.com,security@example.com`
+- Recommended place to set it: the project's `.env` file for local development, and `.env.testing` for CI/test runs.
+- Prefer this over `config/admin.local.php` unless you need to execute PHP in a local override. If you do use `admin.local.php`, keep it out of version control and only use trusted contents.
+
+This value is read by `config/admin.php` and used by the application to determine which users are considered admins.
+
 ## Contact
 
 <a href="https://github.com/hamza094">Hamza Ikram (hamza094)</a>

@@ -10,8 +10,11 @@ use App\Models\Activity;
 use App\Services\Api\V1\Admin\DashboardService;
 use Carbon\Carbon;
 use Dedoc\Scramble\Attributes\ExcludeRouteFromDocs;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class DashboardController extends Controller
@@ -31,23 +34,33 @@ class DashboardController extends Controller
         }
     }
 
-    public function activities()
+    public function activities(): AnonymousResourceCollection|JsonResponse
     {
-        $activities = Activity::with('user', 'subject', 'project')->latest()->limit(15)->get();
+        try {
+            $activities = Activity::with('user', 'subject', 'project')->latest()->limit(15)->get();
 
-        return ActivitiesResource::collection($activities);
+            return ActivitiesResource::collection($activities);
+        } catch (Throwable $e) {
+            Log::error('Failed to load admin activities', ['error' => $e->getMessage()]);
+
+            return response()->json(['message' => 'Failed to load activities.'], 500);
+        }
     }
 
     #[ExcludeRouteFromDocs]
-    public function data(Request $request)
+    public function data(Request $request): JsonResponse
     {
-        $data = [];
+        try {
+            $startDate = Carbon::now()->subMonths(11)->startOfMonth();
+            $endDate = Carbon::now()->endOfMonth();
 
-        $startDate = Carbon::now()->subMonths(11)->startOfMonth();
-        $endDate = Carbon::now()->endOfMonth();
+            $data = $this->dashboardService->fetchDataForMonths($startDate, $endDate);
 
-        $data = $this->dashboardService->fetchDataForMonths($startDate, $endDate);
+            return response()->json($data);
+        } catch (Throwable $e) {
+            Log::error('Failed to load admin dashboard data', ['error' => $e->getMessage()]);
 
-        return response()->json($data);
+            return response()->json(['message' => 'Failed to load dashboard data.'], 500);
+        }
     }
 }

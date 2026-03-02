@@ -43,8 +43,9 @@ class ApplicationTest extends TestCase
     /** @test */
     public function auth_user_can_export_project_file(): void
     {
+        $this->user->forceFill(['is_admin' => true])->save();
         Excel::fake();
-        $this->getJson($this->project->path().'/export');
+        $this->withoutExceptionHandling()->getJson($this->project->path().'/export');
 
         Excel::assertDownloaded('Project '.$this->project->name.'.xls', fn (ProjectsExport $export) =>
             // Assert that the correct export is downloaded.

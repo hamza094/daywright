@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+$appUrl = rtrim((string) env('APP_URL', 'http://localhost:8000'), '/');
+
 return [
 
     /*
@@ -63,8 +65,8 @@ return [
         'secret' => env('PAYPAL_SECRET'),
         'url' => [
             'executeAgreement' => [
-                'success' => 'http://localhost:8000/execute-agreement/true',
-                'failure' => 'http://localhost:8000/execute-agreement/false',
+                'success' => $appUrl.'/execute-agreement/true',
+                'failure' => $appUrl.'/execute-agreement/false',
             ],
         ],
     ],
@@ -72,10 +74,7 @@ return [
     'zoom' => [
         'client_id' => env('ZOOM_CLIENT_ID') ?: env('ZOOM_TEST_CLIENT_ID'),
         'client_secret' => env('ZOOM_CLIENT_SECRET') ?: env('ZOOM_TEST_CLIENT_SECRET'),
-        'redirect' => env(
-            'ZOOM_REDIRECT_URI',
-            rtrim((string) env('APP_URL', 'http://localhost:8000'), '/').'/oauth/zoom/callback'
-        ),
+        'redirect' => env('ZOOM_REDIRECT_URI', $appUrl.'/oauth/zoom/callback'),
         'webhook_secret' => env('ZOOM_WEBHOOK_SECRET_TOKEN'),
     ],
 

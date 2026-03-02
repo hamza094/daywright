@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1;
 
 use Illuminate\Http\Resources\Json\JsonResource;
+use Override;
 
 class ProjectInsightsResource extends JsonResource
 {
@@ -16,6 +17,7 @@ class ProjectInsightsResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array<string,mixed>
      */
+    #[Override]
     public function toArray($request): array
     {
         $project = $this['project'];

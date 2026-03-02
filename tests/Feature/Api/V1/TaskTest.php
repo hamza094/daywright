@@ -76,6 +76,22 @@ class TaskTest extends TestCase
     }
 
     /** @test */
+    public function user_cannot_create_task_when_project_is_abandoned(): void
+    {
+        $this->project->delete();
+
+        $this->postJson(route('tasks.store', ['project' => $this->project->slug]), [
+            'title' => 'Blocked Task',
+            'status_id' => $this->status->id,
+        ])->assertForbidden();
+
+        $this->assertDatabaseMissing('tasks', [
+            'project_id' => $this->project->id,
+            'title' => 'Blocked Task',
+        ]);
+    }
+
+    /** @test */
     public function duplicate_project_task_can_not_be_created(): void
     {
         $this->project->tasks()->create([
@@ -124,6 +140,23 @@ class TaskTest extends TestCase
     }
 
     /** @test */
+    public function trashed_task_activity_request_returns_task_not_active_message(): void
+    {
+        $task = Task::factory()->for($this->project)->create();
+
+        $task->delete();
+
+        $this->putJson(route('tasks.update', [
+            'project' => $this->project->slug,
+            'task' => $task->id,
+        ]), [
+            'title' => 'Updated title',
+        ])->assertForbidden()->assertJson([
+            'message' => 'Sorry, task is not active. Restore it to perform this activity.',
+        ]);
+    }
+
+    /** @test */
     public function allowed_user_can_update_project_task(): void
     {
         $task = $this->project->addTask('test task');
@@ -133,7 +166,7 @@ class TaskTest extends TestCase
 
         $status2 = TaskStatus::factory()->create();
 
-        $this->putJson($task->path(), [
+        $this->withoutExceptionHandling()->putJson($task->path(), [
             'title' => $updatedTitle,
             'description' => $updatedDescription,
             'status_id' => $status2->id,
@@ -146,6 +179,26 @@ class TaskTest extends TestCase
             'description' => $updatedDescription,
         ])
             ->assertEquals($task->status->id, $status2->id);
+    }
+
+    /** @test */
+    public function user_cannot_update_task_when_project_is_abandoned(): void
+    {
+        $task = $this->project->addTask('test task');
+
+        $this->project->delete();
+
+        $this->putJson(route('tasks.update', [
+            'project' => $this->project->slug,
+            'task' => $task->id,
+        ]), [
+            'title' => 'Task title updated',
+        ])->assertForbidden();
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'title' => 'test task',
+        ]);
     }
 
     /** @test */
@@ -169,23 +222,6 @@ class TaskTest extends TestCase
     }
 
     /** @test */
-    public function task_gate_check(): void
-    {
-        $task = Task::factory()->for($this->project)->create();
-
-        $this->deleteJson(route('task.archive', [
-            'project' => $this->project->slug,
-            'task' => $task->id,
-        ]));
-
-        $this->putJson($task->path(), [
-            'title' => 'updated task',
-        ])->assertJsonValidationErrors([
-            'task' => 'Task is archived. Activate the task to proceed.',
-        ]);
-    }
-
-    /** @test */
     public function task_policy_check(): void
     {
         $task = Task::factory()->for($this->project)->create();
@@ -200,5 +236,42 @@ class TaskTest extends TestCase
             'project' => $this->project->slug,
             'task' => $task->id,
         ]))->assertForbidden();
+    }
+
+    /** @test */
+    public function updating_due_date_resets_task_notification(): void
+    {
+        $task = Task::factory()->for($this->project)->create([
+            'title' => 'Reminder task',
+            'user_id' => $this->user->id,
+            'due_at' => now()->addDay(),
+            'notified' => '1 Day Before',
+            'notify_sent' => true,
+        ]);
+
+        $this->putJson($task->path(), [
+            'due_at' => now()->addDays(3)->format('Y-m-d\TH:i:s'),
+        ])->assertOk();
+
+        $this->assertEquals(0, (int) $task->fresh()->notify_sent);
+    }
+
+    /** @test */
+    public function updating_notification_rule_resets_task_notification(): void
+    {
+        $task = Task::factory()->for($this->project)->create([
+            'title' => 'Reminder task',
+            'user_id' => $this->user->id,
+            'due_at' => now()->addDay(),
+            'notified' => '1 Day Before',
+            'notify_sent' => true,
+        ]);
+
+        $this->putJson($task->path(), [
+            'notified' => '5 Minutes Before',
+            'due_at' => $task->due_at->format('Y-m-d\TH:i:s'),
+        ])->assertOk();
+
+        $this->assertEquals(0, (int) $task->fresh()->notify_sent);
     }
 }

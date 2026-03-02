@@ -120,8 +120,7 @@ export default {
           this.$vToastify.success('All notifications marked as read.');
         })
         .catch((error) => {
-          this.$vToastify.error('Failed to mark all notifications as read.');
-          console.error(error);
+          this.handleErrorResponse(error);
         });
     },
     filterNotifications(type) {

@@ -379,6 +379,7 @@ export default {
         const res = await apiFn(...args);
         await onSuccess(res);
       } catch (e) {
+        this.handleErrorResponse(e);
         this.error = this.extractError(e);
       } finally {
         if (loadingKey) this[loadingKey] = false;

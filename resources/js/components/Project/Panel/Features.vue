@@ -231,15 +231,8 @@ export default {
         })
         .catch((error) => {
           this.$Progress.fail();
-          const dataErrors = error.response.data.errors;
-
-          if (dataErrors && dataErrors.notes[0]) {
-            this.$vToastify.warning(dataErrors.notes[0]);
-          }
-          if (error.response.data.error) {
-            this.$vToastify.warning(error.response.data.error);
-          }
           this.form.notes = this.notes;
+          this.handleErrorResponse(error);
         })
         .finally(() => {
           const focusTarget = document.getElementById('focus-target');
@@ -262,7 +255,7 @@ export default {
           this.results = response.data;
         })
         .catch((error) => {
-          this.$vToastify.warning(error.response.data.error);
+          this.handleErrorResponse(error);
         })
         .finally(() => {
           this.isLoading = false;
@@ -286,18 +279,7 @@ export default {
         .catch((error) => {
           this.query = '';
           this.results = [];
-
-          const errors = error.response?.data?.errors;
-
-          if (error.response?.status === 422 && errors) {
-            Object.values(errors)
-              .flat()
-              .forEach((message) => {
-                this.$vToastify.warning(message);
-              });
-          } else {
-            this.$vToastify.warning(error.response?.data?.error || 'An unexpected error occurred.');
-          }
+          this.handleErrorResponse(error);
         });
     },
 
@@ -311,7 +293,7 @@ export default {
               this.$vToastify.info(response.data.message);
             })
             .catch((error) => {
-              this.$vToastify.warning(error.response?.data?.error || 'Failed to remove the member. Try again.');
+              this.handleErrorResponse(error);
             });
         }
       });
@@ -328,7 +310,7 @@ export default {
             this.$vToastify.info(response.data.message);
           })
           .catch((error) => {
-            this.$vToastify.warning(error.response?.data?.message || 'Failed to cancel the request. Try again.');
+            this.handleErrorResponse(error);
           });
       });
     },
@@ -340,7 +322,7 @@ export default {
           this.pendingMembers = response.data.pending_invitations;
         })
         .catch((error) => {
-          this.$vToastify.warning(error.response?.data?.message || 'Failed to load pending invitations.');
+          this.handleErrorResponse(error);
         });
     },
   },

@@ -9,6 +9,7 @@ use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use App\Models\User;
 use App\Services\Api\V1\Zoom\ZoomService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Override;
 use Safe\DateTimeImmutable;
 use Saloon\Enums\Method;
 use Saloon\Http\Faking\MockResponse;
@@ -25,6 +26,7 @@ class MeetingCreateTest extends TestCase
 
     private array $meetingData;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();

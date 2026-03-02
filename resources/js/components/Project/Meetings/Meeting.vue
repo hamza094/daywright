@@ -218,7 +218,7 @@ export default {
           window.location.href = response.data.redirectUrl;
         })
         .catch((error) => {
-          this.$vToastify.error(error?.response?.data?.message || 'Authorization failed');
+          this.handleErrorResponse(error);
         });
     },
 
@@ -246,7 +246,7 @@ export default {
 
         this.$vToastify.success('Meeting initiated successfully!');
       } catch (error) {
-        this.$vToastify.error(error?.response?.data?.message || error?.message || 'Meeting initiation failed!');
+        this.handleErrorResponse(error);
       } finally {
         this.$vToastify.stopLoader(this.loadingId);
         this.loadingId = null;

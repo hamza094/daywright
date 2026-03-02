@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Override;
 
 class ActivityResource extends JsonResource
 {
@@ -19,6 +20,7 @@ class ActivityResource extends JsonResource
      * @param  \Illuminate\Http\Request  $request
      * @return array<string, mixed>
      */
+    #[Override]
     public function toArray($request): array
     {
         return [

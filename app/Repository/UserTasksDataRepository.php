@@ -27,7 +27,7 @@ class UserTasksDataRepository
             ->with([
                 'project' => fn ($q) => $q->withTrashed(),
                 'status',
-                'assignee' => fn ($q) => $q->with('roles:id,name'),
+                'assignee',
             ])
             ->get();
     }

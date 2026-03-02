@@ -7,23 +7,28 @@ namespace App\Services\Api\V1\Paddle;
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Interfaces\Paddle;
 use App\Models\User;
+use Override;
 
 final class SubscriptionService implements Paddle
 {
+    #[Override]
     public function subscribe(User $user, string $plan): mixed
     {
         if ($user->subscribedPlan() === $plan) {
             throw new SubscriptionException('You are already subscribed to this plan.');
         }
 
+        $appUrl = rtrim((string) config('app.url'), '/');
+
         return $user->newSubscription('DayWright', config('services.paddle.'.$plan))
-            ->returnTo('http://localhost:8000/subscriptions')
+            ->returnTo($appUrl.'/subscriptions')
             ->create();
     }
 
     /**
      * @return array{message: string}
      */
+    #[Override]
     public function swap(User $user, string $plan): array
     {
         $currentPlan = $user->subscribedPlan();
@@ -42,6 +47,7 @@ final class SubscriptionService implements Paddle
     /**
      * @return array{message: string}
      */
+    #[Override]
     public function cancel(User $user, string $plan): array
     {
         if ($user->subscribedPlan() !== $plan) {

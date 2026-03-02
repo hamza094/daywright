@@ -15,18 +15,18 @@ use Tests\TestCase;
 
 class TaskNotifyTest extends TestCase
 {
-    use ProjectSetup,RefreshDatabase;
+    use ProjectSetup, RefreshDatabase;
 
     /** @test */
     public function test_task_notify_command_handles_notifications(): void
     {
         Notification::fake();
 
-        $status = TaskStatus::factory()->create();
+        $status = $this->createTaskStatus();
 
-        $user = User::factory()->create();
+        $user = $this->createUser();
 
-        $task = Task::factory()->create([
+        $task = $this->createTask([
             'notified' => '1 Day Before',
             'due_at' => now()->addDay(),
             'status_id' => $status->id,
@@ -41,5 +41,65 @@ class TaskNotifyTest extends TestCase
         Notification::assertSentTo($user, TaskDue::class);
 
         $this->assertEquals($task->fresh()->notify_sent, 1);
+    }
+
+    /** @test */
+    public function test_task_notify_command_skips_tasks_belonging_to_trashed_projects(): void
+    {
+        Notification::fake();
+
+        $status = $this->createTaskStatus();
+
+        $user = $this->createUser();
+
+        $task = $this->createTask([
+            'notified' => '1 Day Before',
+            'due_at' => now()->addDay(),
+            'status_id' => $status->id,
+        ]);
+
+        $task->assignee()->attach($user);
+        $task->project->delete();
+
+        $this->artisan('tasks:notify')
+            ->expectsOutput('Task notifications sent successfully.')
+            ->assertSuccessful();
+
+        Notification::assertNotSentTo($user, TaskDue::class);
+
+        $this->assertEquals(0, (int) $task->fresh()->notify_sent);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createTaskStatus(array $attributes = []): TaskStatus
+    {
+        /** @var TaskStatus $status */
+        $status = TaskStatus::factory()->create($attributes);
+
+        return $status;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createUser(array $attributes = []): User
+    {
+        /** @var User $user */
+        $user = User::factory()->create($attributes);
+
+        return $user;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createTask(array $attributes = []): Task
+    {
+        /** @var Task $task */
+        $task = Task::factory()->create($attributes);
+
+        return $task;
     }
 }

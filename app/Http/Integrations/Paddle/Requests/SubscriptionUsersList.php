@@ -6,6 +6,7 @@ namespace App\Http\Integrations\Paddle\Requests;
 
 use App\DataTransferObjects\Paddle\Data;
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
+use Override;
 use Saloon\Contracts\Body\HasBody;
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
@@ -29,6 +30,7 @@ class SubscriptionUsersList extends Request implements HasBody, Paginatable
     /**
      * The endpoint for the request
      */
+    #[Override]
     public function resolveEndpoint(): string
     {
         return '/users';
@@ -37,6 +39,7 @@ class SubscriptionUsersList extends Request implements HasBody, Paginatable
     /**
      * @return array<int, Data>
      */
+    #[Override]
     public function createDtoFromResponse(Response $response): mixed
     {
         /** @var array<int, array<string,mixed>> $items */

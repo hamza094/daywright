@@ -9,6 +9,7 @@ use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvi
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
+use Override;
 
 class RouteServiceProvider extends ServiceProvider
 {
@@ -31,6 +32,7 @@ class RouteServiceProvider extends ServiceProvider
     /**
      * Define your route model bindings, pattern filters, etc.
      */
+    #[Override]
     public function boot(): void
     {
         $this->configureRateLimiting();
@@ -86,6 +88,20 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('invite-actions', fn (Request $request) => Limit::perMinute(10)->by(optional($request->user())->id ?: $request->ip()));
+
+        RateLimiter::for('admin-api', function (Request $request) {
+            $key = optional($request->user())->id
+                ?: $request->ip();
+
+            return Limit::perMinute(60)->by(sprintf('admin-api|%s', $key));
+        });
+
+        RateLimiter::for('admin-mutations', function (Request $request) {
+            $key = optional($request->user())->id
+                ?: $request->ip();
+
+            return Limit::perMinute(20)->by(sprintf('admin-mutations|%s', $key));
+        });
 
     }
 

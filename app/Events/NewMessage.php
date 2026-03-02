@@ -11,6 +11,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Override;
 
 class NewMessage implements ShouldBroadcast
 {
@@ -28,6 +29,7 @@ class NewMessage implements ShouldBroadcast
      *
      * @return \Illuminate\Broadcasting\Channel|array
      */
+    #[Override]
     public function broadcastOn(): PrivateChannel
     {
         return new PrivateChannel('project.'.$this->projectSlug.'.conversations');

@@ -14,10 +14,12 @@ use App\Actions\ProjectMetrics\UpcomingRiskMetricAction;
 use App\Enums\ProjectStage;
 use App\Models\Project;
 use Mockery;
+use Override;
 use Tests\TestCase;
 
 class ProjectInsightsCalculationsTest extends TestCase
 {
+    #[Override]
     protected function tearDown(): void
     {
         Mockery::close();

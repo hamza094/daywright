@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\Zoom;
 
 use Exception;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 use Safe\DateTimeImmutable;
 
 class MeetingStoreRequest extends FormRequest
@@ -36,6 +37,7 @@ class MeetingStoreRequest extends FormRequest
         ];
     }
 
+    #[Override]
     protected function prepareForValidation()
     {
         try {

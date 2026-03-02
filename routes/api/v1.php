@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\Zoom\ZoomTokenController;
 use App\Http\Controllers\Api\V1\ZoomMeetingController;
 use App\Http\Middleware\VerifyZoomWebhook;
 use Illuminate\Support\Facades\Route;
+use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,12 +49,9 @@ Route::controller(ZoomWebhookController::class)
 
     });
 
-Route::middleware(['auth:sanctum'/* ,\App\Http\Middleware\TrackLastActiveAt::class */])->group(function (): void {
+Route::middleware(['auth:sanctum'])->group(function (): void {
 
     Route::get('/me', [UserController::class, 'me'])->name('user.me');
-
-    // TwoFactor routes moved to `routes/web.php` to keep session-based
-    // endpoints (like `login-confirm`) under the `web` middleware group.
 
     Route::get('/user/token', [ZoomTokenController::class, 'getUserToken']);
 
@@ -93,8 +91,8 @@ Route::middleware(['auth:sanctum'/* ,\App\Http\Middleware\TrackLastActiveAt::cla
 
             Route::get('/insights', [ProjectInsightsController::class, 'index'])->name('projects.insights');
 
-            Route::get('/delete', [ProjectController::class, 'delete'])->can('manage', 'project');
-            Route::get('/restore', [ProjectController::class, 'restore'])->withTrashed()->can('manage', 'project');
+            Route::delete('/force', [ProjectController::class, 'delete'])->withTrashed()->can('manage', 'project');
+            Route::patch('/restore', [ProjectController::class, 'restore'])->withTrashed()->can('manage', 'project');
 
             Route::middleware(['can:access,project'])->group(function (): void {
 
@@ -102,15 +100,23 @@ Route::middleware(['auth:sanctum'/* ,\App\Http\Middleware\TrackLastActiveAt::cla
 
                 // Project Feature Routes
                 Route::controller(FeaturesController::class)->group(function (): void {
-                    Route::get('export', 'export')->middleware('subscription');
+                    Route::get('export', 'export')->middleware([
+                        'subscription',
+                        EnsureFeaturesAreActive::using('project-export'),
+                    ]);
                     Route::patch('stage', 'stage');
                 });
 
-                Route::controller(MessageController::class)->group(function (): void {
-                    Route::post('message', 'message');
-                    Route::get('messages/scheduled', 'scheduled');
-                    Route::delete('messages/{message}/delete', 'delete');
-                })->middleware('subscription');
+                Route::controller(MessageController::class)
+                    ->middleware([
+                        'subscription',
+                        EnsureFeaturesAreActive::using('project-messaging'),
+                    ])
+                    ->group(function (): void {
+                        Route::post('message', 'message');
+                        Route::get('messages/scheduled', 'scheduled');
+                        Route::delete('messages/{message}/delete', 'delete');
+                    });
 
                 // Chat Conversation Routes
                 Route::apiResource('/conversations', ConversationController::class)
@@ -121,7 +127,7 @@ Route::middleware(['auth:sanctum'/* ,\App\Http\Middleware\TrackLastActiveAt::cla
             Route::middleware(['can:access,project', 'subscription'])->group(function (): void {
                 Route::apiResource('/tasks', TaskController::class)
                     ->except(['destroy'])
-                    ->withTrashed();
+                    ->withTrashed(['show', 'index']);
             });
 
             Route::controller(TaskFeaturesController::class)
@@ -132,23 +138,19 @@ Route::middleware(['auth:sanctum'/* ,\App\Http\Middleware\TrackLastActiveAt::cla
                     Route::middleware(['can:manage,task'])->group(function (): void {
 
                         Route::patch('assign', 'assign')
-                            ->name('assign')
-                            ->withTrashed();
+                            ->name('assign');
 
                         Route::patch('unassign', 'unassign')
-                            ->name('unassign')
-                            ->withTrashed();
+                            ->name('unassign');
 
                         Route::delete('/remove', 'remove')
                             ->name('remove')
                             ->withTrashed();
-
                     });
 
                     Route::middleware(['can:access,task'])->group(function (): void {
                         Route::delete('archive', 'archive')
-                            ->name('archive')
-                            ->withTrashed();
+                            ->name('archive');
 
                         Route::get('unarchive', 'unarchive')
                             ->name('unarchive')

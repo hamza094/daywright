@@ -84,12 +84,6 @@
                   : 'Donec in odio eget risus placerat molestie. Etiam augue turpis, tristique nec accumsan a, vehicula vitae quam. Sed imperdiet vulputate mi in molestie. Sed lacus quam, suscipit ut velit et, commodo sagittis leo.'
               }}</span>
             </p>
-            <div>
-              <p class="crm-info">
-                <b>Roles</b>:
-                <span v-for="role in user.roles" :key="role.id || role.name"> {{ role.name }} ,</span>
-              </p>
-            </div>
           </div>
         </div>
       </section>
@@ -145,7 +139,7 @@ export default {
           this.owner = this.user.uuid === this.auth;
         })
         .catch((error) => {
-          this.$vToastify.warning(error?.response?.data?.message || 'Failed to load user');
+          this.handleErrorResponse(error);
         });
     },
     deleteAvatar() {
@@ -161,8 +155,7 @@ export default {
               this.userAvatar = null;
             })
             .catch((error) => {
-              const msg = error?.response?.data?.message || error?.message || 'There was something wrong.';
-              swal.fire('Failed!', msg, 'warning');
+              this.handleErrorResponse(error);
             })
             .finally(() => {
               this.$vToastify.stopLoader();
@@ -181,8 +174,7 @@ export default {
               this.$store.dispatch('currentUser/deleteUser');
             })
             .catch((error) => {
-              const msg = error?.response?.data?.message || error?.message || 'There was something wrong.';
-              swal.fire('Failed!', msg, 'warning');
+              this.handleErrorResponse(error);
             });
         }
       });

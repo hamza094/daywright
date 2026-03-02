@@ -8,13 +8,26 @@ use App\Models\Message;
 use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Override;
 use Tests\TestCase;
 
 use function Safe\json_encode;
 
 class MessageTest extends TestCase
 {
-    use ProjectSetup,RefreshDatabase;
+    use ProjectSetup, RefreshDatabase {
+        ProjectSetup::setUp as projectSetUp;
+    }
+
+    #[Override]
+    protected function setUp(): void
+    {
+        // Run the trait setup (creates user, project, Sanctum acting, etc.)
+        $this->projectSetUp();
+
+        // Mark the test user as admin for all tests in this class
+        $this->user->forceFill(['is_admin' => true])->save();
+    }
 
     /** @test */
     public function operation_on_send_message(): void

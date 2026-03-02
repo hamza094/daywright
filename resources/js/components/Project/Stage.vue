@@ -130,9 +130,9 @@ export default {
           this.updateStage(eventData);
           this.$vToastify.success('Successfully update');
         })
-        .catch(() => {
+        .catch((error) => {
           this.$Progress.fail();
-          this.$vToastify.error('Error in Project Phase Conversion');
+          this.handleErrorResponse(error);
         });
       this.selectedStage = 0;
     },

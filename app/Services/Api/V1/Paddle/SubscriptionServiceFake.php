@@ -6,9 +6,11 @@ namespace App\Services\Api\V1\Paddle;
 
 use App\Interfaces\Paddle;
 use App\Models\User;
+use Override;
 
 final class SubscriptionServiceFake implements Paddle
 {
+    #[Override]
     public function subscribe(User $user, string $plan): mixed
     {
         return 'https://fake-paylink-url.com';
@@ -17,6 +19,7 @@ final class SubscriptionServiceFake implements Paddle
     /**
      * @return array{message: string}
      */
+    #[Override]
     public function swap(User $user, string $plan): array
     {
         return [
@@ -27,6 +30,7 @@ final class SubscriptionServiceFake implements Paddle
     /**
      * @return array{message: string}
      */
+    #[Override]
     public function cancel(User $user, string $plan): array
     {
         return [

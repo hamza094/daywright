@@ -90,8 +90,7 @@ export default {
           this.messages = response.data;
         })
         .catch((error) => {
-          const msg = error?.response?.data?.message || 'Failed to load scheduled messages';
-          this.$vToastify.warning(msg);
+          this.handleErrorResponse(error);
         });
     },
     remove(id) {
@@ -101,8 +100,7 @@ export default {
           this.scheduledMessages();
         })
         .catch((error) => {
-          const msg = error?.response?.data?.message || 'Failed to delete scheduled message';
-          this.$vToastify.warning(msg);
+          this.handleErrorResponse(error);
         });
     },
     modalClose() {

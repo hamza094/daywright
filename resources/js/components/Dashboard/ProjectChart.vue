@@ -161,10 +161,7 @@ export default {
         ];
         this.renderChart();
       } catch (err) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.error(err);
-        }
-        this.$vToastify.error('Failed to load chart data');
+        this.handleErrorResponse(err);
       } finally {
         this.isLoading = false;
         this.isRequestPending = false;

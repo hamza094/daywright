@@ -111,7 +111,7 @@ export default {
           this.serverMessage = data.message;
         }
       } catch (error) {
-        this.handleApiError(error, 'Failed to load invitations.');
+        this.handleErrorResponse(error);
       } finally {
         this.loading = false;
       }
@@ -126,7 +126,7 @@ export default {
         this.invitations = this.invitations.filter((p) => p.id !== data.project.id);
       } catch (error) {
         this.$Progress.fail();
-        this.notifyError(error, 'Failed to accept the invitation. Try again.');
+        this.handleErrorResponse(error);
       }
     },
     async rejectInvitation(slug) {
@@ -139,14 +139,8 @@ export default {
         this.invitations = this.invitations.filter((p) => p.id !== data.project.id);
       } catch (error) {
         this.$Progress.fail();
-        this.notifyError(error, 'Failed to reject the request. Try again.');
+        this.handleErrorResponse(error);
       }
-    },
-    notifyError(error, fallbackMsg) {
-      const resp = error.response?.data || {};
-      const msg =
-        resp.message || resp.error || (resp.errors ? Object.values(resp.errors).flat().join(' ') : '') || fallbackMsg;
-      this.$vToastify.warning(msg);
     },
   },
 };

@@ -7,6 +7,7 @@ namespace App\Http\Resources\Api\V1;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
+use Override;
 
 /**
  * @mixin \App\Models\Project
@@ -18,6 +19,7 @@ class ProjectInvitaionResource extends JsonResource
      *
      * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
      */
+    #[Override]
     public function toArray(Request $request): array
     {
         return [

@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\Zoom;
 
 use Exception;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 use Safe\DateTimeImmutable;
 
 class MeetingUpdateRequest extends FormRequest
@@ -37,6 +38,7 @@ class MeetingUpdateRequest extends FormRequest
         ];
     }
 
+    #[Override]
     protected function prepareForValidation()
     {
         if ($this->has('start_time')) {

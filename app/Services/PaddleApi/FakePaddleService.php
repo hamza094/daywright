@@ -8,9 +8,11 @@ use App\Collections\Paddle\DataCollection;
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
 use App\Interfaces\Paddle;
 use App\Models\User;
+use Override;
 
 class FakePaddleService implements Paddle
 {
+    #[Override]
     public function subscribe(User $user, string $plan): mixed
     {
         // Return a fake payment link to mimic Paddle checkout
@@ -20,6 +22,7 @@ class FakePaddleService implements Paddle
     /**
      * @return array{message: string}
      */
+    #[Override]
     public function swap(User $user, string $plan): array
     {
         return [
@@ -30,6 +33,7 @@ class FakePaddleService implements Paddle
     /**
      * @return array{message: string}
      */
+    #[Override]
     public function cancel(User $user, string $plan): array
     {
         return [

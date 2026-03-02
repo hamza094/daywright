@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1;
 
+use App\Jobs\CancelZoomMeetingsJob;
+use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\User;
 use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ProjectFeatureTest extends TestCase
 {
     use ProjectSetup,RefreshDatabase;
 
-    private const PROJECTS_ROUTE = 'projects.store';
+    private const string PROJECTS_ROUTE = 'projects.store';
 
     /** @test */
     public function auth_user_can_create_project(): void
@@ -179,11 +183,24 @@ class ProjectFeatureTest extends TestCase
         $this->assertSoftDeleted($this->project);
     }
 
+    /** @test */
+    public function trashed_project_activity_request_returns_project_not_active_message(): void
+    {
+        $this->project->delete();
+
+        $this->getJson("/api/v1/projects/{$this->project->slug}/activities")
+            ->assertForbidden()
+            ->assertJson([
+                'message' => 'Sorry, project is not active. Restore it to perform this activity.',
+            ]);
+    }
+
+    /** @test */
     public function project_owner_can_restore_project(): void
     {
         $this->project->touch('deleted_at');
 
-        $this->getJson($this->project->path().'/restore')->assertOk();
+        $this->patchJson($this->project->path().'/restore')->assertOk();
 
         $this->project->refresh();
 
@@ -192,11 +209,75 @@ class ProjectFeatureTest extends TestCase
         $this->assertEquals($this->project->deleted_at, null);
     }
 
-    public function project_owner_can_delete_project(): void
+    /** @test */
+    public function active_project_cannot_be_deleted_permanently(): void
     {
-        $this->getJson($this->project->path().'/delete');
+        $response = $this->deleteJson($this->project->path().'/force');
+
+        $response->assertForbidden()->assertJson([
+            'message' => 'Only abandoned projects can be deleted permanently.',
+        ]);
+
+        $this->assertDatabaseHas('projects', [
+            'id' => $this->project->id,
+        ]);
+    }
+
+    /** @test */
+    public function abandoned_project_can_be_deleted_permanently(): void
+    {
+        $this->project->delete();
+
+        $this->deleteJson($this->project->path().'/force')->assertOk();
 
         $this->assertModelMissing($this->project);
+    }
+
+    /** @test */
+    public function force_deleting_abandoned_project_dispatches_zoom_cancellation_job_with_meeting_primitives(): void
+    {
+        Queue::fake([CancelZoomMeetingsJob::class]);
+
+        $anotherUser = User::factory()->create();
+
+        $meetingOne = Meeting::factory()
+            ->for($this->project)
+            ->for($this->user)
+            ->create();
+
+        $meetingTwo = Meeting::factory()
+            ->for($this->project)
+            ->for($anotherUser)
+            ->create();
+
+        $this->project->delete();
+
+        $this->deleteJson($this->project->path().'/force')->assertOk();
+
+        Queue::assertPushed(
+            CancelZoomMeetingsJob::class,
+            function (CancelZoomMeetingsJob $job) use ($meetingOne, $meetingTwo, $anotherUser): bool {
+                $payload = collect($job->meetings);
+
+                return $payload->count() === 2
+                    && $payload->contains(fn (array $meeting): bool => $meeting['meeting_id'] === (int) $meetingOne->meeting_id
+                        && $meeting['user_id'] === (int) $this->user->id)
+                    && $payload->contains(fn (array $meeting): bool => $meeting['meeting_id'] === (int) $meetingTwo->meeting_id
+                        && $meeting['user_id'] === (int) $anotherUser->id);
+            }
+        );
+    }
+
+    /** @test */
+    public function force_deleting_abandoned_project_without_meetings_does_not_dispatch_zoom_cancellation_job(): void
+    {
+        Queue::fake([CancelZoomMeetingsJob::class]);
+
+        $this->project->delete();
+
+        $this->deleteJson($this->project->path().'/force')->assertOk();
+
+        Queue::assertNotPushed(CancelZoomMeetingsJob::class);
     }
 
     public function delete_abandon_projects_after_limit_past(): void
