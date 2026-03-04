@@ -6,16 +6,16 @@ namespace App\Http\Controllers\Api\V1\Admin\Integration;
 
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
 use App\Http\Controllers\Controller;
-use App\Interfaces\Paddle;
+use App\Interfaces\PaddleApi;
 use Illuminate\Http\JsonResponse;
 use Throwable;
 
 class PaddleController extends Controller
 {
-    public function subscribedUsers(Paddle $paddle): JsonResponse
+    public function subscribedUsers(PaddleApi $paddle): JsonResponse
     {
         try {
-            $data = $paddle->SubscriptionUsersList(
+            $data = $paddle->subscriptionUsersList(
                 new UserSubscriptionData(
                     vendorID: (int) config('services.paddle.vendor_id'),
                     vendorAuthCode: config('services.paddle.vendor_auth_code'),

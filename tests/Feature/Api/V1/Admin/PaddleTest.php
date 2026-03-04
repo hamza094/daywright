@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Admin;
 
-use App\Interfaces\Paddle;
+use App\Collections\Paddle\DataCollection;
+use App\DataTransferObjects\Paddle\Data;
+use App\Interfaces\PaddleApi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -57,12 +59,12 @@ class PaddleTest extends TestCase
     #[Test]
     public function admin_can_list_subscribed_users(): void
     {
-        $this->mock(Paddle::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('SubscriptionUsersList')
+        $this->mock(PaddleApi::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('subscriptionUsersList')
                 ->once()
-                ->andReturn(collect([
-                    ['id' => 1, 'email' => 'alice@example.com'],
-                    ['id' => 2, 'email' => 'bob@example.com'],
+                ->andReturn(DataCollection::make([
+                    new Data(1, 'alice@example.com', '2026-01-01', 1000, 'USD', '2026-02-01', '2026-03-01'),
+                    new Data(2, 'bob@example.com', '2026-01-02', 2000, 'USD', '2026-02-02', '2026-03-02'),
                 ]));
         });
 
@@ -78,8 +80,8 @@ class PaddleTest extends TestCase
     #[Test]
     public function returns_500_with_message_when_paddle_api_throws(): void
     {
-        $this->mock(Paddle::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('SubscriptionUsersList')
+        $this->mock(PaddleApi::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('subscriptionUsersList')
                 ->once()
                 ->andThrow(new RuntimeException('Connection timed out'));
         });
