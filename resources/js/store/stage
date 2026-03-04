@@ -35,7 +35,8 @@ const actions = {
         commit('setStages', response.data);
         })
         .catch(error => {
-          this.handleErrorResponse(error);
+          console.error('Error loading stages:', error);
+          throw error;
         })
       },
 
