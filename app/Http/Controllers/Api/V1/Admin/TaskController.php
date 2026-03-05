@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
-use App\Http\Controllers\Controller;
+use App\Actions\Project\BuildPaginatedProjectPayloadAction;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Admin\TaskBulkDeleteRequest;
 use App\Http\Requests\Api\V1\Admin\TaskFilterRequest;
 use App\Http\Resources\Api\V1\Admin\TaskResource;
@@ -12,26 +13,28 @@ use App\Models\Task;
 use App\Repository\Admin\TaskRepository;
 use F9Web\ApiResponseHelpers;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
-class TaskController extends Controller
+class TaskController extends ApiController
 {
     use ApiResponseHelpers;
 
-    public function index(TaskRepository $taskRepository, TaskFilterRequest $request): AnonymousResourceCollection|JsonResponse
-    {
+    public function index(
+        TaskRepository $taskRepository,
+        TaskFilterRequest $request,
+        BuildPaginatedProjectPayloadAction $buildPaginatedProjectPayloadAction,
+    ): JsonResponse {
         $perPage = 50;
 
         $tasks = $taskRepository->getTasksWithFilter($request, $perPage);
 
+        $tasksPayload = $buildPaginatedProjectPayloadAction->handle($tasks, TaskResource::class);
+
         if ($tasks->isEmpty()) {
-            return $this->respondWithSuccess([
-                'message' => 'Sorry no releated tasks found',
-            ]);
+            return response()->json(array_merge(['message' => 'Sorry no releated tasks found'], $tasksPayload));
         }
 
-        return TaskResource::collection($tasks);
+        return response()->json($tasksPayload);
     }
 
     public function bulkDelete(TaskBulkDeleteRequest $request): JsonResponse

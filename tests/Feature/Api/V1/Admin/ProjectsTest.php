@@ -67,7 +67,10 @@ class ProjectsTest extends TestCase
 
         $this->getJson(self::PROJECTS_ROUTE)
             ->assertOk()
-            ->assertJsonStructure(['projects', 'appliedFilters']);
+            ->assertJsonStructure([
+                'projects' => ['data', 'meta'],
+                'appliedFilters',
+            ]);
     }
 
     #[Test]
@@ -87,7 +90,7 @@ class ProjectsTest extends TestCase
         $response = $this->getJson(self::PROJECTS_ROUTE.'?search=Alpha')
             ->assertOk();
 
-        $projects = $response->json('projects');
+        $projects = $response->json('projects.data');
         $this->assertIsArray($projects);
         $this->assertCount(1, $projects);
         $this->assertStringContainsString('Alpha', $projects[0]['name']);
@@ -102,12 +105,12 @@ class ProjectsTest extends TestCase
 
         // Active filter
         $active = $this->getJson(self::PROJECTS_ROUTE.'?filter=active')->assertOk();
-        $this->assertNotEmpty($active->json('projects'));
+        $this->assertNotEmpty($active->json('projects.data'));
         $this->assertContains('Filter by Active', $active->json('appliedFilters'));
 
         // Trashed filter
         $trashedResponse = $this->getJson(self::PROJECTS_ROUTE.'?filter=trashed')->assertOk();
-        $this->assertNotEmpty($trashedResponse->json('projects'));
+        $this->assertNotEmpty($trashedResponse->json('projects.data'));
         $this->assertContains('Filter by Trashed', $trashedResponse->json('appliedFilters'));
     }
 
@@ -120,7 +123,7 @@ class ProjectsTest extends TestCase
         $response = $this->getJson(self::PROJECTS_ROUTE.'?status=hot')
             ->assertOk();
 
-        $projects = $response->json('projects');
+        $projects = $response->json('projects.data');
         $this->assertIsArray($projects);
         $this->assertCount(1, $projects);
     }
@@ -177,7 +180,7 @@ class ProjectsTest extends TestCase
         $response = $this->getJson(self::PROJECTS_ROUTE.'?search=SearchableUser&filter=active')
             ->assertOk();
 
-        $projects = $response->json('projects');
+        $projects = $response->json('projects.data');
         $this->assertIsArray($projects);
 
         $projectIds = collect($projects)->pluck('id')->toArray();
@@ -193,7 +196,7 @@ class ProjectsTest extends TestCase
         $response = $this->getJson(self::PROJECTS_ROUTE)
             ->assertOk();
 
-        $projects = $response->json('projects');
+        $projects = $response->json('projects.data');
         $this->assertIsArray($projects);
         $this->assertCount(10, $projects);
     }

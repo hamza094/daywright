@@ -129,5 +129,6 @@ class AppServiceProvider extends ServiceProvider
                 ]
             );
         });
+
     }
 }
