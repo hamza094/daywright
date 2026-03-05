@@ -56,7 +56,7 @@
     ".idea": true,
     ".cursor": true,
     "stubs": true,
-    //"config": true,
+    "config": true,
     //"database": true,
     ".phpstan-cache": true,
     //"app": true,
