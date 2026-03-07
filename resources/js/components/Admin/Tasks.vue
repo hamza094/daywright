@@ -4,7 +4,7 @@
     <div class="container">
       <div class="row">
         <div class="col-12">
-          <div class="card">
+          <div class="card mb-5">
             <div class="card-header">
               <h3 class="card-title">Tasks &gt; {{ appliedFilter }}</h3>
             </div>
@@ -55,12 +55,14 @@
                 <thead>
                   <tr>
                     <th class="w-1">
-                      <input
-                        class="form-check-input m-0 align-middle"
-                        type="checkbox"
-                        aria-label="Select all tasks"
-                        v-model="selectAll"
-                        @change="selectAllTasks" />
+                      <div class="form-check mb-1 align-middle">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          aria-label="Select all tasks"
+                          v-model="selectAll"
+                          @change="selectAllTasks" />
+                      </div>
                     </th>
                     <th>ID</th>
                     <th>Title</th>
@@ -78,12 +80,14 @@
                 <tbody>
                   <tr v-for="task in tasks.data" :key="task.id">
                     <td>
-                      <input
-                        class="form-check-input m-0 align-middle"
-                        type="checkbox"
-                        aria-label="Select task"
-                        v-model="selectedTasks"
-                        :value="task.id" />
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          aria-label="Select task"
+                          v-model="selectedTasks"
+                          :value="task.id" />
+                      </div>
                     </td>
                     <td>{{ task.id }}</td>
                     <td>{{ task.title }}</td>
@@ -108,8 +112,10 @@
                       </router-link>
                     </td>
                     <td>
-                      <span v-if="task.state == 'active'" class="bg badge bg-success me-1">{{ task.state }}</span>
-                      <span v-else class="bg badge bg-warning me-1">{{ task.state }}</span>
+                      <span v-if="task.state == 'active'" class="text-white bg badge bg-success me-1">{{
+                        task.state
+                      }}</span>
+                      <span v-else class="text-white bg badge bg-warning me-1">{{ task.state }}</span>
                     </td>
                     <td style="max-height: 100px; overflow-y: auto">
                       <div v-for="member in task.members" :key="member.id || member.name">{{ member.name }}</div>
@@ -125,11 +131,13 @@
               </table>
             </div>
 
-            <div class="card-footer d-flex">
-              <p class="float-left">
+            <div class="card-footer d-flex flex-wrap justify-content-between align-items-start gap-2 task-card-footer">
+              <p class="mb-0">
                 Showing <span>{{ from }}</span> to {{ to }} of {{ total }} entries
               </p>
-              <pagination :data="tasks" @pagination-change-page="paginate($event, filter)"></pagination>
+              <div class="task-pagination">
+                <pagination :data="tasks" @pagination-change-page="paginate($event, filter)"></pagination>
+              </div>
             </div>
           </div>
         </div>
@@ -176,22 +184,30 @@ export default {
 
       return false;
     },
-    getResults(page = 1, filter = 'all') {
+    getResults(page = 1, filter = null) {
+      const activeFilter = (filter ?? this.filter) || 'all';
+      const trimmedSearchTerm = this.searchTerm.trim();
       const queryParameters = {
         page: page,
-        filter: filter,
-        search: this.searchTerm,
       };
 
-      if (filter === 'all') {
+      if (activeFilter !== 'all') {
+        queryParameters.filter = activeFilter;
+      }
+
+      if (trimmedSearchTerm !== '') {
+        queryParameters.search = trimmedSearchTerm;
+      }
+
+      if (activeFilter === 'all') {
         this.appliedFilter = 'All Tasks';
         this.filter = 'all';
       }
-      if (filter === 'trashed') {
+      if (activeFilter === 'trashed') {
         this.appliedFilter = 'Trashed Tasks';
         this.filter = 'trashed';
       }
-      if (filter === 'active') {
+      if (activeFilter === 'active') {
         this.appliedFilter = 'Active Tasks';
         this.filter = 'active';
       }
@@ -208,7 +224,7 @@ export default {
           this.from = this.tasks.meta.from || '';
           this.to = this.tasks.meta.to || '';
           this.total = this.tasks.meta.total || '';
-          this.message = response.data.data ? '' : response.data.message;
+          this.message = this.tasks.data?.length ? '' : response.data.message || '';
         })
         .catch((error) => {
           this.errorMessage = 'Failed to load tasks. Please try again.';
@@ -263,3 +279,41 @@ export default {
   },
 };
 </script>
+<style>
+.task-card-footer {
+  row-gap: 0.75rem;
+}
+
+.task-pagination {
+  margin-left: auto;
+  max-width: 100%;
+}
+
+.task-pagination .pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  margin-bottom: 0;
+}
+
+.task-pagination .page-item {
+  margin-bottom: 0.25rem;
+}
+
+@media (max-width: 767.98px) {
+  .task-card-footer {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .task-pagination {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .task-pagination .pagination {
+    justify-content: flex-start;
+  }
+}
+</style>
