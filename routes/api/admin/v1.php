@@ -27,10 +27,6 @@ Route::group(['prefix' => 'admin'], function (): void {
 
         Route::get('/users', [UserController::class, 'index']);
 
-        Route::post('/users/{user}/grant-admin', [UserController::class, 'grantAdminAccess']);
-
-        Route::post('/users/{user}/revoke-admin', [UserController::class, 'revokeAdminAccess']);
-
         Route::get('/backup/database', [DashboardController::class, 'backup']);
 
         // Public (read) endpoints for stages/statuses — only throttle applied

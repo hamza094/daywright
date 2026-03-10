@@ -27,7 +27,7 @@ final class PaddleService implements PaddleApi
             (int) ($subscription['user_id'] ?? 0),
             (string) ($subscription['user_email'] ?? ''),
             (string) ($subscription['signup_date'] ?? ''),
-            (int) ($subscription['last_payment']['amount'] ?? 0),
+            (string) ($subscription['last_payment']['amount'] ?? ''),
             (string) ($subscription['last_payment']['currency'] ?? ''),
             (string) ($subscription['last_payment']['date'] ?? ''),
             (string) ($subscription['next_payment']['date'] ?? ''),

@@ -419,7 +419,6 @@ export default {
           params: filteredParameters,
         })
         .then((response) => {
-          console.log(response.data);
           this.projects = response.data.projects;
           this.from = this.projects.meta.from || '';
           this.to = this.projects.meta.to || '';

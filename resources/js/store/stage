@@ -35,7 +35,6 @@ const actions = {
         commit('setStages', response.data);
         })
         .catch(error => {
-          console.error('Error loading stages:', error);
           throw error;
         })
       },
@@ -45,7 +44,6 @@ const actions = {
       const response = await axios.post('/admin/stages', stageData);
       commit('addStage', response.data.stage);
     } catch (error) {
-      console.error('Error adding stage:', error);
       throw error; 
     }
   },

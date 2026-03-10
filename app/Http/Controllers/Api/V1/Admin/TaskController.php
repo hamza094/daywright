@@ -31,7 +31,7 @@ class TaskController extends ApiController
         $tasksPayload = $buildPaginatedProjectPayloadAction->handle($tasks, TaskResource::class);
 
         if ($tasks->isEmpty()) {
-            return response()->json(array_merge(['message' => 'Sorry no releated tasks found'], $tasksPayload));
+            return response()->json(array_merge(['message' => 'Sorry no related tasks found'], $tasksPayload));
         }
 
         return response()->json($tasksPayload);

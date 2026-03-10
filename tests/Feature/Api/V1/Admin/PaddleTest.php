@@ -63,8 +63,8 @@ class PaddleTest extends TestCase
             $mock->shouldReceive('subscriptionUsersList')
                 ->once()
                 ->andReturn(DataCollection::make([
-                    new Data(1, 'alice@example.com', '2026-01-01', 1000, 'USD', '2026-02-01', '2026-03-01'),
-                    new Data(2, 'bob@example.com', '2026-01-02', 2000, 'USD', '2026-02-02', '2026-03-02'),
+                    new Data(1, 'alice@example.com', '2026-01-01', '1000', 'USD', '2026-02-01', '2026-03-01'),
+                    new Data(2, 'bob@example.com', '2026-01-02', '2000', 'USD', '2026-02-02', '2026-03-02'),
                 ]));
         });
 

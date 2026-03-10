@@ -77,7 +77,7 @@ class TasksTest extends TestCase
     {
         $this->getJson(self::TASKS_ROUTE)
             ->assertOk()
-            ->assertJsonPath('message', 'Sorry no releated tasks found');
+            ->assertJsonPath('message', 'Sorry no related tasks found');
     }
 
     #[Test]

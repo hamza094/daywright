@@ -62,8 +62,12 @@ export default {
   computed: {
     ...mapState('stage', ['stages']),
   },
-  mounted() {
-    this.loadStages();
+  async mounted() {
+    try {
+      await this.loadStages();
+    } catch (error) {
+      this.handleErrorResponse(error);
+    }
   },
   methods: {
     ...mapActions('stage', ['loadStages', 'addNewStage']),

@@ -12,7 +12,7 @@ final class Data
         public int $userId,
         public string $email,
         public string $signUpDate,
-        public int $lastPaymentAmount,
+        public string $lastPaymentAmount,
         public string $lastPaymentCurrency,
         public string $lastPaymentDate,
         public string $nextPaymentDate,
