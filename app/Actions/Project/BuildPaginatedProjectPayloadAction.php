@@ -10,6 +10,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 final class BuildPaginatedProjectPayloadAction
 {
     /**
+     * @param  LengthAwarePaginator<mixed>  $paginator
      * @param  class-string<JsonResource>  $resourceClass
      * @return array{
      *     data: array<int, mixed>,
