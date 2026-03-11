@@ -63,14 +63,43 @@ class PaddleTest extends TestCase
             $mock->shouldReceive('subscriptionUsersList')
                 ->once()
                 ->andReturn(DataCollection::make([
-                    new Data(1, 'alice@example.com', '2026-01-01', '1000', 'USD', '2026-02-01', '2026-03-01'),
-                    new Data(2, 'bob@example.com', '2026-01-02', '2000', 'USD', '2026-02-02', '2026-03-02'),
+                    new Data(
+                        userId: 1,
+                        email: 'alice@example.com',
+                        signUpDate: '2026-01-01',
+                        lastPaymentAmount: '1000',
+                        lastPaymentCurrency: 'USD',
+                        lastPaymentDate: '2026-02-01',
+                        nextPaymentDate: '2026-03-01'
+                    ),
+                    new Data(
+                        userId: 2,
+                        email: 'bob@example.com',
+                        signUpDate: '2026-01-02',
+                        lastPaymentAmount: '2000',
+                        lastPaymentCurrency: 'USD',
+                        lastPaymentDate: '2026-02-02',
+                        nextPaymentDate: '2026-03-02'
+                    ),
                 ]));
         });
 
         $response = $this->getJson(self::SUBSCRIPTIONS_ROUTE)
             ->assertOk()
-            ->assertJsonStructure(['data']);
+            ->assertJsonStructure([
+                'data' => [[
+                    'userId',
+                    'email',
+                    'signUpDate',
+                    'lastPaymentAmount',
+                    'lastPaymentCurrency',
+                    'lastPaymentDate',
+                    'nextPaymentDate',
+                ]],
+            ])
+            ->assertJsonPath('data.0.email', 'alice@example.com')
+            ->assertJsonPath('data.1.email', 'bob@example.com')
+            ->assertJsonPath('data.0.lastPaymentAmount', '1000');
 
         $this->assertCount(2, $response->json('data'));
     }

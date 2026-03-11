@@ -212,11 +212,6 @@ parameters:
 			path: app/Http/Controllers/Api/V1/TaskStatusController.php
 
 		-
-			message: "#^Call to an undefined static method App\\\\DataTransferObjects\\\\Paddle\\\\Data\\:\\:fromResponse\\(\\)\\.$#"
-			count: 1
-			path: app/Http/Integrations/Paddle/Requests/SubscriptionUsersList.php
-
-		-
 			message: "#^Method App\\\\Http\\\\Integrations\\\\Paddle\\\\Requests\\\\SubscriptionUsersList\\:\\:defaultBody\\(\\) return type has no value type specified in iterable type array\\.$#"
 			count: 1
 			path: app/Http/Integrations/Paddle/Requests/SubscriptionUsersList.php

@@ -425,7 +425,7 @@ export default {
           this.total = this.projects.meta.total || '';
 
           this.appliedFilters = response.data.appliedFilters;
-          this.message = response.data.projects ? '' : response.data.message;
+          this.message = this.projects?.data && this.projects.data.length > 0 ? '' : response.data.message || '';
         })
         .catch((error) => {
           this.errorMessage = 'Failed to load projects. Please try again.';

@@ -208,6 +208,7 @@ class ProjectsTest extends TestCase
     {
         /** @var \Illuminate\Support\Collection<int, Project> $projects */
         $projects = Project::factory()->count(3)->create();
+        $projects->each(fn (Project $project): bool => $project->delete());
         $ids = $projects->pluck('id')->toArray();
 
         $this->deleteJson(self::BULK_DELETE_ROUTE, ['project_ids' => $ids])
@@ -230,6 +231,19 @@ class ProjectsTest extends TestCase
             ->assertOk();
 
         $this->assertDatabaseMissing('projects', ['id' => $project->id]);
+    }
+
+    #[Test]
+    public function bulk_delete_does_not_force_delete_active_projects(): void
+    {
+        /** @var Project $activeProject */
+        $activeProject = $this->createProject();
+
+        $this->deleteJson(self::BULK_DELETE_ROUTE, ['project_ids' => [$activeProject->id]])
+            ->assertOk()
+            ->assertJsonPath('message', 'Projects deleted Successfully');
+
+        $this->assertDatabaseHas('projects', ['id' => $activeProject->id]);
     }
 
     #[Test]

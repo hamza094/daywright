@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Actions\Project;
+namespace App\Actions;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-final class BuildPaginatedProjectPayloadAction
+final class BuildPaginatedPayloadAction
 {
     /**
      * @param  LengthAwarePaginator<mixed>  $paginator
