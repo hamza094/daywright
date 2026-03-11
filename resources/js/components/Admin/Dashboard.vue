@@ -137,13 +137,7 @@
                     <span class="text-secondary"><b>Site Logs Viewer</b></span>
                   </div>
                   <div class="text-secondary">
-                    <a
-                      href="/log-viewer"
-                      class="btn btn-outline-danger w-100 btn-sm"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      >View</a
-                    >
+                    <a href="/log-viewer" class="btn btn-outline-danger w-100 btn-sm" rel="noopener noreferrer">View</a>
                   </div>
                 </div>
               </div>
@@ -314,12 +308,16 @@
                         <strong>{{ activity.user.name }}</strong> {{ activity.description }}
                         <span v-if="activity.project !== null">
                           <strong>
-                            <router-link :to="{ name: 'ProjectPage', params: { slug: activity.project.slug } }">{{
-                              activity.project.name
-                            }}</router-link>
+                            <router-link
+                              class="btn-link"
+                              :to="{ name: 'ProjectPage', params: { slug: activity.project.slug } }"
+                              >{{ activity.project.name }}</router-link
+                            >
                           </strong>
-                          <span v-if="activity.project.state === 'active'" class="badge bg-success">Active</span>
-                          <span v-if="activity.project.state === 'trashed'" class="badge bg-warning text-dark"
+                          <span v-if="activity.project.state === 'active'" class="ml-1 badge bg-success text-white"
+                            >Active</span
+                          >
+                          <span v-if="activity.project.state === 'trashed'" class="ml-1 badge bg-warning text-dark"
                             >Trashed</span
                           >
                         </span>

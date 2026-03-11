@@ -27,27 +27,33 @@ Route::group(['prefix' => 'admin'], function (): void {
 
         Route::get('/users', [UserController::class, 'index']);
 
-        Route::post('/users/{user}/grant-admin', [UserController::class, 'grantAdminAccess'])
-            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
-
-        Route::post('/users/{user}/revoke-admin', [UserController::class, 'revokeAdminAccess'])
-            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
-
         Route::get('/backup/database', [DashboardController::class, 'backup']);
 
+        // Public (read) endpoints for stages/statuses — only throttle applied
         Route::apiResource('/stages', StageController::class)
-            ->middleware(['2fa.enabled', 'throttle:admin-mutations'])
-            ->except(['index', 'show']);
+            ->only(['index', 'show'])
+            ->middleware(['throttle:admin-mutations']);
 
         Route::apiResource('/statuses', StatusController::class)
-            ->middleware(['2fa.enabled', 'throttle:admin-mutations'])
-            ->except(['index', 'show']);
+            ->only(['index', 'show'])
+            ->middleware(['throttle:admin-mutations']);
 
-        Route::delete('/projects/bulk-delete', [ProjectController::class, 'bulkDelete'])
-            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
+        // Mutating admin routes that require 2FA and mutation throttling
+        Route::middleware(['2fa.enabled', 'throttle:admin-mutations'])->group(function (): void {
+            Route::apiResource('/stages', StageController::class)
+                ->except(['index', 'show']);
 
-        Route::delete('/tasks/bulk-delete', [TaskController::class, 'bulkDelete'])
-            ->middleware(['2fa.enabled', 'throttle:admin-mutations']);
+            Route::apiResource('/statuses', StatusController::class)
+                ->except(['index', 'show']);
+
+            Route::post('/users/{user}/grant-admin', [UserController::class, 'grantAdminAccess']);
+
+            Route::post('/users/{user}/revoke-admin', [UserController::class, 'revokeAdminAccess']);
+
+            Route::delete('/projects/bulk-delete', [ProjectController::class, 'bulkDelete']);
+
+            Route::delete('/tasks/bulk-delete', [TaskController::class, 'bulkDelete']);
+        });
 
         Route::get('dashboard/activities', [DashboardController::class, 'activities']);
 

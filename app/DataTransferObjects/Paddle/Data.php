@@ -4,32 +4,37 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Paddle;
 
-use Carbon\Carbon;
-
-final class Data
+final readonly class Data
 {
     public function __construct(
         public int $userId,
         public string $email,
         public string $signUpDate,
-        public int $lastPaymentAmount,
+        public string $lastPaymentAmount,
         public string $lastPaymentCurrency,
         public string $lastPaymentDate,
         public string $nextPaymentDate,
     ) {}
 
-    /* public static function fromResponse(array $response): static
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    public static function fromResponse(array $response): static
     {
-     return new static(
-       marketing_consent: $response['marketing_consent'],
-       userId: $response['user_id'],
-       email: $response['user_email'],
-       state: $response['state'],
-       //fullName: $response['full_name'],
-       //private: $response['private'],
-       //description: $response['description'] ?? '',
-       //createdAt: Carbon::parse($response['created_at']),
- );
-}*/
+        /** @var array<string, mixed> $lastPayment */
+        $lastPayment = (array) ($response['last_payment'] ?? []);
 
+        /** @var array<string, mixed> $nextPayment */
+        $nextPayment = (array) ($response['next_payment'] ?? []);
+
+        return new self(
+            userId: (int) ($response['user_id'] ?? 0),
+            email: (string) ($response['user_email'] ?? ''),
+            signUpDate: (string) ($response['signup_date'] ?? ''),
+            lastPaymentAmount: (string) ($lastPayment['amount'] ?? ''),
+            lastPaymentCurrency: (string) ($lastPayment['currency'] ?? ''),
+            lastPaymentDate: (string) ($lastPayment['date'] ?? ''),
+            nextPaymentDate: (string) ($nextPayment['date'] ?? ''),
+        );
+    }
 }

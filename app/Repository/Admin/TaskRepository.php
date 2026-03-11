@@ -17,7 +17,7 @@ class TaskRepository
     {
         return Task::with('project', 'status', 'assignee', 'owner')
             ->withTrashed()
-            ->latest('created_at')
+            ->orderByDesc('id')
             ->when($request->string('filter')->trim()->lower()->exactly('active'), fn ($query) => $query->whereNull('deleted_at'))
             ->when($request->string('filter')->trim()->lower()->exactly('trashed'), fn ($query) => $query->whereNotNull('deleted_at'))
             ->when($request->validated('search'), function ($query) use ($request): void {

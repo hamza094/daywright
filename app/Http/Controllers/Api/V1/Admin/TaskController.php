@@ -4,50 +4,46 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
-use App\Http\Controllers\Controller;
+use App\Actions\BuildPaginatedPayloadAction;
+use App\Actions\Task\BulkDeleteTasksAction;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Admin\TaskBulkDeleteRequest;
 use App\Http\Requests\Api\V1\Admin\TaskFilterRequest;
 use App\Http\Resources\Api\V1\Admin\TaskResource;
-use App\Models\Task;
 use App\Repository\Admin\TaskRepository;
 use F9Web\ApiResponseHelpers;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\DB;
 
-class TaskController extends Controller
+class TaskController extends ApiController
 {
     use ApiResponseHelpers;
 
-    public function index(TaskRepository $taskRepository, TaskFilterRequest $request): AnonymousResourceCollection|JsonResponse
-    {
+    public function index(
+        TaskRepository $taskRepository,
+        TaskFilterRequest $request,
+        BuildPaginatedPayloadAction $buildPaginatedPayloadAction,
+    ): JsonResponse {
         $perPage = 50;
 
         $tasks = $taskRepository->getTasksWithFilter($request, $perPage);
 
+        $tasksPayload = $buildPaginatedPayloadAction->handle($tasks, TaskResource::class);
+
         if ($tasks->isEmpty()) {
-            return $this->respondWithSuccess([
-                'message' => 'Sorry no releated tasks found',
-            ]);
+            return response()->json(array_merge(['message' => 'Sorry no related tasks found'], $tasksPayload));
         }
 
-        return TaskResource::collection($tasks);
+        return response()->json($tasksPayload);
     }
 
-    public function bulkDelete(TaskBulkDeleteRequest $request): JsonResponse
+    public function bulkDelete(TaskBulkDeleteRequest $request, BulkDeleteTasksAction $bulkDeleteTasksAction): JsonResponse
     {
         $taskIds = $request->validated('task_ids');
 
-        DB::transaction(function () use ($taskIds): void {
-            Task::withTrashed()->whereIn('id', $taskIds)->each(function ($task): void {
-                $task->assignee()->detach();
-                $task->forceDelete();
-            });
-        });
+        $bulkDeleteTasksAction->handle($taskIds);
 
         return $this->respondWithSuccess([
             'message' => 'Tasks deleted Successfully',
         ]);
-
     }
 }
