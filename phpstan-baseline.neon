@@ -140,10 +140,6 @@ parameters:
 			count: 1
 			path: app/Http/Controllers/Api/V1/Admin/DashboardController.php
 
-		-
-			message: "#^Call to an undefined method App\\\\Interfaces\\\\Paddle\\:\\:SubscriptionUsersList\\(\\)\\.$#"
-			count: 1
-			path: app/Http/Controllers/Api/V1/Admin/Integration/PaddleController.php
 
 		-
 			message: "#^Method App\\\\Http\\\\Controllers\\\\Api\\\\V1\\\\Admin\\\\StageController\\:\\:index\\(\\) has no return type specified\\.$#"
@@ -214,11 +210,6 @@ parameters:
 			message: "#^Method App\\\\Http\\\\Controllers\\\\Api\\\\V1\\\\TaskStatusController\\:\\:__invoke\\(\\) has no return type specified\\.$#"
 			count: 1
 			path: app/Http/Controllers/Api/V1/TaskStatusController.php
-
-		-
-			message: "#^Call to an undefined static method App\\\\DataTransferObjects\\\\Paddle\\\\Data\\:\\:fromResponse\\(\\)\\.$#"
-			count: 1
-			path: app/Http/Integrations/Paddle/Requests/SubscriptionUsersList.php
 
 		-
 			message: "#^Method App\\\\Http\\\\Integrations\\\\Paddle\\\\Requests\\\\SubscriptionUsersList\\:\\:defaultBody\\(\\) return type has no value type specified in iterable type array\\.$#"
@@ -707,11 +698,6 @@ parameters:
 
 		-
 			message: "#^Call to an undefined method App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\TaskResource\\:\\:state\\(\\)\\.$#"
-			count: 1
-			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
-
-		-
-			message: "#^Call to static method parse\\(\\) on an unknown class App\\\\Http\\\\Resources\\\\Api\\\\V1\\\\Admin\\\\Carbon\\.$#"
 			count: 1
 			path: app/Http/Resources/Api/V1/Admin/TaskResource.php
 

@@ -22,7 +22,7 @@
   "editor.smoothScrolling": false,
 
   // Disable Git features (use Git Bash or Laragon terminal instead)
-  "git.enabled": false,
+  "git.enabled": true,
   "git.autorefresh": false,
 
   // Turn off IntelliSense suggestions unless triggered
@@ -56,7 +56,7 @@
     ".idea": true,
     ".cursor": true,
     "stubs": true,
-    //"config": true,
+    "config": true,
     //"database": true,
     ".phpstan-cache": true,
     //"app": true,

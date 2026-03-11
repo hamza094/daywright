@@ -77,7 +77,7 @@ class TasksTest extends TestCase
     {
         $this->getJson(self::TASKS_ROUTE)
             ->assertOk()
-            ->assertJsonPath('message', 'Sorry no releated tasks found');
+            ->assertJsonPath('message', 'Sorry no related tasks found');
     }
 
     #[Test]
@@ -158,12 +158,21 @@ class TasksTest extends TestCase
         $tasks = Task::factory()->count(3)->create();
         $ids = $tasks->pluck('id')->toArray();
 
+        $this->assertDatabaseHas('activities', [
+            'subject_type' => Task::class,
+            'subject_id' => $ids[0],
+        ]);
+
         $this->deleteJson(self::BULK_DELETE_ROUTE, ['task_ids' => $ids])
             ->assertOk()
             ->assertJsonPath('message', 'Tasks deleted Successfully');
 
         foreach ($ids as $id) {
             $this->assertDatabaseMissing('tasks', ['id' => $id]);
+            $this->assertDatabaseMissing('activities', [
+                'subject_type' => Task::class,
+                'subject_id' => $id,
+            ]);
         }
     }
 

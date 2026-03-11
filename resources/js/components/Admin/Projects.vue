@@ -4,7 +4,7 @@
     <div class="container">
       <div class="row">
         <div class="col-12">
-          <div class="card">
+          <div class="card mb-5">
             <div class="card-header">
               <h3 class="card-title">Projects</h3>
               <span class="ml-2" v-for="(filter, index) in appliedFilters" :key="index">
@@ -22,24 +22,28 @@
                         <div class="row">
                           <h4>Filter By</h4>
                           <div class="col-md-4">
-                            <input
-                              class="form-check-input"
-                              type="radio"
-                              v-model="form.projects"
-                              id="RadioProjects"
-                              value="active"
-                              @click="toggleRadio('active')" />
-                            Active Projects
+                            <div class="form-check">
+                              <input
+                                class="form-check-input"
+                                type="radio"
+                                v-model="form.projects"
+                                id="RadioProjectsActive"
+                                value="active"
+                                @click="toggleRadio('active')" />
+                              <label class="form-check-label" for="RadioProjectsActive"> Active Projects </label>
+                            </div>
                           </div>
                           <div class="col-md-4">
-                            <input
-                              class="form-check-input"
-                              type="radio"
-                              v-model="form.projects"
-                              id="RadioProjects"
-                              value="trashed"
-                              @click="toggleRadio('trashed')" />
-                            Trashed Projects
+                            <div class="form-check">
+                              <input
+                                class="form-check-input"
+                                type="radio"
+                                v-model="form.projects"
+                                id="RadioProjects"
+                                value="trashed"
+                                @click="toggleRadio('trashed')" />
+                              <label class="form-check-label" for="RadioProjects"> Trashed Projects </label>
+                            </div>
                           </div>
                           <div class="col-md-4">
                             <div class="form-check">
@@ -59,26 +63,19 @@
                             <h4>By Stage</h4>
                             <ul class="filter-list">
                               <li class="filter-list_item" v-for="stage in stages" :key="stage.id || stage.name">
-                                <input
-                                  class="form-check-input form-radio"
-                                  type="radio"
-                                  name="stageRadio"
-                                  v-model="form.stage"
-                                  :value="stage.id"
-                                  @click.prevent="toggleStage(stage.id)" />
-                                <label class="form-check-label">
-                                  {{ stage.name }}
-                                </label>
-                              </li>
-                              <li class="filter-list_item">
-                                <input
-                                  class="form-check-input form-radio"
-                                  type="radio"
-                                  name="stageRadio"
-                                  v-model="form.stage"
-                                  :value="0"
-                                  @click.prevent="toggleStage(0)" />
-                                <label class="form-check-label"> Clo/Pos </label>
+                                <div class="form-check">
+                                  <input
+                                    class="form-check-input"
+                                    type="radio"
+                                    name="stageRadio"
+                                    :id="'stage-' + stage.id"
+                                    v-model="form.stage"
+                                    :value="stage.id"
+                                    @click="toggleStage(stage.id)" />
+                                  <label class="form-check-label" :for="'stage-' + stage.id">
+                                    {{ stage.name }}
+                                  </label>
+                                </div>
                               </li>
                             </ul>
                           </div>
@@ -89,32 +86,42 @@
                         <div class="row mb-3">
                           <h4>Search By fields</h4>
                           <div class="col-md-4">
-                            <input
-                              class="form-check-input"
-                              v-model="form.status"
-                              type="radio"
-                              id="statusCheck"
-                              value="hot"
-                              @click="toggleStatus('hot')" />
-                            Hot Projects <span class="status-dot bg-red"></span>
+                            <div class="form-check">
+                              <input
+                                class="form-check-input"
+                                v-model="form.status"
+                                type="radio"
+                                id="statusHot"
+                                value="hot"
+                                @click="toggleStatus('hot')" />
+                              <label class="form-check-label" for="statusHot"
+                                >Hot Projects <span class="status-dot bg-red"></span
+                              ></label>
+                            </div>
                           </div>
                           <div class="col-md-4">
-                            <input
-                              class="form-check-input"
-                              v-model="form.status"
-                              type="radio"
-                              id="statusCheck"
-                              value="cold"
-                              @click="toggleStatus('cold')" />
-                            Cold Projects <span class="status-dot bg-blue"></span>
+                            <div class="form-check">
+                              <input
+                                class="form-check-input"
+                                v-model="form.status"
+                                type="radio"
+                                id="statusCold"
+                                value="cold"
+                                @click="toggleStatus('cold')" />
+                              <label class="form-check-label" for="statusCold"
+                                >Cold Projects <span class="status-dot bg-blue"></span
+                              ></label>
+                            </div>
                           </div>
                           <div class="col-md-4">
-                            <input
-                              class="form-check-input"
-                              type="checkbox"
-                              v-model="form.hasMembers"
-                              id="flexCheckDefault" />
-                            <label class="form-check-label" for="flexCheckDefault"> Has Members </label>
+                            <div class="form-check">
+                              <input
+                                class="form-check-input"
+                                type="checkbox"
+                                v-model="form.hasMembers"
+                                id="hasMembersCheck" />
+                              <label class="form-check-label" for="hasMembersCheck"> Has Members </label>
+                            </div>
                           </div>
                         </div>
 
@@ -189,13 +196,15 @@
               <table v-else class="table card-table table-vcenter text-nowrap datatable">
                 <thead>
                   <tr>
-                    <th class="w-1">
-                      <input
-                        class="form-check-input m-0 align-middle"
-                        type="checkbox"
-                        aria-label="Select all invoices"
-                        v-model="selectAll"
-                        @change="selectAllProjects" />
+                    <th>
+                      <div class="form-check align-middle mb-1">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          aria-label="Select all invoices"
+                          v-model="selectAll"
+                          @change="selectAllProjects" />
+                      </div>
                     </th>
                     <th class="w-1">
                       No.
@@ -223,12 +232,14 @@
                 <tbody>
                   <tr v-for="project in projects.data" :key="project.id">
                     <td>
-                      <input
-                        class="form-check-input m-0 align-middle"
-                        type="checkbox"
-                        aria-label="Select invoice"
-                        v-model="selectedProjects"
-                        :value="project.id" />
+                      <div class="form-check">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          aria-label="Select invoice"
+                          v-model="selectedProjects"
+                          :value="project.id" />
+                      </div>
                     </td>
                     <td>{{ project.id }}</td>
                     <td>
@@ -241,16 +252,17 @@
                     <td>{{ project.about }}</td>
                     <td>
                       {{ project.score }} /
-                      <span v-if="project.status == 'cold'" class="badge bg-info">{{ project.status }}</span>
-                      <span v-else class="badge bg-danger">{{ project.status }}</span>
+                      <span v-if="project.status == 'cold'" class="text-white badge bg-info">{{ project.status }}</span>
+                      <span v-else class="text-white badge bg-danger">{{ project.status }}</span>
                     </td>
-                    <td v-if="!project.stage">Clo/Pos</td>
-                    <td v-else>
+                    <td>
                       {{ project.stage.name }}
                     </td>
                     <td>
-                      <span v-if="project.state == 'active'" class="bg badge bg-success me-1">{{ project.state }}</span>
-                      <span v-else class="bg badge bg-warning me-1">{{ project.state }}</span>
+                      <span v-if="project.state == 'active'" class="text-white badge bg-success me-1">{{
+                        project.state
+                      }}</span>
+                      <span v-else class="text-white badge bg-warning me-1">{{ project.state }}</span>
                     </td>
                     <td>
                       <router-link
@@ -260,26 +272,22 @@
                         <div>({{ project.owner.username }})</div>
                       </router-link>
                     </td>
-                    <td><span class="badge bg-success me-1"></span> {{ project.created_at }}</td>
+                    <td><span class="text-white badge bg-success me-1"></span> {{ project.created_at }}</td>
                     <td>{{ project.tasks_count }}</td>
                     <td>{{ project.members_count }}</td>
                   </tr>
                 </tbody>
               </table>
             </div>
-            <div class="card-footer d-flex">
-              <p class="float-left">
-                Showing <span>{{ from }}</span> to {{ to }}<span></span> of <span></span>{{ total }} entries
+            <div class="card-footer d-flex justify-content-between align-items-center">
+              <p class="mb-0">
+                Showing <span>{{ from }}</span> to <span>{{ to }}</span> of <span>{{ total }}</span> entries
               </p>
-              <pagination :data="projects" @pagination-change-page="getResults"></pagination>
+              <div>
+                <pagination :data="projects" @pagination-change-page="getResults"></pagination>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div class="card mt-5">
-        <div class="card-header">
-          <h3 class="card-title">Chats</h3>
         </div>
       </div>
     </div>
@@ -341,8 +349,9 @@ export default {
         return true;
       }
 
-      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
-      this.$router.push({ name: 'Profile', params: { uuid: this.$store.state.currentUser.user?.uuid } });
+      this.$vToastify.error(
+        'Two-factor authentication is required for admin changes. Enable it from your profile settings to continue.',
+      );
 
       return false;
     },
@@ -416,7 +425,7 @@ export default {
           this.total = this.projects.meta.total || '';
 
           this.appliedFilters = response.data.appliedFilters;
-          this.message = response.data.projects ? '' : response.data.message;
+          this.message = this.projects?.data && this.projects.data.length > 0 ? '' : response.data.message || '';
         })
         .catch((error) => {
           this.errorMessage = 'Failed to load projects. Please try again.';

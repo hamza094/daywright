@@ -16,3 +16,4 @@ extra.txt
 .phpstan/
 .phpstan-result/
 phpstan.neon.tmp
+.vscode/settings.json

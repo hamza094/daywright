@@ -66,8 +66,8 @@ return [
             ]) : [],
 
             'dump' => [
-                'dump_binary_path' => 'C:\laragon\bin\mysql\mysql-8.0.30-winx64\bin',
-                'use_single_transaction',
+                'dump_binary_path' => env('DB_DUMP_BINARY_PATH', ''),
+                'use_single_transaction' => true,
                 'timeout' => 60 * 5, // 5 minute timeout
             ],
         ],

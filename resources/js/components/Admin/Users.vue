@@ -128,8 +128,9 @@ export default {
         return true;
       }
 
-      this.$vToastify.error('Please enable two-factor authentication to perform admin changes.');
-      this.$router.push({ name: 'Profile', params: { uuid: this.getCurrentUser()?.uuid } });
+      this.$vToastify.error(
+        'Two-factor authentication is required for admin changes. Enable it from your profile settings to continue.',
+      );
 
       return false;
     },

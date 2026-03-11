@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Interfaces\Paddle;
+use App\Interfaces\PaddleApi;
 use App\Interfaces\SendSmsInterface;
 use App\Interfaces\Zoom;
 use App\Models\User;
+use App\Services\Api\V1\Admin\Integration\PaddleService;
 use App\Services\Api\V1\Paddle\SubscriptionService;
 use App\Services\Api\V1\PaginationService;
 use App\Services\Api\V1\SendSmsService;
@@ -44,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(Paddle::class, SubscriptionService::class);
+
+        $this->app->bind(PaddleApi::class, PaddleService::class);
 
         $this->app->bind(Zoom::class, ZoomService::class);
 
@@ -125,5 +129,6 @@ class AppServiceProvider extends ServiceProvider
                 ]
             );
         });
+
     }
 }
