@@ -6,7 +6,20 @@ namespace App\Traits;
 
 trait HasSubscription
 {
-    private const SUBSCRIPTION_NAME = 'DayWright';
+    public function subscriptionName(): string
+    {
+        return (string) config('services.paddle.subscription_name');
+    }
+
+    public function isOnTrial(): bool
+    {
+        return $this->onTrial() || $this->onTrial($this->subscriptionName());
+    }
+
+    public function isInGracePeriod(): bool
+    {
+        return $this->getSubscription()?->onGracePeriod() === true;
+    }
 
     /**
      * Check if the user is subscribed to the DayWright plan.
@@ -41,9 +54,7 @@ trait HasSubscription
      */
     public function hasGracePeriod(): bool
     {
-        $subscription = $this->getSubscription();
-
-        return $subscription ? $subscription->onGracePeriod() : false;
+        return $this->isInGracePeriod();
     }
 
     /**
@@ -61,6 +72,6 @@ trait HasSubscription
      */
     public function getSubscription(): mixed
     {
-        return $this->subscription(self::SUBSCRIPTION_NAME);
+        return $this->subscription($this->subscriptionName());
     }
 }

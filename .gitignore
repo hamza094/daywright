@@ -17,3 +17,5 @@ extra.txt
 .phpstan-result/
 phpstan.neon.tmp
 .vscode/settings.json
+subscription-usage-limits-features.md
+subscription-usage-limits-plan.md
