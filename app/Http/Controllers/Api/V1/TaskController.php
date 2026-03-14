@@ -11,6 +11,7 @@ use App\Http\Resources\Api\V1\TaskResource;
 use App\Http\Resources\Api\V1\TasksResource;
 use App\Models\Project;
 use App\Models\Task;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use App\Services\Api\V1\Task\TaskService;
 use Auth;
 use Illuminate\Http\JsonResponse;
@@ -48,8 +49,10 @@ class TaskController extends ApiController
      *
      * This endpoint allows creating a new task related to a specific project.
      */
-    public function store(Project $project, TaskRequest $request, TaskService $taskService): JsonResponse
+    public function store(Project $project, TaskRequest $request, TaskService $taskService, PlanLimitService $planLimitService): JsonResponse
     {
+        $planLimitService->assertCanCreateTask(Auth::user(), $project);
+
         $task = $project->tasks()->firstOrCreate(
             $request->validated() + ['user_id' => Auth::id(),
             ]);

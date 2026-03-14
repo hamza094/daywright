@@ -13,6 +13,7 @@ use App\Models\Meeting;
 use App\Models\Project;
 use App\Services\Api\V1\ExceptionService;
 use App\Services\Api\V1\MeetingService;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,11 +45,13 @@ class ZoomMeetingController extends Controller
         return response()->json(['success' => true, 'data' => new MeetingResource($meeting)], 200);
     }
 
-    public function store(Zoom $zoom, Project $project, MeetingStoreRequest $request): JsonResponse
+    public function store(Zoom $zoom, Project $project, MeetingStoreRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
         $this->authorize('manage', $project);
 
         $user = auth()->user();
+
+        $planLimitService->assertCanCreateMeeting($user);
 
         $projectMeeting = DB::transaction(function () use ($zoom, $project, $user, $request) {
             $meeting = $zoom->createMeeting($request->validated(), $user);

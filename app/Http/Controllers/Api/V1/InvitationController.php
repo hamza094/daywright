@@ -12,6 +12,7 @@ use App\Http\Resources\Api\V1\Task\TaskMemberResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Api\V1\InvitationService;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Auth;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -51,8 +52,10 @@ class InvitationController extends ApiController
      * ### Authorization:
      * - This action can only be performed by the project owner
      */
-    public function invite(Project $project, InvitationUsersRequest $request): JsonResponse
+    public function invite(Project $project, InvitationUsersRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
+        $planLimitService->assertCanInviteMember(Auth::user(), $project);
+
         $user = User::whereEmail($request->validated())->first();
 
         try {

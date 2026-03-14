@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 
@@ -31,8 +32,10 @@ class TokenController extends Controller
      *
      * This endpoint creates a new personal access token for the authenticated user.
      */
-    public function store(UserTokenRequest $request): JsonResponse
+    public function store(UserTokenRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
+        $planLimitService->assertCanCreateApiToken(auth()->user());
+
         $data = $request->validated();
 
         $token = auth()->user()->createToken(

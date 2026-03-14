@@ -11,6 +11,7 @@ use App\Http\Resources\Api\V1\ProjectResource;
 use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Models\Project;
 use App\Services\Api\V1\ProjectService;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Auth;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -25,8 +26,10 @@ class ProjectController extends ApiController
     the project's basic details, such as the name, about information, stage, and optional notes and tasks.
     The response will include the newly created project's information along with related resources.
      */
-    public function store(ProjectStoreRequest $request, ProjectService $service): JsonResponse
+    public function store(ProjectStoreRequest $request, ProjectService $service, PlanLimitService $planLimitService): JsonResponse
     {
+        $planLimitService->assertCanCreateProject(Auth::user());
+
         DB::beginTransaction();
 
         try {
