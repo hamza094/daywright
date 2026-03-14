@@ -12,16 +12,24 @@ class CheckSubscription
     /**
      * Handle an incoming request.
      *
+     * Grace-period users retain full Pro access until the grace period ends.
+     * Post-grace enforcement of Free limits is handled by PlanLimitService
+     * assertions in creation/increase flows, not by this middleware.
+     *
      * @param  Closure(Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
      */
     public function handle(Request $request, Closure $next): \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
     {
-        if (! auth()->user()->isSubscribed()) {
-            return response()->json([
-                'error' => 'Access denied. Only subscribed users are allowed to perform this action',
-            ], 403);
+        $user = $request->user();
+
+        if ($user->isSubscribed() || $user->isOnTrial() || $user->isInGracePeriod()) {
+            return $next($request);
         }
 
-        return $next($request);
+        return response()->json([
+            'message' => 'Access denied. An active subscription is required to perform this action.',
+            'error_type' => 'subscription_required',
+            'upgrade_required' => true,
+        ], 403);
     }
 }

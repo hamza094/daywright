@@ -14,6 +14,7 @@ use App\Models\Task;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -53,21 +54,13 @@ class SubscriptionLimitsTest extends TestCase
     {
         Project::factory()->count(2)->for($this->user)->create();
 
-        $response = $this->postJson(route('projects.store'), [
+        $response = $this->createProject([
             'name' => 'Blocked Project',
             'about' => 'Should not be created',
             'stage_id' => 1,
         ]);
 
-        $response->assertStatus(403)
-            ->assertJson([
-                'error_type' => 'plan_limit_exceeded',
-                'reason' => 'limit_reached',
-                'limit_type' => 'projects',
-                'current_usage' => 3,
-                'max_allowed' => 3,
-                'upgrade_required' => true,
-            ]);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'projects', 3, 3);
 
         $this->assertDatabaseMissing('projects', ['name' => 'Blocked Project']);
     }
@@ -79,7 +72,7 @@ class SubscriptionLimitsTest extends TestCase
 
         Project::factory()->count(3)->for($this->user)->create();
 
-        $response = $this->postJson(route('projects.store'), [
+        $response = $this->createProject([
             'name' => 'Fourth Project',
             'about' => 'Pro user project',
             'stage_id' => 1,
@@ -93,24 +86,11 @@ class SubscriptionLimitsTest extends TestCase
     #[Test]
     public function free_user_is_blocked_from_creating_an_eleventh_active_task(): void
     {
-        Task::factory()->count(10)->for($this->user, 'owner')->for($this->project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
-        ]);
+        $this->createActiveTasks(10);
 
-        $response = $this->postJson(
-            route('tasks.store', $this->project),
-            ['title' => 'Blocked Task']
-        );
+        $response = $this->createTask(['title' => 'Blocked Task']);
 
-        $response->assertStatus(403)
-            ->assertJson([
-                'error_type' => 'plan_limit_exceeded',
-                'reason' => 'limit_reached',
-                'limit_type' => 'active_tasks_per_project',
-                'current_usage' => 10,
-                'max_allowed' => 10,
-                'upgrade_required' => true,
-            ]);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'active_tasks_per_project', 10, 10);
     }
 
     #[Test]
@@ -118,14 +98,9 @@ class SubscriptionLimitsTest extends TestCase
     {
         $this->createProSubscription($this->user);
 
-        Task::factory()->count(10)->for($this->user, 'owner')->for($this->project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
-        ]);
+        $this->createActiveTasks(10);
 
-        $response = $this->postJson(
-            route('tasks.store', $this->project),
-            ['title' => 'Eleventh Task']
-        );
+        $response = $this->createTask(['title' => 'Eleventh Task']);
 
         $response->assertStatus(201)
             ->assertJsonPath('message', 'Task added Successfully');
@@ -135,27 +110,13 @@ class SubscriptionLimitsTest extends TestCase
     #[Test]
     public function free_user_is_blocked_from_inviting_a_fourth_member(): void
     {
-        $this->project->members()->attach(
-            User::factory()->count(3)->create(),
-            ['active' => true]
-        );
+        $this->attachActiveMembers(3);
 
         $invitee = User::factory()->create();
 
-        $response = $this->postJson(
-            route('send.invitation', $this->project),
-            ['email' => $invitee->email]
-        );
+        $response = $this->inviteMember($invitee->email);
 
-        $response->assertStatus(403)
-            ->assertJson([
-                'error_type' => 'plan_limit_exceeded',
-                'reason' => 'limit_reached',
-                'limit_type' => 'members',
-                'current_usage' => 3,
-                'max_allowed' => 3,
-                'upgrade_required' => true,
-            ]);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'members', 3, 3);
     }
 
     #[Test]
@@ -163,17 +124,11 @@ class SubscriptionLimitsTest extends TestCase
     {
         $this->createProSubscription($this->user);
 
-        $this->project->members()->attach(
-            User::factory()->count(3)->create(),
-            ['active' => true]
-        );
+        $this->attachActiveMembers(3);
 
         $invitee = User::factory()->create();
 
-        $response = $this->postJson(
-            route('send.invitation', $this->project),
-            ['email' => $invitee->email]
-        );
+        $response = $this->inviteMember($invitee->email);
 
         $response->assertStatus(200)
             ->assertJsonStructure(['message', 'project', 'invited_user']);
@@ -187,20 +142,9 @@ class SubscriptionLimitsTest extends TestCase
 
         $this->mock(Zoom::class);
 
-        $response = $this->postJson(
-            route('meetings.store', $this->project),
-            $this->validMeetingPayload()
-        );
+        $response = $this->createMeeting();
 
-        $response->assertStatus(403)
-            ->assertJson([
-                'error_type' => 'plan_limit_exceeded',
-                'reason' => 'limit_reached',
-                'limit_type' => 'meetings',
-                'current_usage' => 1,
-                'max_allowed' => 1,
-                'upgrade_required' => true,
-            ]);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'meetings', 1, 1);
     }
 
     #[Test]
@@ -229,10 +173,7 @@ class SubscriptionLimitsTest extends TestCase
             );
         });
 
-        $response = $this->postJson(
-            route('meetings.store', $this->project),
-            $this->validMeetingPayload()
-        );
+        $response = $this->createMeeting();
 
         $response->assertStatus(201)
             ->assertJsonPath('message', 'Meeting Created Successfully');
@@ -244,19 +185,9 @@ class SubscriptionLimitsTest extends TestCase
     {
         $this->user->createToken('existing-token');
 
-        $response = $this->postJson(route('api-tokens.store'), [
-            'name' => 'Blocked Token',
-        ]);
+        $response = $this->createApiToken('Blocked Token');
 
-        $response->assertStatus(403)
-            ->assertJson([
-                'error_type' => 'plan_limit_exceeded',
-                'reason' => 'limit_reached',
-                'limit_type' => 'api_tokens',
-                'current_usage' => 1,
-                'max_allowed' => 1,
-                'upgrade_required' => true,
-            ]);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'api_tokens', 1, 1);
     }
 
     #[Test]
@@ -266,9 +197,7 @@ class SubscriptionLimitsTest extends TestCase
 
         $this->user->createToken('existing-token');
 
-        $response = $this->postJson(route('api-tokens.store'), [
-            'name' => 'Second Token',
-        ]);
+        $response = $this->createApiToken('Second Token');
 
         $response->assertStatus(201)
             ->assertJsonPath('message', 'Token created successfully.');
@@ -279,7 +208,7 @@ class SubscriptionLimitsTest extends TestCase
     {
         Project::factory()->count(2)->for($this->user)->create();
 
-        $response = $this->postJson(route('projects.store'), [
+        $response = $this->createProject([
             'name' => 'Blocked',
             'about' => 'Testing response',
             'stage_id' => 1,
@@ -295,6 +224,130 @@ class SubscriptionLimitsTest extends TestCase
                 'max_allowed',
                 'upgrade_required',
             ]);
+    }
+
+    //  Grace Period — Pro access retained
+    #[Test]
+    public function grace_period_user_can_create_beyond_free_project_limit(): void
+    {
+        $this->createGracePeriodSubscription($this->user);
+
+        Project::factory()->count(3)->for($this->user)->create();
+
+        $response = $this->createProject([
+            'name' => 'Fourth Project During Grace',
+            'about' => 'Grace user project',
+            'stage_id' => 1,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('message', 'Project Created Successfully');
+    }
+
+    #[Test]
+    public function grace_period_user_can_create_beyond_free_task_limit(): void
+    {
+        $this->createGracePeriodSubscription($this->user);
+
+        $this->createActiveTasks(10);
+
+        $response = $this->createTask(['title' => 'Eleventh Task During Grace']);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('message', 'Task added Successfully');
+    }
+
+    //  Post-Grace — enforced as Free
+    #[Test]
+    public function post_grace_user_is_blocked_from_creating_beyond_free_project_limit(): void
+    {
+        $this->createExpiredSubscription($this->user);
+
+        Project::factory()->count(2)->for($this->user)->create();
+
+        $response = $this->createProject([
+            'name' => 'Blocked Post-Grace Project',
+            'about' => 'Should not be created',
+            'stage_id' => 1,
+        ]);
+
+        $this->assertPlanLimitExceeded($response, 'downgraded_limit_reached', 'projects', 3, 3);
+    }
+
+    #[Test]
+    public function post_grace_user_is_blocked_from_creating_beyond_free_task_limit(): void
+    {
+        $this->createExpiredSubscription($this->user);
+
+        $this->createActiveTasks(10);
+
+        $response = $this->createTask(['title' => 'Blocked Post-Grace Task']);
+
+        $this->assertPlanLimitExceeded($response, 'downgraded_limit_reached', 'active_tasks_per_project', 10, 10);
+    }
+
+    private function assertPlanLimitExceeded(
+        TestResponse $response,
+        string $reason,
+        string $limitType,
+        int $currentUsage,
+        int $maxAllowed,
+    ): void {
+        $response->assertStatus(403)
+            ->assertJson([
+                'error_type' => 'plan_limit_exceeded',
+                'reason' => $reason,
+                'limit_type' => $limitType,
+                'current_usage' => $currentUsage,
+                'max_allowed' => $maxAllowed,
+                'upgrade_required' => true,
+            ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function createProject(array $payload): TestResponse
+    {
+        return $this->postJson(route('projects.store'), $payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function createTask(array $payload): TestResponse
+    {
+        return $this->postJson(route('tasks.store', $this->project), $payload);
+    }
+
+    private function inviteMember(string $email): TestResponse
+    {
+        return $this->postJson(route('send.invitation', $this->project), ['email' => $email]);
+    }
+
+    private function createMeeting(): TestResponse
+    {
+        return $this->postJson(route('meetings.store', $this->project), $this->validMeetingPayload());
+    }
+
+    private function createApiToken(string $name): TestResponse
+    {
+        return $this->postJson(route('api-tokens.store'), ['name' => $name]);
+    }
+
+    private function createActiveTasks(int $count): void
+    {
+        Task::factory()->count($count)->for($this->user, 'owner')->for($this->project)->create([
+            'status_id' => TaskStatusEnum::PENDING,
+        ]);
+    }
+
+    private function attachActiveMembers(int $count): void
+    {
+        $this->project->members()->attach(
+            User::factory()->count($count)->create(),
+            ['active' => true]
+        );
     }
 
     /**

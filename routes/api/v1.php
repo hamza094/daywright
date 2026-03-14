@@ -120,11 +120,10 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
                 // Chat Conversation Routes
                 Route::apiResource('/conversations', ConversationController::class)
-                    ->only(['store', 'destroy', 'index'])
-                    ->middleware('subscription');
+                    ->only(['store', 'destroy', 'index']);
             });
 
-            Route::middleware(['can:access,project', 'subscription'])->group(function (): void {
+            Route::middleware(['can:access,project'])->group(function (): void {
                 Route::apiResource('/tasks', TaskController::class)
                     ->except(['destroy'])
                     ->withTrashed(['show', 'index']);
@@ -159,7 +158,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                         Route::get('member/search', 'search')
                             ->name('members.search');
                     });
-                })->middleware('subscription');
+                });
 
             Route::controller(InvitationController::class)->group(function (): void {
                 Route::post('invitations', 'invite')

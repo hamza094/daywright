@@ -83,7 +83,9 @@ class SubscriptionTest extends TestCase
 
         $response->assertStatus(403)
             ->assertJson([
-                'error' => 'Access denied. Only subscribed users are allowed to perform this action',
+                'message' => 'Access denied. An active subscription is required to perform this action.',
+                'error_type' => 'subscription_required',
+                'upgrade_required' => true,
             ]);
     }
 

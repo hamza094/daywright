@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
@@ -21,10 +22,15 @@ class SubscriptionResource extends JsonResource
     #[Override]
     public function toArray($request): array
     {
+        $planLimitService = app(PlanLimitService::class);
+        $plan = $planLimitService->plan($this->resource);
+
         return [
+            'plan' => $plan->value,
+
             $this->mergeWhen($this->isSubscribed(), [
                 'subscribed' => true,
-                'plan' => $this->subscribedPlan(),
+                'billing_plan' => $this->subscribedPlan(),
                 'next_payment' => $this->payment(),
                 'created_at' => optional(
                     $this->getSubscription()?->created_at
@@ -35,13 +41,23 @@ class SubscriptionResource extends JsonResource
                 'subscribed' => false,
             ]),
 
-            $this->mergeWhen($this->hasGracePeriod(), [
-                'grace_period' => true,
+            'trial' => [
+                'active' => $this->isOnTrial(),
+            ],
 
-                'grace_period_ends_at' => optional(
-                    $this->getSubscription()?->ends_at
-                )->isoFormat('MMMM Do YYYY'),
-            ]),
+            'grace_period' => [
+                'active' => $this->hasGracePeriod(),
+                'ends_at' => $this->when(
+                    $this->hasGracePeriod(),
+                    fn () => optional(
+                        $this->getSubscription()?->ends_at
+                    )->isoFormat('MMMM Do YYYY'),
+                ),
+            ],
+
+            'downgraded_to_free' => $planLimitService->isDowngradedToFree($this->resource),
+
+            'limits' => $planLimitService->usage($this->resource),
         ];
     }
 }
