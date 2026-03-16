@@ -78,7 +78,7 @@ class CheckSubscriptionMiddlewareTest extends TestCase
     ): void {
         $this->applyAccessState($state);
 
-        $response = $this->taskIndexResponse();
+        $response = $this->dashboardInsightsResponse();
 
         $response->assertStatus($expectedStatus);
 
@@ -99,14 +99,9 @@ class CheckSubscriptionMiddlewareTest extends TestCase
         ];
     }
 
-    private function taskIndexResponse(): TestResponse
+    private function dashboardInsightsResponse(): TestResponse
     {
-        return $this->getJson($this->taskIndexRoute());
-    }
-
-    private function taskIndexRoute(): string
-    {
-        return route('tasks.index', $this->project);
+        return $this->getJson(route('dashboard.insights'));
     }
 
     private function applyAccessState(string $state): void
