@@ -13,6 +13,12 @@ class DummyUserWithSubscription
 
     public $mockSubscription;
 
+    // Provide a stable subscription name for unit tests (avoids calling the global config() helper)
+    public function subscriptionName(): string
+    {
+        return 'DayWright';
+    }
+
     public function subscription($name)
     {
         return $this->mockSubscription;
