@@ -71,7 +71,9 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
     Route::controller(ProjectDashboardController::class)->group(function (): void {
         Route::get('dashboard/chart-data', 'chartData')->name('dashboard.chart-data');
-        Route::get('dashboard/insights', 'kpis')->name('dashboard.insights');
+        Route::get('dashboard/insights', 'kpis')
+            ->middleware('subscription')
+            ->name('dashboard.insights');
         Route::get('/tasksdata', 'tasksData')->name('tasks.data');
         Route::get('/user/activities', 'activities');
         Route::get('/user/dashboard-projects', 'dashboardProjects');
