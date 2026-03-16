@@ -14,6 +14,7 @@ use App\Models\Task;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
@@ -183,7 +184,7 @@ class SubscriptionLimitsTest extends TestCase
     #[Test]
     public function free_user_is_blocked_from_creating_a_second_api_token(): void
     {
-        $this->user->createToken('existing-token');
+        $this->seedExistingApiToken();
 
         $response = $this->createApiToken('Blocked Token');
 
@@ -195,7 +196,7 @@ class SubscriptionLimitsTest extends TestCase
     {
         $this->createProSubscription($this->user);
 
-        $this->user->createToken('existing-token');
+        $this->seedExistingApiToken();
 
         $response = $this->createApiToken('Second Token');
 
@@ -333,6 +334,17 @@ class SubscriptionLimitsTest extends TestCase
     private function createApiToken(string $name): TestResponse
     {
         return $this->postJson(route('api-tokens.store'), ['name' => $name]);
+    }
+
+    private function seedExistingApiToken(): void
+    {
+        $this->user->tokens()->create([
+            'name' => 'existing-token',
+            'token' => hash('sha256', Str::uuid()->toString()),
+            'abilities' => ['*'],
+            'last_used_at' => null,
+            'expires_at' => null,
+        ]);
     }
 
     private function createActiveTasks(int $count): void
