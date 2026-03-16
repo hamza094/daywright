@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\InvitationUsersRequest;
 use App\Http\Resources\Api\V1\InvitedUserResource;
@@ -54,7 +55,7 @@ class InvitationController extends ApiController
      */
     public function invite(Project $project, InvitationUsersRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
-        $planLimitService->assertCanInviteMember(Auth::user(), $project);
+        $planLimitService->assertWithinLimit(PlanLimitType::MembersPerProject, Auth::user(), $project);
 
         $user = User::whereEmail($request->validated())->first();
 

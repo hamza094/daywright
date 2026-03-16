@@ -6,6 +6,7 @@ namespace Tests\Feature\Api\Auth;
 
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
@@ -47,6 +48,32 @@ class AuthenticationTest extends TestCase
             ])->assertCreated();
 
         $this->assertDatabaseHas('users', ['email' => 'mihupocob@mailinator.com']);
+    }
+
+    /** @test */
+    public function register_new_user_starts_generic_trial(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-16 09:00:00'));
+
+        try {
+            $this->postJson(route('auth.register'), [
+                'name' => 'Trial User',
+                'email' => 'trial-user@example.com',
+                'password' => 'Password4!',
+                'password_confirmation' => 'Password4!',
+            ])->assertCreated();
+
+            $user = User::query()->where('email', 'trial-user@example.com')->firstOrFail();
+            $customer = $user->customer()->first();
+
+            $this->assertNotNull($customer);
+            $this->assertTrue($user->fresh()->isOnTrial());
+            $this->assertTrue(
+                $customer->trial_ends_at->equalTo(now()->addDays((int) config('plan-limits.trial.duration_days')))
+            );
+        } finally {
+            $this->travelBack();
+        }
     }
 
     /** @test */

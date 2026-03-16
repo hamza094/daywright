@@ -83,6 +83,39 @@ class SubscriptionLimitsTest extends TestCase
             ->assertJsonPath('message', 'Project Created Successfully');
     }
 
+    #[Test]
+    public function trial_user_can_create_beyond_free_project_limit(): void
+    {
+        $this->createTrialCustomer($this->user, Carbon::now()->addDays(5));
+
+        Project::factory()->count(3)->for($this->user)->create();
+
+        $response = $this->createProject([
+            'name' => 'Fourth Project During Trial',
+            'about' => 'Trial user project',
+            'stage_id' => 1,
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('message', 'Project Created Successfully');
+    }
+
+    #[Test]
+    public function expired_trial_user_is_blocked_from_creating_a_fourth_project(): void
+    {
+        $this->createTrialCustomer($this->user, Carbon::now()->subDay());
+
+        Project::factory()->count(2)->for($this->user)->create();
+
+        $response = $this->createProject([
+            'name' => 'Blocked Trial Project',
+            'about' => 'Expired trial should not allow this',
+            'stage_id' => 1,
+        ]);
+
+        $this->assertPlanLimitExceeded($response, 'trial_expired', 'projects', 3, 3);
+    }
+
     //  Tasks
     #[Test]
     public function free_user_is_blocked_from_creating_an_eleventh_active_task(): void

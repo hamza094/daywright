@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\ProjectStoreRequest;
 use App\Http\Requests\Api\V1\ProjectUpdateRequest;
@@ -28,7 +29,7 @@ class ProjectController extends ApiController
      */
     public function store(ProjectStoreRequest $request, ProjectService $service, PlanLimitService $planLimitService): JsonResponse
     {
-        $planLimitService->assertCanCreateProject(Auth::user());
+        $planLimitService->assertWithinLimit(PlanLimitType::Projects, Auth::user());
 
         DB::beginTransaction();
 

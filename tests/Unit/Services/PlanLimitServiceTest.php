@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
+use App\Enums\PlanLimitType;
 use App\Enums\SubscriptionPlan;
 use App\Enums\TaskStatus as TaskStatusEnum;
 use App\Exceptions\Subscription\PlanLimitExceededException;
@@ -63,15 +64,15 @@ class PlanLimitServiceTest extends TestCase
     /**
      * Data provider for single-user limits (meeting, api token).
      *
-     * Each tuple provides: [canMethod, assertMethod, consumeMethod, expectedLimitType]
+     * Each tuple provides: [limitType, consumeMethod, expectedLimitType]
      *
-     * @return array<int, array{0: string, 1: string, 2: string, 3: string}>
+     * @return array<int, array{0: PlanLimitType, 1: string, 2: string}>
      */
     public static function userLimitProvider(): array
     {
         return [
-            ['canCreateMeeting', 'assertCanCreateMeeting', 'createMeeting', 'meetings'],
-            ['canCreateApiToken', 'assertCanCreateApiToken', 'createApiToken', 'api_tokens'],
+            [PlanLimitType::CreatedMeetings, 'createMeeting', 'meetings'],
+            [PlanLimitType::ApiTokens, 'createApiToken', 'api_tokens'],
         ];
     }
 
@@ -89,11 +90,10 @@ class PlanLimitServiceTest extends TestCase
         // PlanLimitService: determine plan and flags
         $this->assertSame($expectedPlan, $this->service->plan($user));
         $this->assertSame($expectedDowngradedToFree, $this->service->isDowngradedToFree($user));
-        $this->assertFalse($this->service->canCreateProject($user));
 
-        // PlanLimitService->assertCanCreateProject throws PlanLimitExceededException
+        // PlanLimitService->assertWithinLimit throws PlanLimitExceededException
         $this->assertPlanException(
-            callback: fn (): null => $this->service->assertCanCreateProject($user),
+            callback: fn (): null => $this->service->assertWithinLimit(PlanLimitType::Projects, $user),
             expectedLimitType: 'projects',
             expectedReason: $expectedReason,
             expectedUsage: 3,
@@ -122,15 +122,14 @@ class PlanLimitServiceTest extends TestCase
         $archivedTask->delete();
 
         // PlanLimitService: currently within task limit
-        $this->assertTrue($this->service->canCreateTask($user, $project));
+        $this->service->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, $user, $project);
 
         // Fixture: add one more active task to reach the limit
         Task::factory()->for($user, 'owner')->for($project)->remaining()->create();
 
         // PlanLimitService: now exceeds the task limit
-        $this->assertFalse($this->service->canCreateTask($user, $project));
         $this->assertPlanException(
-            callback: fn (): null => $this->service->assertCanCreateTask($user, $project),
+            callback: fn (): null => $this->service->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, $user, $project),
             expectedLimitType: 'active_tasks_per_project',
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: 10,
@@ -149,15 +148,14 @@ class PlanLimitServiceTest extends TestCase
         $project->members()->attach(User::factory()->create(), ['active' => false]);
 
         // PlanLimitService: still under member limit
-        $this->assertTrue($this->service->canInviteMember($user, $project));
+        $this->service->assertWithinLimit(PlanLimitType::MembersPerProject, $user, $project);
 
         // Fixture: add another active member to reach the limit
         $project->members()->attach(User::factory()->create(), ['active' => true]);
 
         // PlanLimitService: now exceeds the member limit
-        $this->assertFalse($this->service->canInviteMember($user, $project));
         $this->assertPlanException(
-            callback: fn (): null => $this->service->assertCanInviteMember($user, $project),
+            callback: fn (): null => $this->service->assertWithinLimit(PlanLimitType::MembersPerProject, $user, $project),
             expectedLimitType: 'members',
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: 3,
@@ -168,8 +166,7 @@ class PlanLimitServiceTest extends TestCase
     #[Test]
     #[DataProvider('userLimitProvider')]
     public function it_enforces_single_user_free_limits(
-        string $canMethod,
-        string $assertMethod,
+        PlanLimitType $limitType,
         string $consumeMethod,
         string $expectedLimitType,
     ): void {
@@ -177,16 +174,15 @@ class PlanLimitServiceTest extends TestCase
         $project = Project::factory()->for($user)->create();
 
         // PlanLimitService: initially allowed to create the resource
-        $this->assertTrue($this->service->{$canMethod}($user));
+        $this->service->assertWithinLimit($limitType, $user);
 
         // FixtureHelpers: consume the resource (createMeeting/createApiToken)
         $this->{$consumeMethod}($user, $project);
 
         // PlanLimitService: creation now disallowed
-        $this->assertFalse($this->service->{$canMethod}($user));
-        // PlanLimitService->assertCan* throws PlanLimitExceededException
+        // PlanLimitService->assertWithinLimit throws PlanLimitExceededException
         $this->assertPlanException(
-            callback: fn (): null => $this->service->{$assertMethod}($user),
+            callback: fn (): null => $this->service->assertWithinLimit($limitType, $user),
             expectedLimitType: $expectedLimitType,
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: 1,
@@ -213,11 +209,11 @@ class PlanLimitServiceTest extends TestCase
         $user->createToken('token-two');
 
         $this->assertSame(SubscriptionPlan::Pro, $this->service->plan($user));
-        $this->assertTrue($this->service->canCreateProject($user));
-        $this->assertTrue($this->service->canCreateTask($user, $project));
-        $this->assertTrue($this->service->canInviteMember($user, $project));
-        $this->assertTrue($this->service->canCreateMeeting($user));
-        $this->assertTrue($this->service->canCreateApiToken($user));
+        $this->service->assertWithinLimit(PlanLimitType::Projects, $user);
+        $this->service->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, $user, $project);
+        $this->service->assertWithinLimit(PlanLimitType::MembersPerProject, $user, $project);
+        $this->service->assertWithinLimit(PlanLimitType::CreatedMeetings, $user);
+        $this->service->assertWithinLimit(PlanLimitType::ApiTokens, $user);
         $this->assertTrue(SubscriptionPlan::Pro->hasFeature('multiple_api_tokens'));
     }
 
@@ -233,7 +229,7 @@ class PlanLimitServiceTest extends TestCase
         $this->assertSame(SubscriptionPlan::Pro, $this->service->plan($user));
         $this->assertTrue($user->isOnTrial());
         $this->assertFalse($this->service->isDowngradedToFree($user));
-        $this->assertTrue($this->service->canCreateProject($user));
+        $this->service->assertWithinLimit(PlanLimitType::Projects, $user);
     }
 
     #[Test]
@@ -247,7 +243,7 @@ class PlanLimitServiceTest extends TestCase
 
         $this->assertSame(SubscriptionPlan::Pro, $this->service->plan($user));
         $this->assertTrue($user->isInGracePeriod());
-        $this->assertTrue($this->service->canCreateProject($user));
+        $this->service->assertWithinLimit(PlanLimitType::Projects, $user);
     }
 
     #[Test]

@@ -37,29 +37,9 @@ enum SubscriptionPlan: string
         return $limits;
     }
 
-    public function maxProjects(): ?int
+    public function maxFor(PlanLimitType $type): ?int
     {
-        return $this->limit('max_owned_projects');
-    }
-
-    public function maxTasksPerProject(): ?int
-    {
-        return $this->limit('max_active_tasks_per_project');
-    }
-
-    public function maxMembersPerProject(): ?int
-    {
-        return $this->limit('max_members_per_project');
-    }
-
-    public function maxCreatedMeetings(): ?int
-    {
-        return $this->limit('max_created_meetings');
-    }
-
-    public function maxApiTokens(): ?int
-    {
-        return $this->limit('max_api_tokens');
+        return $this->limit($type->configKey());
     }
 
     public function hasFeature(string $feature): bool

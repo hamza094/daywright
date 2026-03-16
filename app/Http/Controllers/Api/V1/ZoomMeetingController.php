@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\PlanLimitType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Zoom\MeetingStoreRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingUpdateRequest;
@@ -51,7 +52,7 @@ class ZoomMeetingController extends Controller
 
         $user = auth()->user();
 
-        $planLimitService->assertCanCreateMeeting($user);
+        $planLimitService->assertWithinLimit(PlanLimitType::CreatedMeetings, $user);
 
         $projectMeeting = DB::transaction(function () use ($zoom, $project, $user, $request) {
             $meeting = $zoom->createMeeting($request->validated(), $user);

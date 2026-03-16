@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\PlanLimitType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
@@ -34,7 +35,7 @@ class TokenController extends Controller
      */
     public function store(UserTokenRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
-        $planLimitService->assertCanCreateApiToken(auth()->user());
+        $planLimitService->assertWithinLimit(PlanLimitType::ApiTokens, auth()->user());
 
         $data = $request->validated();
 

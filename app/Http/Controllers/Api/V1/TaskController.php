@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\TaskRequest;
 use App\Http\Requests\Api\V1\TaskUpdate;
@@ -51,7 +52,7 @@ class TaskController extends ApiController
      */
     public function store(Project $project, TaskRequest $request, TaskService $taskService, PlanLimitService $planLimitService): JsonResponse
     {
-        $planLimitService->assertCanCreateTask(Auth::user(), $project);
+        $planLimitService->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, Auth::user(), $project);
 
         $task = $project->tasks()->firstOrCreate(
             $request->validated() + ['user_id' => Auth::id(),
