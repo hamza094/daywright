@@ -13,13 +13,7 @@ enum SubscriptionPlan: string
 
     public static function fromUser(User $user): self
     {
-        if ($user->isOnTrial()) {
-            return self::Pro;
-        }
-
-        $subscription = $user->getSubscription();
-
-        if ($subscription !== null && $subscription->valid()) {
+        if ($user->isOnTrial() || $user->isSubscribed()) {
             return self::Pro;
         }
 
@@ -40,14 +34,6 @@ enum SubscriptionPlan: string
     public function maxFor(PlanLimitType $type): ?int
     {
         return $this->limit($type->configKey());
-    }
-
-    public function hasFeature(string $feature): bool
-    {
-        /** @var array<int, string> $features */
-        $features = $this->limits()['features'] ?? [];
-
-        return in_array($feature, $features, true);
     }
 
     private function limit(string $key): ?int

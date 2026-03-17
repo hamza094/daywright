@@ -8,15 +8,17 @@ use App\Exceptions\Paddle\SubscriptionException;
 use App\Models\User;
 use App\Services\Api\V1\Paddle\SubscriptionService;
 use Mockery;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class SubscriptionTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function it_throws_exception_for_already_subscribed_user(): void
     {
         $user = Mockery::mock(User::class);
-        $user->shouldReceive('subscribedPlan')->andReturn('monthly');
+        $user->shouldReceive('isBillingSubscribed')->andReturn(true);
+        $user->shouldReceive('billingPlan')->andReturn('monthly');
 
         $service = new SubscriptionService;
 
@@ -26,11 +28,12 @@ class SubscriptionTest extends TestCase
         $service->subscribe($user, 'monthly');
     }
 
-    /** @test */
+    #[Test]
     public function it_throws_error_while_swapping_to_the_same_plan(): void
     {
         $user = Mockery::mock(User::class);
-        $user->shouldReceive('subscribedPlan')->andReturn('yearly');
+        $user->shouldReceive('isBillingSubscribed')->andReturn(true);
+        $user->shouldReceive('billingPlan')->andReturn('yearly');
 
         $service = new SubscriptionService;
 
@@ -40,11 +43,12 @@ class SubscriptionTest extends TestCase
         $service->swap($user, 'yearly');
     }
 
-    /** @test */
+    #[Test]
     public function it_throws_exception_for_canceling_a_non_subscribed_plan(): void
     {
         $user = Mockery::mock(User::class);
-        $user->shouldReceive('subscribedPlan')->andReturn('monthly');
+        $user->shouldReceive('isBillingSubscribed')->andReturn(true);
+        $user->shouldReceive('billingPlan')->andReturn('monthly');
 
         $service = new SubscriptionService;
 
@@ -52,5 +56,19 @@ class SubscriptionTest extends TestCase
         $this->expectExceptionMessage('You are not subscribed to this plan.');
 
         $service->cancel($user, 'yearly');
+    }
+
+    #[Test]
+    public function it_throws_exception_for_swapping_without_a_valid_subscription(): void
+    {
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('isBillingSubscribed')->andReturn(false);
+
+        $service = new SubscriptionService;
+
+        $this->expectException(SubscriptionException::class);
+        $this->expectExceptionMessage('You are not subscribed to a paid plan.');
+
+        $service->swap($user, 'yearly');
     }
 }

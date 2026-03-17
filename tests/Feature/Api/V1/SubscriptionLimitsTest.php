@@ -305,7 +305,7 @@ class SubscriptionLimitsTest extends TestCase
             'stage_id' => 1,
         ]);
 
-        $this->assertPlanLimitExceeded($response, 'downgraded_limit_reached', 'projects', 3, 3);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'projects', 3, 3);
     }
 
     #[Test]
@@ -317,7 +317,7 @@ class SubscriptionLimitsTest extends TestCase
 
         $response = $this->createTask(['title' => 'Blocked Post-Grace Task']);
 
-        $this->assertPlanLimitExceeded($response, 'downgraded_limit_reached', 'active_tasks_per_project', 10, 10);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'active_tasks_per_project', 10, 10);
     }
 
     private function assertPlanLimitExceeded(

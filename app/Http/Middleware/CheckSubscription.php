@@ -22,7 +22,7 @@ class CheckSubscription
     {
         $user = $request->user();
 
-        if ($user->isSubscribed() || $user->isOnTrial() || $user->isInGracePeriod()) {
+        if ($user->hasSubscriptionRecord() || $user->isOnTrial()) {
             return $next($request);
         }
 

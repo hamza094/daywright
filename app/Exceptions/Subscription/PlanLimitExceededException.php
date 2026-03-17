@@ -10,8 +10,6 @@ final class PlanLimitExceededException extends RuntimeException
 {
     public const string REASON_LIMIT_REACHED = 'limit_reached';
 
-    public const string REASON_DOWNGRADED_LIMIT_REACHED = 'downgraded_limit_reached';
-
     public const string REASON_TRIAL_EXPIRED = 'trial_expired';
 
     public function __construct(

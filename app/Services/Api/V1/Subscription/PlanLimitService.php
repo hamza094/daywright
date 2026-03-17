@@ -11,7 +11,6 @@ use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Models\Project;
 use App\Models\User;
 use InvalidArgumentException;
-use Laravel\Paddle\Subscription as PaddleSubscription;
 
 /**
  * Resolves the effective subscription plan and enforces plan-based usage limits.
@@ -22,19 +21,6 @@ final readonly class PlanLimitService
     public function plan(User $user): SubscriptionPlan
     {
         return SubscriptionPlan::fromUser($this->loadBillingRelations($user));
-    }
-
-    public function isDowngradedToFree(User $user): bool
-    {
-        $user = $this->loadBillingRelations($user);
-
-        if ($this->plan($user) !== SubscriptionPlan::Free) {
-            return false;
-        }
-
-        return $this->currentSubscription($user) !== null
-            || $user->hasExpiredTrial()
-            || $user->hasExpiredTrial($user->subscriptionName());
     }
 
     /**
@@ -98,20 +84,16 @@ final readonly class PlanLimitService
 
     /**
      * Preserve the existing API error semantics for free users who reached limits
-     * after a trial expired or after a paid plan fell back to free.
+     * after a trial expired.
      */
     private function resolveLimitReason(User $user): string
     {
         $user = $this->loadBillingRelations($user);
 
         if ($this->plan($user) === SubscriptionPlan::Free) {
-            if ($this->currentSubscription($user) === null
+            if (! $user->hasSubscriptionRecord()
                 && ($user->hasExpiredTrial() || $user->hasExpiredTrial($user->subscriptionName()))) {
                 return PlanLimitExceededException::REASON_TRIAL_EXPIRED;
-            }
-
-            if ($this->isDowngradedToFree($user)) {
-                return PlanLimitExceededException::REASON_DOWNGRADED_LIMIT_REACHED;
             }
         }
 
@@ -141,12 +123,5 @@ final readonly class PlanLimitService
     private function loadBillingRelations(User $user): User
     {
         return $user->loadMissing('subscriptions', 'customer');
-    }
-
-    private function currentSubscription(User $user): ?PaddleSubscription
-    {
-        $subscription = $user->getSubscription();
-
-        return $subscription instanceof PaddleSubscription ? $subscription : null;
     }
 }

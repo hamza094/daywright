@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\User;
 use Carbon\Carbon;
 use Laravel\Paddle\Customer;
+use Laravel\Paddle\Receipt;
 use Laravel\Paddle\Subscription as PaddleSubscription;
 
 trait SubscriptionHelpers
@@ -51,6 +52,23 @@ trait SubscriptionHelpers
     {
         return $this->createProSubscription($user, [
             'ends_at' => Carbon::now()->subDay(),
+        ]);
+    }
+
+    private function createReceipt(User $user, ?PaddleSubscription $subscription = null): Receipt
+    {
+        return Receipt::query()->create([
+            'billable_id' => (string) $user->getKey(),
+            'billable_type' => $user->getMorphClass(),
+            'paddle_subscription_id' => $subscription?->paddle_id,
+            'checkout_id' => (string) fake()->unique()->numberBetween(100000, 999999),
+            'order_id' => fake()->unique()->bothify('order-####-????'),
+            'amount' => '10.00',
+            'tax' => '0.00',
+            'currency' => 'USD',
+            'quantity' => 1,
+            'receipt_url' => fake()->unique()->url(),
+            'paid_at' => now()->subDay(),
         ]);
     }
 

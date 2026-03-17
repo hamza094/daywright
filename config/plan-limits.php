@@ -9,7 +9,6 @@ return [
         'max_members_per_project' => 3,
         'max_created_meetings' => 1,
         'max_api_tokens' => 1,
-        'features' => [],
     ],
 
     'pro' => [
@@ -18,13 +17,6 @@ return [
         'max_members_per_project' => null,
         'max_created_meetings' => null,
         'max_api_tokens' => null,
-        'features' => [
-            'unlimited_owned_projects',
-            'unlimited_active_tasks_per_project',
-            'unlimited_members_per_project',
-            'unlimited_created_meetings',
-            'multiple_api_tokens',
-        ],
     ],
 
     'trial' => [

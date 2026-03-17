@@ -43,21 +43,21 @@ class PlanLimitServiceTest extends TestCase
     /**
      * Data provider for project limit reason scenarios.
      *
-     * Each tuple provides: [setupMethod, expectedReason, expectedPlan, expectedDowngradedToFree]
+     * Each tuple provides: [setupMethod, expectedReason, expectedPlan]
      *
-     * @return array<int, array{0: string, 1: string, 2: SubscriptionPlan, 3: bool}>
+     * @return array<int, array{0: string, 1: string, 2: SubscriptionPlan}>
      */
     public static function projectLimitReasonProvider(): array
     {
         return [
             // free user
-            ['setUpFreeUserAtProjectLimit', PlanLimitExceededException::REASON_LIMIT_REACHED, SubscriptionPlan::Free, false],
+            ['setUpFreeUserAtProjectLimit', PlanLimitExceededException::REASON_LIMIT_REACHED, SubscriptionPlan::Free],
 
             // expired trial user
-            ['setUpExpiredTrialUserAtProjectLimit', PlanLimitExceededException::REASON_TRIAL_EXPIRED, SubscriptionPlan::Free, true],
+            ['setUpExpiredTrialUserAtProjectLimit', PlanLimitExceededException::REASON_TRIAL_EXPIRED, SubscriptionPlan::Free],
 
             // post grace user
-            ['setUpPostGraceUserAtProjectLimit', PlanLimitExceededException::REASON_DOWNGRADED_LIMIT_REACHED, SubscriptionPlan::Free, true],
+            ['setUpPostGraceUserAtProjectLimit', PlanLimitExceededException::REASON_LIMIT_REACHED, SubscriptionPlan::Free],
         ];
     }
 
@@ -82,14 +82,12 @@ class PlanLimitServiceTest extends TestCase
         string $setupMethod,
         string $expectedReason,
         SubscriptionPlan $expectedPlan,
-        bool $expectedDowngradedToFree,
     ): void {
         // SubscriptionHelpers: prepares the user/project state for this scenario
         $user = $this->{$setupMethod}();
 
         // PlanLimitService: determine plan and flags
         $this->assertSame($expectedPlan, $this->service->plan($user));
-        $this->assertSame($expectedDowngradedToFree, $this->service->isDowngradedToFree($user));
 
         // PlanLimitService->assertWithinLimit throws PlanLimitExceededException
         $this->assertPlanException(
@@ -214,7 +212,6 @@ class PlanLimitServiceTest extends TestCase
         $this->service->assertWithinLimit(PlanLimitType::MembersPerProject, $user, $project);
         $this->service->assertWithinLimit(PlanLimitType::CreatedMeetings, $user);
         $this->service->assertWithinLimit(PlanLimitType::ApiTokens, $user);
-        $this->assertTrue(SubscriptionPlan::Pro->hasFeature('multiple_api_tokens'));
     }
 
     #[Test]
@@ -228,7 +225,6 @@ class PlanLimitServiceTest extends TestCase
 
         $this->assertSame(SubscriptionPlan::Pro, $this->service->plan($user));
         $this->assertTrue($user->isOnTrial());
-        $this->assertFalse($this->service->isDowngradedToFree($user));
         $this->service->assertWithinLimit(PlanLimitType::Projects, $user);
     }
 

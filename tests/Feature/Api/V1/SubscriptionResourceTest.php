@@ -45,10 +45,10 @@ class SubscriptionResourceTest extends TestCase
         $response = $this->subscriptionResponse();
 
         $response->assertJsonPath('subscription.plan', 'free')
+            ->assertJsonPath('subscription.entitled', false)
             ->assertJsonPath('subscription.subscribed', false)
-            ->assertJsonPath('subscription.trial.active', false)
-            ->assertJsonPath('subscription.grace_period.active', false)
-            ->assertJsonPath('subscription.downgraded_to_free', false)
+            ->assertJsonMissingPath('subscription.trial')
+            ->assertJsonMissingPath('subscription.grace_period')
             ->assertJsonPath('subscription.limits.projects.used', 2)
             ->assertJsonPath('subscription.limits.projects.max', 3);
     }
@@ -56,16 +56,17 @@ class SubscriptionResourceTest extends TestCase
     #[Test]
     public function pro_user_receives_correct_subscription_shape(): void
     {
-        $this->createProSubscription($this->user);
+        $subscription = $this->createProSubscription($this->user);
+        $this->createReceipt($this->user, $subscription);
 
         $response = $this->subscriptionResponse();
 
         $response->assertJsonPath('subscription.plan', 'pro')
+            ->assertJsonPath('subscription.entitled', true)
             ->assertJsonPath('subscription.subscribed', true)
             ->assertJsonPath('subscription.billing_plan', 'monthly')
-            ->assertJsonPath('subscription.trial.active', false)
-            ->assertJsonPath('subscription.grace_period.active', false)
-            ->assertJsonPath('subscription.downgraded_to_free', false)
+            ->assertJsonMissingPath('subscription.trial')
+            ->assertJsonMissingPath('subscription.grace_period')
             ->assertJsonStructure([
                 'subscription' => [
                     'billing_plan',
@@ -87,31 +88,41 @@ class SubscriptionResourceTest extends TestCase
     #[Test]
     public function grace_period_user_receives_correct_subscription_shape(): void
     {
-        $this->createGracePeriodSubscription($this->user);
+        $subscription = $this->createGracePeriodSubscription($this->user);
+        $this->createReceipt($this->user, $subscription);
 
         $response = $this->subscriptionResponse();
 
         $response->assertJsonPath('subscription.plan', 'pro')
-            ->assertJsonPath('subscription.subscribed', true)
+            ->assertJsonPath('subscription.entitled', true)
+            ->assertJsonPath('subscription.subscribed', false)
+            ->assertJsonPath('subscription.billing_plan', 'monthly')
             ->assertJsonPath('subscription.grace_period.active', true)
-            ->assertJsonPath('subscription.downgraded_to_free', false)
+            ->assertJsonMissingPath('subscription.trial')
             ->assertJsonStructure([
                 'subscription' => [
+                    'billing_plan',
                     'grace_period' => ['active', 'ends_at'],
+                    'receipts',
                 ],
             ]);
     }
 
     #[Test]
-    public function downgraded_user_receives_correct_subscription_shape(): void
+    public function expired_subscription_user_receives_correct_subscription_shape(): void
     {
         $this->createExpiredSubscription($this->user);
 
         $response = $this->subscriptionResponse();
 
         $response->assertJsonPath('subscription.plan', 'free')
-            ->assertJsonPath('subscription.grace_period.active', false)
-            ->assertJsonPath('subscription.downgraded_to_free', true);
+            ->assertJsonPath('subscription.entitled', false)
+            ->assertJsonPath('subscription.subscribed', false)
+            ->assertJsonMissingPath('subscription.grace_period')
+            ->assertJsonMissingPath('subscription.billing_plan')
+            ->assertJsonMissingPath('subscription.next_payment')
+            ->assertJsonMissingPath('subscription.created_at')
+            ->assertJsonMissingPath('subscription.receipts');
 
         $this->assertLimitMaximums($response, [
             'projects' => 3,
@@ -123,6 +134,20 @@ class SubscriptionResourceTest extends TestCase
     }
 
     #[Test]
+    public function expired_subscription_user_receives_receipts_when_present(): void
+    {
+        $subscription = $this->createExpiredSubscription($this->user);
+        $receipt = $this->createReceipt($this->user, $subscription);
+
+        $response = $this->subscriptionResponse();
+
+        $response->assertJsonPath('subscription.plan', 'free')
+            ->assertJsonPath('subscription.subscribed', false)
+            ->assertJsonPath('subscription.receipts.0.id', $receipt->id)
+            ->assertJsonPath('subscription.receipts.0.receipt_url', $receipt->receipt_url);
+    }
+
+    #[Test]
     public function trial_user_receives_pro_plan_in_subscription_shape(): void
     {
         $this->createTrialCustomer($this->user, Carbon::now()->addDays(5));
@@ -130,9 +155,15 @@ class SubscriptionResourceTest extends TestCase
         $response = $this->subscriptionResponse();
 
         $response->assertJsonPath('subscription.plan', 'pro')
+            ->assertJsonPath('subscription.entitled', true)
             ->assertJsonPath('subscription.trial.active', true)
-            ->assertJsonPath('subscription.downgraded_to_free', false)
-            ->assertJsonPath('subscription.limits.projects.max', null);
+            ->assertJsonPath('subscription.trial.ends_at', Carbon::now()->addDays(5)->isoFormat('MMMM Do YYYY'))
+            ->assertJsonPath('subscription.limits.projects.max', null)
+            ->assertJsonStructure([
+                'subscription' => [
+                    'trial' => ['active', 'ends_at'],
+                ],
+            ]);
     }
 
     private function subscriptionResponse(): TestResponse
@@ -142,10 +173,8 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonStructure([
                 'subscription' => [
                     'plan',
+                    'entitled',
                     'subscribed',
-                    'trial' => ['active'],
-                    'grace_period' => ['active'],
-                    'downgraded_to_free',
                     'limits' => [
                         'projects' => ['used', 'max'],
                         'active_tasks_per_project' => ['used', 'max'],
