@@ -11,14 +11,14 @@ use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
-class SubscriptionTest extends TestCase
+class SubscriptionServiceTest extends TestCase
 {
     #[Test]
     public function it_throws_exception_for_already_subscribed_user(): void
     {
         $user = Mockery::mock(User::class);
         $user->shouldReceive('isBillingSubscribed')->andReturn(true);
-        $user->shouldReceive('billingPlan')->andReturn('monthly');
+        $user->shouldReceive('activeBillingPlan')->andReturn('monthly');
 
         $service = new SubscriptionService;
 
@@ -33,7 +33,7 @@ class SubscriptionTest extends TestCase
     {
         $user = Mockery::mock(User::class);
         $user->shouldReceive('isBillingSubscribed')->andReturn(true);
-        $user->shouldReceive('billingPlan')->andReturn('yearly');
+        $user->shouldReceive('activeBillingPlan')->andReturn('yearly');
 
         $service = new SubscriptionService;
 
@@ -48,7 +48,7 @@ class SubscriptionTest extends TestCase
     {
         $user = Mockery::mock(User::class);
         $user->shouldReceive('isBillingSubscribed')->andReturn(true);
-        $user->shouldReceive('billingPlan')->andReturn('monthly');
+        $user->shouldReceive('activeBillingPlan')->andReturn('monthly');
 
         $service = new SubscriptionService;
 

@@ -14,7 +14,7 @@ final class SubscriptionService implements Paddle
     #[Override]
     public function subscribe(User $user, string $plan): mixed
     {
-        if ($user->isBillingSubscribed() && $user->billingPlan() === $plan) {
+        if ($user->isBillingSubscribed() && $user->activeBillingPlan() === $plan) {
             throw new SubscriptionException('You are already subscribed to this plan.');
         }
 
@@ -35,7 +35,7 @@ final class SubscriptionService implements Paddle
             throw new SubscriptionException('You are not subscribed to a paid plan.');
         }
 
-        $currentPlan = $user->billingPlan();
+        $currentPlan = $user->activeBillingPlan();
 
         if ($currentPlan === $plan) {
             throw new SubscriptionException('You are already on this plan.');
@@ -54,7 +54,7 @@ final class SubscriptionService implements Paddle
     #[Override]
     public function cancel(User $user, string $plan): array
     {
-        if (! $user->isBillingSubscribed() || $user->billingPlan() !== $plan) {
+        if (! $user->isBillingSubscribed() || $user->activeBillingPlan() !== $plan) {
             throw new SubscriptionException('You are not subscribed to this plan.');
         }
 

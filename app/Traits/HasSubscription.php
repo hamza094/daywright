@@ -16,11 +16,6 @@ trait HasSubscription
         return $this->onTrial() || $this->onTrial($this->subscriptionName());
     }
 
-    public function isInGracePeriod(): bool
-    {
-        return $this->getSubscription()?->onGracePeriod() === true;
-    }
-
     public function hasSubscriptionRecord(): bool
     {
         return $this->getSubscription() !== null;
@@ -47,27 +42,43 @@ trait HasSubscription
     }
 
     /**
-     * Get the user's current recurring billing plan name ('monthly', 'yearly', 'Not Subscribed', or 'Unknown').
-     * Optionally accepts plan IDs for testability.
+     * Get the active recurring billing plan name.
      */
-    public function billingPlan(?int $monthlyPlanId = null, ?int $yearlyPlanId = null): string
-    {
-        $subscription = $this->getSubscription();
-
-        if ($subscription?->recurring() !== true) {
-            return 'Not Subscribed';
+    public function activeBillingPlan(
+        ?int $monthlyPlanId = null,
+        ?int $yearlyPlanId = null,
+    ): string {
+        if (! $this->isBillingSubscribed()) {
+            return 'Not Subscribed Actively';
         }
 
-        $monthlyPlanId ??= (int) config('services.paddle.monthly');
-        $yearlyPlanId ??= (int) config('services.paddle.yearly');
+        $subscription = $this->getSubscription();
 
-        $paddlePlan = $subscription->paddle_plan ?? null;
+        return $this->resolveBillingPlanName(
+            paddlePlan: $subscription->paddle_plan ?? null,
+            monthlyPlanId: $monthlyPlanId,
+            yearlyPlanId: $yearlyPlanId,
+        );
+    }
 
-        return match ($paddlePlan) {
-            $monthlyPlanId => 'monthly',
-            $yearlyPlanId => 'yearly',
-            default => 'Unknown',
-        };
+    /**
+     * Get the billing plan name for an active subscription or a canceled one still in grace period.
+     */
+    public function displayBillingPlan(
+        ?int $monthlyPlanId = null,
+        ?int $yearlyPlanId = null,
+    ): string {
+        $subscription = $this->getSubscription();
+
+        if ($subscription === null) {
+            return 'Not Subscribed Actively';
+        }
+
+        return $this->resolveBillingPlanName(
+            paddlePlan: $subscription->paddle_plan ?? null,
+            monthlyPlanId: $monthlyPlanId,
+            yearlyPlanId: $yearlyPlanId,
+        );
     }
 
     /**
@@ -75,7 +86,7 @@ trait HasSubscription
      */
     public function hasGracePeriod(): bool
     {
-        return $this->isInGracePeriod();
+        return $this->getSubscription()?->onGracePeriod() === true;
     }
 
     /**
@@ -98,5 +109,20 @@ trait HasSubscription
     public function getSubscription(): mixed
     {
         return $this->subscription($this->subscriptionName());
+    }
+
+    protected function resolveBillingPlanName(
+        null|int|string $paddlePlan,
+        ?int $monthlyPlanId = null,
+        ?int $yearlyPlanId = null,
+    ): string {
+        $monthlyPlanId ??= (int) config('services.paddle.monthly');
+        $yearlyPlanId ??= (int) config('services.paddle.yearly');
+
+        return match ((int) $paddlePlan) {
+            $monthlyPlanId => 'monthly',
+            $yearlyPlanId => 'yearly',
+            default => 'Unknown',
+        };
     }
 }

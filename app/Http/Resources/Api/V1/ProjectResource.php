@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
@@ -22,7 +23,9 @@ class ProjectResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
-        $showRoute = $request->routeIs('projects.show');
+        $showsProjectDetails = $request->routeIs('projects.show');
+        $showsProjectLimits = $request->routeIs('projects.show', 'projects.update');
+        $planLimitService = app(PlanLimitService::class);
 
         return [
             /**
@@ -88,17 +91,17 @@ class ProjectResource extends JsonResource
             ),
 
             'ownerNotAuthorized' => $this->when(
-                $showRoute,
+                $showsProjectDetails,
                 auth()->user()->is($this->user) && ! auth()->user()->isConnectedToZoom(),
             ),
 
             'days_limit' => $this->when(
-                $showRoute,
+                $showsProjectDetails,
                 config('app.project.abandonedLimit'),
             ),
 
             'postponed_reason' => $this->when(
-                $showRoute,
+                $showsProjectDetails,
                 $this->postponed_reason,
             ),
 
@@ -107,7 +110,7 @@ class ProjectResource extends JsonResource
              *
              * @example [data]
              */
-            'user' => $this->when($showRoute && $this->relationLoaded('user'), fn () => $this->user->only(['uuid', 'name', 'avatar_path', 'username', 'email'])),
+            'user' => $this->when($showsProjectDetails && $this->relationLoaded('user'), fn () => $this->user->only(['uuid', 'name', 'avatar_path', 'username', 'email'])),
 
             /**
              * Project status calculated on the based of score
@@ -131,12 +134,17 @@ class ProjectResource extends JsonResource
             /**
              * Current stage information for the project.
              */
-            'stage' => $this->when($showRoute && $this->relationLoaded('stage'), fn (): StageResource => new StageResource($this->stage)),
+            'stage' => $this->when($showsProjectDetails && $this->relationLoaded('stage'), fn (): StageResource => new StageResource($this->stage)),
 
             /**
              * List of active project members.
              */
-            'members' => $this->when($showRoute && $this->relationLoaded('activeMembers'), fn () => InvitedUserResource::collection($this->activeMembers)),
+            'members' => $this->when($showsProjectDetails && $this->relationLoaded('activeMembers'), fn () => InvitedUserResource::collection($this->activeMembers)),
+
+            'limits' => $this->when(
+                $showsProjectLimits && $this->relationLoaded('user') && auth()->user()->is($this->user),
+                fn () => $planLimitService->projectUsage($this->user, $this->resource),
+            ),
 
             /**
              * Limited list of recent project activities.

@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\TaskStatus as TaskStatusEnum;
 use App\Jobs\CancelZoomMeetingsJob;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\Task;
 use App\Models\User;
 use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class ProjectFeatureTest extends TestCase
@@ -111,10 +114,56 @@ class ProjectFeatureTest extends TestCase
     }
 
     /** @test */
+    public function project_show_includes_project_scoped_limits_only(): void
+    {
+        Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+            'status_id' => TaskStatusEnum::PENDING,
+        ]);
+        Task::factory()->for($this->user, 'owner')->for($this->project)->completed()->create();
+
+        $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
+        $this->project->members()->attach(User::factory()->create(), ['active' => false]);
+
+        $response = $this->getJson($this->project->path())
+            ->assertOk();
+
+        $response
+            ->assertJsonPath('limits.active_tasks_per_project.used', 2)
+            ->assertJsonPath('limits.active_tasks_per_project.max', 10)
+            ->assertJsonPath('limits.members_per_project.used', 2)
+            ->assertJsonPath('limits.members_per_project.max', 3)
+            ->assertJsonMissingPath('limits.projects')
+            ->assertJsonMissingPath('limits.created_meetings')
+            ->assertJsonMissingPath('limits.api_tokens');
+    }
+
+    /** @test */
+    public function project_member_cannot_see_project_limits_on_show(): void
+    {
+        $member = User::factory()->create();
+
+        Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+            'status_id' => TaskStatusEnum::PENDING,
+        ]);
+        $this->project->members()->attach($member, ['active' => true]);
+
+        Sanctum::actingAs($member);
+
+        $this->getJson($this->project->path())
+            ->assertOk()
+            ->assertJsonMissingPath('limits');
+    }
+
+    /** @test */
     public function allowed_user_can_update_project(): void
     {
         $name = 'My First Project';
         $notes = 'My project first notes';
+
+        Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+            'status_id' => TaskStatusEnum::PENDING,
+        ]);
+        $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
 
         $response = $this->patchJson($this->project->path(),
             ['name' => $name, 'notes' => $notes]);
@@ -132,7 +181,30 @@ class ProjectFeatureTest extends TestCase
                     'name' => $this->project->name,
                     'slug' => $this->project->slug,
                 ],
-            ]);
+            ])
+            ->assertJsonPath('project.limits.active_tasks_per_project.used', 2)
+            ->assertJsonPath('project.limits.active_tasks_per_project.max', 10)
+            ->assertJsonPath('project.limits.members_per_project.used', 2)
+            ->assertJsonPath('project.limits.members_per_project.max', 3)
+            ->assertJsonMissingPath('project.limits.projects')
+            ->assertJsonMissingPath('project.limits.created_meetings')
+            ->assertJsonMissingPath('project.limits.api_tokens');
+    }
+
+    /** @test */
+    public function project_member_cannot_see_project_limits_on_update(): void
+    {
+        $member = User::factory()->create();
+        $this->project->members()->attach($member, ['active' => true]);
+
+        Sanctum::actingAs($member);
+
+        $this->patchJson($this->project->path(), [
+            'name' => 'Updated By Member',
+        ])
+            ->assertOk()
+            ->assertJsonPath('project.name', 'Updated By Member')
+            ->assertJsonMissingPath('project.limits');
     }
 
     /** @test */

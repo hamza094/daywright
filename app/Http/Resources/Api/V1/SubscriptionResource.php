@@ -35,7 +35,7 @@ class SubscriptionResource extends JsonResource
             'subscribed' => $isBillingSubscribed,
 
             $this->mergeWhen($isBillingSubscribed || $hasGracePeriod, [
-                'billing_plan' => $this->resolveSubscriptionPlan($subscription?->paddle_plan),
+                'billing_plan' => $this->resource->displayBillingPlan(),
             ]),
 
             $this->mergeWhen($isBillingSubscribed, fn () => [
@@ -61,7 +61,7 @@ class SubscriptionResource extends JsonResource
                 ],
             ]),
 
-            'limits' => $planLimitService->usage($this->resource),
+            'limits' => $planLimitService->accountUsage($this->resource),
         ];
     }
 
@@ -70,17 +70,5 @@ class SubscriptionResource extends JsonResource
         $endsAt = $this->trialEndsAt($this->subscriptionName()) ?? $this->trialEndsAt();
 
         return optional($endsAt)->isoFormat('MMMM Do YYYY');
-    }
-
-    private function resolveSubscriptionPlan(null|int|string $paddlePlan): string
-    {
-        $monthlyPlanId = (int) config('services.paddle.monthly');
-        $yearlyPlanId = (int) config('services.paddle.yearly');
-
-        return match ((int) $paddlePlan) {
-            $monthlyPlanId => 'monthly',
-            $yearlyPlanId => 'yearly',
-            default => 'Unknown',
-        };
     }
 }

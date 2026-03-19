@@ -17,6 +17,23 @@ use InvalidArgumentException;
  */
 final readonly class PlanLimitService
 {
+    /**
+     * @var array<int, PlanLimitType>
+     */
+    private const ACCOUNT_LIMIT_TYPES = [
+        PlanLimitType::Projects,
+        PlanLimitType::CreatedMeetings,
+        PlanLimitType::ApiTokens,
+    ];
+
+    /**
+     * @var array<int, PlanLimitType>
+     */
+    private const PROJECT_LIMIT_TYPES = [
+        PlanLimitType::ActiveTasksPerProject,
+        PlanLimitType::MembersPerProject,
+    ];
+
     // Public API
     public function plan(User $user): SubscriptionPlan
     {
@@ -26,21 +43,28 @@ final readonly class PlanLimitService
     /**
      * @return array<string, array{used: int|null, max: int|null}>
      */
+    public function accountUsage(User $user): array
+    {
+        return $this->buildUsage(self::ACCOUNT_LIMIT_TYPES, $user);
+    }
+
+    /**
+     * @return array<string, array{used: int|null, max: int|null}>
+     */
+    public function projectUsage(User $user, Project $project): array
+    {
+        return $this->buildUsage(self::PROJECT_LIMIT_TYPES, $user, $project);
+    }
+
+    /**
+     * @return array<string, array{used: int|null, max: int|null}>
+     */
     public function usage(User $user, ?Project $project = null): array
     {
-        $plan = $this->plan($user);
-        $usage = [];
-
-        foreach (PlanLimitType::cases() as $type) {
-            $usage[$type->value] = [
-                'used' => $type->requiresProject() && $project === null
-                    ? null
-                    : $this->countUsage($type, $user, $project),
-                'max' => $plan->maxFor($type),
-            ];
-        }
-
-        return $usage;
+        return [
+            ...$this->accountUsage($user),
+            ...($project !== null ? $this->projectUsage($user, $project) : []),
+        ];
     }
 
     public function assertWithinLimit(PlanLimitType $type, User $user, ?Project $project = null): void
@@ -111,6 +135,24 @@ final readonly class PlanLimitService
             PlanLimitType::CreatedMeetings => $user->meetings()->count(),
             PlanLimitType::ApiTokens => $user->tokens()->count(),
         };
+    }
+
+    /**
+     * @param  array<int, PlanLimitType>  $types
+     * @return array<string, array{used: int|null, max: int|null}>
+     */
+    private function buildUsage(array $types, User $user, ?Project $project = null): array
+    {
+        $plan = $this->plan($user);
+
+        return collect($types)
+            ->mapWithKeys(fn (PlanLimitType $type): array => [
+                $type->value => [
+                    'used' => $this->countUsage($type, $user, $project),
+                    'max' => $plan->maxFor($type),
+                ],
+            ])
+            ->toArray();
     }
 
     private function projectFor(PlanLimitType $type, ?Project $project): Project

@@ -25,7 +25,7 @@ class DummyUserWithSubscription
     }
 }
 
-class HasSubscriptionTest extends TestCase
+class HasSubscriptionTraitTest extends TestCase
 {
     public function test_is_subscribed_returns_true_when_subscription_is_valid(): void
     {
@@ -89,7 +89,7 @@ class HasSubscriptionTest extends TestCase
     {
         $user = new DummyUserWithSubscription;
         $user->mockSubscription = null;
-        $this->assertEquals('Not Subscribed', $user->billingPlan());
+        $this->assertEquals('Not Subscribed Actively', $user->activeBillingPlan());
 
         $user->mockSubscription = new class
         {
@@ -100,9 +100,9 @@ class HasSubscriptionTest extends TestCase
                 return false;
             }
         };
-        $this->assertEquals('Not Subscribed', $user->billingPlan());
+        $this->assertEquals('Not Subscribed Actively', $user->activeBillingPlan());
+        $this->assertEquals('monthly', $user->displayBillingPlan($monthlyPlanId = 123, yearlyPlanId: 456));
 
-        $monthlyPlanId = 123;
         $user->mockSubscription = new class($monthlyPlanId)
         {
             public function __construct(public int $paddle_plan) {}
@@ -112,7 +112,7 @@ class HasSubscriptionTest extends TestCase
                 return true;
             }
         };
-        $this->assertEquals('monthly', $user->billingPlan($monthlyPlanId, 456));
+        $this->assertEquals('monthly', $user->activeBillingPlan($monthlyPlanId, 456));
 
         $yearlyPlanId = 456;
         $user->mockSubscription = new class($yearlyPlanId)
@@ -124,7 +124,7 @@ class HasSubscriptionTest extends TestCase
                 return true;
             }
         };
-        $this->assertEquals('yearly', $user->billingPlan($monthlyPlanId, $yearlyPlanId));
+        $this->assertEquals('yearly', $user->activeBillingPlan($monthlyPlanId, $yearlyPlanId));
 
         $user->mockSubscription = new class
         {
@@ -135,7 +135,7 @@ class HasSubscriptionTest extends TestCase
                 return true;
             }
         };
-        $this->assertEquals('Unknown', $user->billingPlan($monthlyPlanId, $yearlyPlanId));
+        $this->assertEquals('Unknown', $user->activeBillingPlan($monthlyPlanId, $yearlyPlanId));
     }
 
     public function test_has_grace_period_true_and_false(): void

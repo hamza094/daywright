@@ -66,7 +66,7 @@ class ProjectController extends ApiController
     {
         $this->authorize('access', $project);
 
-        $project->load(['stage', 'meetings', 'activeMembers', 'limitedActivities']);
+        $project->load(['user', 'stage', 'meetings', 'activeMembers', 'limitedActivities']);
 
         return new ProjectResource($project);
     }
@@ -90,6 +90,7 @@ class ProjectController extends ApiController
         }
 
         $project->update($request->validated());
+        $project->loadMissing('user');
 
         $service->sendNotification($project);
 

@@ -10,10 +10,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 use Override;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithPaddle;
 
-class SubscriptionTest extends TestCase
+class SubscriptionControllerTest extends TestCase
 {
     use InteractsWithPaddle, RefreshDatabase;
 
@@ -22,7 +23,6 @@ class SubscriptionTest extends TestCase
     {
         parent::setUp();
 
-        // Create a user
         $user = User::factory()->create([
             'email' => 'johndoe@example.org',
             'password' => Hash::make('testpassword'),
@@ -30,11 +30,10 @@ class SubscriptionTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        // Use the fake subscription service
         $this->fakeSubscription();
     }
 
-    /** @test */
+    #[Test]
     public function it_creates_a_paylink_for_subscription(): void
     {
         $plan = 'monthly';
@@ -46,7 +45,7 @@ class SubscriptionTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_swaps_a_subscription_plan(): void
     {
         $this->withoutMiddleware(CheckSubscription::class);
@@ -61,7 +60,7 @@ class SubscriptionTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_cancels_a_subscription(): void
     {
         $this->withoutMiddleware(CheckSubscription::class);
@@ -75,7 +74,7 @@ class SubscriptionTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_denies_access_for_non_subscribed_users(): void
     {
         $plan = 'monthly';
@@ -89,7 +88,7 @@ class SubscriptionTest extends TestCase
             ]);
     }
 
-    /** @test */
+    #[Test]
     public function it_fails_validation_for_invalid_plan(): void
     {
         $invalidPlan = 'weekly';

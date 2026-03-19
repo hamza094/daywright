@@ -26,8 +26,4 @@ return [
     'grace_period' => [
         'behavior' => 'full_access',
     ],
-
-    'downgrade' => [
-        'behavior' => 'enforce_free_limits',
-    ],
 ];

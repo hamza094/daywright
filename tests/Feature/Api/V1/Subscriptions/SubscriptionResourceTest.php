@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Api\V1;
+namespace Tests\Feature\Api\V1\Subscriptions;
 
 use App\Models\Project;
 use App\Models\User;
@@ -49,6 +49,8 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.subscribed', false)
             ->assertJsonMissingPath('subscription.trial')
             ->assertJsonMissingPath('subscription.grace_period')
+            ->assertJsonMissingPath('subscription.limits.active_tasks_per_project')
+            ->assertJsonMissingPath('subscription.limits.members_per_project')
             ->assertJsonPath('subscription.limits.projects.used', 2)
             ->assertJsonPath('subscription.limits.projects.max', 3);
     }
@@ -78,8 +80,6 @@ class SubscriptionResourceTest extends TestCase
 
         $this->assertLimitMaximums($response, [
             'projects' => null,
-            'active_tasks_per_project' => null,
-            'members_per_project' => null,
             'created_meetings' => null,
             'api_tokens' => null,
         ]);
@@ -126,8 +126,6 @@ class SubscriptionResourceTest extends TestCase
 
         $this->assertLimitMaximums($response, [
             'projects' => 3,
-            'active_tasks_per_project' => 10,
-            'members_per_project' => 3,
             'created_meetings' => 1,
             'api_tokens' => 1,
         ]);
@@ -159,6 +157,8 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.trial.active', true)
             ->assertJsonPath('subscription.trial.ends_at', Carbon::now()->addDays(5)->isoFormat('MMMM Do YYYY'))
             ->assertJsonPath('subscription.limits.projects.max', null)
+            ->assertJsonMissingPath('subscription.limits.active_tasks_per_project')
+            ->assertJsonMissingPath('subscription.limits.members_per_project')
             ->assertJsonStructure([
                 'subscription' => [
                     'trial' => ['active', 'ends_at'],
@@ -177,8 +177,6 @@ class SubscriptionResourceTest extends TestCase
                     'subscribed',
                     'limits' => [
                         'projects' => ['used', 'max'],
-                        'active_tasks_per_project' => ['used', 'max'],
-                        'members_per_project' => ['used', 'max'],
                         'created_meetings' => ['used', 'max'],
                         'api_tokens' => ['used', 'max'],
                     ],
