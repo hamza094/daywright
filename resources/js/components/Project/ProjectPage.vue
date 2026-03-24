@@ -145,6 +145,24 @@
                       <span>Last modified</span>
                       <p v-text="project.updated_at"></p>
                     </div>
+                    <div v-if="showProjectLimits" class="project-limits">
+                      <div class="project-limits__header">
+                        <span class="project-limits__title">Plan limits</span>
+                        <router-link :to="{ name: 'Subscription' }" class="project-limits__link"> Upgrade </router-link>
+                      </div>
+                      <div v-for="item in projectLimitItems" :key="item.key" class="project-limits__item">
+                        <div class="project-limits__row">
+                          <span class="project-limits__label">{{ item.label }}</span>
+                          <span class="project-limits__value">{{ formatProjectLimit(item.limit) }}</span>
+                        </div>
+                        <div class="project-limits__track">
+                          <div
+                            class="project-limits__bar"
+                            :class="projectLimitTone(item.limit)"
+                            :style="{ width: projectLimitWidth(item.limit) }"></div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -261,6 +279,7 @@ import { permission } from '../../auth';
 import { mapState, mapMutations, mapActions } from 'vuex';
 
 export default {
+  name: 'ProjectPage',
   components: {
     Status,
     Stage,
@@ -308,6 +327,27 @@ export default {
       };
       return map[this.project.health_status] || 'badge-secondary';
     },
+
+    projectLimitItems() {
+      const limits = this.project?.limits || {};
+
+      return [
+        {
+          key: 'active_tasks_per_project',
+          label: 'Active tasks',
+          limit: limits.active_tasks_per_project || null,
+        },
+        {
+          key: 'members_per_project',
+          label: 'Members',
+          limit: limits.members_per_project || null,
+        },
+      ].filter((item) => item.limit && item.limit.max !== null);
+    },
+
+    showProjectLimits() {
+      return this.projectLimitItems.length > 0;
+    },
   },
 
   created() {
@@ -337,6 +377,44 @@ export default {
   methods: {
     ...mapActions('project', ['loadProject']),
     ...mapMutations('project', ['aboutUpdate']),
+
+    projectLimitRatio(limit) {
+      if (!limit || limit.max === null || limit.max <= 0) {
+        return 0;
+      }
+
+      return (limit.used / limit.max) * 100;
+    },
+
+    projectLimitWidth(limit) {
+      if (!limit || limit.max === null || limit.max <= 0) {
+        return '100%';
+      }
+
+      return `${Math.min(this.projectLimitRatio(limit), 100)}%`;
+    },
+
+    projectLimitTone(limit) {
+      const ratio = this.projectLimitRatio(limit);
+
+      if (ratio >= 90) {
+        return 'project-limits__bar--critical';
+      }
+
+      if (ratio >= 70) {
+        return 'project-limits__bar--warning';
+      }
+
+      return 'project-limits__bar--healthy';
+    },
+
+    formatProjectLimit(limit) {
+      if (!limit) {
+        return '0 / 0';
+      }
+
+      return `${limit.used} / ${limit.max}`;
+    },
 
     openProjectChat() {
       if (!this.project || !this.project.slug) {
