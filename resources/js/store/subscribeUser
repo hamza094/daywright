@@ -4,6 +4,36 @@ const state = {
   errors:{},
 };
 
+const getters = {
+  isPro(state) {
+    return state.subscription.entitled === true;
+  },
+
+  isOnTrial(state) {
+    return state.subscription?.trial?.active === true;
+  },
+
+  isInGracePeriod(state) {
+    return state.subscription?.grace_period?.active === true;
+  },
+
+  isFreeUser(state, localGetters) {
+    return localGetters.plan === 'free' && !localGetters.isOnTrial && !localGetters.isInGracePeriod;
+  },
+
+  isActivelyBilling(state) {
+    return state.subscription.subscribed === true;
+  },
+
+  plan(state) {
+    return state.subscription.plan || 'free';
+  },
+
+  accountLimits(state) {
+    return state.subscription.limits || {};
+  },
+};
+
 const actions = {
   userSubscription({commit}){
     axios.get('/user/subscriptions',{
@@ -39,6 +69,7 @@ const mutations = {
 export default{
   namespaced: true,
   state,
+  getters,
   actions,
   mutations
 }
