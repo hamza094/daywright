@@ -26,10 +26,25 @@
             <notifications v-if="loggedIn"></notifications>
           </div>
         </nav>
-        <div v-if="loggedIn && showAlertNotice" class="alert alert-dark mt-2" role="alert">
+        <div v-if="showTrialAlert" class="alert alert-info mt-2" role="alert">
           <b>
-            Upgrade your experience now!
-            <router-link :to="{ name: 'Subscription' }"><span>Subscribe</span></router-link> now to unlock all features.
+            Your trial is active
+            <template v-if="trialEndsAt">until {{ trialEndsAt }}</template>
+            <template v-else>for a limited time</template>.
+            <router-link :to="{ name: 'Subscription' }"><span>Subscribe</span></router-link> to keep Pro access after it
+            ends.
+          </b>
+        </div>
+        <div v-else-if="showGraceAlert" class="alert alert-warning mt-2" role="alert">
+          <b>
+            Your subscription ends on {{ gracePeriodEndsAt }}.
+            <router-link :to="{ name: 'Subscription' }"><span>Renew</span></router-link> to keep Pro access.
+          </b>
+        </div>
+        <div v-else-if="showFreeAlert" class="alert alert-dark mt-2" role="alert">
+          <b>
+            You're on the Free plan.
+            <router-link :to="{ name: 'Subscription' }"><span>Upgrade</span></router-link> to unlock all features.
           </b>
         </div>
         <router-view />
@@ -51,13 +66,34 @@ export default {
       type: Object,
       required: true,
     },
-    showAlertNotice: {
-      type: Boolean,
-      default: false,
+    subscription: {
+      type: Object,
+      default: () => ({}),
+    },
+    alertState: {
+      type: String,
+      default: null,
     },
     loggedIn: {
       type: Boolean,
       required: true,
+    },
+  },
+  computed: {
+    showTrialAlert() {
+      return this.loggedIn && this.alertState === 'trial';
+    },
+    showGraceAlert() {
+      return this.loggedIn && this.alertState === 'grace';
+    },
+    showFreeAlert() {
+      return this.loggedIn && this.alertState === 'free';
+    },
+    trialEndsAt() {
+      return this.subscription?.trial?.ends_at || null;
+    },
+    gracePeriodEndsAt() {
+      return this.subscription?.grace_period?.ends_at || 'the end of your grace period';
     },
   },
   methods: {

@@ -4,16 +4,18 @@
       :is="layoutComponent"
       :user="user"
       :logged-in="loggedIn"
-      :show-alert-notice="showAlertNotice"
+      :subscription="subscription"
+      :alert-state="alertState"
       @sign-out="signOut" />
   </div>
 </template>
 <script>
-import { mapState, mapActions } from 'vuex';
+import { mapState, mapActions, mapGetters } from 'vuex';
 import AppLayout from './layouts/AppLayout.vue';
 import AuthLayout from './layouts/AuthLayout.vue';
 
 export default {
+  name: 'Navbar',
   components: {
     AppLayout,
     AuthLayout,
@@ -21,11 +23,28 @@ export default {
   computed: {
     ...mapState('currentUser', ['user']),
     ...mapState('subscribeUser', ['subscription']),
+    ...mapGetters('subscribeUser', ['isOnTrial', 'isInGracePeriod', 'isPro']),
     loggedIn() {
       return this.$store.state.currentUser.loggedIn;
     },
-    showAlertNotice() {
-      return this.loggedIn && this.subscriptionLoaded && !this.subscription.subscribed;
+    alertState() {
+      if (!this.loggedIn || !this.subscriptionLoaded) {
+        return null;
+      }
+
+      if (this.isOnTrial) {
+        return 'trial';
+      }
+
+      if (this.isInGracePeriod) {
+        return 'grace';
+      }
+
+      if (!this.isPro) {
+        return 'free';
+      }
+
+      return null;
     },
     subscriptionLoaded() {
       return Object.keys(this.subscription).length !== 0;
