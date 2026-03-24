@@ -69,3 +69,102 @@
 body.subscription-modal-open {
   overflow: hidden;
 }
+
+// Plan-limit upgrade modal
+.plan-limit-modal {
+  padding: 1.5rem;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+
+  &__icon {
+    color: $color-warm;
+    font-size: 1.35rem;
+    line-height: 1;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: $color-secondary;
+    flex: 1;
+  }
+
+  &__close {
+    background: none;
+    border: none;
+    font-size: 1.35rem;
+    line-height: 1;
+    color: $color-grey;
+    cursor: pointer;
+    padding: 0 0.25rem;
+
+    &:hover {
+      color: $color-secondary;
+    }
+  }
+
+  &__body {
+    margin-bottom: 1.25rem;
+  }
+
+  &__message {
+    font-size: 0.95rem;
+    color: $color-dark-grey;
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+
+  &__hint {
+    font-size: 0.85rem;
+    color: $color-warm;
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+  }
+
+  // Usage bar
+  &__usage {
+    background: lighten($color-light-grey, 5%);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+  }
+
+  &__usage-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: $color-dark-grey;
+    margin-bottom: 0.4rem;
+  }
+
+  &__usage-count {
+    font-weight: 600;
+    color: $color-secondary;
+  }
+
+  &__usage-track {
+    height: 6px;
+    background: $color-light-grey;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  &__usage-bar {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, $color-warm 0%, #e74c3c 100%);
+    transition: width 0.3s ease;
+  }
+
+  // Footer actions
+  &__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+}

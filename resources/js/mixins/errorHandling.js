@@ -14,6 +14,18 @@ export default {
         });
       }
 
+      // Plan-limit errors surface a dedicated modal instead of a fleeting toast.
+      if (data?.error_type === 'plan_limit_exceeded') {
+        this.$modal.show('PlanLimitModal', {
+          message: data.message,
+          reason: data.reason,
+          limitType: data.limit_type,
+          currentUsage: data.current_usage,
+          maxAllowed: data.max_allowed,
+        });
+        return;
+      }
+
       if (data?.errors) {
         if (this.errors !== undefined) {
           this.errors = data.errors;

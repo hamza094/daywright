@@ -158,6 +158,7 @@ const components = [
   ['project-stage', './components/Project/Stage.vue'],
   ['notifications', './components/Notification.vue'],
   ['profile', './components/Profile/ProfilePge.vue'],
+  ['plan-limit-modal', './components/PlanLimitModal.vue'],
   ['navbar', './components/Navbar.vue'],
   ['sidebar-nav-panel', './components/layouts/SidebarNavPanel.vue'],
 ];
