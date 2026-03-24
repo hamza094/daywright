@@ -17,7 +17,7 @@
                   >Grace period active until {{ gracePeriodEndsAt }}.</span
                 >
                 <span v-else-if="isActivelyBilling && billingPlanLabel"
-                  >Billed {{ billingPlanLabel.toLowerCase() }}.</span
+                  >You are billed {{ billingPlanLabel.toLowerCase() }}.</span
                 >
                 <span v-else>You are currently on the {{ currentPlanLabel }} plan.</span>
               </p>
@@ -72,13 +72,12 @@
 
         <!-- Grace period alert -->
         <div v-if="isInGracePeriod" class="alert alert-primary" role="alert">
-          <i class="fa-solid fa-exclamation-circle"></i> Alert: Your subscription has been canceled, and you are
-          currently in the grace period.which is valid till <b>{{ gracePeriodEndsAt }}</b> Please note that during this
-          time, you still have access to all subscription benefits.
+          <i class="fa-solid fa-exclamation-circle"></i> Your subscription has been canceled. You still have Pro access
+          until <b>{{ gracePeriodEndsAt }}</b> during your grace period.
         </div>
         <div v-if="subscription.created_at" class="alert alert-success" role="alert">
-          <i class="fa-solid fa-exclamation-circle"> </i> You have created DayWright Subscription
-          <b> {{ subscription.created_at }}</b>
+          <i class="fa-solid fa-exclamation-circle"> </i> Your DayWright subscription started
+          <b>{{ subscription.created_at }}</b>
         </div>
 
         <!-- Subscription actions (swap/cancel) -->
@@ -179,10 +178,10 @@
           <div class="alert alert-info">Your receipts will appear here after your first payment is processed.</div>
         </div>
         <div class="col-md-6" v-if="subscription.next_payment">
-          <h3>Important Notice !</h3>
+          <h3>Next Payment</h3>
           <div class="alert alert-primary mt-2" role="alert">
             <p>
-              Your Next payment is scheduled on <b>{{ subscription.next_payment.date | reciept_date }}</b> with an
+              Your next payment is scheduled for <b>{{ subscription.next_payment.date | reciept_date }}</b> in the
               amount of <b>{{ subscription.next_payment.amount }}</b> {{ subscription.next_payment.currency }}
             </p>
             <ul>

@@ -147,8 +147,10 @@
                     </div>
                     <div v-if="showProjectLimits" class="project-limits">
                       <div class="project-limits__header">
-                        <span class="project-limits__title">Plan limits</span>
-                        <router-link :to="{ name: 'Subscription' }" class="project-limits__link"> Upgrade </router-link>
+                        <span class="project-limits__title">Project plan limits</span>
+                        <router-link :to="{ name: 'Subscription' }" class="project-limits__link">
+                          Upgrade to Pro
+                        </router-link>
                       </div>
                       <div v-for="item in projectLimitItems" :key="item.key" class="project-limits__item">
                         <div class="project-limits__row">
