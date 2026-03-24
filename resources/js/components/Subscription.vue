@@ -4,25 +4,87 @@
     <div class="page-top margin-small">Your Membership</div>
 
     <div class="container">
-      <!-- If user is subscribed, show subscription info and actions -->
-      <div v-if="isSubscribed" class="m-5 text-center">
-        <h3>You are currently subscribed to our {{ subscription.plan }} plan</h3>
+      <div class="subscription-overview card mb-4">
+        <div class="card-body">
+          <div class="subscription-overview__header">
+            <div>
+              <p class="subscription-overview__eyebrow mb-2">Plan &amp; Usage</p>
+              <h3 class="subscription-overview__title mb-2">{{ currentPlanLabel }} Plan</h3>
+              <p class="subscription-overview__meta mb-0">
+                <span v-if="isOnTrial && trialEndsAt">Trial active until {{ trialEndsAt }}.</span>
+                <span v-else-if="isOnTrial">Trial active for a limited time.</span>
+                <span v-else-if="isInGracePeriod && gracePeriodEndsAt"
+                  >Grace period active until {{ gracePeriodEndsAt }}.</span
+                >
+                <span v-else-if="isActivelyBilling && billingPlanLabel"
+                  >Billed {{ billingPlanLabel.toLowerCase() }}.</span
+                >
+                <span v-else>You are currently on the {{ currentPlanLabel }} plan.</span>
+              </p>
+            </div>
+
+            <div class="subscription-overview__badges">
+              <span class="subscription-badge subscription-badge--plan">{{ currentPlanLabel }}</span>
+              <span v-if="isOnTrial" class="subscription-badge subscription-badge--trial">Trial Active</span>
+              <span v-if="isInGracePeriod" class="subscription-badge subscription-badge--grace">Grace Period</span>
+            </div>
+          </div>
+
+          <div class="subscription-usage">
+            <div v-for="item in accountUsageItems" :key="item.key" class="subscription-usage__item">
+              <div class="subscription-usage__row">
+                <div>
+                  <p class="subscription-usage__label mb-1">{{ item.label }}</p>
+                  <p class="subscription-usage__value mb-0">{{ formatUsageValue(item.limit) }}</p>
+                </div>
+                <span class="subscription-usage__status" :class="usageToneClass(item.limit)">
+                  {{ usageStatusLabel(item.limit) }}
+                </span>
+              </div>
+
+              <div class="subscription-usage__track">
+                <div
+                  class="subscription-usage__bar"
+                  :class="usageToneClass(item.limit)"
+                  :style="{ width: progressWidth(item.limit) }"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="subscription-overview__footnote">
+            <span>Free plan caps: up to 10 active tasks and 3 members per project.</span>
+            <router-link
+              v-if="showUpgradeCta"
+              :to="{ name: 'Subscription' }"
+              class="btn btn-primary btn-sm subscription-overview__cta">
+              Upgrade to Pro
+            </router-link>
+          </div>
+        </div>
+      </div>
+
+      <!-- If user is actively billing, show billing info and actions -->
+      <div v-if="isActivelyBilling" class="m-5 text-center">
+        <h3>
+          You are currently on the {{ currentPlanLabel }} plan
+          <span v-if="billingPlanLabel">with {{ billingPlanLabel.toLowerCase() }} billing</span>
+        </h3>
 
         <!-- Grace period alert -->
-        <div v-if="subscription.grace_period" class="alert alert-primary" role="alert">
+        <div v-if="isInGracePeriod" class="alert alert-primary" role="alert">
           <i class="fa-solid fa-exclamation-circle"></i> Alert: Your subscription has been canceled, and you are
-          currently in the grace period.which is valid till <b>{{ subscription.grace_period_ends_at }}</b> Please note
-          that during this time, you still have access to all subscription benefits.
+          currently in the grace period.which is valid till <b>{{ gracePeriodEndsAt }}</b> Please note that during this
+          time, you still have access to all subscription benefits.
         </div>
-        <div v-if="subscription" class="alert alert-success" role="alert">
+        <div v-if="subscription.created_at" class="alert alert-success" role="alert">
           <i class="fa-solid fa-exclamation-circle"> </i> You have created DayWright Subscription
           <b> {{ subscription.created_at }}</b>
         </div>
 
         <!-- Subscription actions (swap/cancel) -->
-        <div v-if="!subscription.grace_period">
+        <div v-if="!isInGracePeriod && billingPlan">
           <p>
-            <button v-if="subscription.plan === 'monthly'" class="btn btn-lg btn-link" @click.prevent="swap('yearly')">
+            <button v-if="billingPlan === 'monthly'" class="btn btn-lg btn-link" @click.prevent="swap('yearly')">
               Change Subscription to Yearly ($100/year)
             </button>
             <button v-else class="btn btn-lg btn-link" @click.prevent="swap('monthly')">
@@ -137,9 +199,10 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex';
+import { mapState, mapMutations, mapGetters } from 'vuex';
 
 export default {
+  name: 'Subscription',
   // Component state
   data() {
     return {
@@ -159,9 +222,58 @@ export default {
   // Computed properties for derived state
   computed: {
     ...mapState('subscribeUser', ['subscription']),
-    // Whether the user is currently subscribed
-    isSubscribed() {
-      return !!this.subscription.subscribed;
+    ...mapGetters('subscribeUser', ['accountLimits', 'isActivelyBilling', 'isInGracePeriod', 'isOnTrial', 'plan']),
+
+    currentPlanLabel() {
+      return this.plan === 'pro' ? 'Pro' : 'Free';
+    },
+
+    billingPlan() {
+      return this.subscription.billing_plan || null;
+    },
+
+    billingPlanLabel() {
+      if (this.billingPlan === 'monthly') {
+        return 'Monthly';
+      }
+
+      if (this.billingPlan === 'yearly') {
+        return 'Yearly';
+      }
+
+      return null;
+    },
+
+    trialEndsAt() {
+      return this.subscription?.trial?.ends_at || null;
+    },
+
+    gracePeriodEndsAt() {
+      return this.subscription?.grace_period?.ends_at || null;
+    },
+
+    accountUsageItems() {
+      return [
+        {
+          key: 'projects',
+          label: 'Projects',
+          limit: this.accountLimits.projects || { used: 0, max: null },
+        },
+        {
+          key: 'created_meetings',
+          label: 'Created meetings',
+          limit: this.accountLimits.created_meetings || { used: 0, max: null },
+        },
+        {
+          key: 'api_tokens',
+          label: 'API tokens',
+          limit: this.accountLimits.api_tokens || { used: 0, max: null },
+        },
+      ];
+    },
+
+    showUpgradeCta() {
+      return this.plan === 'free';
     },
 
     // Whether the user has any receipts
@@ -186,6 +298,62 @@ export default {
   // Methods
   methods: {
     ...mapMutations('subscribeUser', ['setSubscription']),
+
+    progressWidth(limit) {
+      if (!limit || limit.max === null || limit.max <= 0) {
+        return '100%';
+      }
+
+      const ratio = Math.min((limit.used / limit.max) * 100, 100);
+
+      return `${ratio}%`;
+    },
+
+    usageRatio(limit) {
+      if (!limit || limit.max === null || limit.max <= 0) {
+        return 0;
+      }
+
+      return (limit.used / limit.max) * 100;
+    },
+
+    usageToneClass(limit) {
+      if (!limit || limit.max === null) {
+        return 'subscription-usage__bar--healthy';
+      }
+
+      const ratio = this.usageRatio(limit);
+
+      if (ratio >= 90) {
+        return 'subscription-usage__bar--critical';
+      }
+
+      if (ratio >= 70) {
+        return 'subscription-usage__bar--warning';
+      }
+
+      return 'subscription-usage__bar--healthy';
+    },
+
+    usageStatusLabel(limit) {
+      if (!limit || limit.max === null) {
+        return 'Unlimited';
+      }
+
+      return `${Math.min(Math.round(this.usageRatio(limit)), 100)}% used`;
+    },
+
+    formatUsageValue(limit) {
+      if (!limit) {
+        return '0 / Unlimited';
+      }
+
+      if (limit.max === null) {
+        return `${limit.used} / Unlimited`;
+      }
+
+      return `${limit.used} / ${limit.max}`;
+    },
 
     // Fetch the user's subscription info from the API
     async fetchSubscription() {
@@ -242,7 +410,12 @@ export default {
 
     // Cancel the user's subscription
     async cancelSubscription() {
-      const plan = this.subscription.plan;
+      const plan = this.billingPlan;
+
+      if (!plan) {
+        return;
+      }
+
       const result = await this.sweetAlert('Yes, Cancel Subscription');
       if (result.value) {
         this.$Progress.start();
