@@ -1,28 +1,64 @@
+export function logApiError(error) {
+  const response = error?.response;
+  const data = response?.data;
+
+  if (import.meta?.env?.DEV) {
+    console.debug('API error response', {
+      status: response?.status,
+      message: data?.message,
+      error: data?.error,
+      errors: data?.errors,
+    });
+  }
+}
+
+export function handleGlobalApiError(error, { modal, toast, router } = {}) {
+  const response = error?.response;
+  const data = response?.data;
+
+  if (!response) {
+    toast?.error('Unable to reach the server. Please check your connection and try again.');
+    error.__globalApiHandled = true;
+
+    return true;
+  }
+
+  if (data?.error_type === 'plan_limit_exceeded') {
+    modal?.show('PlanLimitModal', {
+      message: data.message,
+      reason: data.reason,
+      limitType: data.limit_type,
+      currentUsage: data.current_usage,
+      maxAllowed: data.max_allowed,
+    });
+    error.__globalApiHandled = true;
+
+    return true;
+  }
+
+  if (data?.error_type === 'subscription_required') {
+    toast?.error(data.message || 'An active subscription is required to perform this action.');
+
+    if (router?.currentRoute?.name !== 'Subscription') {
+      router?.push({ name: 'Subscription' }).catch(() => {});
+    }
+
+    error.__globalApiHandled = true;
+
+    return true;
+  }
+
+  return false;
+}
+
 export default {
   methods: {
     handleErrorResponse(error) {
-      const response = error?.response;
-      const data = response?.data;
+      const data = error?.response?.data;
 
-      // Log structured error details only in development to avoid leaking information in production.
-      if (import.meta?.env?.DEV) {
-        console.debug('API error response', {
-          status: response?.status,
-          message: data?.message,
-          error: data?.error,
-          errors: data?.errors,
-        });
-      }
+      logApiError(error);
 
-      // Plan-limit errors surface a dedicated modal instead of a fleeting toast.
-      if (data?.error_type === 'plan_limit_exceeded') {
-        this.$modal.show('PlanLimitModal', {
-          message: data.message,
-          reason: data.reason,
-          limitType: data.limit_type,
-          currentUsage: data.current_usage,
-          maxAllowed: data.max_allowed,
-        });
+      if (error?.__globalApiHandled) {
         return;
       }
 

@@ -18,7 +18,7 @@ import moment from 'moment';
 import momenttz from 'moment-timezone';
 import 'emoji-mart-vue-fast/css/emoji-mart.css';
 import alertNotice from './mixins/alertNotice';
-import errorHandling from './mixins/errorHandling';
+import errorHandling, { handleGlobalApiError } from './mixins/errorHandling';
 import conversation from './mixins/conversation';
 import 'animate.css';
 import 'cropperjs/dist/cropper.css';
@@ -136,6 +136,13 @@ axios.interceptors.response.use(
     if (error.config && error.config.useProgress) {
       Vue.prototype.$Progress.fail();
     }
+
+    handleGlobalApiError(error, {
+      modal: Vue.prototype.$modal,
+      toast: Vue.prototype.$vToastify,
+      router,
+    });
+
     return Promise.reject(error);
   },
 );
