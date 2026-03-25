@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
-use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
@@ -14,6 +13,14 @@ use Override;
  */
 class ProjectResource extends JsonResource
 {
+    /**
+     * @param  array<string, array{used: int|null, max: int|null}>|null  $limits
+     */
+    public function __construct($resource, private readonly ?array $limits = null)
+    {
+        parent::__construct($resource);
+    }
+
     /**
      * Transform the resource into an array.
      *
@@ -25,7 +32,6 @@ class ProjectResource extends JsonResource
     {
         $showsProjectDetails = $request->routeIs('projects.show');
         $showsProjectLimits = $request->routeIs('projects.show', 'projects.update');
-        $planLimitService = app(PlanLimitService::class);
 
         return [
             /**
@@ -142,8 +148,8 @@ class ProjectResource extends JsonResource
             'members' => $this->when($showsProjectDetails && $this->relationLoaded('activeMembers'), fn () => InvitedUserResource::collection($this->activeMembers)),
 
             'limits' => $this->when(
-                $showsProjectLimits && $this->relationLoaded('user') && auth()->user()->is($this->user),
-                fn () => $planLimitService->projectUsage($this->user, $this->resource),
+                $showsProjectLimits && $this->limits !== null,
+                $this->limits,
             ),
 
             /**

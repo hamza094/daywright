@@ -9,9 +9,30 @@ use App\Actions\Project\CancelProjectZoomMeetingsAction;
 use App\Jobs\CancelZoomMeetingsJob;
 use App\Models\Project;
 use App\Notifications\ProjectUpdated;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 
 class ProjectService
 {
+    public function __construct(private readonly PlanLimitService $planLimitService) {}
+
+    /**
+     * @return array<string, array{used: int|null, max: int|null}>|null
+     */
+    public function projectLimits(Project $project): ?array
+    {
+        if (! $project->relationLoaded('user')) {
+            return null;
+        }
+
+        $user = auth()->user();
+
+        if (! $user->is($project->user)) {
+            return null;
+        }
+
+        return $this->planLimitService->projectUsage($project->user, $project);
+    }
+
     public function addTasksToProject(Project $project, array $tasks): void
     {
         $tasksWithUser = collect($tasks['tasks'])->map(fn ($task) => [...$task, 'user_id' => auth()->id()]);

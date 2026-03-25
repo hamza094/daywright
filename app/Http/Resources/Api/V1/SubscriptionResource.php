@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1;
 
 use App\Enums\SubscriptionPlan;
-use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
@@ -15,6 +14,14 @@ use Override;
 class SubscriptionResource extends JsonResource
 {
     /**
+     * @param  array<string, array{used: int|null, max: int|null}>  $limits
+     */
+    public function __construct($resource, private readonly SubscriptionPlan $plan, private readonly array $limits)
+    {
+        parent::__construct($resource);
+    }
+
+    /**
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -23,15 +30,13 @@ class SubscriptionResource extends JsonResource
     #[Override]
     public function toArray($request): array
     {
-        $planLimitService = app(PlanLimitService::class);
-        $plan = $planLimitService->plan($this->resource);
         $subscription = $this->getSubscription();
         $isBillingSubscribed = $subscription?->recurring() === true;
         $hasGracePeriod = $this->hasGracePeriod();
 
         return [
-            'plan' => $plan->value,
-            'entitled' => $plan === SubscriptionPlan::Pro,
+            'plan' => $this->plan->value,
+            'entitled' => $this->plan === SubscriptionPlan::Pro,
             'subscribed' => $isBillingSubscribed,
 
             $this->mergeWhen($isBillingSubscribed || $hasGracePeriod, [
@@ -61,7 +66,7 @@ class SubscriptionResource extends JsonResource
                 ],
             ]),
 
-            'limits' => $planLimitService->accountUsage($this->resource),
+            'limits' => $this->limits,
         ];
     }
 

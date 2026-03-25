@@ -37,7 +37,7 @@ class PlanLimitServiceTest extends TestCase
         config()->set('services.paddle.yearly', 202);
 
         $this->createTaskStatuses();
-        $this->service = app(PlanLimitService::class);
+        $this->service = resolve(PlanLimitService::class);
     }
 
     /**

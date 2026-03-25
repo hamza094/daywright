@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\DB;
 
 class ProjectController extends ApiController
 {
+    public function __construct(private readonly ProjectService $projectService, private readonly PlanLimitService $planLimitService) {}
+
     /**
      * Create a new project.
      *
@@ -27,9 +29,9 @@ class ProjectController extends ApiController
     the project's basic details, such as the name, about information, stage, and optional notes and tasks.
     The response will include the newly created project's information along with related resources.
      */
-    public function store(ProjectStoreRequest $request, ProjectService $service, PlanLimitService $planLimitService): JsonResponse
+    public function store(ProjectStoreRequest $request): JsonResponse
     {
-        $planLimitService->assertWithinLimit(PlanLimitType::Projects, Auth::user());
+        $this->planLimitService->assertWithinLimit(PlanLimitType::Projects, Auth::user());
 
         DB::beginTransaction();
 
@@ -39,7 +41,7 @@ class ProjectController extends ApiController
                 ->create($request->safe()->except(['tasks']));
 
             if ($request->tasks) {
-                $service->addTasksToProject($project, $request->safe()->only(['tasks']));
+                $this->projectService->addTasksToProject($project, $request->safe()->only(['tasks']));
             }
 
             DB::commit();
@@ -68,7 +70,7 @@ class ProjectController extends ApiController
 
         $project->load(['user', 'stage', 'meetings', 'activeMembers', 'limitedActivities']);
 
-        return new ProjectResource($project);
+        return new ProjectResource($project, $this->projectService->projectLimits($project));
     }
 
     /**
@@ -79,7 +81,7 @@ class ProjectController extends ApiController
      *
      * @response array{message: 'Project Updated Successfully',project:array{id:1, slug:'the-dimension', name:'The Dimension', about:'This is the project dimension description', score:5, created_at:'5 days ago', updated_at:'few seconds ago',links:array{self:'api/v1/projects/the-dimension'}}}
      */
-    public function update(Project $project, ProjectUpdateRequest $request, ProjectService $service): JsonResponse
+    public function update(Project $project, ProjectUpdateRequest $request): JsonResponse
     {
         $this->authorize('access', $project);
 
@@ -92,11 +94,11 @@ class ProjectController extends ApiController
         $project->update($request->validated());
         $project->loadMissing('user');
 
-        $service->sendNotification($project);
+        $this->projectService->sendNotification($project);
 
         return response()->json([
             'message' => 'Project Updated Successfully',
-            'project' => new ProjectResource($project),
+            'project' => new ProjectResource($project, $this->projectService->projectLimits($project)),
         ], 200);
     }
 
@@ -122,11 +124,12 @@ class ProjectController extends ApiController
         return response()->json([
             'message' => $project->name.' restored successfully',
         ], 200);
+
     }
 
-    public function delete(Project $project, ProjectService $service): JsonResponse
+    public function delete(Project $project): JsonResponse
     {
-        $deleted = $service->forceDeleteIfAbandoned($project);
+        $deleted = $this->projectService->forceDeleteIfAbandoned($project);
 
         if (! $deleted) {
             return response()->json(['message' => 'Only abandoned projects can be deleted permanently.'], 403);
