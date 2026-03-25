@@ -23,7 +23,7 @@
                   <!-- Avatar Image -->
                   <img
                     v-if="member.avatar"
-                    :src="$options.filters.safeUrl(member.avatar)"
+                    :src="$safeUrl(member.avatar)"
                     :alt="member.name"
                     class="task-member_avatar" />
 

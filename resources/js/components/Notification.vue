@@ -21,7 +21,7 @@
               class="notification-wrapper">
               <img
                 v-if="notification.notifier.avatar"
-                :src="$options.filters.safeUrl(notification.notifier.avatar)"
+                :src="$safeUrl(notification.notifier.avatar)"
                 :alt="notification.notifier.name"
                 class="notification_avatar" />
               <div class="notification-content">

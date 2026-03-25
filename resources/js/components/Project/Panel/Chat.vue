@@ -33,7 +33,7 @@
                       <router-link :to="'/user/' + conversation.user.uuid + '/profile'">
                         <img
                           v-if="conversation.user.avatar"
-                          :src="$options.filters.safeUrl(conversation.user.avatar)"
+                          :src="$safeUrl(conversation.user.avatar)"
                           alt="User Avatar"
                           class="chat-user_image" />
                       </router-link>
@@ -59,16 +59,13 @@
 
                   <p v-if="conversation.file" class="mt-2">
                     <span v-if="isImage(conversation.file)"
-                      ><img :src="$options.filters.safeUrl(conversation.file)" class="chat-image" alt=""
+                      ><img :src="$safeUrl(conversation.file)" class="chat-image" alt=""
                     /></span>
 
                     <span v-else>
-                      <a
-                        :href="$options.filters.safeUrl(conversation.file)"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        >{{ conversation.file }}</a
-                      >
+                      <a :href="$safeUrl(conversation.file)" target="_blank" rel="noopener noreferrer">
+                        {{ conversation.file }}
+                      </a>
                     </span>
                   </p>
                   <span class="float-right chat-time">
