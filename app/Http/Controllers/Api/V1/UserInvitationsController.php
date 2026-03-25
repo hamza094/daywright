@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\ProjectInvitaionResource;
 use App\Models\User;
+use Auth;
 use Illuminate\Http\JsonResponse;
 
 class UserInvitationsController extends Controller
@@ -16,7 +17,7 @@ class UserInvitationsController extends Controller
      */
     public function myInvitations(): JsonResponse
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         // Eager load 'user' relation if ProjectInvitaionResource expects it
         $pendingInvitations = $user->inactiveMembers()->with('user')->get();

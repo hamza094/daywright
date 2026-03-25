@@ -15,6 +15,7 @@ use App\Models\Project;
 use App\Services\Api\V1\ExceptionService;
 use App\Services\Api\V1\MeetingService;
 use App\Services\Api\V1\Subscription\PlanLimitService;
+use Auth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -50,7 +51,7 @@ class ZoomMeetingController extends Controller
     {
         $this->authorize('manage', $project);
 
-        $user = auth()->user();
+        $user = Auth::user();
 
         $planLimitService->assertWithinLimit(PlanLimitType::CreatedMeetings, $user);
 
@@ -73,7 +74,7 @@ class ZoomMeetingController extends Controller
 
         DB::transaction(function () use ($zoom, $meeting, $request): void {
             $meeting->update($request->validated());
-            $zoom->updateMeeting($request->validated(), auth()->user());
+            $zoom->updateMeeting($request->validated(), Auth::user());
         });
 
         $meeting->load(['user']);
@@ -92,7 +93,7 @@ class ZoomMeetingController extends Controller
 
         DB::transaction(function () use ($zoom, $meeting, $meetingId): void {
             $meeting->delete();
-            $zoom->deleteMeeting($meetingId, auth()->user());
+            $zoom->deleteMeeting($meetingId, Auth::user());
         });
 
         return response()->json([

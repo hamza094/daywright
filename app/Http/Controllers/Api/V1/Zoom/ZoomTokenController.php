@@ -8,6 +8,7 @@ use App\Actions\ZoomAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Zoom\JwtTokenRequest;
 use App\Interfaces\Zoom;
+use Auth;
 use Dedoc\Scramble\Attributes\ExcludeAllRoutesFromDocs;
 use Illuminate\Http\JsonResponse;
 
@@ -16,7 +17,7 @@ class ZoomTokenController extends Controller
 {
     public function getUserToken(Zoom $zoom): JsonResponse
     {
-        $token = $zoom->getZakToken(auth()->user());
+        $token = $zoom->getZakToken(Auth::user());
 
         return response()->json(['zak_token' => $token]);
     }

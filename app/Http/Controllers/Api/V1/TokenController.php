@@ -5,14 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\PlanLimitType;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
 use App\Services\Api\V1\Subscription\PlanLimitService;
+use Auth;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 
-class TokenController extends Controller
+class TokenController extends ApiController
 {
     /**
      * List all personal access tokens
@@ -21,7 +22,7 @@ class TokenController extends Controller
      */
     public function index(): JsonResponse
     {
-        $tokens = auth()->user()->tokens;
+        $tokens = Auth::user()->tokens;
 
         return response()->json([
             'tokens' => TokenResource::collection($tokens),
@@ -35,11 +36,13 @@ class TokenController extends Controller
      */
     public function store(UserTokenRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
-        $planLimitService->assertWithinLimit(PlanLimitType::ApiTokens, auth()->user());
+        $user = Auth::user();
+
+        $planLimitService->assertWithinLimit(PlanLimitType::ApiTokens, $user);
 
         $data = $request->validated();
 
-        $token = auth()->user()->createToken(
+        $token = $user->createToken(
             $data['name'],
             ['*'],
             Carbon::parse($data['expires_at'] ?? null)
@@ -59,7 +62,7 @@ class TokenController extends Controller
      */
     public function destroy(int $tokenId): JsonResponse
     {
-        $user = auth()->user();
+        $user = Auth::user();
         $currentToken = $user->currentAccessToken();
 
         // @phpstan-ignore-next-line
