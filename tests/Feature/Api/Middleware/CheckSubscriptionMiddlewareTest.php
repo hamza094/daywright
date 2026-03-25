@@ -63,7 +63,7 @@ class CheckSubscriptionMiddlewareTest extends TestCase
             'subscribed user' => [self::STATE_SUBSCRIBED, 200],
             'grace period user' => [self::STATE_GRACE_PERIOD, 200],
             'trial user' => [self::STATE_TRIAL, 200],
-            'post grace user' => [self::STATE_POST_GRACE, 200],
+            'post grace user' => [self::STATE_POST_GRACE, 403, $blockedResponse],
             'free user' => [self::STATE_FREE, 403, $blockedResponse],
             'expired trial user' => [self::STATE_EXPIRED_TRIAL, 403, $blockedResponse],
         ];

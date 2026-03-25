@@ -12,9 +12,8 @@ class CheckSubscription
     /**
      * Handle an incoming request.
      *
-     * Grace-period users retain full Pro access until the grace period ends.
-     * Post-grace enforcement of Free limits is handled by PlanLimitService
-     * assertions in creation/increase flows, not by this middleware.
+     * Active subscribers, grace-period users, and trial users retain access.
+     * Once the grace period ends, premium routes are blocked by this middleware.
      *
      * @param  Closure(Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
      */
@@ -22,7 +21,7 @@ class CheckSubscription
     {
         $user = $request->user();
 
-        if ($user->hasSubscriptionRecord() || $user->isOnTrial()) {
+        if ($user->isSubscribed() || $user->isOnTrial()) {
             return $next($request);
         }
 
