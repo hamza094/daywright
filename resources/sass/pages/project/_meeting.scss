@@ -125,7 +125,7 @@
 }
 
 // Small and tablet portrait tweaks for meeting modals
-.model-desin {
+.modal-design {
   @include respond(tab-pot) {
     /* stylelint-disable-next-line selector-class-pattern */
     .vm--modal {

@@ -5,7 +5,7 @@
     :scrollable="true"
     :shift-x="1"
     width="38%"
-    class="model-desin"
+    class="modal-design"
     :click-to-close="false">
     <div class="edit-border-top p-3 animate__animated animate__slideInRight">
       <div class="edit-border-bottom">

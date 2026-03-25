@@ -70,7 +70,7 @@
                 height="auto"
                 :scrollable="true"
                 width="65%"
-                class="model-desin"
+                class="modal-design"
                 :click-to-close="false"
                 @modal-closed="closeModal">
                 <TaskDetailModal :slug="slug" :state="state"></TaskDetailModal>

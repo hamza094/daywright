@@ -1,6 +1,12 @@
 <template>
   <div>
-    <modal name="MeetingModal" height="auto" :scrollable="true" width="40%" class="model-desin" :click-to-close="false">
+    <modal
+      name="MeetingModal"
+      height="auto"
+      :scrollable="true"
+      width="40%"
+      class="modal-design"
+      :click-to-close="false">
       <div class="edit-border-top p-3">
         <div class="edit-border-bottom">
           <div class="panel-top_content">

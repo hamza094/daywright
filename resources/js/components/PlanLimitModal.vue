@@ -4,7 +4,7 @@
     height="auto"
     :scrollable="true"
     width="420px"
-    class="model-desin"
+    class="modal-design"
     :click-to-close="true"
     @before-open="onBeforeOpen">
     <div class="plan-limit-modal">
