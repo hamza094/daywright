@@ -155,13 +155,13 @@
                       <div v-for="item in projectLimitItems" :key="item.key" class="project-limits__item">
                         <div class="project-limits__row">
                           <span class="project-limits__label">{{ item.label }}</span>
-                          <span class="project-limits__value">{{ formatProjectLimit(item.limit) }}</span>
+                          <span class="project-limits__value">{{ formatUsageLimit(item.limit, { emptyMax: 0 }) }}</span>
                         </div>
                         <div class="project-limits__track">
                           <div
                             class="project-limits__bar"
-                            :class="projectLimitTone(item.limit)"
-                            :style="{ width: projectLimitWidth(item.limit) }"></div>
+                            :class="usageLimitToneClass(item.limit, 'project-limits__bar')"
+                            :style="{ width: usageLimitWidth(item.limit) }"></div>
                         </div>
                       </div>
                     </div>
@@ -277,6 +277,7 @@ import Stage from './Stage.vue';
 import Task from './Panel/Task.vue';
 import PanelFeatues from './Panel/Features.vue';
 import RecentActivities from './RecentActivities.vue';
+import usageLimitHelpers from '../../mixins/usageLimitHelpers';
 import { permission } from '../../auth';
 import { mapState, mapMutations, mapActions } from 'vuex';
 
@@ -290,6 +291,7 @@ export default {
     RecentActivities,
     Meeting,
   },
+  mixins: [usageLimitHelpers],
 
   beforeRouteLeave(to, from, next) {
     this.closeProjectChatPanel();
@@ -379,44 +381,6 @@ export default {
   methods: {
     ...mapActions('project', ['loadProject']),
     ...mapMutations('project', ['aboutUpdate']),
-
-    projectLimitRatio(limit) {
-      if (!limit || limit.max === null || limit.max <= 0) {
-        return 0;
-      }
-
-      return (limit.used / limit.max) * 100;
-    },
-
-    projectLimitWidth(limit) {
-      if (!limit || limit.max === null || limit.max <= 0) {
-        return '100%';
-      }
-
-      return `${Math.min(this.projectLimitRatio(limit), 100)}%`;
-    },
-
-    projectLimitTone(limit) {
-      const ratio = this.projectLimitRatio(limit);
-
-      if (ratio >= 90) {
-        return 'project-limits__bar--critical';
-      }
-
-      if (ratio >= 70) {
-        return 'project-limits__bar--warning';
-      }
-
-      return 'project-limits__bar--healthy';
-    },
-
-    formatProjectLimit(limit) {
-      if (!limit) {
-        return '0 / 0';
-      }
-
-      return `${limit.used} / ${limit.max}`;
-    },
 
     openProjectChat() {
       if (!this.project || !this.project.slug) {

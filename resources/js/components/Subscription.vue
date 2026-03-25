@@ -35,18 +35,20 @@
               <div class="subscription-usage__row">
                 <div>
                   <p class="subscription-usage__label mb-1">{{ item.label }}</p>
-                  <p class="subscription-usage__value mb-0">{{ formatUsageValue(item.limit) }}</p>
+                  <p class="subscription-usage__value mb-0">{{ formatUsageLimit(item.limit) }}</p>
                 </div>
-                <span class="subscription-usage__status" :class="usageToneClass(item.limit)">
-                  {{ usageStatusLabel(item.limit) }}
+                <span
+                  class="subscription-usage__status"
+                  :class="usageLimitToneClass(item.limit, 'subscription-usage__bar')">
+                  {{ usageLimitStatusLabel(item.limit) }}
                 </span>
               </div>
 
               <div class="subscription-usage__track">
                 <div
                   class="subscription-usage__bar"
-                  :class="usageToneClass(item.limit)"
-                  :style="{ width: progressWidth(item.limit) }"></div>
+                  :class="usageLimitToneClass(item.limit, 'subscription-usage__bar')"
+                  :style="{ width: usageLimitWidth(item.limit) }"></div>
               </div>
             </div>
           </div>
@@ -203,11 +205,12 @@
 <script>
 import { mapState, mapMutations, mapGetters } from 'vuex';
 import alertNotice from '../mixins/alertNotice';
+import usageLimitHelpers from '../mixins/usageLimitHelpers';
 import { toastInfo, toastSuccess } from '../utils/toast';
 
 export default {
   name: 'Subscription',
-  mixins: [alertNotice],
+  mixins: [alertNotice, usageLimitHelpers],
   // Component state
   data() {
     return {
@@ -311,62 +314,6 @@ export default {
   // Methods
   methods: {
     ...mapMutations('subscribeUser', ['setSubscription']),
-
-    progressWidth(limit) {
-      if (!limit || limit.max === null || limit.max <= 0) {
-        return '100%';
-      }
-
-      const ratio = Math.min((limit.used / limit.max) * 100, 100);
-
-      return `${ratio}%`;
-    },
-
-    usageRatio(limit) {
-      if (!limit || limit.max === null || limit.max <= 0) {
-        return 0;
-      }
-
-      return (limit.used / limit.max) * 100;
-    },
-
-    usageToneClass(limit) {
-      if (!limit || limit.max === null) {
-        return 'subscription-usage__bar--healthy';
-      }
-
-      const ratio = this.usageRatio(limit);
-
-      if (ratio >= 90) {
-        return 'subscription-usage__bar--critical';
-      }
-
-      if (ratio >= 70) {
-        return 'subscription-usage__bar--warning';
-      }
-
-      return 'subscription-usage__bar--healthy';
-    },
-
-    usageStatusLabel(limit) {
-      if (!limit || limit.max === null) {
-        return 'Unlimited';
-      }
-
-      return `${Math.min(Math.round(this.usageRatio(limit)), 100)}% used`;
-    },
-
-    formatUsageValue(limit) {
-      if (!limit) {
-        return '0 / Unlimited';
-      }
-
-      if (limit.max === null) {
-        return `${limit.used} / Unlimited`;
-      }
-
-      return `${limit.used} / ${limit.max}`;
-    },
 
     formatPlanPrice(plan) {
       if (!plan) {

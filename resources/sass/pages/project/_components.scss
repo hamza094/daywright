@@ -160,17 +160,12 @@
 
 .project-limits {
   margin-top: 1.25rem;
-  padding: 1rem;
-  border: 1px solid rgba($color-secondary, 0.12);
-  border-radius: 14px;
-  background: rgba($color-secondary, 0.04);
+
+  @include usage-limit-surface(1rem, 0.12, 0.04);
 
   &__header,
   &__row {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-    justify-content: space-between;
+    @include usage-limit-row(0.75rem);
   }
 
   &__header {
@@ -209,30 +204,23 @@
   }
 
   &__track {
-    overflow: hidden;
-    width: 100%;
-    height: 0.55rem;
-    margin-top: 0.45rem;
-    border-radius: 999px;
-    background: rgba($color-secondary, 0.12);
+    @include usage-limit-track(0.55rem, 0.45rem);
   }
 
   &__bar {
-    height: 100%;
-    border-radius: inherit;
-    transition: width 0.2s ease;
+    @include usage-limit-bar;
   }
 
   &__bar--healthy {
-    background: linear-gradient(90deg, #2f9e44 0%, #51cf66 100%);
+    @include usage-limit-tone(healthy);
   }
 
   &__bar--warning {
-    background: linear-gradient(90deg, #f08c00 0%, #ffd43b 100%);
+    @include usage-limit-tone(warning);
   }
 
   &__bar--critical {
-    background: linear-gradient(90deg, #e03131 0%, #ff6b6b 100%);
+    @include usage-limit-tone(critical);
   }
 }
 
@@ -815,13 +803,7 @@
 }
 
 @include respond(phone) {
-  .project-limits {
-    &__header,
-    &__row {
-      align-items: flex-start;
-      flex-direction: column;
-    }
-  }
+  @include usage-limit-stack('.project-limits__header', '.project-limits__row');
 
   .slideout-panel .slideout-wrapper .slideout {
     max-width: 100vw;
