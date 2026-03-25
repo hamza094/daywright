@@ -15,7 +15,7 @@ use InvalidArgumentException;
 /**
  * Resolves the effective subscription plan and enforces plan-based usage limits.
  */
-final readonly class PlanLimitService
+final class PlanLimitService
 {
     /**
      * @var array<int, PlanLimitType>
@@ -34,10 +34,26 @@ final readonly class PlanLimitService
         PlanLimitType::MembersPerProject,
     ];
 
+    /**
+     * @var array<string, SubscriptionPlan>
+     */
+    private array $planCache = [];
+
+    /**
+     * @var array<string, int>
+     */
+    private array $usageCache = [];
+
     // Public API
     public function plan(User $user): SubscriptionPlan
     {
-        return SubscriptionPlan::fromUser($this->loadBillingRelations($user));
+        $cacheKey = $this->userCacheKey($user);
+
+        if (array_key_exists($cacheKey, $this->planCache)) {
+            return $this->planCache[$cacheKey];
+        }
+
+        return $this->planCache[$cacheKey] = SubscriptionPlan::fromUser($this->loadBillingRelations($user));
     }
 
     /**
@@ -72,7 +88,7 @@ final readonly class PlanLimitService
         $this->assertLimit(
             user: $user,
             limitType: $type->exceptionKey(),
-            currentUsage: $this->countUsage($type, $user, $project),
+            currentUsage: $this->countUsage($type, $user, $project, false),
             maxAllowed: $this->plan($user)->maxFor($type),
             messageSubject: $type->messageSubject(),
         );
@@ -124,7 +140,22 @@ final readonly class PlanLimitService
         return PlanLimitExceededException::REASON_LIMIT_REACHED;
     }
 
-    private function countUsage(PlanLimitType $type, User $user, ?Project $project): int
+    private function countUsage(PlanLimitType $type, User $user, ?Project $project, bool $useCache = true): int
+    {
+        if (! $useCache) {
+            return $this->resolveUsageCount($type, $user, $project);
+        }
+
+        $cacheKey = $this->usageCacheKey($type, $user, $project);
+
+        if (array_key_exists($cacheKey, $this->usageCache)) {
+            return $this->usageCache[$cacheKey];
+        }
+
+        return $this->usageCache[$cacheKey] = $this->resolveUsageCount($type, $user, $project);
+    }
+
+    private function resolveUsageCount(PlanLimitType $type, User $user, ?Project $project): int
     {
         return match ($type) {
             PlanLimitType::Projects => $user->projects()->count(),

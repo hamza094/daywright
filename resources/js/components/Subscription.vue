@@ -82,12 +82,11 @@
 
         <!-- Subscription actions (swap/cancel) -->
         <div v-if="!isInGracePeriod && billingPlan">
-          <p>
-            <button v-if="billingPlan === 'monthly'" class="btn btn-lg btn-link" @click.prevent="swap('yearly')">
-              Change Subscription to Yearly ($100/year)
-            </button>
-            <button v-else class="btn btn-lg btn-link" @click.prevent="swap('monthly')">
-              Change Subscription to Monthly ($12/month)
+          <p v-if="alternateBillingPlan">
+            <button class="btn btn-lg btn-link" @click.prevent="swap(alternateBillingPlan.name)">
+              Change Subscription to {{ alternateBillingPlan.label }} ({{ formatPlanPrice(alternateBillingPlan) }}/{{
+                alternateBillingPlan.interval_label
+              }})
             </button>
           </p>
           <p>
@@ -98,7 +97,7 @@
 
       <!-- If not subscribed, show available plans -->
       <div v-else class="row m-5 subscription-plans align-items-stretch">
-        <div v-for="plan in plans" :key="plan.name" class="col-md-6 mb-4">
+        <div v-for="plan in availablePlans" :key="plan.name" class="col-md-6 mb-4">
           <div
             class="card text-center h-100 subscription-plan-card"
             :class="{ 'subscription-plan-card-featured border border-primary': plan.featured }">
@@ -108,8 +107,8 @@
               </div>
 
               <div class="mb-4">
-                <span class="subscription_value">${{ plan.price }}</span>
-                <span class="text-muted ml-2">/ {{ plan.intervalLabel }}</span>
+                <span class="subscription_value">{{ formatPlanPrice(plan) }}</span>
+                <span class="text-muted ml-2">/ {{ plan.interval_label }}</span>
               </div>
 
               <button
@@ -119,6 +118,12 @@
                 Subscribe
               </button>
             </div>
+          </div>
+        </div>
+
+        <div v-if="availablePlans.length === 0" class="col-12">
+          <div class="alert alert-info mb-0">
+            Subscription plans are temporarily unavailable. Please try again shortly.
           </div>
         </div>
 
@@ -135,7 +140,7 @@
 
           <!-- Paddle payment iframe -->
           <iframe
-            :src="$options.filters.safeUrl(iframeSrc)"
+            :src="$safeUrl(iframeSrc)"
             class="subscription-modal-iframe"
             title="Paddle payment"
             @load="isOpeningIframe = false"></iframe>
@@ -164,9 +169,7 @@
                   <span>{{ receipt.created_at }}</span> -
                   <span>${{ receipt.amount }} {{ receipt.currency }}</span>
                   <span class="float-right">
-                    <a :href="$options.filters.safeUrl(receipt.receipt_url)" target="_blank" rel="noopener noreferrer"
-                      >Download</a
-                    >
+                    <a :href="$safeUrl(receipt.receipt_url)" target="_blank" rel="noopener noreferrer">Download</a>
                   </span>
                 </p>
               </div>
@@ -181,7 +184,7 @@
           <h3>Next Payment</h3>
           <div class="alert alert-primary mt-2" role="alert">
             <p>
-              Your next payment is scheduled for <b>{{ subscription.next_payment.date | reciept_date }}</b> in the
+              Your next payment is scheduled for <b>{{ subscription.next_payment.date | receipt_date }}</b> in the
               amount of <b>{{ subscription.next_payment.amount }}</b> {{ subscription.next_payment.currency }}
             </p>
             <ul>
@@ -199,9 +202,12 @@
 
 <script>
 import { mapState, mapMutations, mapGetters } from 'vuex';
+import alertNotice from '../mixins/alertNotice';
+import { toastInfo, toastSuccess } from '../utils/toast';
 
 export default {
   name: 'Subscription',
+  mixins: [alertNotice],
   // Component state
   data() {
     return {
@@ -209,12 +215,6 @@ export default {
       isIframeOpen: false,
       isOpeningIframe: false,
       iframeSrc: '',
-
-      // Available plans
-      plans: [
-        { name: 'monthly', label: 'Monthly', intervalLabel: 'month', price: 12, featured: false },
-        { name: 'yearly', label: 'Yearly', intervalLabel: 'year', price: 100, featured: true },
-      ],
     };
   },
 
@@ -222,6 +222,10 @@ export default {
   computed: {
     ...mapState('subscribeUser', ['subscription']),
     ...mapGetters('subscribeUser', ['accountLimits', 'isActivelyBilling', 'isInGracePeriod', 'isOnTrial', 'plan']),
+
+    availablePlans() {
+      return Array.isArray(this.subscription?.available_plans) ? this.subscription.available_plans : [];
+    },
 
     currentPlanLabel() {
       return this.plan === 'pro' ? 'Pro' : 'Free';
@@ -241,6 +245,16 @@ export default {
       }
 
       return null;
+    },
+
+    alternateBillingPlan() {
+      if (!this.billingPlan) {
+        return null;
+      }
+
+      const targetPlan = this.billingPlan === 'monthly' ? 'yearly' : 'monthly';
+
+      return this.availablePlans.find((plan) => plan.name === targetPlan) || null;
     },
 
     trialEndsAt() {
@@ -354,6 +368,14 @@ export default {
       return `${limit.used} / ${limit.max}`;
     },
 
+    formatPlanPrice(plan) {
+      if (!plan) {
+        return '$0';
+      }
+
+      return `${plan.currency_symbol || '$'}${plan.price}`;
+    },
+
     // Fetch the user's subscription info from the API
     async fetchSubscription() {
       try {
@@ -394,7 +416,7 @@ export default {
         try {
           const response = await axios.get(`/user/subscription/swap/${encodeURIComponent(plan)}`);
           this.setSubscription(response.data.subscription);
-          this.$vToastify.success(response.data.message);
+          toastSuccess(response.data.message);
           // Wait 5 seconds, then refresh subscription data once
           setTimeout(() => {
             this.fetchSubscription();
@@ -421,7 +443,7 @@ export default {
         try {
           const response = await axios.get(`/user/subscription/${encodeURIComponent(plan)}/cancel`);
           this.setSubscription(response.data.subscription);
-          this.$vToastify.info(response.data.message);
+          toastInfo(response.data.message);
         } catch (error) {
           this.showError(error);
           this.$Progress.fail();

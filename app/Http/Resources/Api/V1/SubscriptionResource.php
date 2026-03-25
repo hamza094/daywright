@@ -15,8 +15,9 @@ class SubscriptionResource extends JsonResource
 {
     /**
      * @param  array<string, array{used: int|null, max: int|null}>  $limits
+     * @param  array<int, array{name: string, label: string, interval_label: string, price: int, currency: string, currency_symbol: string, featured: bool}>  $availablePlans
      */
-    public function __construct($resource, private readonly SubscriptionPlan $plan, private readonly array $limits)
+    public function __construct($resource, private readonly SubscriptionPlan $plan, private readonly array $limits, private readonly array $availablePlans = [])
     {
         parent::__construct($resource);
     }
@@ -38,6 +39,7 @@ class SubscriptionResource extends JsonResource
             'plan' => $this->plan->value,
             'entitled' => $this->plan === SubscriptionPlan::Pro,
             'subscribed' => $isBillingSubscribed,
+            'available_plans' => $this->availablePlans,
 
             $this->mergeWhen($isBillingSubscribed || $hasGracePeriod, [
                 'billing_plan' => $this->resource->displayBillingPlan(),
@@ -52,19 +54,15 @@ class SubscriptionResource extends JsonResource
                 'receipts' => ReceiptResource::collection($this->receipts),
             ]),
 
-            $this->mergeWhen($this->isOnTrial(), fn () => [
-                'trial' => [
-                    'active' => true,
-                    'ends_at' => $this->resolveTrialEndsAt(),
-                ],
-            ]),
+            'trial' => [
+                'active' => $this->isOnTrial(),
+                'ends_at' => $this->isOnTrial() ? $this->resolveTrialEndsAt() : null,
+            ],
 
-            $this->mergeWhen($hasGracePeriod, [
-                'grace_period' => [
-                    'active' => true,
-                    'ends_at' => optional($subscription?->ends_at)->isoFormat('MMMM Do YYYY'),
-                ],
-            ]),
+            'grace_period' => [
+                'active' => $hasGracePeriod,
+                'ends_at' => $hasGracePeriod ? optional($subscription?->ends_at)->isoFormat('MMMM Do YYYY') : null,
+            ],
 
             'limits' => $this->limits,
         ];

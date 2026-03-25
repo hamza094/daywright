@@ -29,6 +29,9 @@ class SubscriptionResourceTest extends TestCase
 
         config()->set('services.paddle.monthly', 101);
         config()->set('services.paddle.yearly', 202);
+        config()->set('services.paddle.prices.monthly', 12);
+        config()->set('services.paddle.prices.yearly', 100);
+        config()->set('services.paddle.prices.currency', 'USD');
 
         $this->fakePaddleApi();
 
@@ -47,8 +50,12 @@ class SubscriptionResourceTest extends TestCase
         $response->assertJsonPath('subscription.plan', 'free')
             ->assertJsonPath('subscription.entitled', false)
             ->assertJsonPath('subscription.subscribed', false)
-            ->assertJsonMissingPath('subscription.trial')
-            ->assertJsonMissingPath('subscription.grace_period')
+            ->assertJsonPath('subscription.trial.active', false)
+            ->assertJsonPath('subscription.trial.ends_at', null)
+            ->assertJsonPath('subscription.grace_period.active', false)
+            ->assertJsonPath('subscription.grace_period.ends_at', null)
+            ->assertJsonPath('subscription.available_plans.0.price', 12)
+            ->assertJsonPath('subscription.available_plans.1.price', 100)
             ->assertJsonMissingPath('subscription.limits.active_tasks_per_project')
             ->assertJsonMissingPath('subscription.limits.members_per_project')
             ->assertJsonPath('subscription.limits.projects.used', 2)
@@ -67,10 +74,11 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.entitled', true)
             ->assertJsonPath('subscription.subscribed', true)
             ->assertJsonPath('subscription.billing_plan', 'monthly')
-            ->assertJsonMissingPath('subscription.trial')
-            ->assertJsonMissingPath('subscription.grace_period')
+            ->assertJsonPath('subscription.trial.active', false)
+            ->assertJsonPath('subscription.grace_period.active', false)
             ->assertJsonStructure([
                 'subscription' => [
+                    'available_plans',
                     'billing_plan',
                     'next_payment',
                     'created_at',
@@ -98,9 +106,10 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.subscribed', false)
             ->assertJsonPath('subscription.billing_plan', 'monthly')
             ->assertJsonPath('subscription.grace_period.active', true)
-            ->assertJsonMissingPath('subscription.trial')
+            ->assertJsonPath('subscription.trial.active', false)
             ->assertJsonStructure([
                 'subscription' => [
+                    'available_plans',
                     'billing_plan',
                     'grace_period' => ['active', 'ends_at'],
                     'receipts',
@@ -118,7 +127,8 @@ class SubscriptionResourceTest extends TestCase
         $response->assertJsonPath('subscription.plan', 'free')
             ->assertJsonPath('subscription.entitled', false)
             ->assertJsonPath('subscription.subscribed', false)
-            ->assertJsonMissingPath('subscription.grace_period')
+            ->assertJsonPath('subscription.grace_period.active', false)
+            ->assertJsonPath('subscription.trial.active', false)
             ->assertJsonMissingPath('subscription.billing_plan')
             ->assertJsonMissingPath('subscription.next_payment')
             ->assertJsonMissingPath('subscription.created_at')
@@ -156,12 +166,15 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.entitled', true)
             ->assertJsonPath('subscription.trial.active', true)
             ->assertJsonPath('subscription.trial.ends_at', Carbon::now()->addDays(5)->isoFormat('MMMM Do YYYY'))
+            ->assertJsonPath('subscription.grace_period.active', false)
             ->assertJsonPath('subscription.limits.projects.max', null)
             ->assertJsonMissingPath('subscription.limits.active_tasks_per_project')
             ->assertJsonMissingPath('subscription.limits.members_per_project')
             ->assertJsonStructure([
                 'subscription' => [
+                    'available_plans',
                     'trial' => ['active', 'ends_at'],
+                    'grace_period' => ['active', 'ends_at'],
                 ],
             ]);
     }
