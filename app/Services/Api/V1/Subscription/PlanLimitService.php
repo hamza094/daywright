@@ -37,23 +37,12 @@ final class PlanLimitService
     /**
      * @var array<string, SubscriptionPlan>
      */
-    private array $planCache = [];
-
-    /**
-     * @var array<string, int>
-     */
-    private array $usageCache = [];
+    // Caching removed: compute values on demand to simplify behavior.
 
     // Public API
     public function plan(User $user): SubscriptionPlan
     {
-        $cacheKey = $this->userCacheKey($user);
-
-        if (array_key_exists($cacheKey, $this->planCache)) {
-            return $this->planCache[$cacheKey];
-        }
-
-        return $this->planCache[$cacheKey] = SubscriptionPlan::fromUser($this->loadBillingRelations($user));
+        return SubscriptionPlan::fromUser($this->loadBillingRelations($user));
     }
 
     /**
@@ -140,19 +129,9 @@ final class PlanLimitService
         return PlanLimitExceededException::REASON_LIMIT_REACHED;
     }
 
-    private function countUsage(PlanLimitType $type, User $user, ?Project $project, bool $useCache = true): int
+    private function countUsage(PlanLimitType $type, User $user, ?Project $project): int
     {
-        if (! $useCache) {
-            return $this->resolveUsageCount($type, $user, $project);
-        }
-
-        $cacheKey = $this->usageCacheKey($type, $user, $project);
-
-        if (array_key_exists($cacheKey, $this->usageCache)) {
-            return $this->usageCache[$cacheKey];
-        }
-
-        return $this->usageCache[$cacheKey] = $this->resolveUsageCount($type, $user, $project);
+        return $this->resolveUsageCount($type, $user, $project);
     }
 
     private function resolveUsageCount(PlanLimitType $type, User $user, ?Project $project): int

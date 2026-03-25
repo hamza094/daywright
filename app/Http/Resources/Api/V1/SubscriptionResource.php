@@ -34,25 +34,17 @@ class SubscriptionResource extends JsonResource
         $subscription = $this->getSubscription();
         $isBillingSubscribed = $subscription?->recurring() === true;
         $hasGracePeriod = $this->hasGracePeriod();
+        $isBillingVisible = $isBillingSubscribed || $hasGracePeriod;
 
         return [
             'plan' => $this->plan->value,
             'entitled' => $this->plan === SubscriptionPlan::Pro,
             'subscribed' => $isBillingSubscribed,
             'available_plans' => $this->availablePlans,
-
-            $this->mergeWhen($isBillingSubscribed || $hasGracePeriod, [
-                'billing_plan' => $this->resource->displayBillingPlan(),
-            ]),
-
-            $this->mergeWhen($isBillingSubscribed, fn () => [
-                'next_payment' => $this->whenNotNull($this->payment()),
-                'created_at' => optional($subscription?->created_at)->diffForHumans(),
-            ]),
-
-            $this->mergeWhen($this->receipts->isNotEmpty(), fn () => [
-                'receipts' => ReceiptResource::collection($this->receipts),
-            ]),
+            'billing_plan' => $isBillingVisible ? $this->resource->displayBillingPlan() : null,
+            'next_payment' => $isBillingSubscribed ? $this->payment() : null,
+            'created_at' => $isBillingSubscribed ? optional($subscription?->created_at)->diffForHumans() : null,
+            'receipts' => ReceiptResource::collection($this->receipts),
 
             'trial' => [
                 'active' => $this->isOnTrial(),

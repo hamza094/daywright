@@ -50,6 +50,10 @@ class SubscriptionResourceTest extends TestCase
         $response->assertJsonPath('subscription.plan', 'free')
             ->assertJsonPath('subscription.entitled', false)
             ->assertJsonPath('subscription.subscribed', false)
+            ->assertJsonPath('subscription.billing_plan', null)
+            ->assertJsonPath('subscription.next_payment', null)
+            ->assertJsonPath('subscription.created_at', null)
+            ->assertJsonPath('subscription.receipts', [])
             ->assertJsonPath('subscription.trial.active', false)
             ->assertJsonPath('subscription.trial.ends_at', null)
             ->assertJsonPath('subscription.grace_period.active', false)
@@ -105,6 +109,8 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.entitled', true)
             ->assertJsonPath('subscription.subscribed', false)
             ->assertJsonPath('subscription.billing_plan', 'monthly')
+            ->assertJsonPath('subscription.next_payment', null)
+            ->assertJsonPath('subscription.created_at', null)
             ->assertJsonPath('subscription.grace_period.active', true)
             ->assertJsonPath('subscription.trial.active', false)
             ->assertJsonStructure([
@@ -129,10 +135,10 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.subscribed', false)
             ->assertJsonPath('subscription.grace_period.active', false)
             ->assertJsonPath('subscription.trial.active', false)
-            ->assertJsonMissingPath('subscription.billing_plan')
-            ->assertJsonMissingPath('subscription.next_payment')
-            ->assertJsonMissingPath('subscription.created_at')
-            ->assertJsonMissingPath('subscription.receipts');
+            ->assertJsonPath('subscription.billing_plan', null)
+            ->assertJsonPath('subscription.next_payment', null)
+            ->assertJsonPath('subscription.created_at', null)
+            ->assertJsonPath('subscription.receipts', []);
 
         $this->assertLimitMaximums($response, [
             'projects' => 3,
@@ -164,6 +170,10 @@ class SubscriptionResourceTest extends TestCase
 
         $response->assertJsonPath('subscription.plan', 'pro')
             ->assertJsonPath('subscription.entitled', true)
+            ->assertJsonPath('subscription.billing_plan', null)
+            ->assertJsonPath('subscription.next_payment', null)
+            ->assertJsonPath('subscription.created_at', null)
+            ->assertJsonPath('subscription.receipts', [])
             ->assertJsonPath('subscription.trial.active', true)
             ->assertJsonPath('subscription.trial.ends_at', Carbon::now()->addDays(5)->isoFormat('MMMM Do YYYY'))
             ->assertJsonPath('subscription.grace_period.active', false)
