@@ -10,6 +10,8 @@ use App\Enums\TaskStatus;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Models\Project;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 
 /**
@@ -50,6 +52,12 @@ final class PlanLimitService
      */
     public function accountUsage(User $user): array
     {
+        $user->loadCount([
+            'projects',
+            'meetings',
+            'tokens',
+        ]);
+
         return $this->buildUsage(self::ACCOUNT_LIMIT_TYPES, $user);
     }
 
@@ -58,6 +66,11 @@ final class PlanLimitService
      */
     public function projectUsage(User $user, Project $project): array
     {
+        $project->loadCount([
+            'tasks as active_tasks_count' => fn (Builder $query): Builder => $query->whereIn('status_id', TaskStatus::active()),
+            'activeMembers as active_members_count' => fn (Builder $query): Builder => $query,
+        ]);
+
         return $this->buildUsage(self::PROJECT_LIMIT_TYPES, $user, $project);
     }
 
@@ -77,7 +90,7 @@ final class PlanLimitService
         $this->assertLimit(
             user: $user,
             limitType: $type->exceptionKey(),
-            currentUsage: $this->countUsage($type, $user, $project, false),
+            currentUsage: $this->countUsage($type, $user, $project),
             maxAllowed: $this->plan($user)->maxFor($type),
             messageSubject: $type->messageSubject(),
         );
@@ -136,15 +149,41 @@ final class PlanLimitService
 
     private function resolveUsageCount(PlanLimitType $type, User $user, ?Project $project): int
     {
+        if (in_array($type, self::ACCOUNT_LIMIT_TYPES, true)) {
+            return $this->accountCount($type, $user);
+        }
+
+        $project = $this->projectFor($type, $project);
+
+        return $this->projectCount($type, $project);
+    }
+
+    private function accountCount(PlanLimitType $type, User $user): int
+    {
         return match ($type) {
-            PlanLimitType::Projects => $user->projects()->count(),
-            PlanLimitType::ActiveTasksPerProject => $this->projectFor($type, $project)->tasks()
-                ->whereIn('status_id', TaskStatus::active())
-                ->count(),
-            PlanLimitType::MembersPerProject => $this->projectFor($type, $project)->activeMembers()->count(),
-            PlanLimitType::CreatedMeetings => $user->meetings()->count(),
-            PlanLimitType::ApiTokens => $user->tokens()->count(),
+            PlanLimitType::Projects => $this->loadedCount($user, 'projects_count') ?? $user->projects()->count(),
+            PlanLimitType::CreatedMeetings => $this->loadedCount($user, 'meetings_count') ?? $user->meetings()->count(),
+            PlanLimitType::ApiTokens => $this->loadedCount($user, 'tokens_count') ?? $user->tokens()->count(),
+            default => throw new InvalidArgumentException("Invalid account limit type: {$type->value}"),
         };
+    }
+
+    private function projectCount(PlanLimitType $type, Project $project): int
+    {
+        return match ($type) {
+            PlanLimitType::ActiveTasksPerProject => $this->loadedCount($project, 'active_tasks_count') ?? $project->tasks()->whereIn('status_id', TaskStatus::active())->count(),
+            PlanLimitType::MembersPerProject => $this->loadedCount($project, 'active_members_count') ?? $project->activeMembers()->count(),
+            default => throw new InvalidArgumentException("Invalid project limit type: {$type->value}"),
+        };
+    }
+
+    private function loadedCount(Model $model, string $attribute): ?int
+    {
+        if (! array_key_exists($attribute, $model->getAttributes())) {
+            return null;
+        }
+
+        return max(0, (int) $model->getAttribute($attribute));
     }
 
     /**

@@ -226,6 +226,27 @@ class PlanLimitServiceTest extends TestCase
     }
 
     #[Test]
+    public function it_loads_account_usage_counts_with_a_single_query_when_billing_relations_are_ready(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        Project::factory()->for($user)->create();
+        Meeting::factory()->for($user)->for($project)->create();
+        $user->createToken('usage-token');
+
+        $user->load('subscriptions', 'customer');
+
+        $this->expectsDatabaseQueryCount(1);
+
+        $usage = $this->service->accountUsage($user);
+
+        $this->assertSame(['used' => 2, 'max' => 3], $usage['projects']);
+        $this->assertSame(['used' => 1, 'max' => 1], $usage['created_meetings']);
+        $this->assertSame(['used' => 1, 'max' => 1], $usage['api_tokens']);
+    }
+
+    #[Test]
     public function it_returns_project_usage_counts_and_limits(): void
     {
         $user = User::factory()->create();
@@ -238,6 +259,30 @@ class PlanLimitServiceTest extends TestCase
 
         $project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
         $project->members()->attach(User::factory()->create(), ['active' => false]);
+
+        $usage = $this->service->projectUsage($user, $project);
+
+        $this->assertSame(['used' => 3, 'max' => 10], $usage['active_tasks_per_project']);
+        $this->assertSame(['used' => 2, 'max' => 3], $usage['members_per_project']);
+    }
+
+    #[Test]
+    public function it_loads_project_usage_counts_with_a_single_query_when_billing_relations_are_ready(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::factory()->for($user)->create();
+
+        Task::factory()->count(3)->for($user, 'owner')->for($project)->create([
+            'status_id' => TaskStatusEnum::PENDING,
+        ]);
+        Task::factory()->for($user, 'owner')->for($project)->completed()->create();
+
+        $project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
+        $project->members()->attach(User::factory()->create(), ['active' => false]);
+
+        $user->load('subscriptions', 'customer');
+
+        $this->expectsDatabaseQueryCount(1);
 
         $usage = $this->service->projectUsage($user, $project);
 
