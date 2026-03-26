@@ -90,6 +90,7 @@ class OAuthTest extends TestCase
             $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful();
 
             $user = User::query()->where('email', 'test@example.com')->firstOrFail();
+            /** @var \Laravel\Paddle\Customer|null $customer */
             $customer = $user->customer()->first();
 
             $this->assertNotNull($customer);

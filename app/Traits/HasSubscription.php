@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace App\Traits;
 
+/**
+ * @method bool onTrial(?string $name = null)
+ * @method mixed subscription(string $name)
+ * @method mixed trialEndsAt(?string $name = null)
+ */
 trait HasSubscription
 {
     public function subscriptionName(): string

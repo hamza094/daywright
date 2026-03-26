@@ -23,7 +23,10 @@ class ApplicationTest extends TestCase
         $this->withoutExceptionHandling()->postJson($this->project->path().'/tasks',
             ['title' => 'My Project Task'])->assertCreated();
 
-        $this->project->invite($user = User::factory()->create());
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        $this->project->invite($user);
 
         Sanctum::actingAs($user);
 

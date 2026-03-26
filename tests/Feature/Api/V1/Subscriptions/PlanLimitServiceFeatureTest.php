@@ -16,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Tests\Traits\FixtureHelpers;
@@ -29,6 +30,7 @@ class PlanLimitServiceFeatureTest extends TestCase
 
     private Project $project;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();
@@ -38,11 +40,16 @@ class PlanLimitServiceFeatureTest extends TestCase
 
         $this->createTaskStatuses();
 
-        $this->user = User::factory()->create();
+        /** @var User $user */
+        $user = User::factory()->create();
 
-        Sanctum::actingAs($this->user);
+        Sanctum::actingAs($user);
 
-        $this->project = Project::factory()->for($this->user)->create();
+        /** @var Project $project */
+        $project = Project::factory()->for($user)->create();
+
+        $this->user = $user;
+        $this->project = $project;
 
         $this->withoutMiddleware(CheckSubscription::class);
     }
@@ -98,6 +105,7 @@ class PlanLimitServiceFeatureTest extends TestCase
     {
         $this->attachActiveMembers(3);
 
+        /** @var User $invitee */
         $invitee = User::factory()->create();
 
         $response = $this->inviteMember($invitee->email);
@@ -129,6 +137,9 @@ class PlanLimitServiceFeatureTest extends TestCase
         $this->assertPlanLimitExceeded($response, 'limit_reached', 'api_tokens', 1, 1);
     }
 
+    /**
+     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
+     */
     private function assertPlanLimitExceeded(
         TestResponse $response,
         string $reason,
@@ -149,6 +160,7 @@ class PlanLimitServiceFeatureTest extends TestCase
 
     /**
      * @param  array<string, mixed>  $payload
+     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
      */
     private function createProject(array $payload): TestResponse
     {
@@ -157,22 +169,32 @@ class PlanLimitServiceFeatureTest extends TestCase
 
     /**
      * @param  array<string, mixed>  $payload
+     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
      */
     private function createTask(array $payload): TestResponse
     {
         return $this->postJson(route('tasks.store', $this->project), $payload);
     }
 
+    /**
+     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     */
     private function inviteMember(string $email): TestResponse
     {
         return $this->postJson(route('send.invitation', $this->project), ['email' => $email]);
     }
 
+    /**
+     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     */
     private function createMeeting(): TestResponse
     {
         return $this->postJson(route('meetings.store', $this->project), $this->validMeetingPayload());
     }
 
+    /**
+     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     */
     private function createApiToken(string $name): TestResponse
     {
         return $this->postJson(route('api-tokens.store'), ['name' => $name]);

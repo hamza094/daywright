@@ -55,7 +55,7 @@ class InvitationController extends ApiController
      */
     public function invite(Project $project, InvitationUsersRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
-        $planLimitService->assertWithinLimit(PlanLimitType::MembersPerProject, Auth::user(), $project);
+        $planLimitService->assertWithinLimit(PlanLimitType::MembersPerProject, $this->authenticatedUser(), $project);
 
         $user = User::whereEmail($request->validated())->first();
 
@@ -112,7 +112,7 @@ class InvitationController extends ApiController
      */
     public function reject(Project $project): JsonResponse
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser();
 
         $this->invitationService->rejectInvitation($project, $user);
 

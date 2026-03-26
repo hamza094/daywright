@@ -17,24 +17,24 @@ class InvitationTest extends TestCase
     /** @test */
     public function project_owner_can_invite_user(): void
     {
-        $InvitedUser = User::factory()->create();
+        /** @var User $invitedUser */
+        /** @var User $invitedUser */
+        $invitedUser = User::factory()->create();
 
-        $this->postJson($this->project->path().
-         '/invitations',
-            [
-                'email' => $InvitedUser->email,
-            ])->assertOk()
+        $this->postJson($this->project->path().'/invitations', [
+            'email' => $invitedUser->email,
+        ])->assertOk()
             ->assertJson([
-                'message' => "Project invitation sent to {$InvitedUser->name}",
+                'message' => "Project invitation sent to {$invitedUser->name}",
             ]);
 
-        $this->assertTrue($this->project->members->contains(
-            $InvitedUser));
+        $this->assertTrue($this->project->members->contains($invitedUser));
     }
 
     /** @test */
     public function project_owner_can_not_reinvite_user_and_himself(): void
     {
+        /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
         $this->project->invite($invitedUser);
 
@@ -63,6 +63,7 @@ class InvitationTest extends TestCase
     /** @test */
     public function auth_user_accept_project_invitation_sent_to_him(): void
     {
+        /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
         $this->project->invite($invitedUser);
 
@@ -97,6 +98,7 @@ class InvitationTest extends TestCase
     /** @test */
     public function authorized_user_can_reject_project_invitation(): void
     {
+        /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
         $this->project->invite($invitedUser);
@@ -118,6 +120,7 @@ class InvitationTest extends TestCase
     /** @test */
     public function project_owner_can_cancel_project_invitation(): void
     {
+        /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
         $this->getJson(route('projects.cancel-invitation',
@@ -144,6 +147,7 @@ class InvitationTest extends TestCase
     /** @test */
     public function project_owner_can_remove_member(): void
     {
+        /** @var User $memberUser */
         $memberUser = User::factory()->create();
 
         $this->project->members()->attach($memberUser, ['active' => true]);

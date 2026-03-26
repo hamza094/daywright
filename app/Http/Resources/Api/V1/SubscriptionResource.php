@@ -43,7 +43,9 @@ class SubscriptionResource extends JsonResource
             'available_plans' => $this->availablePlans,
             'billing_plan' => $isBillingVisible ? $this->resource->displayBillingPlan() : null,
             'next_payment' => $isBillingSubscribed ? $this->payment() : null,
-            'created_at' => $isBillingSubscribed ? optional($subscription?->created_at)->diffForHumans() : null,
+            'created_at' => $isBillingSubscribed && $subscription !== null
+                ? optional($subscription->created_at)->diffForHumans()
+                : null,
             'receipts' => ReceiptResource::collection($this->receipts),
 
             'trial' => [
@@ -53,7 +55,9 @@ class SubscriptionResource extends JsonResource
 
             'grace_period' => [
                 'active' => $hasGracePeriod,
-                'ends_at' => $hasGracePeriod ? optional($subscription?->ends_at)->isoFormat('MMMM Do YYYY') : null,
+                'ends_at' => $hasGracePeriod && $subscription !== null
+                    ? optional($subscription->ends_at)->isoFormat('MMMM Do YYYY')
+                    : null,
             ],
 
             'limits' => $this->limits,

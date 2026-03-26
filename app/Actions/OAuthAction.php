@@ -17,6 +17,9 @@ class OAuthAction
     {
         $user = User::where('email', $oAuthUser->getEmail())->first();
 
+        /** @var \Laravel\Socialite\Two\User $oAuthUserConcrete */
+        $oAuthUserConcrete = $oAuthUser;
+
         return $user = User::updateOrCreate(
             [
                 'email' => $oAuthUser->getEmail(),
@@ -29,8 +32,8 @@ class OAuthAction
                 'oauth_provider' => $provider->value,
                 'email_verified_at' => $user->email_verified_at ?? Carbon::now(),
                 'avatar_path' => $user->avatar_path ?? $oAuthUser->getAvatar(),
-                'oauth_token' => $oAuthUser->token,
-                'oauth_refresh_token' => $oAuthUser->refreshToken,
+                'oauth_token' => $oAuthUserConcrete->token,
+                'oauth_refresh_token' => $oAuthUserConcrete->refreshToken,
             ]
         );
     }

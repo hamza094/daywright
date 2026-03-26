@@ -40,7 +40,10 @@ class NotificationsTest extends TestCase
     {
         Notification::fake();
 
-        $this->project->invite($user = User::factory()->create());
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        $this->project->invite($user);
 
         Sanctum::actingAs($user);
 

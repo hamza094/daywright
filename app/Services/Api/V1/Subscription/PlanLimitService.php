@@ -22,7 +22,7 @@ final class PlanLimitService
     /**
      * @var array<int, PlanLimitType>
      */
-    private const ACCOUNT_LIMIT_TYPES = [
+    private const array ACCOUNT_LIMIT_TYPES = [
         PlanLimitType::Projects,
         PlanLimitType::CreatedMeetings,
         PlanLimitType::ApiTokens,
@@ -31,7 +31,7 @@ final class PlanLimitService
     /**
      * @var array<int, PlanLimitType>
      */
-    private const PROJECT_LIMIT_TYPES = [
+    private const array PROJECT_LIMIT_TYPES = [
         PlanLimitType::ActiveTasksPerProject,
         PlanLimitType::MembersPerProject,
     ];
@@ -81,7 +81,7 @@ final class PlanLimitService
     {
         return [
             ...$this->accountUsage($user),
-            ...($project !== null ? $this->projectUsage($user, $project) : []),
+            ...($project instanceof Project ? $this->projectUsage($user, $project) : []),
         ];
     }
 
@@ -132,11 +132,9 @@ final class PlanLimitService
     {
         $user = $this->loadBillingRelations($user);
 
-        if ($this->plan($user) === SubscriptionPlan::Free) {
-            if (! $user->hasSubscriptionRecord()
-                && ($user->hasExpiredTrial() || $user->hasExpiredTrial($user->subscriptionName()))) {
-                return PlanLimitExceededException::REASON_TRIAL_EXPIRED;
-            }
+        if ($this->plan($user) === SubscriptionPlan::Free && (! $user->hasSubscriptionRecord()
+            && ($user->hasExpiredTrial() || $user->hasExpiredTrial($user->subscriptionName())))) {
+            return PlanLimitExceededException::REASON_TRIAL_EXPIRED;
         }
 
         return PlanLimitExceededException::REASON_LIMIT_REACHED;

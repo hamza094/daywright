@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\PlanLimitType;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Zoom\MeetingStoreRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingUpdateRequest;
 use App\Http\Resources\Api\V1\Zoom\MeetingResource;
@@ -15,12 +15,11 @@ use App\Models\Project;
 use App\Services\Api\V1\ExceptionService;
 use App\Services\Api\V1\MeetingService;
 use App\Services\Api\V1\Subscription\PlanLimitService;
-use Auth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class ZoomMeetingController extends Controller
+class ZoomMeetingController extends ApiController
 {
     public function __construct(protected ExceptionService $exceptionService) {}
 
@@ -51,7 +50,7 @@ class ZoomMeetingController extends Controller
     {
         $this->authorize('manage', $project);
 
-        $user = Auth::user();
+        $user = $this->authenticatedUser();
 
         $planLimitService->assertWithinLimit(PlanLimitType::CreatedMeetings, $user);
 
@@ -72,9 +71,11 @@ class ZoomMeetingController extends Controller
     {
         $this->authorize('manage', $project);
 
-        DB::transaction(function () use ($zoom, $meeting, $request): void {
+        $user = $this->authenticatedUser();
+
+        DB::transaction(function () use ($zoom, $meeting, $request, $user): void {
             $meeting->update($request->validated());
-            $zoom->updateMeeting($request->validated(), Auth::user());
+            $zoom->updateMeeting($request->validated(), $user);
         });
 
         $meeting->load(['user']);
@@ -90,10 +91,11 @@ class ZoomMeetingController extends Controller
         $this->authorize('manage', $project);
 
         $meetingId = $meeting->meeting_id;
+        $user = $this->authenticatedUser();
 
-        DB::transaction(function () use ($zoom, $meeting, $meetingId): void {
+        DB::transaction(function () use ($zoom, $meeting, $meetingId, $user): void {
             $meeting->delete();
-            $zoom->deleteMeeting($meetingId, Auth::user());
+            $zoom->deleteMeeting($meetingId, $user);
         });
 
         return response()->json([

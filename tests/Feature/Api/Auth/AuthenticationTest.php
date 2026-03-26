@@ -64,6 +64,7 @@ class AuthenticationTest extends TestCase
             ])->assertCreated();
 
             $user = User::query()->where('email', 'trial-user@example.com')->firstOrFail();
+            /** @var \Laravel\Paddle\Customer|null $customer */
             $customer = $user->customer()->first();
 
             $this->assertNotNull($customer);

@@ -28,6 +28,7 @@ class SubscriptionControllerTest extends TestCase
             'password' => Hash::make('testpassword'),
         ]);
 
+        /** @var User $user */
         Sanctum::actingAs($user);
 
         $this->fakeSubscription();

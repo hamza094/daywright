@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
 use App\Services\Api\V1\Subscription\PlanLimitService;
-use Auth;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 
@@ -22,7 +21,7 @@ class TokenController extends ApiController
      */
     public function index(): JsonResponse
     {
-        $tokens = Auth::user()->tokens;
+        $tokens = $this->authenticatedUser()->tokens;
 
         return response()->json([
             'tokens' => TokenResource::collection($tokens),
@@ -36,7 +35,7 @@ class TokenController extends ApiController
      */
     public function store(UserTokenRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser();
 
         $planLimitService->assertWithinLimit(PlanLimitType::ApiTokens, $user);
 
@@ -62,7 +61,7 @@ class TokenController extends ApiController
      */
     public function destroy(int $tokenId): JsonResponse
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser();
         $currentToken = $user->currentAccessToken();
 
         // @phpstan-ignore-next-line

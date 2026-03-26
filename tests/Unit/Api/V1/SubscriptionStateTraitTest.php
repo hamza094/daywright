@@ -7,11 +7,11 @@ namespace Tests\Unit\Api\V1;
 use App\Traits\HasSubscription;
 use PHPUnit\Framework\TestCase;
 
-class DummyUserWithSubscription
+class DummyUserWithSubscriptionState
 {
     use HasSubscription;
 
-    public $mockSubscription;
+    public mixed $mockSubscription;
 
     // Provide a stable subscription name for unit tests (avoids calling the global config() helper)
     public function subscriptionName(): string
@@ -19,17 +19,17 @@ class DummyUserWithSubscription
         return 'DayWright';
     }
 
-    public function subscription($name)
+    public function subscription(string $name): mixed
     {
         return $this->mockSubscription;
     }
 }
 
-class HasSubscriptionTraitTest extends TestCase
+class SubscriptionStateTraitTest extends TestCase
 {
     public function test_is_subscribed_returns_true_when_subscription_is_valid(): void
     {
-        $user = new DummyUserWithSubscription;
+        $user = new DummyUserWithSubscriptionState;
         $user->mockSubscription = new class
         {
             public function valid(): bool
@@ -42,7 +42,7 @@ class HasSubscriptionTraitTest extends TestCase
 
     public function test_is_subscribed_returns_false_when_subscription_is_not_valid(): void
     {
-        $user = new DummyUserWithSubscription;
+        $user = new DummyUserWithSubscriptionState;
         $user->mockSubscription = new class
         {
             public function valid(): bool
@@ -55,14 +55,14 @@ class HasSubscriptionTraitTest extends TestCase
 
     public function test_is_subscribed_returns_false_when_no_subscription(): void
     {
-        $user = new DummyUserWithSubscription;
+        $user = new DummyUserWithSubscriptionState;
         $user->mockSubscription = null;
         $this->assertFalse($user->isSubscribed());
     }
 
     public function test_is_billing_subscribed_returns_true_only_when_subscription_is_recurring(): void
     {
-        $user = new DummyUserWithSubscription;
+        $user = new DummyUserWithSubscriptionState;
         $user->mockSubscription = new class
         {
             public function recurring(): bool
@@ -87,7 +87,7 @@ class HasSubscriptionTraitTest extends TestCase
 
     public function test_billing_plan_variants(): void
     {
-        $user = new DummyUserWithSubscription;
+        $user = new DummyUserWithSubscriptionState;
         $user->mockSubscription = null;
         $this->assertEquals('Not Subscribed Actively', $user->activeBillingPlan());
 
@@ -140,7 +140,7 @@ class HasSubscriptionTraitTest extends TestCase
 
     public function test_has_grace_period_true_and_false(): void
     {
-        $user = new DummyUserWithSubscription;
+        $user = new DummyUserWithSubscriptionState;
         // True
         $user->mockSubscription = new class
         {
@@ -166,7 +166,7 @@ class HasSubscriptionTraitTest extends TestCase
 
     public function test_payment_returns_next_payment_or_null(): void
     {
-        $user = new DummyUserWithSubscription;
+        $user = new DummyUserWithSubscriptionState;
         // Next payment
         $user->mockSubscription = new class
         {

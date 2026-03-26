@@ -140,6 +140,7 @@ class ProjectFeatureTest extends TestCase
     /** @test */
     public function project_member_cannot_see_project_limits_on_show(): void
     {
+        /** @var User $member */
         $member = User::factory()->create();
 
         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
@@ -194,6 +195,7 @@ class ProjectFeatureTest extends TestCase
     /** @test */
     public function project_member_cannot_see_project_limits_on_update(): void
     {
+        /** @var User $member */
         $member = User::factory()->create();
         $this->project->members()->attach($member, ['active' => true]);
 

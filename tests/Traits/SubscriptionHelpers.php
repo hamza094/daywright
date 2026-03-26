@@ -74,6 +74,7 @@ trait SubscriptionHelpers
 
     private function setUpFreeUserAtProjectLimit(): User
     {
+        /** @var User $user */
         $user = User::factory()->create();
 
         Project::factory()->count(3)->for($user)->create();

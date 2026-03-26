@@ -13,7 +13,6 @@ use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Models\Project;
 use App\Services\Api\V1\ProjectService;
 use App\Services\Api\V1\Subscription\PlanLimitService;
-use Auth;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -31,13 +30,15 @@ class ProjectController extends ApiController
      */
     public function store(ProjectStoreRequest $request): JsonResponse
     {
-        $this->planLimitService->assertWithinLimit(PlanLimitType::Projects, Auth::user());
+        $user = $this->authenticatedUser();
+
+        $this->planLimitService->assertWithinLimit(PlanLimitType::Projects, $user);
 
         DB::beginTransaction();
 
         try {
 
-            $project = Auth::user()->projects()
+            $project = $user->projects()
                 ->create($request->safe()->except(['tasks']));
 
             if ($request->tasks) {

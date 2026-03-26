@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Tests\Traits\SubscriptionHelpers;
@@ -23,6 +24,7 @@ class SubscriptionResourceTest extends TestCase
 
     private User $user;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();
@@ -35,9 +37,12 @@ class SubscriptionResourceTest extends TestCase
 
         $this->fakePaddleApi();
 
-        $this->user = User::factory()->create();
+        /** @var User $user */
+        $user = User::factory()->create();
 
-        Sanctum::actingAs($this->user);
+        Sanctum::actingAs($user);
+
+        $this->user = $user;
     }
 
     #[Test]
@@ -189,6 +194,9 @@ class SubscriptionResourceTest extends TestCase
             ]);
     }
 
+    /**
+     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     */
     private function subscriptionResponse(): TestResponse
     {
         return $this->getJson(self::SUBSCRIPTIONS_ROUTE)
@@ -208,6 +216,10 @@ class SubscriptionResourceTest extends TestCase
     }
 
     /**
+     * @param  array<string, int|null>  $limits
+     */
+    /**
+     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
      * @param  array<string, int|null>  $limits
      */
     private function assertLimitMaximums(TestResponse $response, array $limits): void

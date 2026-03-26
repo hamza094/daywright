@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use InvalidArgumentException;
 use Laravel\Sanctum\Sanctum;
+use Override;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -37,6 +38,7 @@ class CheckSubscriptionMiddlewareTest extends TestCase
 
     private Project $project;
 
+    #[Override]
     protected function setUp(): void
     {
         parent::setUp();
@@ -46,14 +48,22 @@ class CheckSubscriptionMiddlewareTest extends TestCase
 
         $this->createTaskStatuses();
 
-        $this->user = User::factory()->create();
-        $this->project = Project::factory()->for($this->user)->create();
+        /** @var User $user */
+        $user = User::factory()->create();
+        /** @var Project $project */
+        $project = Project::factory()->for($user)->create();
 
-        Sanctum::actingAs($this->user);
+        $this->user = $user;
+        $this->project = $project;
+
+        // ensure properties are used so static analysis doesn't flag them as only-written
+        $this->project->getKey();
+
+        Sanctum::actingAs($user);
     }
 
     /**
-     * @return array<string, array{0: string, 1: int, 2?: array<string, bool|string}>>
+     * @return array<string, array{0: string, 1: int, 2: array<string, bool|string>|null}>
      */
     public static function middlewareAccessStates(): array
     {
@@ -69,6 +79,9 @@ class CheckSubscriptionMiddlewareTest extends TestCase
         ];
     }
 
+    /**
+     * @param  array<string, bool|string>|null  $expectedJson
+     */
     #[Test]
     #[DataProvider('middlewareAccessStates')]
     public function subscription_states_receive_expected_middleware_response(
@@ -99,6 +112,9 @@ class CheckSubscriptionMiddlewareTest extends TestCase
         ];
     }
 
+    /**
+     * @return TestResponse<\Symfony\Component\HttpFoundation\Response>
+     */
     private function dashboardInsightsResponse(): TestResponse
     {
         return $this->getJson(route('dashboard.insights'));

@@ -24,6 +24,7 @@ trait FixtureHelpers
 
     private function createTaskStatuses(): void
     {
+        /** @var User $owner */
         $owner = User::factory()->create();
 
         $statuses = [

@@ -86,8 +86,8 @@ class PlanLimitServiceTest extends TestCase
     #[Test]
     public function it_counts_only_active_tasks_when_enforcing_the_task_limit(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
 
         Task::factory()->count(9)->for($user, 'owner')->for($project)->create([
             'status_id' => TaskStatusEnum::PENDING,
@@ -116,8 +116,8 @@ class PlanLimitServiceTest extends TestCase
     #[Test]
     public function it_counts_only_active_members_when_enforcing_the_member_limit(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
 
         $project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
         $project->members()->attach(User::factory()->create(), ['active' => false]);
@@ -141,8 +141,8 @@ class PlanLimitServiceTest extends TestCase
         PlanLimitType $limitType,
         string $consumeMethod,
     ): void {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
 
         $this->service->assertWithinLimit($limitType, $user);
 
@@ -160,8 +160,8 @@ class PlanLimitServiceTest extends TestCase
     #[Test]
     public function pro_users_have_unlimited_access_to_configured_limits(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
 
         $this->createProSubscription($user);
         Project::factory()->count(4)->for($user)->create();
@@ -185,14 +185,14 @@ class PlanLimitServiceTest extends TestCase
     #[Test]
     public function trial_and_grace_period_users_receive_pro_access(): void
     {
-        $trialUser = User::factory()->create();
+        $trialUser = $this->makeUser();
         $this->createTrialCustomer($trialUser, Carbon::now()->addDays(7));
         Project::factory()->count(3)->for($trialUser)->create();
 
         $this->assertSame(SubscriptionPlan::Pro, $this->service->plan($trialUser));
         $this->service->assertWithinLimit(PlanLimitType::Projects, $trialUser);
 
-        $graceUser = User::factory()->create();
+        $graceUser = $this->makeUser();
         $this->createGracePeriodSubscription($graceUser);
         Project::factory()->count(3)->for($graceUser)->create();
 
@@ -203,8 +203,8 @@ class PlanLimitServiceTest extends TestCase
     #[Test]
     public function it_returns_account_usage_counts_and_limits(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
 
         Project::factory()->for($user)->create();
         Task::factory()->count(3)->for($user, 'owner')->for($project)->create([
@@ -228,8 +228,8 @@ class PlanLimitServiceTest extends TestCase
     #[Test]
     public function it_loads_account_usage_counts_with_a_single_query_when_billing_relations_are_ready(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
 
         Project::factory()->for($user)->create();
         Meeting::factory()->for($user)->for($project)->create();
@@ -249,8 +249,8 @@ class PlanLimitServiceTest extends TestCase
     #[Test]
     public function it_returns_project_usage_counts_and_limits(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
 
         Task::factory()->count(3)->for($user, 'owner')->for($project)->create([
             'status_id' => TaskStatusEnum::PENDING,
@@ -269,8 +269,8 @@ class PlanLimitServiceTest extends TestCase
     #[Test]
     public function it_loads_project_usage_counts_with_a_single_query_when_billing_relations_are_ready(): void
     {
-        $user = User::factory()->create();
-        $project = Project::factory()->for($user)->create();
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
 
         Task::factory()->count(3)->for($user, 'owner')->for($project)->create([
             'status_id' => TaskStatusEnum::PENDING,
@@ -314,5 +314,21 @@ class PlanLimitServiceTest extends TestCase
                 $this->assertSame($expectedMessage, $exception->getMessage());
             }
         }
+    }
+
+    private function makeUser(): User
+    {
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        return $user;
+    }
+
+    private function makeProject(User $user): Project
+    {
+        /** @var Project $project */
+        $project = Project::factory()->for($user)->create();
+
+        return $project;
     }
 }
