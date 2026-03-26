@@ -163,16 +163,16 @@
 
   @include usage-limit-surface(1rem, 0.12, 0.04);
 
-  &__header,
-  &__row {
+  &_header,
+  &_row {
     @include usage-limit-row(0.75rem);
   }
 
-  &__header {
+  &_header {
     margin-bottom: 0.9rem;
   }
 
-  &__title {
+  &_title {
     color: $color-secondary;
     font-size: 0.82rem;
     font-weight: 700;
@@ -180,46 +180,46 @@
     text-transform: uppercase;
   }
 
-  &__link {
+  &_link {
     font-size: 0.88rem;
     font-weight: 600;
   }
 
-  &__item + &__item {
+  &_item + &_item {
     margin-top: 0.8rem;
   }
 
-  &__label,
-  &__value {
+  &_label,
+  &_value {
     font-size: 0.92rem;
   }
 
-  &__label {
+  &_label {
     color: $color-secondary;
     font-weight: 600;
   }
 
-  &__value {
+  &_value {
     color: rgba($color-secondary, 0.75);
   }
 
-  &__track {
+  &_track {
     @include usage-limit-track(0.55rem, 0.45rem);
   }
 
-  &__bar {
+  &_bar {
     @include usage-limit-bar;
   }
 
-  &__bar--healthy {
+  &_bar-healthy {
     @include usage-limit-tone(healthy);
   }
 
-  &__bar--warning {
+  &_bar-warning {
     @include usage-limit-tone(warning);
   }
 
-  &__bar--critical {
+  &_bar-critical {
     @include usage-limit-tone(critical);
   }
 }
@@ -803,7 +803,7 @@
 }
 
 @include respond(phone) {
-  @include usage-limit-stack('.project-limits__header', '.project-limits__row');
+  @include usage-limit-stack('.project-limits_header', '.project-limits_row');
 
   .slideout-panel .slideout-wrapper .slideout {
     max-width: 100vw;

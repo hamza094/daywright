@@ -146,21 +146,21 @@
                       <p v-text="project.updated_at"></p>
                     </div>
                     <div v-if="showProjectLimits" class="project-limits">
-                      <div class="project-limits__header">
-                        <span class="project-limits__title">Project plan limits</span>
-                        <router-link :to="{ name: 'Subscription' }" class="project-limits__link">
+                      <div class="project-limits_header">
+                        <span class="project-limits_title">Project plan limits</span>
+                        <router-link :to="{ name: 'Subscription' }" class="project-limits_link">
                           Upgrade to Pro
                         </router-link>
                       </div>
-                      <div v-for="item in projectLimitItems" :key="item.key" class="project-limits__item">
-                        <div class="project-limits__row">
-                          <span class="project-limits__label">{{ item.label }}</span>
-                          <span class="project-limits__value">{{ formatUsageLimit(item.limit, { emptyMax: 0 }) }}</span>
+                      <div v-for="item in projectLimitItems" :key="item.key" class="project-limits_item">
+                        <div class="project-limits_row">
+                          <span class="project-limits_label">{{ item.label }}</span>
+                          <span class="project-limits_value">{{ formatUsageLimit(item.limit, { emptyMax: 0 }) }}</span>
                         </div>
-                        <div class="project-limits__track">
+                        <div class="project-limits_track">
                           <div
-                            class="project-limits__bar"
-                            :class="usageLimitToneClass(item.limit, 'project-limits__bar')"
+                            class="project-limits_bar"
+                            :class="usageLimitToneClass(item.limit, 'project-limits_bar')"
                             :style="{ width: usageLimitWidth(item.limit) }"></div>
                         </div>
                       </div>

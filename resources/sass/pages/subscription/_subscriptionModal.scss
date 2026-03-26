@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 .subscription-modal-overlay {
   position: fixed;
   inset: 0;
@@ -74,20 +76,20 @@ body.subscription-modal-open {
 .plan-limit-modal {
   padding: 1.5rem;
 
-  &__header {
+  &_header {
     display: flex;
     align-items: center;
     gap: 0.6rem;
     margin-bottom: 1rem;
   }
 
-  &__icon {
+  &_icon {
     color: $color-warm;
     font-size: 1.35rem;
     line-height: 1;
   }
 
-  &__title {
+  &_title {
     margin: 0;
     font-size: 1.1rem;
     font-weight: 700;
@@ -95,7 +97,7 @@ body.subscription-modal-open {
     flex: 1;
   }
 
-  &__close {
+  &_close {
     background: none;
     border: none;
     font-size: 1.35rem;
@@ -109,18 +111,18 @@ body.subscription-modal-open {
     }
   }
 
-  &__body {
+  &_body {
     margin-bottom: 1.25rem;
   }
 
-  &__message {
+  &_message {
     font-size: 0.95rem;
     color: $color-dark-grey;
     margin-bottom: 1rem;
     line-height: 1.5;
   }
 
-  &__hint {
+  &_hint {
     font-size: 0.85rem;
     color: $color-warm;
     margin-top: 0.75rem;
@@ -128,13 +130,13 @@ body.subscription-modal-open {
   }
 
   // Usage bar
-  &__usage {
-    background: lighten($color-light-grey, 5%);
+  &_usage {
+    background: color.adjust($color-light-grey, $lightness: 5%);
     border-radius: 0.5rem;
     padding: 0.75rem 1rem;
   }
 
-  &__usage-label {
+  &_usage-label {
     display: flex;
     justify-content: space-between;
     font-size: 0.85rem;
@@ -142,19 +144,19 @@ body.subscription-modal-open {
     margin-bottom: 0.4rem;
   }
 
-  &__usage-count {
+  &_usage-count {
     font-weight: 600;
     color: $color-secondary;
   }
 
-  &__usage-track {
+  &_usage-track {
     height: 6px;
     background: $color-light-grey;
     border-radius: 3px;
     overflow: hidden;
   }
 
-  &__usage-bar {
+  &_usage-bar {
     height: 100%;
     border-radius: 3px;
     background: linear-gradient(90deg, $color-warm 0%, #e74c3c 100%);
@@ -162,7 +164,7 @@ body.subscription-modal-open {
   }
 
   // Footer actions
-  &__footer {
+  &_footer {
     display: flex;
     justify-content: flex-end;
     gap: 0.5rem;

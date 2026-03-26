@@ -6,11 +6,11 @@
     <div class="container">
       <div class="subscription-overview card mb-4">
         <div class="card-body">
-          <div class="subscription-overview__header">
+          <div class="subscription-overview_header">
             <div>
-              <p class="subscription-overview__eyebrow mb-2">Plan &amp; Usage</p>
-              <h3 class="subscription-overview__title mb-2">{{ currentPlanLabel }} Plan</h3>
-              <p class="subscription-overview__meta mb-0">
+              <p class="subscription-overview_eyebrow mb-2">Plan &amp; Usage</p>
+              <h3 class="subscription-overview_title mb-2">{{ currentPlanLabel }} Plan</h3>
+              <p class="subscription-overview_meta mb-0">
                 <span v-if="isOnTrial && trialEndsAt">Trial active until {{ trialEndsAt }}.</span>
                 <span v-else-if="isOnTrial">Trial active for a limited time.</span>
                 <span v-else-if="isInGracePeriod && gracePeriodEndsAt"
@@ -23,42 +23,42 @@
               </p>
             </div>
 
-            <div class="subscription-overview__badges">
-              <span class="subscription-badge subscription-badge--plan">{{ currentPlanLabel }}</span>
-              <span v-if="isOnTrial" class="subscription-badge subscription-badge--trial">Trial Active</span>
-              <span v-if="isInGracePeriod" class="subscription-badge subscription-badge--grace">Grace Period</span>
+            <div class="subscription-overview_badges">
+              <span class="subscription-badge subscription-badge-plan">{{ currentPlanLabel }}</span>
+              <span v-if="isOnTrial" class="subscription-badge subscription-badge-trial">Trial Active</span>
+              <span v-if="isInGracePeriod" class="subscription-badge subscription-badge-grace">Grace Period</span>
             </div>
           </div>
 
           <div class="subscription-usage">
-            <div v-for="item in accountUsageItems" :key="item.key" class="subscription-usage__item">
-              <div class="subscription-usage__row">
+            <div v-for="item in accountUsageItems" :key="item.key" class="subscription-usage_item">
+              <div class="subscription-usage_row">
                 <div>
-                  <p class="subscription-usage__label mb-1">{{ item.label }}</p>
-                  <p class="subscription-usage__value mb-0">{{ formatUsageLimit(item.limit) }}</p>
+                  <p class="subscription-usage_label mb-1">{{ item.label }}</p>
+                  <p class="subscription-usage_value mb-0">{{ formatUsageLimit(item.limit) }}</p>
                 </div>
                 <span
-                  class="subscription-usage__status"
-                  :class="usageLimitToneClass(item.limit, 'subscription-usage__bar')">
+                  class="subscription-usage_status"
+                  :class="usageLimitToneClass(item.limit, 'subscription-usage_bar')">
                   {{ usageLimitStatusLabel(item.limit) }}
                 </span>
               </div>
 
-              <div class="subscription-usage__track">
+              <div class="subscription-usage_track">
                 <div
-                  class="subscription-usage__bar"
-                  :class="usageLimitToneClass(item.limit, 'subscription-usage__bar')"
+                  class="subscription-usage_track"
+                  :class="usageLimitToneClass(item.limit, 'subscription-usage_bar')"
                   :style="{ width: usageLimitWidth(item.limit) }"></div>
               </div>
             </div>
           </div>
 
-          <div class="subscription-overview__footnote">
+          <div class="subscription-overview_footnote">
             <span>Free plan caps: up to 10 active tasks and 3 members per project.</span>
             <router-link
               v-if="showUpgradeCta"
               :to="{ name: 'Subscription' }"
-              class="btn btn-primary btn-sm subscription-overview__cta">
+              class="btn btn-primary btn-sm subscription-overview_cta">
               Upgrade to Pro
             </router-link>
           </div>
