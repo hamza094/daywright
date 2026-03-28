@@ -9,6 +9,7 @@ use App\QueryBuilder\ProjectQueryBuilder;
 use App\Traits\RecordActivity;
 use Carbon\Carbon;
 use Cviebrock\EloquentSluggable\Sluggable;
+use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use Override;
 
+/** @use HasFactory<ProjectFactory> */
 class Project extends Model
 {
     use HasFactory;

@@ -41,13 +41,12 @@ class SubscriptionResource extends JsonResource
             'entitled' => $this->plan === SubscriptionPlan::Pro,
             'subscribed' => $isBillingSubscribed,
             'available_plans' => $this->availablePlans,
-            'billing_plan' => $isBillingVisible ? $this->resource->displayBillingPlan() : null,
+            'billing_plan' => $isBillingVisible ? $this->displayBillingPlan() : null,
             'next_payment' => $isBillingSubscribed ? $this->payment() : null,
             'created_at' => $isBillingSubscribed && $subscription !== null
                 ? optional($subscription->created_at)->diffForHumans()
                 : null,
-            'receipts' => ReceiptResource::collection($this->receipts),
-
+            'receipts' => ReceiptResource::collection($this->whenLoaded('receipts')),
             'trial' => [
                 'active' => $this->isOnTrial(),
                 'ends_at' => $this->isOnTrial() ? $this->resolveTrialEndsAt() : null,

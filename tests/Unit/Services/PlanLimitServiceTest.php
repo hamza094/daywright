@@ -201,6 +201,46 @@ class PlanLimitServiceTest extends TestCase
     }
 
     #[Test]
+    public function it_executes_account_limited_callbacks_after_locking_and_rechecking_usage(): void
+    {
+        $user = $this->makeUser();
+
+        $createdProject = $this->service->executeWithinAccountLimit(
+            PlanLimitType::Projects,
+            $user,
+            fn (User $lockedUser): Project => $lockedUser->projects()->create([
+                'name' => 'Locked Project',
+                'about' => 'Created within account limit guard',
+                'stage_id' => 1,
+            ])
+        );
+
+        $this->assertSame($user->id, $createdProject->user_id);
+        $this->assertDatabaseHas('projects', ['id' => $createdProject->id, 'name' => 'Locked Project']);
+    }
+
+    #[Test]
+    public function it_executes_project_limited_callbacks_after_locking_and_rechecking_usage(): void
+    {
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
+
+        $task = $this->service->executeWithinProjectLimit(
+            PlanLimitType::ActiveTasksPerProject,
+            $user,
+            $project,
+            fn (User $lockedUser, Project $lockedProject): Task => $lockedProject->tasks()->create([
+                'title' => 'Locked Task',
+                'user_id' => $lockedUser->id,
+                'status_id' => TaskStatusEnum::PENDING,
+            ])
+        );
+
+        $this->assertSame($project->id, $task->project_id);
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'title' => 'Locked Task']);
+    }
+
+    #[Test]
     public function it_returns_account_usage_counts_and_limits(): void
     {
         $user = $this->makeUser();

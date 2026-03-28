@@ -40,7 +40,11 @@ export function handleGlobalApiError(error, { modal, toast, router } = {}) {
     toast?.error(data.message || 'An active subscription is required to perform this action.');
 
     if (router?.currentRoute?.name !== 'Subscription') {
-      router?.push({ name: 'Subscription' }).catch(() => {});
+      router?.push({ name: 'Subscription' }).catch((err) => {
+        if (import.meta?.env?.DEV) {
+          console.warn('Navigation to Subscription failed:', err);
+        }
+      });
     }
 
     error.__globalApiHandled = true;

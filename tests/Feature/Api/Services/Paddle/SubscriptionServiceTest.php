@@ -18,6 +18,7 @@ class SubscriptionServiceTest extends TestCase
     {
         /** @var User&Mockery\MockInterface $user */
         $user = Mockery::mock(User::class);
+        $user->shouldReceive('isSubscribed')->andReturn(true);
         $user->shouldReceive('isBillingSubscribed')->andReturn(true);
         $user->shouldReceive('activeBillingPlan')->andReturn('monthly');
 

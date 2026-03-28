@@ -8,6 +8,7 @@ use App\Actions\NotificationAction;
 use App\Actions\Project\CancelProjectZoomMeetingsAction;
 use App\Jobs\CancelZoomMeetingsJob;
 use App\Models\Project;
+use App\Models\User;
 use App\Notifications\ProjectUpdated;
 use App\Services\Api\V1\Subscription\PlanLimitService;
 
@@ -18,13 +19,11 @@ class ProjectService
     /**
      * @return array<string, array{used: int|null, max: int|null}>|null
      */
-    public function projectLimits(Project $project): ?array
+    public function projectLimits(Project $project, User $user): ?array
     {
         if (! $project->relationLoaded('user')) {
             return null;
         }
-
-        $user = auth()->user();
 
         if (! $user->is($project->user)) {
             return null;

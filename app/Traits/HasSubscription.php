@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Traits;
 
+use LogicException;
+
 /**
  * @method bool onTrial(?string $name = null)
  * @method mixed subscription(string $name)
@@ -13,7 +15,13 @@ trait HasSubscription
 {
     public function subscriptionName(): string
     {
-        return (string) config('services.paddle.subscription_name');
+        $subscriptionName = config('services.paddle.subscription_name');
+
+        if (! is_string($subscriptionName) || $subscriptionName === '') {
+            throw new LogicException('services.paddle.subscription_name must be configured.');
+        }
+
+        return $subscriptionName;
     }
 
     public function isOnTrial(): bool
@@ -53,11 +61,11 @@ trait HasSubscription
         ?int $monthlyPlanId = null,
         ?int $yearlyPlanId = null,
     ): string {
-        if (! $this->isBillingSubscribed()) {
+        $subscription = $this->getSubscription();
+
+        if ($subscription?->recurring() !== true) {
             return 'Not Subscribed Actively';
         }
-
-        $subscription = $this->getSubscription();
 
         return $this->resolveBillingPlanName(
             paddlePlan: $subscription->paddle_plan ?? null,
@@ -121,13 +129,21 @@ trait HasSubscription
         ?int $monthlyPlanId = null,
         ?int $yearlyPlanId = null,
     ): string {
-        $monthlyPlanId ??= (int) config('services.paddle.monthly');
-        $yearlyPlanId ??= (int) config('services.paddle.yearly');
+        $resolvedPaddlePlan = $this->resolveNullablePlanId($paddlePlan);
+        $monthlyPlanId ??= $this->resolveNullablePlanId(config('services.paddle.monthly'));
+        $yearlyPlanId ??= $this->resolveNullablePlanId(config('services.paddle.yearly'));
 
-        return match ((int) $paddlePlan) {
-            $monthlyPlanId => 'monthly',
-            $yearlyPlanId => 'yearly',
+        return match (true) {
+            $resolvedPaddlePlan !== null && $resolvedPaddlePlan === $monthlyPlanId => 'monthly',
+            $resolvedPaddlePlan !== null && $resolvedPaddlePlan === $yearlyPlanId => 'yearly',
             default => 'Unknown',
         };
+    }
+
+    protected function resolveNullablePlanId(mixed $planId): ?int
+    {
+        $resolvedPlanId = filter_var($planId, FILTER_VALIDATE_INT);
+
+        return $resolvedPlanId === false ? null : $resolvedPlanId;
     }
 }

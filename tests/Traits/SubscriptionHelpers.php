@@ -4,15 +4,41 @@ declare(strict_types=1);
 
 namespace Tests\Traits;
 
+use App\Enums\PlanLimitType;
+use App\Enums\SubscriptionPlan;
 use App\Models\Project;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Http;
 use Laravel\Paddle\Customer;
 use Laravel\Paddle\Receipt;
 use Laravel\Paddle\Subscription as PaddleSubscription;
 
 trait SubscriptionHelpers
 {
+    private function fakePaddleVendorApiResponses(): void
+    {
+        Http::preventStrayRequests();
+
+        $paddleResponse = Http::response([
+            'success' => true,
+            'response' => [[
+                'next_payment' => [
+                    'amount' => 10.00,
+                    'currency' => 'USD',
+                    'date' => now()->addMonth()->toDateString(),
+                ],
+                'user_email' => 'test@example.com',
+                'payment_information' => ['payment_method' => 'card'],
+            ]],
+        ], 200);
+
+        Http::fake([
+            'https://sandbox-vendors.paddle.com/*' => $paddleResponse,
+            'https://vendors.paddle.com/*' => $paddleResponse,
+        ]);
+    }
+
     private function createTrialCustomer(User $user, Carbon $trialEndsAt): Customer
     {
         return Customer::query()->create([
@@ -77,7 +103,9 @@ trait SubscriptionHelpers
         /** @var User $user */
         $user = User::factory()->create();
 
-        Project::factory()->count(3)->for($user)->create();
+        $limit = SubscriptionPlan::Free->maxFor(PlanLimitType::Projects) ?? 0;
+
+        Project::factory()->count($limit)->for($user)->create();
 
         return $user;
     }

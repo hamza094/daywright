@@ -18,7 +18,6 @@ class InvitationTest extends TestCase
     public function project_owner_can_invite_user(): void
     {
         /** @var User $invitedUser */
-        /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
         $this->postJson($this->project->path().'/invitations', [

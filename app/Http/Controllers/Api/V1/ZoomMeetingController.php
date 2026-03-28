@@ -12,12 +12,12 @@ use App\Http\Resources\Api\V1\Zoom\MeetingResource;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\User;
 use App\Services\Api\V1\ExceptionService;
 use App\Services\Api\V1\MeetingService;
 use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ZoomMeetingController extends ApiController
 {
@@ -50,16 +50,16 @@ class ZoomMeetingController extends ApiController
     {
         $this->authorize('manage', $project);
 
-        $user = $this->authenticatedUser();
+        $projectMeeting = $planLimitService->executeWithinAccountLimit(
+            PlanLimitType::CreatedMeetings,
+            $this->authenticatedUser(),
+            function (User $user) use ($zoom, $project, $request): Meeting {
+                $meeting = $zoom->createMeeting($request->validated(), $user);
+                $meetingArray = (array) $meeting + ['user_id' => $user->id];
 
-        $planLimitService->assertWithinLimit(PlanLimitType::CreatedMeetings, $user);
-
-        $projectMeeting = DB::transaction(function () use ($zoom, $project, $user, $request) {
-            $meeting = $zoom->createMeeting($request->validated(), $user);
-            $meetingArray = (array) $meeting + ['user_id' => $user->id];
-
-            return $project->meetings()->create($meetingArray);
-        });
+                return $project->meetings()->create($meetingArray);
+            }
+        );
 
         return response()->json([
             'message' => 'Meeting Created Successfully',
@@ -73,7 +73,7 @@ class ZoomMeetingController extends ApiController
 
         $user = $this->authenticatedUser();
 
-        DB::transaction(function () use ($zoom, $meeting, $request, $user): void {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($zoom, $meeting, $request, $user): void {
             $meeting->update($request->validated());
             $zoom->updateMeeting($request->validated(), $user);
         });
@@ -93,7 +93,7 @@ class ZoomMeetingController extends ApiController
         $meetingId = $meeting->meeting_id;
         $user = $this->authenticatedUser();
 
-        DB::transaction(function () use ($zoom, $meeting, $meetingId, $user): void {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($zoom, $meeting, $meetingId, $user): void {
             $meeting->delete();
             $zoom->deleteMeeting($meetingId, $user);
         });

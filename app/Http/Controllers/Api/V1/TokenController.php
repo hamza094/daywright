@@ -8,6 +8,7 @@ use App\Enums\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
+use App\Models\User;
 use App\Services\Api\V1\Subscription\PlanLimitService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -35,16 +36,16 @@ class TokenController extends ApiController
      */
     public function store(UserTokenRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
-        $user = $this->authenticatedUser();
-
-        $planLimitService->assertWithinLimit(PlanLimitType::ApiTokens, $user);
-
         $data = $request->validated();
 
-        $token = $user->createToken(
-            $data['name'],
-            ['*'],
-            Carbon::parse($data['expires_at'] ?? null)
+        $token = $planLimitService->executeWithinAccountLimit(
+            PlanLimitType::ApiTokens,
+            $this->authenticatedUser(),
+            fn (User $user) => $user->createToken(
+                $data['name'],
+                ['*'],
+                Carbon::parse($data['expires_at'] ?? null)
+            )
         );
 
         return response()->json([

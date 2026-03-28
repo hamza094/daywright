@@ -21,6 +21,12 @@ class CheckSubscription
     {
         $user = $request->user();
 
+        if (! $user) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
         if ($user->isSubscribed() || $user->isOnTrial()) {
             return $next($request);
         }

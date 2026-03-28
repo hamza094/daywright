@@ -22,10 +22,9 @@ trait FixtureHelpers
         $user->createToken('primary-token');
     }
 
-    private function createTaskStatuses(): void
+    private function createTaskStatuses(?User $owner = null): void
     {
-        /** @var User $owner */
-        $owner = User::factory()->create();
+        $userId = $owner?->id;
 
         $statuses = [
             TaskStatusEnum::PENDING => 'Pending',
@@ -40,7 +39,7 @@ trait FixtureHelpers
                 'id' => $id,
                 'label' => $label,
                 'color' => '#000000',
-                'user_id' => $owner->id,
+                'user_id' => $userId,
             ]);
         }
     }

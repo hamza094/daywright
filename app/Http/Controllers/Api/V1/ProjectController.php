@@ -11,11 +11,11 @@ use App\Http\Requests\Api\V1\ProjectUpdateRequest;
 use App\Http\Resources\Api\V1\ProjectResource;
 use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Models\Project;
+use App\Models\User;
 use App\Services\Api\V1\ProjectService;
 use App\Services\Api\V1\Subscription\PlanLimitService;
-use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 class ProjectController extends ApiController
 {
@@ -30,29 +30,20 @@ class ProjectController extends ApiController
      */
     public function store(ProjectStoreRequest $request): JsonResponse
     {
-        $user = $this->authenticatedUser();
+        $project = $this->planLimitService->executeWithinAccountLimit(
+            PlanLimitType::Projects,
+            $this->authenticatedUser(),
+            function (User $user) use ($request): Project {
+                $project = $user->projects()
+                    ->create($request->safe()->except(['tasks']));
 
-        $this->planLimitService->assertWithinLimit(PlanLimitType::Projects, $user);
+                if ($request->tasks) {
+                    $this->projectService->addTasksToProject($project, $request->safe()->only(['tasks']));
+                }
 
-        DB::beginTransaction();
-
-        try {
-
-            $project = $user->projects()
-                ->create($request->safe()->except(['tasks']));
-
-            if ($request->tasks) {
-                $this->projectService->addTasksToProject($project, $request->safe()->only(['tasks']));
+                return $project;
             }
-
-            DB::commit();
-
-        } catch (Exception $ex) {
-
-            DB::rollBack();
-
-            throw $ex;
-        }
+        );
 
         return response()->json([
             'message' => 'Project Created Successfully',
@@ -65,13 +56,13 @@ class ProjectController extends ApiController
      *
      * Returns detailed information about a project including its members, conversations, and activities
      */
-    public function show(Project $project): ProjectResource
+    public function show(Project $project, Request $request): ProjectResource
     {
         $this->authorize('access', $project);
 
         $project->load(['user', 'stage', 'meetings', 'activeMembers', 'limitedActivities']);
 
-        return new ProjectResource($project, $this->projectService->projectLimits($project));
+        return new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()));
     }
 
     /**
@@ -99,7 +90,7 @@ class ProjectController extends ApiController
 
         return response()->json([
             'message' => 'Project Updated Successfully',
-            'project' => new ProjectResource($project, $this->projectService->projectLimits($project)),
+            'project' => new ProjectResource($project, $this->projectService->projectLimits($project, $request->user())),
         ], 200);
     }
 

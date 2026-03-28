@@ -8,7 +8,6 @@ use App\Models\Project;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Override;
@@ -35,7 +34,7 @@ class SubscriptionResourceTest extends TestCase
         config()->set('services.paddle.prices.yearly', 100);
         config()->set('services.paddle.prices.currency', 'USD');
 
-        $this->fakePaddleApi();
+        $this->fakePaddleVendorApiResponses();
 
         /** @var User $user */
         $user = User::factory()->create();
@@ -169,7 +168,9 @@ class SubscriptionResourceTest extends TestCase
     #[Test]
     public function trial_user_receives_pro_plan_in_subscription_shape(): void
     {
-        $this->createTrialCustomer($this->user, Carbon::now()->addDays(5));
+
+        $trialEndsAt = Carbon::now()->addDays(5);
+        $this->createTrialCustomer($this->user, $trialEndsAt);
 
         $response = $this->subscriptionResponse();
 
@@ -180,7 +181,7 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.created_at', null)
             ->assertJsonPath('subscription.receipts', [])
             ->assertJsonPath('subscription.trial.active', true)
-            ->assertJsonPath('subscription.trial.ends_at', Carbon::now()->addDays(5)->isoFormat('MMMM Do YYYY'))
+            ->assertJsonPath('subscription.trial.ends_at', $trialEndsAt->isoFormat('MMMM Do YYYY'))
             ->assertJsonPath('subscription.grace_period.active', false)
             ->assertJsonPath('subscription.limits.projects.max', null)
             ->assertJsonMissingPath('subscription.limits.active_tasks_per_project')
@@ -227,21 +228,5 @@ class SubscriptionResourceTest extends TestCase
         foreach ($limits as $limit => $max) {
             $response->assertJsonPath("subscription.limits.{$limit}.max", $max);
         }
-    }
-
-    private function fakePaddleApi(): void
-    {
-        Http::fake(['*' => Http::response([
-            'success' => true,
-            'response' => [[
-                'next_payment' => [
-                    'amount' => 10.00,
-                    'currency' => 'USD',
-                    'date' => now()->addMonth()->toDateString(),
-                ],
-                'user_email' => 'test@example.com',
-                'payment_information' => ['payment_method' => 'card'],
-            ]],
-        ], 200)]);
     }
 }

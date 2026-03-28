@@ -12,6 +12,7 @@ use App\Http\Resources\Api\V1\TaskResource;
 use App\Http\Resources\Api\V1\TasksResource;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\User;
 use App\Services\Api\V1\Subscription\PlanLimitService;
 use App\Services\Api\V1\Task\TaskService;
 use Illuminate\Http\JsonResponse;
@@ -51,13 +52,15 @@ class TaskController extends ApiController
      */
     public function store(Project $project, TaskRequest $request, TaskService $taskService, PlanLimitService $planLimitService): JsonResponse
     {
-        $user = $this->authenticatedUser();
-
-        $planLimitService->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, $user, $project);
-
-        $task = $project->tasks()->firstOrCreate(
-            $request->validated() + ['user_id' => $user->id,
-            ]);
+        $task = $planLimitService->executeWithinProjectLimit(
+            PlanLimitType::ActiveTasksPerProject,
+            $this->authenticatedUser(),
+            $project,
+            fn (User $user, Project $lockedProject): Task => $lockedProject->tasks()->firstOrCreate(
+                $request->validated() + ['user_id' => $user->id,
+                ]
+            )
+        );
 
         $taskService->sendNotification($project);
 

@@ -11,7 +11,6 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
 
 class NotificationsController extends ApiController
 {
@@ -20,7 +19,7 @@ class NotificationsController extends ApiController
      */
     public function index(Request $request): LengthAwarePaginator
     {
-        $notifications = Auth::user()
+        $notifications = $this->authenticatedUser()
             ->notifications()
             ->latest()
             ->when($request->filter === NotificationFilter::READ->value, fn ($query) => $query->whereNotNull('read_at'))
@@ -35,7 +34,9 @@ class NotificationsController extends ApiController
      */
     public function markAllAsRead(): JsonResponse
     {
-        Auth::user()->unreadNotifications->markAsRead();
+        $this->authenticatedUser()->unreadNotifications()->update([
+            'read_at' => now(),
+        ]);
 
         return response()->json([
             'message' => 'All users notifications marked as read.',
@@ -47,7 +48,7 @@ class NotificationsController extends ApiController
      */
     public function destroy($notification): JsonResponse
     {
-        Auth::user()->notifications()
+        $this->authenticatedUser()->notifications()
             ->findOrFail($notification)->delete();
 
         return response()->json([
@@ -62,7 +63,7 @@ class NotificationsController extends ApiController
     {
         $request->validate(['status' => 'required|in:read,unread']);
 
-        $userNotification = Auth::user()->notifications()->findOrFail($notification);
+        $userNotification = $this->authenticatedUser()->notifications()->findOrFail($notification);
 
         $request->status === 'read'
             ? $userNotification->markAsRead()

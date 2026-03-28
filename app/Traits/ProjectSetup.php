@@ -23,7 +23,6 @@ trait ProjectSetup
 
         parent::setUp();
 
-        /** @var User $user */
         $user = User::factory()->create([
             'email' => 'johndoe@example.org',
             'password' => Hash::make('testpassword'),
@@ -35,11 +34,9 @@ trait ProjectSetup
             $this->user,
         );
 
-        /** @var TaskStatus $status */
         $status = TaskStatus::factory()->create();
         $this->status = $status;
 
-        /** @var Project $project */
         $project = Project::factory()->for($this->user)->create();
         $this->project = $project;
 

@@ -32,13 +32,13 @@
 
 @mixin usage-limit-tone($tone) {
   @if $tone == healthy {
-    color: #1e7e34;
+    color: #14532d;
     background: linear-gradient(90deg, #2f9e44 0%, #51cf66 100%);
   } @else if $tone == warning {
-    color: #b7791f;
+    color: #78350f;
     background: linear-gradient(90deg, #f08c00 0%, #ffd43b 100%);
   } @else if $tone == critical {
-    color: #c92a2a;
+    color: #7f1d1d;
     background: linear-gradient(90deg, #e03131 0%, #ff6b6b 100%);
   }
 }

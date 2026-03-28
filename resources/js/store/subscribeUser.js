@@ -35,14 +35,18 @@ const getters = {
 
 const actions = {
   userSubscription({ commit }) {
-    axios
+    return axios
       .get('/user/subscriptions', {})
       .then((response) => {
         commit('setSubscription', response.data.subscription);
         commit('setErrors', '');
+        return response;
       })
       .catch((error) => {
-        commit('setErrors', error.response.data.errors);
+        const safeErrors = error?.response?.data?.errors ?? error?.message ?? 'Unknown error';
+        commit('setErrors', safeErrors);
+        // Re-throw so callers can chain if they need to
+        throw error;
       });
   },
 
@@ -50,7 +54,10 @@ const actions = {
     commit('setSubscription', {});
   },
 
-  deleteSubscription() {},
+  // TODO: call API to cancel subscription and update store
+  deleteSubscription() {
+    return Promise.reject(new Error('deleteSubscription not implemented.'));
+  },
 };
 
 const mutations = {

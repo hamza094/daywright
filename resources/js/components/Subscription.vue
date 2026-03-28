@@ -46,7 +46,7 @@
 
               <div class="subscription-usage_track">
                 <div
-                  class="subscription-usage_track"
+                  class="subscription-usage_bar"
                   :class="usageLimitToneClass(item.limit, 'subscription-usage_bar')"
                   :style="{ width: usageLimitWidth(item.limit) }"></div>
               </div>
@@ -54,7 +54,6 @@
           </div>
 
           <div class="subscription-overview_footnote">
-            <span>Free plan caps: up to 10 active tasks and 3 members per project.</span>
             <router-link
               v-if="showUpgradeCta"
               :to="{ name: 'Subscription' }"
@@ -114,6 +113,7 @@
               </div>
 
               <button
+                v-if="isFreeUser"
                 class="btn btn-primary btn-lg btn-block mt-auto"
                 @click="subscribe(plan.name)"
                 :disabled="isIframeOpen || isOpeningIframe">
@@ -224,7 +224,14 @@ export default {
   // Computed properties for derived state
   computed: {
     ...mapState('subscribeUser', ['subscription']),
-    ...mapGetters('subscribeUser', ['accountLimits', 'isActivelyBilling', 'isInGracePeriod', 'isOnTrial', 'plan']),
+    ...mapGetters('subscribeUser', [
+      'accountLimits',
+      'isActivelyBilling',
+      'isInGracePeriod',
+      'isOnTrial',
+      'plan',
+      'isFreeUser',
+    ]),
 
     availablePlans() {
       return Array.isArray(this.subscription?.available_plans) ? this.subscription.available_plans : [];

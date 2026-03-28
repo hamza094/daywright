@@ -4,29 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Api\V1;
 
-use App\Traits\HasSubscription;
 use PHPUnit\Framework\TestCase;
-
-class DummyUserWithSubscription
-{
-    use HasSubscription;
-
-    public mixed $mockSubscription;
-
-    // Provide a stable subscription name for unit tests (avoids calling the global config() helper)
-    public function subscriptionName(): string
-    {
-        return 'DayWright';
-    }
-
-    public function subscription(string $name): mixed
-    {
-        return $this->mockSubscription;
-    }
-}
+use Tests\Traits\DummyUserWithSubscription;
 
 class HasSubscriptionTraitTest extends TestCase
 {
+    public function test_resolve_billing_plan_name_does_not_treat_non_numeric_paddle_plan_as_zero(): void
+    {
+        $user = new DummyUserWithSubscription;
+
+        $this->assertSame('Unknown', $user->resolveBillingPlanName('invalid-plan', 0, 456));
+    }
+
     public function test_is_subscribed_returns_true_when_subscription_is_valid(): void
     {
         $user = new DummyUserWithSubscription;

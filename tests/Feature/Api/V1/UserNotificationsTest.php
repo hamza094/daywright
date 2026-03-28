@@ -52,7 +52,7 @@ class UserNotificationsTest extends TestCase
         $response = $this->withoutExceptionHandling()->getJson('/api/v1/notifications/mark-all-read');
 
         $response->assertStatus(200);
-        $this->assertCount(0, $user->fresh()->unreadNotifications);
+        $this->assertCount(0, $user->fresh()->unreadNotifications()->get());
     }
 
     /** @test */

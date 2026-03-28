@@ -15,6 +15,22 @@ enum PlanLimitType: string
     case CreatedMeetings = 'created_meetings';
     case ApiTokens = 'api_tokens';
 
+    /**
+     * @return array<string>
+     */
+    public static function values(): array
+    {
+        return array_column(self::cases(), 'value');
+    }
+
+    /**
+     * @return array<self>
+     */
+    public static function all(): array
+    {
+        return self::cases();
+    }
+
     public function configKey(): string
     {
         return match ($this) {

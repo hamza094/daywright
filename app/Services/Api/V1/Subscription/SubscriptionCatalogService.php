@@ -50,8 +50,25 @@ final class SubscriptionCatalogService
             'interval_label' => $intervalLabel,
             'price' => $price,
             'currency' => $currency,
-            'currency_symbol' => '$',
+            'currency_symbol' => $this->getSymbolForCurrency($currency),
             'featured' => $featured,
         ];
+    }
+
+    private function getSymbolForCurrency(string $currency): string
+    {
+        // Common currency symbol mapping. Extend as needed.
+        return match ($currency) {
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            'JPY' => '¥',
+            'AUD' => '$',
+            'CAD' => '$',
+            'CHF' => 'CHF',
+            'CNY' => '¥',
+            'INR' => '₹',
+            default => $currency,
+        };
     }
 }

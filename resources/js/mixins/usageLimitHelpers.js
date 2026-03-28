@@ -1,5 +1,9 @@
 export default {
   methods: {
+    /**
+     * Returns the percentage of limit used (0-100+).
+     * Returns 0 for unlimited plans (max === null) since there's no cap to measure against.
+     */
     usageLimitRatio(limit) {
       if (!limit || limit.max === null || limit.max <= 0) {
         return 0;
@@ -8,6 +12,10 @@ export default {
       return (limit.used / limit.max) * 100;
     },
 
+    /**
+     * Returns CSS width for progress bar.
+     * Returns '100%' for unlimited plans to display a full healthy bar.
+     */
     usageLimitWidth(limit) {
       if (!limit || limit.max === null || limit.max <= 0) {
         return '100%';
@@ -18,20 +26,20 @@ export default {
 
     usageLimitToneClass(limit, classPrefix) {
       if (!limit || limit.max === null) {
-        return `${classPrefix}--healthy`;
+        return `${classPrefix}-healthy`;
       }
 
       const ratio = this.usageLimitRatio(limit);
 
       if (ratio >= 90) {
-        return `${classPrefix}--critical`;
+        return `${classPrefix}-critical`;
       }
 
       if (ratio >= 70) {
-        return `${classPrefix}--warning`;
+        return `${classPrefix}-warning`;
       }
 
-      return `${classPrefix}--healthy`;
+      return `${classPrefix}-healthy`;
     },
 
     usageLimitStatusLabel(limit, unlimitedLabel = 'Unlimited') {

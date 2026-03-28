@@ -14,7 +14,6 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Api\V1\InvitationService;
 use App\Services\Api\V1\Subscription\PlanLimitService;
-use Auth;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -55,12 +54,17 @@ class InvitationController extends ApiController
      */
     public function invite(Project $project, InvitationUsersRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
-        $planLimitService->assertWithinLimit(PlanLimitType::MembersPerProject, $this->authenticatedUser(), $project);
-
         $user = User::whereEmail($request->validated())->first();
 
         try {
-            $this->invitationService->sendInvitation($user, $project);
+            $planLimitService->executeWithinProjectLimit(
+                PlanLimitType::MembersPerProject,
+                $this->authenticatedUser(),
+                $project,
+                function (User $owner, Project $lockedProject) use ($user): void {
+                    $this->invitationService->sendInvitation($user, $lockedProject);
+                }
+            );
 
             return response()->json([
                 'message' => 'Project invitation sent to '.$user->name,
@@ -88,13 +92,14 @@ class InvitationController extends ApiController
     public function accept(Project $project): JsonResponse
     {
         try {
+            $user = $this->authenticatedUser();
 
             $this->invitationService->acceptInvitation($project);
 
             return response()->json([
                 'message' => 'You have accepted Project invitation',
                 'project' => new ProjectsResource($project),
-                'accepted_user' => new InvitedUserResource(Auth::user()),
+                'accepted_user' => new InvitedUserResource($user),
             ], 200);
 
         } catch (Exception) {

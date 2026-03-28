@@ -10,15 +10,19 @@ use App\Enums\TaskStatus;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Models\Project;
 use App\Models\User;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
  * Resolves the effective subscription plan and enforces plan-based usage limits.
  */
-final class PlanLimitService
+final readonly class PlanLimitService
 {
+    private const int TRANSACTION_RETRY_ATTEMPTS = 5;
+
     /**
      * @var array<int, PlanLimitType>
      */
@@ -96,6 +100,45 @@ final class PlanLimitService
         );
     }
 
+    /**
+     * @template TReturn
+     *
+     * @param  Closure(User): TReturn  $callback
+     * @return TReturn
+     */
+    public function executeWithinAccountLimit(PlanLimitType $type, User $user, Closure $callback): mixed
+    {
+        $this->ensureAccountLimitType($type);
+
+        return DB::transaction(function () use ($type, $user, $callback): mixed {
+            $lockedUser = $this->lockUser($user);
+
+            $this->assertWithinLimit($type, $lockedUser);
+
+            return $callback($lockedUser);
+        }, self::TRANSACTION_RETRY_ATTEMPTS);
+    }
+
+    /**
+     * @template TReturn
+     *
+     * @param  Closure(User, Project): TReturn  $callback
+     * @return TReturn
+     */
+    public function executeWithinProjectLimit(PlanLimitType $type, User $user, Project $project, Closure $callback): mixed
+    {
+        $this->ensureProjectLimitType($type);
+
+        return DB::transaction(function () use ($type, $user, $project, $callback): mixed {
+            $lockedUser = $this->lockUser($user);
+            $lockedProject = $this->lockProject($project);
+
+            $this->assertWithinLimit($type, $lockedUser, $lockedProject);
+
+            return $callback($lockedUser, $lockedProject);
+        }, self::TRANSACTION_RETRY_ATTEMPTS);
+    }
+
     // Private helpers (in logical order)
     private function assertLimit(
         User $user,
@@ -143,6 +186,24 @@ final class PlanLimitService
     private function countUsage(PlanLimitType $type, User $user, ?Project $project): int
     {
         return $this->resolveUsageCount($type, $user, $project);
+    }
+
+    private function ensureAccountLimitType(PlanLimitType $type): void
+    {
+        if (in_array($type, self::ACCOUNT_LIMIT_TYPES, true)) {
+            return;
+        }
+
+        throw new InvalidArgumentException("The {$type->value} limit is not account scoped.");
+    }
+
+    private function ensureProjectLimitType(PlanLimitType $type): void
+    {
+        if (in_array($type, self::PROJECT_LIMIT_TYPES, true)) {
+            return;
+        }
+
+        throw new InvalidArgumentException("The {$type->value} limit is not project scoped.");
     }
 
     private function resolveUsageCount(PlanLimitType $type, User $user, ?Project $project): int
@@ -207,6 +268,28 @@ final class PlanLimitService
         return $project ?? throw new InvalidArgumentException(
             "The {$type->value} limit requires a project context."
         );
+    }
+
+    private function lockUser(User $user): User
+    {
+        /** @var User $lockedUser */
+        $lockedUser = User::query()
+            ->whereKey($user->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return $lockedUser;
+    }
+
+    private function lockProject(Project $project): Project
+    {
+        /** @var Project $lockedProject */
+        $lockedProject = Project::query()
+            ->whereKey($project->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return $lockedProject;
     }
 
     private function loadBillingRelations(User $user): User
