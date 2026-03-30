@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1;
 
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class FeatureFlagsTest extends TestCase
 {

@@ -8,11 +8,11 @@ use App\Jobs\SmsMessage;
 use App\Mail\ProjectMail;
 use App\Models\Message;
 use App\Services\Api\V1\SendSmsService;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Mockery\MockInterface;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class JobsTest extends TestCase
 {

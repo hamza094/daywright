@@ -6,10 +6,10 @@ namespace Tests\Feature\Api\V1\ProjectDashboard;
 
 use App\Models\Project;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class UserProjectsPageTest extends TestCase
 {

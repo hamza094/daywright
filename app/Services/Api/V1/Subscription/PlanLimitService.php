@@ -4,100 +4,33 @@ declare(strict_types=1);
 
 namespace App\Services\Api\V1\Subscription;
 
-use App\Enums\PlanLimitType;
-use App\Enums\SubscriptionPlan;
+use App\Actions\Subscription\ResolveUsageCountAction;
+use App\Enums\Subscription\PlanLimitType;
+use App\Enums\Subscription\SubscriptionPlan;
 use App\Enums\TaskStatus;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Models\Project;
 use App\Models\User;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 /**
- * Resolves the effective subscription plan and enforces plan-based usage limits.
+ * Enforces subscription plan limits, using row locks when a guarded write must stay race-safe.
  */
 final readonly class PlanLimitService
 {
     private const int TRANSACTION_RETRY_ATTEMPTS = 5;
 
-    /**
-     * @var array<int, PlanLimitType>
-     */
-    private const array ACCOUNT_LIMIT_TYPES = [
-        PlanLimitType::Projects,
-        PlanLimitType::CreatedMeetings,
-        PlanLimitType::ApiTokens,
-    ];
+    public function __construct(private readonly ResolveUsageCountAction $resolveUsageCountAction) {}
 
     /**
-     * @var array<int, PlanLimitType>
+     * Resolves the caller's effective application plan from its billing state.
      */
-    private const array PROJECT_LIMIT_TYPES = [
-        PlanLimitType::ActiveTasksPerProject,
-        PlanLimitType::MembersPerProject,
-    ];
-
-    /**
-     * @var array<string, SubscriptionPlan>
-     */
-    // Caching removed: compute values on demand to simplify behavior.
-
-    // Public API
     public function plan(User $user): SubscriptionPlan
     {
         return SubscriptionPlan::fromUser($this->loadBillingRelations($user));
-    }
-
-    /**
-     * @return array<string, array{used: int|null, max: int|null}>
-     */
-    public function accountUsage(User $user): array
-    {
-        $user->loadCount([
-            'projects',
-            'meetings',
-            'tokens',
-        ]);
-
-        return $this->buildUsage(self::ACCOUNT_LIMIT_TYPES, $user);
-    }
-
-    /**
-     * @return array<string, array{used: int|null, max: int|null}>
-     */
-    public function projectUsage(User $user, Project $project): array
-    {
-        $project->loadCount([
-            'tasks as active_tasks_count' => fn (Builder $query): Builder => $query->whereIn('status_id', TaskStatus::active()),
-            'activeMembers as active_members_count' => fn (Builder $query): Builder => $query,
-        ]);
-
-        return $this->buildUsage(self::PROJECT_LIMIT_TYPES, $user, $project);
-    }
-
-    /**
-     * @return array<string, array{used: int|null, max: int|null}>
-     */
-    public function usage(User $user, ?Project $project = null): array
-    {
-        return [
-            ...$this->accountUsage($user),
-            ...($project instanceof Project ? $this->projectUsage($user, $project) : []),
-        ];
-    }
-
-    public function assertWithinLimit(PlanLimitType $type, User $user, ?Project $project = null): void
-    {
-        $this->assertLimit(
-            user: $user,
-            limitType: $type->exceptionKey(),
-            currentUsage: $this->countUsage($type, $user, $project),
-            maxAllowed: $this->plan($user)->maxFor($type),
-            messageSubject: $type->messageSubject(),
-        );
     }
 
     /**
@@ -112,6 +45,12 @@ final readonly class PlanLimitService
 
         return DB::transaction(function () use ($type, $user, $callback): mixed {
             $lockedUser = $this->lockUser($user);
+
+            $lockedUser->loadCount([
+                'projects',
+                'meetings',
+                'tokens',
+            ]);
 
             $this->assertWithinLimit($type, $lockedUser);
 
@@ -133,13 +72,31 @@ final readonly class PlanLimitService
             $lockedUser = $this->lockUser($user);
             $lockedProject = $this->lockProject($project);
 
+            $lockedProject->loadCount([
+                'tasks as active_tasks_count' => fn (Builder $query): Builder => $query->whereIn('status_id', TaskStatus::active()),
+                'activeMembers as active_members_count' => fn (Builder $query): Builder => $query,
+            ]);
+
             $this->assertWithinLimit($type, $lockedUser, $lockedProject);
 
             return $callback($lockedUser, $lockedProject);
         }, self::TRANSACTION_RETRY_ATTEMPTS);
     }
 
-    // Private helpers (in logical order)
+    /**
+     * Throws when the current usage has already reached the configured maximum for the plan.
+     */
+    public function assertWithinLimit(PlanLimitType $type, User $user, ?Project $project = null): void
+    {
+        $this->assertLimit(
+            user: $user,
+            limitType: $type->exceptionKey(),
+            currentUsage: $this->resolveUsageCountAction->execute($type, $user, $project),
+            maxAllowed: $this->plan($user)->maxFor($type),
+            messageSubject: $type->messageSubject(),
+        );
+    }
+
     private function assertLimit(
         User $user,
         string $limitType,
@@ -162,14 +119,16 @@ final readonly class PlanLimitService
         );
     }
 
+    /**
+     * A null limit means the feature is unbounded for the current plan.
+     */
     private function withinLimit(int $usage, ?int $maxAllowed): bool
     {
         return $maxAllowed === null || $usage < $maxAllowed;
     }
 
     /**
-     * Preserve the existing API error semantics for free users who reached limits
-     * after a trial expired.
+     * Distinguishes a true plan cap from a free-trial account that has simply expired.
      */
     private function resolveLimitReason(User $user): string
     {
@@ -183,14 +142,9 @@ final readonly class PlanLimitService
         return PlanLimitExceededException::REASON_LIMIT_REACHED;
     }
 
-    private function countUsage(PlanLimitType $type, User $user, ?Project $project): int
-    {
-        return $this->resolveUsageCount($type, $user, $project);
-    }
-
     private function ensureAccountLimitType(PlanLimitType $type): void
     {
-        if (in_array($type, self::ACCOUNT_LIMIT_TYPES, true)) {
+        if (! $type->requiresProject()) {
             return;
         }
 
@@ -199,75 +153,11 @@ final readonly class PlanLimitService
 
     private function ensureProjectLimitType(PlanLimitType $type): void
     {
-        if (in_array($type, self::PROJECT_LIMIT_TYPES, true)) {
+        if ($type->requiresProject()) {
             return;
         }
 
         throw new InvalidArgumentException("The {$type->value} limit is not project scoped.");
-    }
-
-    private function resolveUsageCount(PlanLimitType $type, User $user, ?Project $project): int
-    {
-        if (in_array($type, self::ACCOUNT_LIMIT_TYPES, true)) {
-            return $this->accountCount($type, $user);
-        }
-
-        $project = $this->projectFor($type, $project);
-
-        return $this->projectCount($type, $project);
-    }
-
-    private function accountCount(PlanLimitType $type, User $user): int
-    {
-        return match ($type) {
-            PlanLimitType::Projects => $this->loadedCount($user, 'projects_count') ?? $user->projects()->count(),
-            PlanLimitType::CreatedMeetings => $this->loadedCount($user, 'meetings_count') ?? $user->meetings()->count(),
-            PlanLimitType::ApiTokens => $this->loadedCount($user, 'tokens_count') ?? $user->tokens()->count(),
-            default => throw new InvalidArgumentException("Invalid account limit type: {$type->value}"),
-        };
-    }
-
-    private function projectCount(PlanLimitType $type, Project $project): int
-    {
-        return match ($type) {
-            PlanLimitType::ActiveTasksPerProject => $this->loadedCount($project, 'active_tasks_count') ?? $project->tasks()->whereIn('status_id', TaskStatus::active())->count(),
-            PlanLimitType::MembersPerProject => $this->loadedCount($project, 'active_members_count') ?? $project->activeMembers()->count(),
-            default => throw new InvalidArgumentException("Invalid project limit type: {$type->value}"),
-        };
-    }
-
-    private function loadedCount(Model $model, string $attribute): ?int
-    {
-        if (! array_key_exists($attribute, $model->getAttributes())) {
-            return null;
-        }
-
-        return max(0, (int) $model->getAttribute($attribute));
-    }
-
-    /**
-     * @param  array<int, PlanLimitType>  $types
-     * @return array<string, array{used: int|null, max: int|null}>
-     */
-    private function buildUsage(array $types, User $user, ?Project $project = null): array
-    {
-        $plan = $this->plan($user);
-
-        return collect($types)
-            ->mapWithKeys(fn (PlanLimitType $type): array => [
-                $type->value => [
-                    'used' => $this->countUsage($type, $user, $project),
-                    'max' => $plan->maxFor($type),
-                ],
-            ])
-            ->toArray();
-    }
-
-    private function projectFor(PlanLimitType $type, ?Project $project): Project
-    {
-        return $project ?? throw new InvalidArgumentException(
-            "The {$type->value} limit requires a project context."
-        );
     }
 
     private function lockUser(User $user): User

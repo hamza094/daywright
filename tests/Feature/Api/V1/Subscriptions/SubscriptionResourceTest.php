@@ -12,8 +12,8 @@ use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Helpers\SubscriptionHelpers;
 use Tests\TestCase;
-use Tests\Traits\SubscriptionHelpers;
 
 class SubscriptionResourceTest extends TestCase
 {
@@ -34,6 +34,7 @@ class SubscriptionResourceTest extends TestCase
         config()->set('services.paddle.prices.yearly', 100);
         config()->set('services.paddle.prices.currency', 'USD');
 
+        // SubscriptionHelpers fakes the Paddle vendor API calls used by the resource.
         $this->fakePaddleVendorApiResponses();
 
         /** @var User $user */
@@ -73,6 +74,7 @@ class SubscriptionResourceTest extends TestCase
     #[Test]
     public function pro_user_receives_correct_subscription_shape(): void
     {
+        // SubscriptionHelpers seeds the active subscription and its receipt.
         $subscription = $this->createProSubscription($this->user);
         $this->createReceipt($this->user, $subscription);
 
@@ -83,16 +85,7 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.subscribed', true)
             ->assertJsonPath('subscription.billing_plan', 'monthly')
             ->assertJsonPath('subscription.trial.active', false)
-            ->assertJsonPath('subscription.grace_period.active', false)
-            ->assertJsonStructure([
-                'subscription' => [
-                    'available_plans',
-                    'billing_plan',
-                    'next_payment',
-                    'created_at',
-                    'receipts',
-                ],
-            ]);
+            ->assertJsonPath('subscription.grace_period.active', false);
 
         $this->assertLimitMaximums($response, [
             'projects' => null,
@@ -104,6 +97,7 @@ class SubscriptionResourceTest extends TestCase
     #[Test]
     public function grace_period_user_receives_correct_subscription_shape(): void
     {
+        // SubscriptionHelpers seeds a grace-period subscription and its receipt.
         $subscription = $this->createGracePeriodSubscription($this->user);
         $this->createReceipt($this->user, $subscription);
 
@@ -116,20 +110,13 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.next_payment', null)
             ->assertJsonPath('subscription.created_at', null)
             ->assertJsonPath('subscription.grace_period.active', true)
-            ->assertJsonPath('subscription.trial.active', false)
-            ->assertJsonStructure([
-                'subscription' => [
-                    'available_plans',
-                    'billing_plan',
-                    'grace_period' => ['active', 'ends_at'],
-                    'receipts',
-                ],
-            ]);
+            ->assertJsonPath('subscription.trial.active', false);
     }
 
     #[Test]
     public function expired_subscription_user_receives_correct_subscription_shape(): void
     {
+        // SubscriptionHelpers seeds an expired subscription so the resource falls back to Free.
         $this->createExpiredSubscription($this->user);
 
         $response = $this->subscriptionResponse();
@@ -154,6 +141,7 @@ class SubscriptionResourceTest extends TestCase
     #[Test]
     public function expired_subscription_user_receives_receipts_when_present(): void
     {
+        // SubscriptionHelpers seeds an expired subscription and keeps its receipt visible.
         $subscription = $this->createExpiredSubscription($this->user);
         $receipt = $this->createReceipt($this->user, $subscription);
 
@@ -168,8 +156,9 @@ class SubscriptionResourceTest extends TestCase
     #[Test]
     public function trial_user_receives_pro_plan_in_subscription_shape(): void
     {
-
         $trialEndsAt = Carbon::now()->addDays(5);
+
+        // SubscriptionHelpers seeds the active trial customer record.
         $this->createTrialCustomer($this->user, $trialEndsAt);
 
         $response = $this->subscriptionResponse();
@@ -185,14 +174,7 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.grace_period.active', false)
             ->assertJsonPath('subscription.limits.projects.max', null)
             ->assertJsonMissingPath('subscription.limits.active_tasks_per_project')
-            ->assertJsonMissingPath('subscription.limits.members_per_project')
-            ->assertJsonStructure([
-                'subscription' => [
-                    'available_plans',
-                    'trial' => ['active', 'ends_at'],
-                    'grace_period' => ['active', 'ends_at'],
-                ],
-            ]);
+            ->assertJsonMissingPath('subscription.limits.members_per_project');
     }
 
     /**
@@ -207,6 +189,13 @@ class SubscriptionResourceTest extends TestCase
                     'plan',
                     'entitled',
                     'subscribed',
+                    'available_plans',
+                    'billing_plan',
+                    'next_payment',
+                    'created_at',
+                    'receipts',
+                    'trial' => ['active', 'ends_at'],
+                    'grace_period' => ['active', 'ends_at'],
                     'limits' => [
                         'projects' => ['used', 'max'],
                         'created_meetings' => ['used', 'max'],
@@ -216,9 +205,6 @@ class SubscriptionResourceTest extends TestCase
             ]);
     }
 
-    /**
-     * @param  array<string, int|null>  $limits
-     */
     /**
      * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
      * @param  array<string, int|null>  $limits

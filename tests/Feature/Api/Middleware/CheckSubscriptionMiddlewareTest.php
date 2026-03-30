@@ -14,13 +14,14 @@ use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Helpers\FixtureHelpers;
+use Tests\Helpers\SubscriptionHelpers;
 use Tests\TestCase;
-use Tests\Traits\FixtureHelpers;
-use Tests\Traits\SubscriptionHelpers;
+use Tests\Traits\AuthenticatedProjectHelpers;
 
 class CheckSubscriptionMiddlewareTest extends TestCase
 {
-    use FixtureHelpers, RefreshDatabase, SubscriptionHelpers;
+    use AuthenticatedProjectHelpers, FixtureHelpers, RefreshDatabase, SubscriptionHelpers;
 
     private const string STATE_SUBSCRIBED = 'subscribed';
 
@@ -34,10 +35,6 @@ class CheckSubscriptionMiddlewareTest extends TestCase
 
     private const string STATE_FREE = 'free';
 
-    private User $user;
-
-    private Project $project;
-
     #[Override]
     protected function setUp(): void
     {
@@ -46,20 +43,14 @@ class CheckSubscriptionMiddlewareTest extends TestCase
         config()->set('services.paddle.monthly', 101);
         config()->set('services.paddle.yearly', 202);
 
+        // FixtureHelpers seeds the task statuses required by the task factories.
         $this->createTaskStatuses();
 
-        /** @var User $user */
-        $user = User::factory()->create();
-        /** @var Project $project */
-        $project = Project::factory()->for($user)->create();
-
-        $this->user = $user;
-        $this->project = $project;
+        // AuthenticatedProjectHelpers sets up a user, a project, and Sanctum acting user.
+        $this->setUpAuthenticatedUserWithProject();
 
         // ensure properties are used so static analysis doesn't flag them as only-written
         $this->project->getKey();
-
-        Sanctum::actingAs($user);
     }
 
     /**
@@ -122,6 +113,7 @@ class CheckSubscriptionMiddlewareTest extends TestCase
 
     private function applyAccessState(string $state): void
     {
+        // SubscriptionHelpers maps each middleware state to the corresponding billing fixture.
         match ($state) {
             self::STATE_SUBSCRIBED => $this->createProSubscription($this->user),
             self::STATE_GRACE_PERIOD => $this->createGracePeriodSubscription($this->user),

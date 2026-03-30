@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Services;
+namespace Tests\Unit\Services\Subscription;
 
 use App\Services\Api\V1\Subscription\SubscriptionCatalogService;
 use PHPUnit\Framework\Attributes\Test;

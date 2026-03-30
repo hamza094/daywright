@@ -10,11 +10,11 @@ use App\Notifications\ProjectInvitation;
 use App\Notifications\ProjectTask;
 use App\Notifications\ProjectUpdated;
 use App\Notifications\UserMentioned;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class NotificationsTest extends TestCase
 {

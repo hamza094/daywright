@@ -6,15 +6,44 @@ namespace App\Services\Api\V1;
 
 use App\Actions\NotificationAction;
 use App\Actions\Project\CancelProjectZoomMeetingsAction;
+use App\Enums\Subscription\PlanLimitType;
 use App\Jobs\CancelZoomMeetingsJob;
 use App\Models\Project;
 use App\Models\User;
 use App\Notifications\ProjectUpdated;
 use App\Services\Api\V1\Subscription\PlanLimitService;
+use App\Services\Api\V1\Subscription\SubscriptionUsageService;
+use Illuminate\Support\Arr;
 
 class ProjectService
 {
-    public function __construct(private readonly PlanLimitService $planLimitService) {}
+    public function __construct(
+        private readonly SubscriptionUsageService $subscriptionUsageService,
+        private readonly PlanLimitService $planLimitService,
+    ) {}
+
+    /**
+     * @param  array{name: string, about: string, stage_id: int, notes?: string, tasks?: array<int, array<string, mixed>>}  $attributes
+     */
+    public function createProject(User $user, array $attributes): Project
+    {
+        /** @var array<int, array<string, mixed>> $tasks */
+        $tasks = Arr::pull($attributes, 'tasks', []);
+
+        return $this->planLimitService->executeWithinAccountLimit(
+            PlanLimitType::Projects,
+            $user,
+            function (User $lockedUser) use ($attributes, $tasks): Project {
+                $project = $lockedUser->projects()->create($attributes);
+
+                if ($tasks !== []) {
+                    $this->addTasksToProject($project, $lockedUser, $tasks);
+                }
+
+                return $project;
+            }
+        );
+    }
 
     /**
      * @return array<string, array{used: int|null, max: int|null}>|null
@@ -29,12 +58,15 @@ class ProjectService
             return null;
         }
 
-        return $this->planLimitService->projectUsage($project->user, $project);
+        return $this->subscriptionUsageService->projectUsage($project->user, $project);
     }
 
-    public function addTasksToProject(Project $project, array $tasks): void
+    /**
+     * @param  array<int, array<string, mixed>>  $tasks
+     */
+    public function addTasksToProject(Project $project, User $user, array $tasks): void
     {
-        $tasksWithUser = collect($tasks['tasks'])->map(fn ($task) => [...$task, 'user_id' => auth()->id()]);
+        $tasksWithUser = collect($tasks)->map(fn (array $task): array => [...$task, 'user_id' => $user->id]);
 
         $project->addTasks($tasksWithUser->toArray());
     }

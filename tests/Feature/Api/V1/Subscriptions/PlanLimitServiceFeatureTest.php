@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Subscriptions;
 
+use App\Enums\Subscription\PlanLimitType;
+use App\Enums\Subscription\SubscriptionPlan;
 use App\Enums\TaskStatus as TaskStatusEnum;
-use App\Http\Middleware\CheckSubscription;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
@@ -15,20 +16,17 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
-use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
+use Tests\Helpers\FixtureHelpers;
+use Tests\Helpers\SubscriptionHelpers;
 use Tests\TestCase;
-use Tests\Traits\FixtureHelpers;
-use Tests\Traits\SubscriptionHelpers;
+use Tests\Traits\AuthenticatedProjectHelpers;
 
 class PlanLimitServiceFeatureTest extends TestCase
 {
-    use FixtureHelpers, RefreshDatabase, SubscriptionHelpers;
-
-    private User $user;
-
-    private Project $project;
+    use AuthenticatedProjectHelpers, FixtureHelpers, RefreshDatabase, SubscriptionHelpers;
 
     #[Override]
     protected function setUp(): void
@@ -38,45 +36,40 @@ class PlanLimitServiceFeatureTest extends TestCase
         config()->set('services.paddle.monthly', 101);
         config()->set('services.paddle.yearly', 202);
 
+        // FixtureHelpers seeds the task statuses required by the task factories.
         $this->createTaskStatuses();
 
-        /** @var User $user */
-        $user = User::factory()->create();
-
-        Sanctum::actingAs($user);
-
-        /** @var Project $project */
-        $project = Project::factory()->for($user)->create();
-
-        $this->user = $user;
-        $this->project = $project;
-
-        $this->withoutMiddleware(CheckSubscription::class);
+        // AuthenticatedProjectHelpers provisions the signed-in user and default project.
+        $this->setUpAuthenticatedUserWithProject(disableSubscriptionMiddleware: true);
     }
 
     //  Projects
     #[Test]
     public function free_user_is_blocked_from_creating_a_fourth_project(): void
     {
-        Project::factory()->count(2)->for($this->user)->create();
+        $projectLimit = $this->freePlanLimit(PlanLimitType::Projects);
+
+        Project::factory()->count($projectLimit - 1)->for($this->user)->create();
 
         $response = $this->createProject([
-            'name' => 'Blocked Project',
-            'about' => 'Should not be created',
+            'name' => 'New Project',
+            'about' => 'New project description',
             'stage_id' => 1,
         ]);
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'projects', 3, 3);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'projects', $projectLimit, $projectLimit);
 
-        $this->assertDatabaseMissing('projects', ['name' => 'Blocked Project']);
+        $this->assertDatabaseMissing('projects', ['name' => 'New Project']);
     }
 
     #[Test]
     public function pro_user_can_create_more_than_three_projects(): void
     {
+        // SubscriptionHelpers seeds a recurring Paddle subscription for the owner.
         $this->createProSubscription($this->user);
 
-        Project::factory()->count(3)->for($this->user)->create();
+        $projectLimit = $this->freePlanLimit(PlanLimitType::Projects);
+        Project::factory()->count($projectLimit)->for($this->user)->create();
 
         $response = $this->createProject([
             'name' => 'Fourth Project',
@@ -92,49 +85,57 @@ class PlanLimitServiceFeatureTest extends TestCase
     #[Test]
     public function free_user_is_blocked_from_creating_an_eleventh_active_task(): void
     {
-        $this->createActiveTasks(10);
+        $taskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
 
-        $response = $this->createTask(['title' => 'Blocked Task']);
+        $this->createActiveTasks($taskLimit);
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'active_tasks_per_project', 10, 10);
+        $response = $this->createTask(['title' => 'New Task']);
+
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'active_tasks_per_project', $taskLimit, $taskLimit);
     }
 
     //  Members / Invitations
     #[Test]
     public function free_user_is_blocked_from_inviting_a_fourth_member(): void
     {
-        $this->attachActiveMembers(3);
+        $memberLimit = $this->freePlanLimit(PlanLimitType::MembersPerProject);
+
+        $this->attachActiveMembers($memberLimit);
 
         /** @var User $invitee */
         $invitee = User::factory()->create();
 
         $response = $this->inviteMember($invitee->email);
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'members', 3, 3);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'members', $memberLimit, $memberLimit);
     }
 
     //  Meetings
     #[Test]
     public function free_user_is_blocked_from_creating_a_second_meeting(): void
     {
-        Meeting::factory()->for($this->user)->for($this->project)->create();
+        $meetingLimit = $this->freePlanLimit(PlanLimitType::CreatedMeetings);
+
+        Meeting::factory()->count($meetingLimit)->for($this->user)->for($this->project)->create();
 
         $this->mock(Zoom::class);
 
         $response = $this->createMeeting();
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'meetings', 1, 1);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'meetings', $meetingLimit, $meetingLimit);
     }
 
     //  API Tokens
     #[Test]
     public function free_user_is_blocked_from_creating_a_second_api_token(): void
     {
-        $this->seedExistingApiToken();
+        $apiTokenLimit = $this->freePlanLimit(PlanLimitType::ApiTokens);
+
+        $this->createApiTokens($this->user, $apiTokenLimit);
 
         $response = $this->createApiToken('Blocked Token');
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'api_tokens', 1, 1);
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'api_tokens', $apiTokenLimit, $apiTokenLimit);
     }
 
     /**
@@ -240,5 +241,16 @@ class PlanLimitServiceFeatureTest extends TestCase
             'password' => 'abc1234',
             'join_before_host' => false,
         ];
+    }
+
+    private function freePlanLimit(PlanLimitType $type): int
+    {
+        $limit = SubscriptionPlan::Free->maxFor($type);
+
+        if ($limit === null) {
+            throw new RuntimeException("Expected a configured free-plan limit for [{$type->value}].");
+        }
+
+        return $limit;
     }
 }

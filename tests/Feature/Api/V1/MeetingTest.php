@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1;
 
 use App\Models\Meeting;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class MeetingTest extends TestCase
 {

@@ -4,202 +4,198 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Api\V1;
 
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
-use Tests\Traits\DummyUserWithSubscription;
+use Tests\Helpers\DummyUserWithSubscription;
 
-class HasSubscriptionTraitTest extends TestCase
+final class HasSubscriptionTraitTest extends TestCase
 {
-    public function test_resolve_billing_plan_name_does_not_treat_non_numeric_paddle_plan_as_zero(): void
-    {
-        $user = new DummyUserWithSubscription;
+    private const MONTHLY_PLAN_ID = 123;
 
-        $this->assertSame('Unknown', $user->resolveBillingPlanName('invalid-plan', 0, 456));
+    private const YEARLY_PLAN_ID = 456;
+
+    #[Test]
+    public function resolve_billing_plan_name_does_not_treat_non_numeric_paddle_plan_as_zero(): void
+    {
+        $user = $this->makeUser();
+
+        $this->assertSame(
+            'Unknown',
+            $user->resolveBillingPlanName('invalid-plan', self::MONTHLY_PLAN_ID, self::YEARLY_PLAN_ID),
+        );
     }
 
-    public function test_is_subscribed_returns_true_when_subscription_is_valid(): void
+    #[Test]
+    public function is_on_trial_returns_true_for_generic_or_named_trials(): void
     {
-        $user = new DummyUserWithSubscription;
-        $user->mockSubscription = new class
+        $userWithoutTrial = $this->makeUser();
+        $userOnGenericTrial = $this->makeUser(genericTrial: true);
+        $userOnNamedTrial = $this->makeUser(namedTrial: true);
+
+        $this->assertFalse($userWithoutTrial->isOnTrial());
+        $this->assertTrue($userOnGenericTrial->isOnTrial());
+        $this->assertTrue($userOnNamedTrial->isOnTrial());
+    }
+
+    #[Test]
+    public function subscription_state_helpers_reflect_missing_invalid_and_valid_subscriptions(): void
+    {
+        $missingSubscriptionUser = $this->makeUser();
+        $invalidSubscriptionUser = $this->makeUser(subscription: $this->makeInvalidSubscription());
+        $validRecurringSubscriptionUser = $this->makeUser(subscription: $this->makeValidRecurringSubscription());
+
+        $this->assertFalse($missingSubscriptionUser->hasSubscriptionRecord());
+        $this->assertFalse($missingSubscriptionUser->isSubscribed());
+        $this->assertFalse($missingSubscriptionUser->isBillingSubscribed());
+
+        $this->assertTrue($invalidSubscriptionUser->hasSubscriptionRecord());
+        $this->assertFalse($invalidSubscriptionUser->isSubscribed());
+        $this->assertFalse($invalidSubscriptionUser->isBillingSubscribed());
+
+        $this->assertTrue($validRecurringSubscriptionUser->hasSubscriptionRecord());
+        $this->assertTrue($validRecurringSubscriptionUser->isSubscribed());
+        $this->assertTrue($validRecurringSubscriptionUser->isBillingSubscribed());
+    }
+
+    #[Test]
+    public function active_billing_plan_returns_expected_values(): void
+    {
+        $userWithoutSubscription = $this->makeUser();
+        $userWithCanceledMonthlyPlan = $this->makeUser(subscription: $this->makeCanceledSubscription(self::MONTHLY_PLAN_ID));
+        $userWithRecurringMonthlyPlan = $this->makeUser(subscription: $this->makeValidRecurringSubscription(self::MONTHLY_PLAN_ID));
+        $userWithRecurringYearlyPlan = $this->makeUser(subscription: $this->makeValidRecurringSubscription(self::YEARLY_PLAN_ID));
+        $userWithUnknownRecurringPlan = $this->makeUser(subscription: $this->makeValidRecurringSubscription(99999));
+
+        $this->assertSame('Not Subscribed Actively', $this->activeBillingPlan($userWithoutSubscription));
+        $this->assertSame('Not Subscribed Actively', $this->activeBillingPlan($userWithCanceledMonthlyPlan));
+        $this->assertSame('monthly', $this->activeBillingPlan($userWithRecurringMonthlyPlan));
+        $this->assertSame('yearly', $this->activeBillingPlan($userWithRecurringYearlyPlan));
+        $this->assertSame('Unknown', $this->activeBillingPlan($userWithUnknownRecurringPlan));
+    }
+
+    #[Test]
+    public function display_billing_plan_returns_expected_values(): void
+    {
+        $userWithoutSubscription = $this->makeUser();
+        $userWithCanceledMonthlyPlan = $this->makeUser(subscription: $this->makeCanceledSubscription(self::MONTHLY_PLAN_ID));
+        $userWithRecurringYearlyPlan = $this->makeUser(subscription: $this->makeValidRecurringSubscription(self::YEARLY_PLAN_ID));
+        $userWithUnknownRecurringPlan = $this->makeUser(subscription: $this->makeValidRecurringSubscription(99999));
+
+        $this->assertSame('Not Subscribed Actively', $this->displayBillingPlan($userWithoutSubscription));
+        $this->assertSame('monthly', $this->displayBillingPlan($userWithCanceledMonthlyPlan));
+        $this->assertSame('yearly', $this->displayBillingPlan($userWithRecurringYearlyPlan));
+        $this->assertSame('Unknown', $this->displayBillingPlan($userWithUnknownRecurringPlan));
+    }
+
+    #[Test]
+    public function has_grace_period_reflects_the_subscription_state(): void
+    {
+        $userWithoutSubscription = $this->makeUser();
+        $userInGracePeriod = $this->makeUser(subscription: $this->makeGracePeriodSubscription(true));
+        $userOutsideGracePeriod = $this->makeUser(subscription: $this->makeGracePeriodSubscription(false));
+
+        $this->assertFalse($userWithoutSubscription->hasGracePeriod());
+        $this->assertTrue($userInGracePeriod->hasGracePeriod());
+        $this->assertFalse($userOutsideGracePeriod->hasGracePeriod());
+    }
+
+    #[Test]
+    public function payment_returns_the_next_payment_only_for_valid_subscriptions(): void
+    {
+        $userWithoutSubscription = $this->makeUser();
+        $userWithInvalidSubscription = $this->makeUser(subscription: $this->makePaymentSubscription(false, 'stale payment date'));
+        $userWithUpcomingPayment = $this->makeUser(subscription: $this->makePaymentSubscription(true, 'next payment date'));
+        $userWithoutUpcomingPayment = $this->makeUser(subscription: $this->makePaymentSubscription(true, null));
+
+        $this->assertNull($userWithoutSubscription->payment());
+        $this->assertNull($userWithInvalidSubscription->payment());
+        $this->assertSame('next payment date', $userWithUpcomingPayment->payment());
+        $this->assertNull($userWithoutUpcomingPayment->payment());
+    }
+
+    private static function makeSubscription(
+        ?bool $valid = null,
+        ?bool $recurring = null,
+        ?bool $onGracePeriod = null,
+        ?int $paddlePlan = null,
+        mixed $nextPayment = null,
+    ): object {
+        return new class($valid, $recurring, $onGracePeriod, $paddlePlan, $nextPayment)
         {
+            public function __construct(
+                private readonly ?bool $valid,
+                private readonly ?bool $recurring,
+                private readonly ?bool $onGracePeriod,
+                public ?int $paddle_plan,
+                private readonly mixed $nextPayment,
+            ) {}
+
             public function valid(): bool
             {
-                return true;
+                return $this->valid ?? false;
             }
-        };
-        $this->assertTrue($user->isSubscribed());
-    }
-
-    public function test_is_subscribed_returns_false_when_subscription_is_not_valid(): void
-    {
-        $user = new DummyUserWithSubscription;
-        $user->mockSubscription = new class
-        {
-            public function valid(): bool
-            {
-                return false;
-            }
-        };
-        $this->assertFalse($user->isSubscribed());
-    }
-
-    public function test_is_subscribed_returns_false_when_no_subscription(): void
-    {
-        $user = new DummyUserWithSubscription;
-        $user->mockSubscription = null;
-        $this->assertFalse($user->isSubscribed());
-    }
-
-    public function test_is_billing_subscribed_returns_true_only_when_subscription_is_recurring(): void
-    {
-        $user = new DummyUserWithSubscription;
-        $user->mockSubscription = new class
-        {
-            public function recurring(): bool
-            {
-                return true;
-            }
-        };
-        $this->assertTrue($user->isBillingSubscribed());
-
-        $user->mockSubscription = new class
-        {
-            public function recurring(): bool
-            {
-                return false;
-            }
-        };
-        $this->assertFalse($user->isBillingSubscribed());
-
-        $user->mockSubscription = null;
-        $this->assertFalse($user->isBillingSubscribed());
-    }
-
-    public function test_billing_plan_variants(): void
-    {
-        $user = new DummyUserWithSubscription;
-        $user->mockSubscription = null;
-        $this->assertEquals('Not Subscribed Actively', $user->activeBillingPlan());
-
-        $user->mockSubscription = new class
-        {
-            public int $paddle_plan = 123;
 
             public function recurring(): bool
             {
-                return false;
+                return $this->recurring ?? false;
             }
-        };
-        $this->assertEquals('Not Subscribed Actively', $user->activeBillingPlan());
-        $this->assertEquals('monthly', $user->displayBillingPlan($monthlyPlanId = 123, yearlyPlanId: 456));
 
-        $user->mockSubscription = new class($monthlyPlanId)
-        {
-            public function __construct(public int $paddle_plan) {}
-
-            public function recurring(): bool
-            {
-                return true;
-            }
-        };
-        $this->assertEquals('monthly', $user->activeBillingPlan($monthlyPlanId, 456));
-
-        $yearlyPlanId = 456;
-        $user->mockSubscription = new class($yearlyPlanId)
-        {
-            public function __construct(public int $paddle_plan) {}
-
-            public function recurring(): bool
-            {
-                return true;
-            }
-        };
-        $this->assertEquals('yearly', $user->activeBillingPlan($monthlyPlanId, $yearlyPlanId));
-
-        $user->mockSubscription = new class
-        {
-            public int $paddle_plan = 99999;
-
-            public function recurring(): bool
-            {
-                return true;
-            }
-        };
-        $this->assertEquals('Unknown', $user->activeBillingPlan($monthlyPlanId, $yearlyPlanId));
-    }
-
-    public function test_has_grace_period_true_and_false(): void
-    {
-        $user = new DummyUserWithSubscription;
-        // True
-        $user->mockSubscription = new class
-        {
             public function onGracePeriod(): bool
             {
-                return true;
+                return $this->onGracePeriod ?? false;
             }
-        };
-        $this->assertTrue($user->hasGracePeriod());
-        // False
-        $user->mockSubscription = new class
-        {
-            public function onGracePeriod(): bool
+
+            public function nextPayment(): mixed
             {
-                return false;
+                return $this->nextPayment;
             }
         };
-        $this->assertFalse($user->hasGracePeriod());
-        // No subscription
-        $user->mockSubscription = null;
-        $this->assertFalse($user->hasGracePeriod());
     }
 
-    public function test_payment_returns_next_payment_or_null(): void
+    private function makeInvalidSubscription(): object
     {
-        $user = new DummyUserWithSubscription;
-        // Next payment
-        $user->mockSubscription = new class
-        {
-            public function valid(): bool
-            {
-                return true;
-            }
+        return self::makeSubscription(valid: false, recurring: false);
+    }
 
-            public function nextPayment(): string
-            {
-                return 'next payment date';
-            }
-        };
-        $this->assertEquals('next payment date', $user->payment());
-        // Valid subscription with no upcoming payment
-        $user->mockSubscription = new class
-        {
-            public function valid(): bool
-            {
-                return true;
-            }
+    private function makeValidRecurringSubscription(?int $paddlePlan = null): object
+    {
+        return self::makeSubscription(valid: true, recurring: true, paddlePlan: $paddlePlan);
+    }
 
-            public function nextPayment(): ?string
-            {
-                return null;
-            }
-        };
-        $this->assertNull($user->payment());
-        // Invalid subscription
-        $user->mockSubscription = new class
-        {
-            public function valid(): bool
-            {
-                return false;
-            }
+    private function makeCanceledSubscription(int $paddlePlan): object
+    {
+        return self::makeSubscription(valid: true, recurring: false, paddlePlan: $paddlePlan);
+    }
 
-            public function nextPayment(): string
-            {
-                return 'stale payment date';
-            }
-        };
-        $this->assertNull($user->payment());
-        // No active subscription
-        $user->mockSubscription = null;
-        $this->assertNull($user->payment());
+    private function makeGracePeriodSubscription(bool $onGracePeriod): object
+    {
+        return self::makeSubscription(onGracePeriod: $onGracePeriod);
+    }
+
+    private function makePaymentSubscription(bool $isValid, mixed $nextPayment): object
+    {
+        return self::makeSubscription(valid: $isValid, nextPayment: $nextPayment);
+    }
+
+    private function activeBillingPlan(DummyUserWithSubscription $user): string
+    {
+        return $user->activeBillingPlan(self::MONTHLY_PLAN_ID, self::YEARLY_PLAN_ID);
+    }
+
+    private function displayBillingPlan(DummyUserWithSubscription $user): string
+    {
+        return $user->displayBillingPlan(self::MONTHLY_PLAN_ID, self::YEARLY_PLAN_ID);
+    }
+
+    private function makeUser(
+        ?object $subscription = null,
+        bool $genericTrial = false,
+        bool $namedTrial = false,
+    ): DummyUserWithSubscription {
+        return new DummyUserWithSubscription(
+            subscription: $subscription,
+            genericTrial: $genericTrial,
+            namedTrial: $namedTrial,
+        );
     }
 }

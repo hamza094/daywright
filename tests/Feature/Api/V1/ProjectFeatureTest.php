@@ -10,12 +10,12 @@ use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class ProjectFeatureTest extends TestCase
 {

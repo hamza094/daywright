@@ -9,12 +9,12 @@ use App\Jobs\Webhooks\Zoom\StartMeetingWebhook;
 use App\Models\Meeting;
 use App\Models\User;
 use App\Notifications\Zoom\MeetingStarted;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class StartMeetingWebhookTest extends TestCase
 {
@@ -65,7 +65,7 @@ class StartMeetingWebhookTest extends TestCase
         Notification::assertSentTo($users, MeetingStarted::class, fn ($notification, $channels): bool => $channels === ['mail', 'database', 'broadcast']);
     }
 
-    private function inviteAndActivateUser($project, \Illuminate\Database\Eloquent\Model $user): void
+    private function inviteAndActivateUser(\App\Models\Project $project, \Illuminate\Database\Eloquent\Model $user): void
     {
         $project->invite($user);
         $project->members()->updateExistingPivot($user->id, ['active' => true]);

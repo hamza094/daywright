@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Controllers\Zoom;
 
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
+use Tests\Traits\ProjectSetup;
 
 class GetZakTokenTest extends TestCase
 {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Traits;
+namespace Tests\Helpers;
 
 use App\Enums\TaskStatus as TaskStatusEnum;
 use App\Models\Meeting;
@@ -20,6 +20,13 @@ trait FixtureHelpers
     private function createApiToken(User $user, ?Project $project = null): void
     {
         $user->createToken('primary-token');
+    }
+
+    private function createApiTokens(User $user, int $count): void
+    {
+        for ($i = 1; $i <= $count; $i++) {
+            $user->createToken("token-{$i}");
+        }
     }
 
     private function createTaskStatuses(?User $owner = null): void

@@ -6,12 +6,12 @@ namespace Tests\Feature\Api\V1;
 
 use App\Exports\ProjectsExport;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class ApplicationTest extends TestCase
 {

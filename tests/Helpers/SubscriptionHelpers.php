@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Tests\Traits;
+namespace Tests\Helpers;
 
-use App\Enums\PlanLimitType;
-use App\Enums\SubscriptionPlan;
+use App\Enums\Subscription\PlanLimitType;
+use App\Enums\Subscription\SubscriptionPlan;
 use App\Models\Project;
 use App\Models\User;
 use Carbon\Carbon;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Traits;
+namespace Tests\Traits;
 
 use App\Models\Project;
 use App\Models\TaskStatus;
@@ -20,7 +20,6 @@ trait ProjectSetup
 
     protected function setUp(): void
     {
-
         parent::setUp();
 
         $user = User::factory()->create([
@@ -49,6 +48,5 @@ trait ProjectSetup
         ];
 
         $this->withoutMiddleware($middlewaresToRemove);
-
     }
 }

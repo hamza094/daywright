@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Enums;
+namespace App\Enums\Subscription;
 
 /**
  * Canonical limit identifiers used by plan config, usage payloads, and enforcement.
@@ -29,6 +29,28 @@ enum PlanLimitType: string
     public static function all(): array
     {
         return self::cases();
+    }
+
+    /**
+     * @return array<self>
+     */
+    public static function accountTypes(): array
+    {
+        return array_values(array_filter(
+            self::all(),
+            static fn (self $type): bool => ! $type->requiresProject(),
+        ));
+    }
+
+    /**
+     * @return array<self>
+     */
+    public static function projectTypes(): array
+    {
+        return array_values(array_filter(
+            self::all(),
+            static fn (self $type): bool => $type->requiresProject(),
+        ));
     }
 
     public function configKey(): string

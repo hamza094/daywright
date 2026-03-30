@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services\Api\V1\Subscription;
 
+/**
+ * Exposes the plan catalog payload returned to the client.
+ */
 final class SubscriptionCatalogService
 {
     /**
@@ -55,9 +58,11 @@ final class SubscriptionCatalogService
         ];
     }
 
+    /**
+     * Falls back to the currency code when no symbol mapping is defined.
+     */
     private function getSymbolForCurrency(string $currency): string
     {
-        // Common currency symbol mapping. Extend as needed.
         return match ($currency) {
             'USD' => '$',
             'EUR' => '€',

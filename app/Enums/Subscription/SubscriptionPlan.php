@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Enums;
+namespace App\Enums\Subscription;
 
 use App\Models\User;
 
+/**
+ * Maps billing state to the application plan tiers and configured limits.
+ */
 enum SubscriptionPlan: string
 {
     case Free = 'free';
@@ -21,7 +24,13 @@ enum SubscriptionPlan: string
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{
+     *     max_owned_projects?: int|null,
+     *     max_active_tasks_per_project?: int|null,
+     *     max_members_per_project?: int|null,
+     *     max_created_meetings?: int|null,
+     *     max_api_tokens?: int|null
+     * }
      */
     public function limits(): array
     {

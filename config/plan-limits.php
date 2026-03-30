@@ -23,7 +23,4 @@ return [
         'duration_days' => 7,
     ],
 
-    'grace_period' => [
-        'behavior' => 'full_access',
-    ],
 ];

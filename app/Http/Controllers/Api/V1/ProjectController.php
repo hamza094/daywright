@@ -4,22 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\ProjectStoreRequest;
 use App\Http\Requests\Api\V1\ProjectUpdateRequest;
 use App\Http\Resources\Api\V1\ProjectResource;
 use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Models\Project;
-use App\Models\User;
 use App\Services\Api\V1\ProjectService;
-use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ProjectController extends ApiController
 {
-    public function __construct(private readonly ProjectService $projectService, private readonly PlanLimitService $planLimitService) {}
+    public function __construct(private readonly ProjectService $projectService) {}
 
     /**
      * Create a new project.
@@ -30,20 +27,7 @@ class ProjectController extends ApiController
      */
     public function store(ProjectStoreRequest $request): JsonResponse
     {
-        $project = $this->planLimitService->executeWithinAccountLimit(
-            PlanLimitType::Projects,
-            $this->authenticatedUser(),
-            function (User $user) use ($request): Project {
-                $project = $user->projects()
-                    ->create($request->safe()->except(['tasks']));
-
-                if ($request->tasks) {
-                    $this->projectService->addTasksToProject($project, $request->safe()->only(['tasks']));
-                }
-
-                return $project;
-            }
-        );
+        $project = $this->projectService->createProject($this->authenticatedUser(), $request->validated());
 
         return response()->json([
             'message' => 'Project Created Successfully',
