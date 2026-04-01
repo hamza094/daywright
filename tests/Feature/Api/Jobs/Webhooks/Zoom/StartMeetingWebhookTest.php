@@ -7,6 +7,7 @@ namespace Tests\Feature\Api\Jobs\Webhooks\Zoom;
 use App\Events\MeetingStatusUpdate;
 use App\Jobs\Webhooks\Zoom\StartMeetingWebhook;
 use App\Models\Meeting;
+use App\Models\Project;
 use App\Models\User;
 use App\Notifications\Zoom\MeetingStarted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,7 +39,7 @@ class StartMeetingWebhookTest extends TestCase
             'status' => 'waiting',
         ]);
 
-        $users = User::factory()->count(2)->create()->each(fn ($user) => $this->inviteAndActivateUser($this->project, $user)
+        $users = User::factory()->count(2)->create()->each(fn (User $user) => $this->inviteAndActivateUser($this->project, $user)
         );
 
         $fixture = File::json(
@@ -65,7 +66,7 @@ class StartMeetingWebhookTest extends TestCase
         Notification::assertSentTo($users, MeetingStarted::class, fn ($notification, $channels): bool => $channels === ['mail', 'database', 'broadcast']);
     }
 
-    private function inviteAndActivateUser(\App\Models\Project $project, \Illuminate\Database\Eloquent\Model $user): void
+    private function inviteAndActivateUser(Project $project, User $user): void
     {
         $project->invite($user);
         $project->members()->updateExistingPivot($user->id, ['active' => true]);

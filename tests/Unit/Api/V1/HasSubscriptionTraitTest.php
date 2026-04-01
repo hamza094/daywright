@@ -10,9 +10,9 @@ use Tests\Helpers\DummyUserWithSubscription;
 
 final class HasSubscriptionTraitTest extends TestCase
 {
-    private const MONTHLY_PLAN_ID = 123;
+    private const int MONTHLY_PLAN_ID = 123;
 
-    private const YEARLY_PLAN_ID = 456;
+    private const int YEARLY_PLAN_ID = 456;
 
     #[Test]
     public function resolve_billing_plan_name_does_not_treat_non_numeric_paddle_plan_as_zero(): void
@@ -113,7 +113,7 @@ final class HasSubscriptionTraitTest extends TestCase
         $this->assertNull($userWithoutUpcomingPayment->payment());
     }
 
-    private static function makeSubscription(
+    private function makeSubscription(
         ?bool $valid = null,
         ?bool $recurring = null,
         ?bool $onGracePeriod = null,
@@ -154,27 +154,27 @@ final class HasSubscriptionTraitTest extends TestCase
 
     private function makeInvalidSubscription(): object
     {
-        return self::makeSubscription(valid: false, recurring: false);
+        return $this->makeSubscription(valid: false, recurring: false);
     }
 
     private function makeValidRecurringSubscription(?int $paddlePlan = null): object
     {
-        return self::makeSubscription(valid: true, recurring: true, paddlePlan: $paddlePlan);
+        return $this->makeSubscription(valid: true, recurring: true, paddlePlan: $paddlePlan);
     }
 
     private function makeCanceledSubscription(int $paddlePlan): object
     {
-        return self::makeSubscription(valid: true, recurring: false, paddlePlan: $paddlePlan);
+        return $this->makeSubscription(valid: true, recurring: false, paddlePlan: $paddlePlan);
     }
 
     private function makeGracePeriodSubscription(bool $onGracePeriod): object
     {
-        return self::makeSubscription(onGracePeriod: $onGracePeriod);
+        return $this->makeSubscription(onGracePeriod: $onGracePeriod);
     }
 
     private function makePaymentSubscription(bool $isValid, mixed $nextPayment): object
     {
-        return self::makeSubscription(valid: $isValid, nextPayment: $nextPayment);
+        return $this->makeSubscription(valid: $isValid, nextPayment: $nextPayment);
     }
 
     private function activeBillingPlan(DummyUserWithSubscription $user): string
