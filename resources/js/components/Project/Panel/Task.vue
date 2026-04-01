@@ -121,6 +121,7 @@ export default {
     ...mapActions({
       fetchTasks: 'task/fetchTasks',
       loadStatuses: 'SingleTask/loadStatuses',
+      refreshLimits: 'project/refreshLimits',
     }),
 
     ...mapMutations('project', ['addScore', 'reduceScore']),
@@ -167,6 +168,7 @@ export default {
           this.form.title = '';
           this.getResults(1);
           this.addScore(this.task_score);
+          this.refreshLimits(this.slug);
         })
         .catch((error) => {
           this.form.title = '';

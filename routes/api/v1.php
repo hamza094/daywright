@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\NotificationsController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDashboardController;
 use App\Http\Controllers\Api\V1\ProjectInsightsController;
+use App\Http\Controllers\Api\V1\ProjectLimitsController;
 use App\Http\Controllers\Api\V1\StageController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\TaskController;
@@ -90,6 +91,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
     Route::scopeBindings()->group(function (): void {
         Route::group(['prefix' => 'projects/{project}'], function (): void {
             Route::get('/', [ProjectController::class, 'show'])->name('projects.show')->withTrashed();
+            Route::get('/limits', ProjectLimitsController::class)->name('projects.limits')->withTrashed()->can('manage', 'project');
 
             Route::get('/insights', [ProjectInsightsController::class, 'index'])->name('projects.insights');
 

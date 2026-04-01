@@ -244,7 +244,7 @@ return [
         'items_limit' => '6',
     ],
     'tasks' => [
-        'limit' => '3',
+        'limit' => '20',
     ],
 
     'date_formats' => [

@@ -182,7 +182,9 @@ class Project extends Model
 
     public function invite(User $user): void
     {
-        $this->members()->attach($user);
+        $this->members()->syncWithoutDetaching([
+            $user->id => ['active' => false],
+        ]);
     }
 
     /**

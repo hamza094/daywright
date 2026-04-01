@@ -350,7 +350,7 @@ export default {
     },
 
     showProjectLimits() {
-      return this.projectLimitItems.length > 0;
+      return this.permission.owner && this.projectLimitItems.length > 0;
     },
   },
 

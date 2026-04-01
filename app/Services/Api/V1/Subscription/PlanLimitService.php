@@ -61,25 +61,25 @@ final readonly class PlanLimitService
     /**
      * @template TReturn
      *
-     * @param  Closure(User, Project): TReturn  $callback
+     * @param  Closure(Project): TReturn  $callback
      * @return TReturn
      */
-    public function executeWithinProjectLimit(PlanLimitType $type, User $user, Project $project, Closure $callback): mixed
+    public function executeWithinProjectLimit(PlanLimitType $type, Project $project, Closure $callback): mixed
     {
         $this->ensureProjectLimitType($type);
 
-        return DB::transaction(function () use ($type, $user, $project, $callback): mixed {
-            $lockedUser = $this->lockUser($user);
+        return DB::transaction(function () use ($type, $project, $callback): mixed {
             $lockedProject = $this->lockProject($project);
+            $projectOwner = $lockedProject->user;
 
             $lockedProject->loadCount([
                 'tasks as active_tasks_count' => fn (Builder $query): Builder => $query->whereIn('status_id', TaskStatus::active()),
                 'activeMembers as active_members_count' => fn (Builder $query): Builder => $query,
             ]);
 
-            $this->assertWithinLimit($type, $lockedUser, $lockedProject);
+            $this->assertWithinLimit($type, $projectOwner, $lockedProject);
 
-            return $callback($lockedUser, $lockedProject);
+            return $callback($lockedProject);
         }, self::TRANSACTION_RETRY_ATTEMPTS);
     }
 

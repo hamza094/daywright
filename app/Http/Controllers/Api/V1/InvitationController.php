@@ -59,9 +59,8 @@ class InvitationController extends ApiController
         try {
             $planLimitService->executeWithinProjectLimit(
                 PlanLimitType::MembersPerProject,
-                $this->authenticatedUser(),
                 $project,
-                function (User $owner, Project $lockedProject) use ($user): void {
+                function (Project $lockedProject) use ($user): void {
                     $this->invitationService->sendInvitation($user, $lockedProject);
                 }
             );

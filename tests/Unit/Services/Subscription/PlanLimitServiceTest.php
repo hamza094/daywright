@@ -237,11 +237,10 @@ class PlanLimitServiceTest extends TestCase
 
         $task = $this->service->executeWithinProjectLimit(
             PlanLimitType::ActiveTasksPerProject,
-            $user,
             $project,
-            fn (User $lockedUser, Project $lockedProject): Task => $lockedProject->tasks()->create([
+            fn (Project $lockedProject): Task => $lockedProject->tasks()->create([
                 'title' => 'Locked Task',
-                'user_id' => $lockedUser->id,
+                'user_id' => $user->id,
                 'status_id' => TaskStatusEnum::PENDING,
             ])
         );

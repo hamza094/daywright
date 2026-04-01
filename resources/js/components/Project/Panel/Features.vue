@@ -145,7 +145,7 @@
 </template>
 
 <script>
-import { mapMutations } from 'vuex';
+import { mapMutations, mapActions } from 'vuex';
 import SubscriptionCheck from '../../SubscriptionChecker.vue';
 import { debounce } from 'lodash';
 
@@ -210,6 +210,7 @@ export default {
 
   methods: {
     ...mapMutations('project', ['updateNotes', 'noteScore', 'updateScore', 'detachMember']),
+    ...mapActions('project', ['refreshLimits']),
 
     ProjectNote() {
       this.$Progress.start();
@@ -291,6 +292,7 @@ export default {
             .then((response) => {
               this.detachMember(response.data.user.uuid);
               this.$vToastify.info(response.data.message);
+              this.refreshLimits(this.slug);
             })
             .catch((error) => {
               this.handleErrorResponse(error);

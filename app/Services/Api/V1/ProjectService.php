@@ -50,9 +50,7 @@ class ProjectService
      */
     public function projectLimits(Project $project, User $user): ?array
     {
-        if (! $project->relationLoaded('user')) {
-            return null;
-        }
+        $project->loadMissing('user');
 
         if (! $user->is($project->user)) {
             return null;

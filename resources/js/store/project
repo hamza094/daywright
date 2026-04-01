@@ -64,6 +64,9 @@ const mutations = {
     state.project.postponed_reason= data.postponed_reason
     state.getStage=data.getStage
     },
+    updateLimits(state, limits) {
+      state.project = { ...state.project, limits };
+    },
 
 };
 
@@ -75,6 +78,21 @@ const actions = {
       return data;
     } catch (error) {
       throw error;
+    }
+  },
+  async refreshLimits({ commit, state, rootState }, slug) {
+    const ownerUuid = state.user?.uuid;
+    const currentUserUuid = rootState.currentUser?.user?.uuid;
+
+    if (!ownerUuid || ownerUuid !== currentUserUuid) {
+      return;
+    }
+
+    try {
+      const { data } = await axios.get(`/projects/${slug}/limits`);
+      commit('updateLimits', data.limits);
+    } catch {
+      // Silently ignore — limits are non-critical UI data
     }
   },
 };

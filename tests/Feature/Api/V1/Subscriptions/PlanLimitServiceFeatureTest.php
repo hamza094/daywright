@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
@@ -92,6 +93,55 @@ class PlanLimitServiceFeatureTest extends TestCase
         $response = $this->createTask(['title' => 'New Task']);
 
         $this->assertPlanLimitExceeded($response, 'limit_reached', 'active_tasks_per_project', $taskLimit, $taskLimit);
+    }
+
+    #[Test]
+    public function member_is_blocked_when_the_project_owner_has_reached_the_active_task_limit_even_if_member_has_a_pro_plan(): void
+    {
+        $taskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
+
+        $member = User::factory()->create();
+
+        $this->project->members()->attach($member, ['active' => true]);
+        $this->createProSubscription($member);
+        $this->createActiveTasks($taskLimit);
+
+        Sanctum::actingAs($member);
+
+        $response = $this->createTask(['title' => 'Member Task']);
+
+        $this->assertPlanLimitExceeded($response, 'limit_reached', 'active_tasks_per_project', $taskLimit, $taskLimit);
+
+        $this->assertDatabaseMissing('tasks', [
+            'project_id' => $this->project->id,
+            'title' => 'Member Task',
+        ]);
+    }
+
+    #[Test]
+    public function member_can_create_a_task_when_the_project_owners_plan_allows_it(): void
+    {
+        $taskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
+
+        $member = User::factory()->create();
+
+        $this->project->members()->attach($member, ['active' => true]);
+        $this->createProSubscription($this->user);
+        $this->createActiveTasks($taskLimit);
+
+        Sanctum::actingAs($member);
+
+        $response = $this->createTask(['title' => 'Member Task']);
+
+        $response->assertCreated()
+            ->assertJsonPath('message', 'Task added Successfully')
+            ->assertJsonPath('task.title', 'Member Task');
+
+        $this->assertDatabaseHas('tasks', [
+            'project_id' => $this->project->id,
+            'user_id' => $member->id,
+            'title' => 'Member Task',
+        ]);
     }
 
     //  Members / Invitations
