@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Traits;
 
+use Laravel\Paddle\Exceptions\PaddleException;
 use LogicException;
 
 /**
@@ -113,7 +114,11 @@ trait HasSubscription
             return null;
         }
 
-        return $subscription->nextPayment();
+        try {
+            return $subscription->nextPayment();
+        } catch (PaddleException) {
+            return null;
+        }
     }
 
     /**

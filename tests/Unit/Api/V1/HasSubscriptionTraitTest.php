@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Api\V1;
 
+use Laravel\Paddle\Exceptions\PaddleException;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Tests\Helpers\DummyUserWithSubscription;
+use Throwable;
 
 final class HasSubscriptionTraitTest extends TestCase
 {
@@ -113,6 +115,19 @@ final class HasSubscriptionTraitTest extends TestCase
         $this->assertNull($userWithoutUpcomingPayment->payment());
     }
 
+    #[Test]
+    public function payment_returns_null_when_the_paddle_lookup_throws_an_exception(): void
+    {
+        $userWithUnavailablePaddlePayment = $this->makeUser(
+            subscription: $this->makePaymentSubscription(
+                true,
+                new PaddleException("You don't have permission to access this resource", 107),
+            ),
+        );
+
+        $this->assertNull($userWithUnavailablePaddlePayment->payment());
+    }
+
     private function makeSubscription(
         ?bool $valid = null,
         ?bool $recurring = null,
@@ -147,6 +162,10 @@ final class HasSubscriptionTraitTest extends TestCase
 
             public function nextPayment(): mixed
             {
+                if ($this->nextPayment instanceof Throwable) {
+                    throw $this->nextPayment;
+                }
+
                 return $this->nextPayment;
             }
         };
