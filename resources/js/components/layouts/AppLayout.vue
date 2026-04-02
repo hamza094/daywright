@@ -21,7 +21,7 @@
             @click.prevent="openSidebarDrawer">
             <i class="fa-solid fa-bars"></i>
           </button>
-          <router-link class="navbar-brand" :to="{ name: 'Home' }"><b>DayWright</b></router-link>
+          <router-link class="navbar-brand" :to="{ name: 'Dashboard' }"><b>DayWright</b></router-link>
           <div class="ml-auto d-flex align-items-right">
             <notifications v-if="loggedIn"></notifications>
           </div>

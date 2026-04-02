@@ -1,4 +1,16 @@
+function isCanceledRequestError(error) {
+  const message = typeof error?.message === 'string' ? error.message : '';
+
+  return (
+    error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError' || /cancelled|canceled|aborted/i.test(message)
+  );
+}
+
 export function logApiError(error) {
+  if (isCanceledRequestError(error)) {
+    return;
+  }
+
   const response = error?.response;
   const data = response?.data;
 
@@ -16,7 +28,13 @@ export function handleGlobalApiError(error, { modal, toast, router } = {}) {
   const response = error?.response;
   const data = response?.data;
 
-  if (!response) {
+  if (isCanceledRequestError(error)) {
+    error.__globalApiHandled = true;
+
+    return true;
+  }
+
+  if (!response && error?.request) {
     toast?.error('Unable to reach the server. Please check your connection and try again.');
     error.__globalApiHandled = true;
 
@@ -61,6 +79,10 @@ export default {
       const data = error?.response?.data;
 
       logApiError(error);
+
+      if (isCanceledRequestError(error)) {
+        return;
+      }
 
       if (error?.__globalApiHandled) {
         return;

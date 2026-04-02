@@ -4,7 +4,7 @@
     <div class="page-top margin-small">Your Membership</div>
 
     <div class="container">
-      <div class="subscription-overview card mb-4">
+      <div class="subscription-overview card mb-4 mt-3">
         <div class="card-body">
           <div class="subscription-overview_header">
             <div>
@@ -38,8 +38,8 @@
                   <p class="subscription-usage_value mb-0">{{ formatUsageLimit(item.limit) }}</p>
                 </div>
                 <span
-                  class="subscription-usage_status"
-                  :class="usageLimitToneClass(item.limit, 'subscription-usage_bar')">
+                  class="subscription-usage_status text-white"
+                  :class="usageLimitToneClass(item.limit, 'subscription-usage_status')">
                   {{ usageLimitStatusLabel(item.limit) }}
                 </span>
               </div>
@@ -54,12 +54,7 @@
           </div>
 
           <div class="subscription-overview_footnote">
-            <router-link
-              v-if="showUpgradeCta"
-              :to="{ name: 'Subscription' }"
-              class="btn btn-primary btn-sm subscription-overview_cta">
-              Upgrade to Pro
-            </router-link>
+            <p v-if="showUpgradeCta" class="mb-0 text-dark font-weight-bold">Upgrade to Pro for Unlimited access.</p>
           </div>
         </div>
       </div>

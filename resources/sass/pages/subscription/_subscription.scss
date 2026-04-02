@@ -47,8 +47,9 @@
     align-items: center;
     justify-content: space-between;
     margin-top: 1.5rem;
-    color: rgba($color-secondary, 0.82);
+    color: $color-dark-grey;
     font-size: 0.95rem;
+    font-weight: 700;
   }
 
   &_cta {
@@ -107,8 +108,27 @@
 }
 
 .subscription-usage_status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.subscription-usage_status-healthy {
+  @include usage-limit-tone(healthy);
+}
+
+.subscription-usage_status-warning {
+  @include usage-limit-tone(warning);
+}
+
+.subscription-usage_status-critical {
+  @include usage-limit-tone(critical);
 }
 
 .subscription-usage_track {
