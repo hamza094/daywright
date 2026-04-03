@@ -48,6 +48,8 @@ export function handleGlobalApiError(error, { modal, toast, router } = {}) {
       limitType: data.limit_type,
       currentUsage: data.current_usage,
       maxAllowed: data.max_allowed,
+      limitScope: data.limit_scope,
+      canUpgrade: data.can_upgrade,
     });
     error.__globalApiHandled = true;
 

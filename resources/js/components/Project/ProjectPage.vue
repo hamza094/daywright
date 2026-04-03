@@ -148,7 +148,7 @@
                     <div v-if="showProjectLimits" class="project-limits">
                       <div class="project-limits_header">
                         <span class="project-limits_title">Project plan limits</span>
-                        <router-link :to="{ name: 'Subscription' }" class="project-limits_link">
+                        <router-link class="link-no-hover project-limits_link" :to="{ name: 'Subscription' }">
                           Upgrade to Pro
                         </router-link>
                       </div>

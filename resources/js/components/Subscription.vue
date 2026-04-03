@@ -166,7 +166,9 @@
                   <span>{{ receipt.created_at }}</span> -
                   <span>${{ receipt.amount }} {{ receipt.currency }}</span>
                   <span class="float-right">
-                    <a :href="$safeUrl(receipt.receipt_url)" target="_blank" rel="noopener noreferrer">Download</a>
+                    <a class="btn-link" :href="$safeUrl(receipt.receipt_url)" target="_blank" rel="noopener noreferrer"
+                      >Download</a
+                    >
                   </span>
                 </p>
               </div>

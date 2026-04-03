@@ -94,6 +94,7 @@ class PlanLimitServiceTest extends TestCase
             expectedUsage: $projectLimit,
             expectedMax: $projectLimit,
             expectedMessage: 'You have reached the maximum number of projects on the Free plan.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_ACCOUNT,
         );
     }
 
@@ -117,6 +118,8 @@ class PlanLimitServiceTest extends TestCase
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: $taskLimit,
             expectedMax: $taskLimit,
+            expectedMessage: 'This project has reached the maximum number of active tasks allowed on its current plan.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
         );
     }
 
@@ -140,6 +143,8 @@ class PlanLimitServiceTest extends TestCase
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: $memberLimit,
             expectedMax: $memberLimit,
+            expectedMessage: 'This project has reached the maximum number of members allowed on its current plan.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
         );
     }
 
@@ -263,6 +268,7 @@ class PlanLimitServiceTest extends TestCase
         int $expectedUsage,
         int $expectedMax,
         ?string $expectedMessage = null,
+        ?string $expectedLimitScope = null,
     ): void {
         try {
             $callback();
@@ -275,6 +281,10 @@ class PlanLimitServiceTest extends TestCase
 
             if ($expectedMessage !== null) {
                 $this->assertSame($expectedMessage, $exception->getMessage());
+            }
+
+            if ($expectedLimitScope !== null) {
+                $this->assertSame($expectedLimitScope, $exception->limitScope());
             }
         }
     }

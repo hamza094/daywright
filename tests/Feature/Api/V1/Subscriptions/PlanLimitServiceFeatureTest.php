@@ -7,6 +7,7 @@ namespace Tests\Feature\Api\V1\Subscriptions;
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
 use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
@@ -57,7 +58,16 @@ class PlanLimitServiceFeatureTest extends TestCase
             'stage_id' => 1,
         ]);
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'projects', $projectLimit, $projectLimit);
+        $this->assertPlanLimitExceeded(
+            response: $response,
+            reason: 'limit_reached',
+            limitType: 'projects',
+            currentUsage: $projectLimit,
+            maxAllowed: $projectLimit,
+            expectedMessage: 'You have reached the maximum number of projects on the Free plan.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_ACCOUNT,
+            expectedCanUpgrade: true,
+        );
 
         $this->assertDatabaseMissing('projects', ['name' => 'New Project']);
     }
@@ -91,7 +101,16 @@ class PlanLimitServiceFeatureTest extends TestCase
 
         $response = $this->createTask(['title' => 'New Task']);
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'active_tasks_per_project', $taskLimit, $taskLimit);
+        $this->assertPlanLimitExceeded(
+            response: $response,
+            reason: 'limit_reached',
+            limitType: 'active_tasks_per_project',
+            currentUsage: $taskLimit,
+            maxAllowed: $taskLimit,
+            expectedMessage: 'This project has reached the maximum number of active tasks allowed on its current plan.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
+            expectedCanUpgrade: true,
+        );
     }
 
     #[Test]
@@ -109,7 +128,16 @@ class PlanLimitServiceFeatureTest extends TestCase
 
         $response = $this->createTask(['title' => 'Member Task']);
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'active_tasks_per_project', $taskLimit, $taskLimit);
+        $this->assertPlanLimitExceeded(
+            response: $response,
+            reason: 'limit_reached',
+            limitType: 'active_tasks_per_project',
+            currentUsage: $taskLimit,
+            maxAllowed: $taskLimit,
+            expectedMessage: 'This project has reached the maximum number of active tasks allowed on its current plan.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
+            expectedCanUpgrade: false,
+        );
 
         $this->assertDatabaseMissing('tasks', [
             'project_id' => $this->project->id,
@@ -156,7 +184,16 @@ class PlanLimitServiceFeatureTest extends TestCase
 
         $response = $this->inviteMember($invitee->email);
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'members', $memberLimit, $memberLimit);
+        $this->assertPlanLimitExceeded(
+            response: $response,
+            reason: 'limit_reached',
+            limitType: 'members',
+            currentUsage: $memberLimit,
+            maxAllowed: $memberLimit,
+            expectedMessage: 'This project has reached the maximum number of members allowed on its current plan.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
+            expectedCanUpgrade: true,
+        );
     }
 
     //  Meetings
@@ -171,7 +208,16 @@ class PlanLimitServiceFeatureTest extends TestCase
 
         $response = $this->createMeeting();
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'meetings', $meetingLimit, $meetingLimit);
+        $this->assertPlanLimitExceeded(
+            response: $response,
+            reason: 'limit_reached',
+            limitType: 'meetings',
+            currentUsage: $meetingLimit,
+            maxAllowed: $meetingLimit,
+            expectedMessage: 'You have reached the maximum number of created meetings on the Free plan.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_ACCOUNT,
+            expectedCanUpgrade: true,
+        );
     }
 
     //  API Tokens
@@ -184,7 +230,16 @@ class PlanLimitServiceFeatureTest extends TestCase
 
         $response = $this->createApiToken('Blocked Token');
 
-        $this->assertPlanLimitExceeded($response, 'limit_reached', 'api_tokens', $apiTokenLimit, $apiTokenLimit);
+        $this->assertPlanLimitExceeded(
+            response: $response,
+            reason: 'limit_reached',
+            limitType: 'api_tokens',
+            currentUsage: $apiTokenLimit,
+            maxAllowed: $apiTokenLimit,
+            expectedMessage: 'You have reached the maximum number of API tokens on the Free plan.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_ACCOUNT,
+            expectedCanUpgrade: true,
+        );
     }
 
     /**
@@ -196,16 +251,23 @@ class PlanLimitServiceFeatureTest extends TestCase
         string $limitType,
         int $currentUsage,
         int $maxAllowed,
+        string $expectedMessage,
+        string $expectedLimitScope,
+        bool $expectedCanUpgrade,
     ): void {
         $response->assertStatus(403)
             ->assertJson([
+                'message' => $expectedMessage,
                 'error_type' => 'plan_limit_exceeded',
                 'reason' => $reason,
                 'limit_type' => $limitType,
                 'current_usage' => $currentUsage,
                 'max_allowed' => $maxAllowed,
+                'limit_scope' => $expectedLimitScope,
+                'can_upgrade' => $expectedCanUpgrade,
                 'upgrade_required' => true,
-            ]);
+            ])
+            ->assertJsonMissingPath('limit_owner_id');
     }
 
     /**

@@ -21,7 +21,7 @@
             @click.prevent="openSidebarDrawer">
             <i class="fa-solid fa-bars"></i>
           </button>
-          <router-link class="navbar-brand" :to="{ name: 'Dashboard' }"><b>DayWright</b></router-link>
+          <router-link class="navbar-brand link-no-hover" :to="{ name: 'Dashboard' }"><b>DayWright</b></router-link>
           <div class="ml-auto d-flex align-items-right">
             <notifications v-if="loggedIn"></notifications>
           </div>
@@ -31,21 +31,22 @@
             Your Pro trial is active
             <template v-if="trialEndsAt">until {{ trialEndsAt }}</template>
             <template v-else>for a limited time</template>.
-            <router-link :to="{ name: 'Subscription' }"><span>Subscribe</span></router-link> to keep Pro access after it
-            ends.
+            <router-link class="link-no-hover" :to="{ name: 'Subscription' }"><span>Subscribe</span></router-link> to
+            keep Pro access after it ends.
           </b>
         </div>
         <div v-else-if="showGraceAlert" class="alert alert-warning mt-2" role="alert">
           <b>
             Your Pro access ends on {{ gracePeriodEndsAt }}.
-            <router-link :to="{ name: 'Subscription' }"><span>Renew</span></router-link> to keep Pro access.
+            <router-link class="link-no-hover" :to="{ name: 'Subscription' }"><span>Renew</span></router-link> to keep
+            Pro access.
           </b>
         </div>
         <div v-else-if="showFreeAlert" class="alert alert-dark mt-2" role="alert">
           <b>
             You're on the Free plan.
-            <router-link :to="{ name: 'Subscription' }"><span>Upgrade to Pro</span></router-link> to unlock all
-            features.
+            <router-link class="link-no-hover" :to="{ name: 'Subscription' }"><span>Upgrade to Pro</span></router-link>
+            to unlock all features.
           </b>
         </div>
         <router-view />

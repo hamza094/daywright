@@ -12,7 +12,7 @@
         <span class="plan-limit-modal_icon">
           <i class="fas fa-exclamation-circle"></i>
         </span>
-        <h4 class="plan-limit-modal_title">Plan limit reached</h4>
+        <h4 class="plan-limit-modal_title">{{ modalTitle }}</h4>
         <button class="plan-limit-modal_close" aria-label="Close" @click.prevent="close">&times;</button>
       </div>
 
@@ -29,15 +29,15 @@
           </div>
         </div>
 
-        <p v-if="reason === 'trial_expired'" class="plan-limit-modal_hint">
-          Your trial has ended. Upgrade to continue using this feature.
+        <p v-if="guidanceMessage" class="plan-limit-modal_hint">
+          {{ guidanceMessage }}
         </p>
       </div>
 
       <div class="plan-limit-modal_footer">
         <button class="btn btn-secondary btn-sm" @click.prevent="close">Close</button>
-        <router-link to="/subscriptions" class="btn btn-primary btn-sm" @click.native="close">
-          Upgrade to Pro
+        <router-link v-if="canUpgrade" to="/subscriptions" class="btn btn-primary btn-sm" @click.native="close">
+          {{ primaryActionLabel }}
         </router-link>
       </div>
     </div>
@@ -62,21 +62,40 @@ export default {
       limitType: '',
       currentUsage: 0,
       maxAllowed: null,
+      limitScope: 'account',
+      canUpgrade: true,
     };
   },
   computed: {
+    isProjectScoped() {
+      return this.limitScope === 'project';
+    },
+    modalTitle() {
+      return this.isProjectScoped ? 'Project limit reached' : 'Plan limit reached';
+    },
     limitLabel() {
       return LIMIT_LABELS[this.limitType] || this.limitType;
     },
+    guidanceMessage() {
+      if (this.isProjectScoped && !this.canUpgrade) {
+        return "This project limit is controlled by the project owner's subscription. Ask the owner to upgrade or reduce usage to continue.";
+      }
+
+      if (this.reason === 'trial_expired') {
+        return 'Your trial has ended. Upgrade to continue using this feature.';
+      }
+
+      if (this.isProjectScoped && this.canUpgrade) {
+        return 'This project limit is tied to your subscription. Upgrade your plan to increase the project capacity.';
+      }
+
+      return '';
+    },
+    primaryActionLabel() {
+      return this.reason === 'trial_expired' ? 'Upgrade to Pro' : 'Manage plan';
+    },
     usagePercent() {
-      if (this.maxAllowed == null) {
-        return 0;
-      }
-
-      if (this.maxAllowed <= 0) {
-        return this.currentUsage > 0 ? 100 : 0;
-      }
-
+      if (!this.maxAllowed) return 0;
       return Math.min(100, Math.round((this.currentUsage / this.maxAllowed) * 100));
     },
   },
@@ -88,6 +107,8 @@ export default {
       this.limitType = params.limitType || '';
       this.currentUsage = params.currentUsage ?? 0;
       this.maxAllowed = params.maxAllowed ?? null;
+      this.limitScope = params.limitScope || 'account';
+      this.canUpgrade = params.canUpgrade !== false;
     },
     close() {
       this.$modal.hide('PlanLimitModal');

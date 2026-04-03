@@ -87,6 +87,10 @@ class Handler extends ExceptionHandler
 
         $this->renderable(function (PlanLimitExceededException $e, $request) {
             if ($request->is(self::API_PREFIX)) {
+                $authenticatedUser = $request->user();
+                $canUpgrade = $e->limitScope() === PlanLimitExceededException::SCOPE_ACCOUNT
+                    || (int) ($authenticatedUser?->getKey() ?? 0) === $e->limitOwnerId();
+
                 return response()->json([
                     'message' => $e->getMessage(),
                     'error_type' => 'plan_limit_exceeded',
@@ -94,6 +98,8 @@ class Handler extends ExceptionHandler
                     'limit_type' => $e->limitType(),
                     'current_usage' => $e->currentUsage(),
                     'max_allowed' => $e->maxAllowed(),
+                    'limit_scope' => $e->limitScope(),
+                    'can_upgrade' => $canUpgrade,
                     'upgrade_required' => true,
                 ], 403);
             }

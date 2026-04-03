@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Api\V1\Subscription;
 
+use App\Actions\Subscription\BuildPlanLimitExceededExceptionAction;
 use App\Actions\Subscription\ResolveUsageCountAction;
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
 use App\Enums\TaskStatus;
-use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Models\Project;
 use App\Models\User;
 use Closure;
@@ -23,7 +23,10 @@ final readonly class PlanLimitService
 {
     private const int TRANSACTION_RETRY_ATTEMPTS = 5;
 
-    public function __construct(private readonly ResolveUsageCountAction $resolveUsageCountAction) {}
+    public function __construct(
+        private readonly BuildPlanLimitExceededExceptionAction $buildPlanLimitExceededExceptionAction,
+        private readonly ResolveUsageCountAction $resolveUsageCountAction,
+    ) {}
 
     /**
      * Resolves the caller's effective application plan from its billing state.
@@ -90,30 +93,30 @@ final readonly class PlanLimitService
     {
         $this->assertLimit(
             user: $user,
-            limitType: $type->exceptionKey(),
+            type: $type,
             currentUsage: $this->resolveUsageCountAction->execute($type, $user, $project),
             maxAllowed: $this->plan($user)->maxFor($type),
-            messageSubject: $type->messageSubject(),
         );
+    }
+
+    private function loadBillingRelations(User $user): User
+    {
+        return $user->loadMissing('subscriptions', 'customer');
     }
 
     private function assertLimit(
         User $user,
-        string $limitType,
+        PlanLimitType $type,
         int $currentUsage,
         ?int $maxAllowed,
-        string $messageSubject,
     ): void {
         if ($this->withinLimit($currentUsage, $maxAllowed)) {
             return;
         }
 
-        $plan = $this->plan($user);
-
-        throw new PlanLimitExceededException(
-            message: "You have reached the maximum number of {$messageSubject} on the ".ucfirst($plan->value).' plan.',
-            limitType: $limitType,
-            reason: $this->resolveLimitReason($user),
+        throw $this->buildPlanLimitExceededExceptionAction->execute(
+            user: $user,
+            type: $type,
             currentUsage: $currentUsage,
             maxAllowed: $maxAllowed,
         );
@@ -125,21 +128,6 @@ final readonly class PlanLimitService
     private function withinLimit(int $usage, ?int $maxAllowed): bool
     {
         return $maxAllowed === null || $usage < $maxAllowed;
-    }
-
-    /**
-     * Distinguishes a true plan cap from a free-trial account that has simply expired.
-     */
-    private function resolveLimitReason(User $user): string
-    {
-        $user = $this->loadBillingRelations($user);
-
-        if ($this->plan($user) === SubscriptionPlan::Free && (! $user->hasSubscriptionRecord()
-            && ($user->hasExpiredTrial() || $user->hasExpiredTrial($user->subscriptionName())))) {
-            return PlanLimitExceededException::REASON_TRIAL_EXPIRED;
-        }
-
-        return PlanLimitExceededException::REASON_LIMIT_REACHED;
     }
 
     private function ensureAccountLimitType(PlanLimitType $type): void
@@ -180,10 +168,5 @@ final readonly class PlanLimitService
             ->firstOrFail();
 
         return $lockedProject;
-    }
-
-    private function loadBillingRelations(User $user): User
-    {
-        return $user->loadMissing('subscriptions', 'customer');
     }
 }
