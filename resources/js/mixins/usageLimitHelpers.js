@@ -1,5 +1,13 @@
 export default {
   methods: {
+    usageLimitIsOver(limit) {
+      if (!limit || limit.max === null || limit.max <= 0) {
+        return false;
+      }
+
+      return limit.used > limit.max;
+    },
+
     /**
      * Returns the percentage of limit used (0-100+).
      * Returns 0 for unlimited plans (max === null) since there's no cap to measure against.
@@ -29,6 +37,10 @@ export default {
         return `${classPrefix}-healthy`;
       }
 
+      if (this.usageLimitIsOver(limit)) {
+        return `${classPrefix}-over-limit`;
+      }
+
       const ratio = this.usageLimitRatio(limit);
 
       if (ratio >= 90) {
@@ -45,6 +57,10 @@ export default {
     usageLimitStatusLabel(limit, unlimitedLabel = 'Unlimited') {
       if (!limit || limit.max === null) {
         return unlimitedLabel;
+      }
+
+      if (this.usageLimitIsOver(limit)) {
+        return 'Over limit';
       }
 
       return `${Math.min(Math.round(this.usageLimitRatio(limit)), 100)}% used`;

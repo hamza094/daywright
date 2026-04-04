@@ -91,6 +91,32 @@ class PlanLimitServiceFeatureTest extends TestCase
             ->assertJsonPath('message', 'Project Created Successfully');
     }
 
+    #[Test]
+    public function free_user_above_the_project_limit_receives_an_over_limit_message(): void
+    {
+        $projectLimit = $this->freePlanLimit(PlanLimitType::Projects);
+
+        Project::factory()->count($projectLimit + 1)->for($this->user)->create();
+        $currentUsage = $this->user->projects()->count();
+
+        $response = $this->createProject([
+            'name' => 'Another Project',
+            'about' => 'Blocked because current usage is already above the free cap',
+            'stage_id' => 1,
+        ]);
+
+        $this->assertPlanLimitExceeded(
+            response: $response,
+            reason: 'limit_reached',
+            limitType: 'projects',
+            currentUsage: $currentUsage,
+            maxAllowed: $projectLimit,
+            expectedMessage: 'You are already above the maximum number of projects allowed on the Free plan. Reduce usage or upgrade your plan before creating more.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_ACCOUNT,
+            expectedCanUpgrade: true,
+        );
+    }
+
     //  Tasks
     #[Test]
     public function free_user_is_blocked_from_creating_an_eleventh_active_task(): void

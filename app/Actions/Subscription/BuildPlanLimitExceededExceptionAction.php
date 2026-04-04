@@ -22,7 +22,7 @@ final readonly class BuildPlanLimitExceededExceptionAction
         $plan = SubscriptionPlan::fromUser($user);
 
         return new PlanLimitExceededException(
-            message: $this->limitExceededMessage($type, $plan),
+            message: $this->limitExceededMessage($type, $plan, $currentUsage, $maxAllowed),
             limitType: $type->exceptionKey(),
             reason: $this->resolveLimitReason($user, $plan),
             currentUsage: $currentUsage,
@@ -34,8 +34,16 @@ final readonly class BuildPlanLimitExceededExceptionAction
         );
     }
 
-    private function limitExceededMessage(PlanLimitType $type, SubscriptionPlan $plan): string
-    {
+    private function limitExceededMessage(
+        PlanLimitType $type,
+        SubscriptionPlan $plan,
+        int $currentUsage,
+        ?int $maxAllowed,
+    ): string {
+        if ($this->isOverCurrentPlanLimit($currentUsage, $maxAllowed)) {
+            return $this->overCurrentPlanLimitMessage($type, $plan);
+        }
+
         if ($type->requiresProject()) {
             return 'This project has reached the maximum number of '
                 .$this->projectLimitMessageSubject($type)
@@ -47,6 +55,21 @@ final readonly class BuildPlanLimitExceededExceptionAction
             .' on the '
             .ucfirst($plan->value)
             .' plan.';
+    }
+
+    private function overCurrentPlanLimitMessage(PlanLimitType $type, SubscriptionPlan $plan): string
+    {
+        if ($type->requiresProject()) {
+            return 'This project is already above the maximum number of '
+                .$this->projectLimitMessageSubject($type)
+                .' allowed on its current plan. Reduce usage before creating more.';
+        }
+
+        return 'You are already above the maximum number of '
+            .$type->messageSubject()
+            .' allowed on the '
+            .ucfirst($plan->value)
+            .' plan. Reduce usage or upgrade your plan before creating more.';
     }
 
     private function projectLimitMessageSubject(PlanLimitType $type): string
@@ -66,6 +89,11 @@ final readonly class BuildPlanLimitExceededExceptionAction
         }
 
         return PlanLimitExceededException::REASON_LIMIT_REACHED;
+    }
+
+    private function isOverCurrentPlanLimit(int $currentUsage, ?int $maxAllowed): bool
+    {
+        return $maxAllowed !== null && $currentUsage > $maxAllowed;
     }
 
     private function loadBillingRelations(User $user): User

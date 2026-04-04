@@ -70,6 +70,9 @@ export default {
     isProjectScoped() {
       return this.limitScope === 'project';
     },
+    isOverLimit() {
+      return this.maxAllowed !== null && this.currentUsage > this.maxAllowed;
+    },
     modalTitle() {
       return this.isProjectScoped ? 'Project limit reached' : 'Plan limit reached';
     },
@@ -77,6 +80,16 @@ export default {
       return LIMIT_LABELS[this.limitType] || this.limitType;
     },
     guidanceMessage() {
+      if (this.isOverLimit && this.isProjectScoped && !this.canUpgrade) {
+        return `Usage for ${this.limitLabel.toLowerCase()} is already above this project's current plan limit. Ask the owner to reduce usage or upgrade before creating more.`;
+      }
+
+      if (this.isOverLimit) {
+        const scopeLabel = this.isProjectScoped ? "this project's current plan limit" : 'your current plan limit';
+
+        return `Usage for ${this.limitLabel.toLowerCase()} is already above ${scopeLabel}. Reduce usage or upgrade before creating more.`;
+      }
+
       if (this.isProjectScoped && !this.canUpgrade) {
         return "This project limit is controlled by the project owner's subscription. Ask the owner to upgrade or reduce usage to continue.";
       }

@@ -51,10 +51,6 @@
     font-size: 0.95rem;
     font-weight: 700;
   }
-
-  &_cta {
-    flex-shrink: 0;
-  }
 }
 
 .subscription-badge {
@@ -131,6 +127,10 @@
   @include usage-limit-tone(critical);
 }
 
+.subscription-usage_status-over-limit {
+  @include usage-limit-tone(over-limit);
+}
+
 .subscription-usage_track {
   @include usage-limit-track(0.65rem);
 }
@@ -149,6 +149,10 @@
 
 .subscription-usage_bar-critical {
   @include usage-limit-tone(critical);
+}
+
+.subscription-usage_bar-over-limit {
+  @include usage-limit-tone(over-limit);
 }
 
 .subscription-plan-card {

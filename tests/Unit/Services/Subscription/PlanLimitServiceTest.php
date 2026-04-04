@@ -124,6 +124,28 @@ class PlanLimitServiceTest extends TestCase
     }
 
     #[Test]
+    public function it_returns_an_over_limit_message_when_project_usage_is_already_above_the_current_plan_cap(): void
+    {
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
+        $taskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
+
+        Task::factory()->count($taskLimit + 1)->for($user, 'owner')->for($project)->create([
+            'status_id' => TaskStatusEnum::PENDING,
+        ]);
+
+        $this->assertPlanException(
+            callback: fn (): null => $this->service->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, $user, $project),
+            expectedLimitType: 'active_tasks_per_project',
+            expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
+            expectedUsage: $taskLimit + 1,
+            expectedMax: $taskLimit,
+            expectedMessage: 'This project is already above the maximum number of active tasks allowed on its current plan. Reduce usage before creating more.',
+            expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
+        );
+    }
+
+    #[Test]
     public function it_counts_only_active_members_when_enforcing_the_member_limit(): void
     {
         // Uses: private seeder helper seedProjectJustBelowMemberLimit() and addActiveProjectMember()

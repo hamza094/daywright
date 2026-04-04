@@ -40,6 +40,9 @@
   } @else if $tone == critical {
     color: #7f1d1d;
     background: linear-gradient(90deg, #e03131 0%, #ff6b6b 100%);
+  } @else if $tone == over-limit {
+    color: $color-white;
+    background: linear-gradient(90deg, $color-dark-grey 0%, $color-secondary 100%);
   }
 }
 
