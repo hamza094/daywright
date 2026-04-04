@@ -14,7 +14,7 @@ use Override;
 class SubscriptionResource extends JsonResource
 {
     /**
-     * @param  array<string, array{used: int|null, max: int|null}>  $limits
+     * @param  array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>  $limits
      * @param  array<int, array{name: string, label: string, interval_label: string, price: int, currency: string, currency_symbol: string, featured: bool}>  $availablePlans
      */
     public function __construct($resource, private readonly SubscriptionPlan $plan, private readonly array $limits, private readonly array $availablePlans = [])

@@ -89,6 +89,22 @@ enum PlanLimitType: string
         };
     }
 
+    public function displayLabel(): string
+    {
+        return match ($this) {
+            self::Projects => 'Projects',
+            self::ActiveTasksPerProject => 'Active tasks',
+            self::MembersPerProject => 'Members',
+            self::CreatedMeetings => 'Created meetings',
+            self::ApiTokens => 'API tokens',
+        };
+    }
+
+    public function scope(): string
+    {
+        return $this->requiresProject() ? 'project' : 'account';
+    }
+
     public function requiresProject(): bool
     {
         return match ($this) {

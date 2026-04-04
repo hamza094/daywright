@@ -34,16 +34,13 @@ final class ProjectLimitsFeatureTest extends TestCase
         $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
         $this->project->members()->attach(User::factory()->create(), ['active' => false]);
 
-        $this->getJson(route('projects.limits', $this->project))
+        $response = $this->getJson(route('projects.limits', $this->project))
             ->assertOk()
             ->assertJsonPath('message', 'Project limits retrieved successfully')
-            ->assertJsonPath('limits.active_tasks_per_project.used', 2)
-            ->assertJsonPath('limits.active_tasks_per_project.max', $activeTaskLimit)
-            ->assertJsonPath('limits.members_per_project.used', 2)
-            ->assertJsonPath('limits.members_per_project.max', $memberLimit)
-            ->assertJsonMissingPath('limits.projects')
-            ->assertJsonMissingPath('limits.created_meetings')
-            ->assertJsonMissingPath('limits.api_tokens');
+            ->assertJsonCount(2, 'limits');
+
+        $this->assertLimitItem($response, 'active_tasks_per_project', 'Active tasks', 'project', 2, $activeTaskLimit);
+        $this->assertLimitItem($response, 'members_per_project', 'Members', 'project', 2, $memberLimit);
     }
 
     #[Test]
@@ -72,5 +69,28 @@ final class ProjectLimitsFeatureTest extends TestCase
         }
 
         return $limit;
+    }
+
+    /**
+     * @param  \Illuminate\Testing\TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
+     */
+    private function assertLimitItem(
+        $response,
+        string $key,
+        string $expectedLabel,
+        string $expectedScope,
+        int $expectedUsed,
+        int $expectedMax,
+    ): void {
+        /** @var array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>|null $limits */
+        $limits = $response->json('limits');
+
+        $item = collect($limits)->firstWhere('key', $key);
+
+        $this->assertIsArray($item);
+        $this->assertSame($expectedLabel, $item['label']);
+        $this->assertSame($expectedScope, $item['scope']);
+        $this->assertSame($expectedUsed, $item['limit']['used']);
+        $this->assertSame($expectedMax, $item['limit']['max']);
     }
 }

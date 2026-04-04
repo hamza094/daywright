@@ -85,22 +85,51 @@ class SubscriptionUsageServiceTest extends TestCase
     }
 
     /**
-     * @param  array<string, array{used: int|null, max: int|null}>  $usage
+     * @param  array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>  $usage
      */
     private function assertAccountUsage(array $usage): void
     {
-        $this->assertSame(['used' => 2, 'max' => 3], $usage['projects']);
-        $this->assertSame(['used' => 1, 'max' => 1], $usage['created_meetings']);
-        $this->assertSame(['used' => 1, 'max' => 1], $usage['api_tokens']);
+        $this->assertSame([
+            [
+                'key' => 'projects',
+                'label' => 'Projects',
+                'scope' => 'account',
+                'limit' => ['used' => 2, 'max' => 3],
+            ],
+            [
+                'key' => 'created_meetings',
+                'label' => 'Created meetings',
+                'scope' => 'account',
+                'limit' => ['used' => 1, 'max' => 1],
+            ],
+            [
+                'key' => 'api_tokens',
+                'label' => 'API tokens',
+                'scope' => 'account',
+                'limit' => ['used' => 1, 'max' => 1],
+            ],
+        ], $usage);
     }
 
     /**
-     * @param  array<string, array{used: int|null, max: int|null}>  $usage
+     * @param  array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>  $usage
      */
     private function assertProjectUsage(array $usage): void
     {
-        $this->assertSame(['used' => 3, 'max' => 10], $usage['active_tasks_per_project']);
-        $this->assertSame(['used' => 2, 'max' => 3], $usage['members_per_project']);
+        $this->assertSame([
+            [
+                'key' => 'active_tasks_per_project',
+                'label' => 'Active tasks',
+                'scope' => 'project',
+                'limit' => ['used' => 3, 'max' => 10],
+            ],
+            [
+                'key' => 'members_per_project',
+                'label' => 'Members',
+                'scope' => 'project',
+                'limit' => ['used' => 2, 'max' => 3],
+            ],
+        ], $usage);
     }
 
     private function makeUser(): User

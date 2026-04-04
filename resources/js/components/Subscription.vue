@@ -273,23 +273,7 @@ export default {
     },
 
     accountUsageItems() {
-      return [
-        {
-          key: 'projects',
-          label: 'Projects',
-          limit: this.accountLimits.projects || { used: 0, max: null },
-        },
-        {
-          key: 'created_meetings',
-          label: 'Created meetings',
-          limit: this.accountLimits.created_meetings || { used: 0, max: null },
-        },
-        {
-          key: 'api_tokens',
-          label: 'API tokens',
-          limit: this.accountLimits.api_tokens || { used: 0, max: null },
-        },
-      ];
+      return Array.isArray(this.accountLimits) ? this.accountLimits : [];
     },
 
     showUpgradeCta() {

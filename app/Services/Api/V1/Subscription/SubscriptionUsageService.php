@@ -22,7 +22,7 @@ final readonly class SubscriptionUsageService
     ) {}
 
     /**
-     * @return array<string, array{used: int|null, max: int|null}>
+     * @return array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>
      */
     public function accountUsage(User $user): array
     {
@@ -36,7 +36,7 @@ final readonly class SubscriptionUsageService
     }
 
     /**
-     * @return array<string, array{used: int|null, max: int|null}>
+     * @return array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>
      */
     public function projectUsage(User $user, Project $project): array
     {
@@ -50,19 +50,23 @@ final readonly class SubscriptionUsageService
 
     /**
      * @param  array<int, PlanLimitType>  $types
-     * @return array<string, array{used: int|null, max: int|null}>
+     * @return array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>
      */
     private function buildUsage(array $types, User $user, ?Project $project = null): array
     {
         $plan = $this->planLimitService->plan($user);
 
         return collect($types)
-            ->mapWithKeys(fn (PlanLimitType $type): array => [
-                $type->value => [
+            ->map(fn (PlanLimitType $type): array => [
+                'key' => $type->value,
+                'label' => $type->displayLabel(),
+                'scope' => $type->scope(),
+                'limit' => [
                     'used' => $this->resolveUsageCountAction->execute($type, $user, $project),
                     'max' => $plan->maxFor($type),
                 ],
             ])
+            ->values()
             ->toArray();
     }
 }

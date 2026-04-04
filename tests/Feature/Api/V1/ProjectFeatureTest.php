@@ -125,16 +125,11 @@ class ProjectFeatureTest extends TestCase
         $this->project->members()->attach(User::factory()->create(), ['active' => false]);
 
         $response = $this->getJson($this->project->path())
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonCount(2, 'limits');
 
-        $response
-            ->assertJsonPath('limits.active_tasks_per_project.used', 2)
-            ->assertJsonPath('limits.active_tasks_per_project.max', 10)
-            ->assertJsonPath('limits.members_per_project.used', 2)
-            ->assertJsonPath('limits.members_per_project.max', 3)
-            ->assertJsonMissingPath('limits.projects')
-            ->assertJsonMissingPath('limits.created_meetings')
-            ->assertJsonMissingPath('limits.api_tokens');
+        $this->assertProjectLimitItem($response, 'limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
+        $this->assertProjectLimitItem($response, 'limits', 'members_per_project', 'Members', 'project', 2, 3);
     }
 
     /** @test */
@@ -183,13 +178,10 @@ class ProjectFeatureTest extends TestCase
                     'slug' => $this->project->slug,
                 ],
             ])
-            ->assertJsonPath('project.limits.active_tasks_per_project.used', 2)
-            ->assertJsonPath('project.limits.active_tasks_per_project.max', 10)
-            ->assertJsonPath('project.limits.members_per_project.used', 2)
-            ->assertJsonPath('project.limits.members_per_project.max', 3)
-            ->assertJsonMissingPath('project.limits.projects')
-            ->assertJsonMissingPath('project.limits.created_meetings')
-            ->assertJsonMissingPath('project.limits.api_tokens');
+            ->assertJsonCount(2, 'project.limits');
+
+        $this->assertProjectLimitItem($response, 'project.limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
+        $this->assertProjectLimitItem($response, 'project.limits', 'members_per_project', 'Members', 'project', 2, 3);
     }
 
     /** @test */
@@ -372,5 +364,29 @@ class ProjectFeatureTest extends TestCase
 
         $this->assertCount(1, $this->user->projects()
             ->onlyTrashed()->get());
+    }
+
+    /**
+     * @param  \Illuminate\Testing\TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
+     */
+    private function assertProjectLimitItem(
+        $response,
+        string $path,
+        string $key,
+        string $expectedLabel,
+        string $expectedScope,
+        int $expectedUsed,
+        int $expectedMax,
+    ): void {
+        /** @var array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>|null $limits */
+        $limits = $response->json($path);
+
+        $item = collect($limits)->firstWhere('key', $key);
+
+        $this->assertIsArray($item);
+        $this->assertSame($expectedLabel, $item['label']);
+        $this->assertSame($expectedScope, $item['scope']);
+        $this->assertSame($expectedUsed, $item['limit']['used']);
+        $this->assertSame($expectedMax, $item['limit']['max']);
     }
 }

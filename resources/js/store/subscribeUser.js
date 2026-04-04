@@ -29,7 +29,7 @@ const getters = {
   },
 
   accountLimits(state) {
-    return state.subscription.limits || {};
+    return Array.isArray(state.subscription.limits) ? state.subscription.limits : [];
   },
 };
 

@@ -65,10 +65,9 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.grace_period.ends_at', null)
             ->assertJsonPath('subscription.available_plans.0.price', 12)
             ->assertJsonPath('subscription.available_plans.1.price', 100)
-            ->assertJsonMissingPath('subscription.limits.active_tasks_per_project')
-            ->assertJsonMissingPath('subscription.limits.members_per_project')
-            ->assertJsonPath('subscription.limits.projects.used', 2)
-            ->assertJsonPath('subscription.limits.projects.max', 3);
+            ->assertJsonCount(3, 'subscription.limits');
+
+        $this->assertLimitItem($response, 'projects', 'Projects', 'account', 2, 3);
     }
 
     #[Test]
@@ -85,7 +84,8 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.subscribed', true)
             ->assertJsonPath('subscription.billing_plan', 'monthly')
             ->assertJsonPath('subscription.trial.active', false)
-            ->assertJsonPath('subscription.grace_period.active', false);
+            ->assertJsonPath('subscription.grace_period.active', false)
+            ->assertJsonCount(3, 'subscription.limits');
 
         $this->assertLimitMaximums($response, [
             'projects' => null,
@@ -172,9 +172,9 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.trial.active', true)
             ->assertJsonPath('subscription.trial.ends_at', $trialEndsAt->isoFormat('MMMM Do YYYY'))
             ->assertJsonPath('subscription.grace_period.active', false)
-            ->assertJsonPath('subscription.limits.projects.max', null)
-            ->assertJsonMissingPath('subscription.limits.active_tasks_per_project')
-            ->assertJsonMissingPath('subscription.limits.members_per_project');
+            ->assertJsonCount(3, 'subscription.limits');
+
+        $this->assertLimitItem($response, 'projects', 'Projects', 'account', 0, null);
     }
 
     /**
@@ -197,9 +197,12 @@ class SubscriptionResourceTest extends TestCase
                     'trial' => ['active', 'ends_at'],
                     'grace_period' => ['active', 'ends_at'],
                     'limits' => [
-                        'projects' => ['used', 'max'],
-                        'created_meetings' => ['used', 'max'],
-                        'api_tokens' => ['used', 'max'],
+                        '*' => [
+                            'key',
+                            'label',
+                            'scope',
+                            'limit' => ['used', 'max'],
+                        ],
                     ],
                 ],
             ]);
@@ -212,7 +215,62 @@ class SubscriptionResourceTest extends TestCase
     private function assertLimitMaximums(TestResponse $response, array $limits): void
     {
         foreach ($limits as $limit => $max) {
-            $response->assertJsonPath("subscription.limits.{$limit}.max", $max);
+            $this->assertLimitItem($response, $limit, $this->expectedLabel($limit), 'account', null, $max);
         }
+    }
+
+    /**
+     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
+     */
+    private function assertLimitItem(
+        TestResponse $response,
+        string $key,
+        string $expectedLabel,
+        string $expectedScope,
+        ?int $expectedUsed,
+        ?int $expectedMax,
+    ): void {
+        $item = $this->findLimitItem($response, $key);
+
+        $this->assertNotNull($item, "Expected to find a subscription limit item for [{$key}].");
+        $this->assertSame($expectedLabel, $item['label']);
+        $this->assertSame($expectedScope, $item['scope']);
+
+        if ($expectedUsed !== null) {
+            $this->assertSame($expectedUsed, $item['limit']['used']);
+        }
+
+        $this->assertSame($expectedMax, $item['limit']['max']);
+    }
+
+    /**
+     * @return array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}|null
+     */
+    private function findLimitItem(TestResponse $response, string $key): ?array
+    {
+        /** @var array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>|null $limits */
+        $limits = $response->json('subscription.limits');
+
+        if (! is_array($limits)) {
+            return null;
+        }
+
+        foreach ($limits as $item) {
+            if (($item['key'] ?? null) === $key) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
+    private function expectedLabel(string $key): string
+    {
+        return match ($key) {
+            'projects' => 'Projects',
+            'created_meetings' => 'Created meetings',
+            'api_tokens' => 'API tokens',
+            default => $key,
+        };
     }
 }

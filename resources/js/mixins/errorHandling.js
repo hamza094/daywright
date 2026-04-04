@@ -46,6 +46,7 @@ export function handleGlobalApiError(error, { modal, toast, router } = {}) {
       message: data.message,
       reason: data.reason,
       limitType: data.limit_type,
+      limitLabel: data.limit_label,
       currentUsage: data.current_usage,
       maxAllowed: data.max_allowed,
       limitScope: data.limit_scope,

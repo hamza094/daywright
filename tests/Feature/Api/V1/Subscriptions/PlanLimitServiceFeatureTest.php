@@ -287,6 +287,7 @@ class PlanLimitServiceFeatureTest extends TestCase
                 'error_type' => 'plan_limit_exceeded',
                 'reason' => $reason,
                 'limit_type' => $limitType,
+                'limit_label' => $this->expectedLimitLabel($limitType),
                 'current_usage' => $currentUsage,
                 'max_allowed' => $maxAllowed,
                 'limit_scope' => $expectedLimitScope,
@@ -294,6 +295,18 @@ class PlanLimitServiceFeatureTest extends TestCase
                 'upgrade_required' => true,
             ])
             ->assertJsonMissingPath('limit_owner_id');
+    }
+
+    private function expectedLimitLabel(string $limitType): string
+    {
+        return match ($limitType) {
+            'projects' => 'Projects',
+            'active_tasks_per_project' => 'Active tasks',
+            'members' => 'Members',
+            'meetings' => 'Created meetings',
+            'api_tokens' => 'API tokens',
+            default => $limitType,
+        };
     }
 
     /**

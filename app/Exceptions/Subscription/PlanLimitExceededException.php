@@ -19,6 +19,7 @@ final class PlanLimitExceededException extends RuntimeException
     public function __construct(
         string $message,
         private readonly string $limitType,
+        private readonly string $limitLabel,
         private readonly string $reason,
         private readonly int $currentUsage,
         private readonly ?int $maxAllowed,
@@ -36,6 +37,11 @@ final class PlanLimitExceededException extends RuntimeException
     public function reason(): string
     {
         return $this->reason;
+    }
+
+    public function limitLabel(): string
+    {
+        return $this->limitLabel;
     }
 
     public function currentUsage(): int

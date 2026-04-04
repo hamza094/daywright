@@ -24,6 +24,7 @@ final readonly class BuildPlanLimitExceededExceptionAction
         return new PlanLimitExceededException(
             message: $this->limitExceededMessage($type, $plan, $currentUsage, $maxAllowed),
             limitType: $type->exceptionKey(),
+            limitLabel: $type->displayLabel(),
             reason: $this->resolveLimitReason($user, $plan),
             currentUsage: $currentUsage,
             maxAllowed: $maxAllowed,

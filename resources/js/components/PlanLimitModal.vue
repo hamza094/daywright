@@ -21,7 +21,7 @@
 
         <div v-if="maxAllowed !== null" class="plan-limit-modal_usage">
           <div class="plan-limit-modal_usage-label">
-            <span>{{ limitLabel }}</span>
+            <span>{{ displayLimitLabel }}</span>
             <span class="plan-limit-modal_usage-count"> {{ currentUsage }} / {{ maxAllowed }} </span>
           </div>
           <div class="plan-limit-modal_usage-track">
@@ -45,14 +45,6 @@
 </template>
 
 <script>
-const LIMIT_LABELS = {
-  projects: 'Projects',
-  active_tasks_per_project: 'Active tasks',
-  members: 'Project members',
-  meetings: 'Meetings created',
-  api_tokens: 'API tokens',
-};
-
 export default {
   name: 'PlanLimitModal',
   data() {
@@ -60,6 +52,7 @@ export default {
       message: '',
       reason: '',
       limitType: '',
+      limitLabel: '',
       currentUsage: 0,
       maxAllowed: null,
       limitScope: 'account',
@@ -76,18 +69,18 @@ export default {
     modalTitle() {
       return this.isProjectScoped ? 'Project limit reached' : 'Plan limit reached';
     },
-    limitLabel() {
-      return LIMIT_LABELS[this.limitType] || this.limitType;
+    displayLimitLabel() {
+      return this.limitLabel || this.limitType;
     },
     guidanceMessage() {
       if (this.isOverLimit && this.isProjectScoped && !this.canUpgrade) {
-        return `Usage for ${this.limitLabel.toLowerCase()} is already above this project's current plan limit. Ask the owner to reduce usage or upgrade before creating more.`;
+        return `Usage for ${this.displayLimitLabel.toLowerCase()} is already above this project's current plan limit. Ask the owner to reduce usage or upgrade before creating more.`;
       }
 
       if (this.isOverLimit) {
         const scopeLabel = this.isProjectScoped ? "this project's current plan limit" : 'your current plan limit';
 
-        return `Usage for ${this.limitLabel.toLowerCase()} is already above ${scopeLabel}. Reduce usage or upgrade before creating more.`;
+        return `Usage for ${this.displayLimitLabel.toLowerCase()} is already above ${scopeLabel}. Reduce usage or upgrade before creating more.`;
       }
 
       if (this.isProjectScoped && !this.canUpgrade) {
@@ -118,6 +111,7 @@ export default {
       this.message = params.message || 'You have reached a plan limit.';
       this.reason = params.reason || '';
       this.limitType = params.limitType || '';
+      this.limitLabel = params.limitLabel || '';
       this.currentUsage = params.currentUsage ?? 0;
       this.maxAllowed = params.maxAllowed ?? null;
       this.limitScope = params.limitScope || 'account';

@@ -46,7 +46,7 @@ class ProjectService
     }
 
     /**
-     * @return array<string, array{used: int|null, max: int|null}>|null
+     * @return array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>|null
      */
     public function projectLimits(Project $project, User $user): ?array
     {

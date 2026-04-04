@@ -96,6 +96,7 @@ class Handler extends ExceptionHandler
                     'error_type' => 'plan_limit_exceeded',
                     'reason' => $e->reason(),
                     'limit_type' => $e->limitType(),
+                    'limit_label' => $e->limitLabel(),
                     'current_usage' => $e->currentUsage(),
                     'max_allowed' => $e->maxAllowed(),
                     'limit_scope' => $e->limitScope(),

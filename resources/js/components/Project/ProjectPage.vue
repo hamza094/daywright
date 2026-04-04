@@ -333,20 +333,9 @@ export default {
     },
 
     projectLimitItems() {
-      const limits = this.project?.limits || {};
+      const limits = Array.isArray(this.project?.limits) ? this.project.limits : [];
 
-      return [
-        {
-          key: 'active_tasks_per_project',
-          label: 'Active tasks',
-          limit: limits.active_tasks_per_project || null,
-        },
-        {
-          key: 'members_per_project',
-          label: 'Members',
-          limit: limits.members_per_project || null,
-        },
-      ].filter((item) => item.limit && item.limit.max !== null);
+      return limits.filter((item) => item?.limit && item.limit.max !== null);
     },
 
     showProjectLimits() {
