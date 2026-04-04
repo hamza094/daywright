@@ -45,6 +45,16 @@
 </template>
 
 <script>
+const PLAN_LIMIT_GUIDANCE = {
+  trialExpired: 'Your trial has ended. Upgrade to continue using this feature.',
+  projectOwnerManaged:
+    "This project limit is controlled by the project owner's subscription. Ask the owner to upgrade or reduce usage to continue.",
+  projectUpgrade:
+    'This project limit is tied to your subscription. Upgrade your plan to increase the project capacity.',
+  ownerOverLimitAction: 'Ask the owner to reduce usage or upgrade before creating more.',
+  selfOverLimitAction: 'Reduce usage or upgrade before creating more.',
+};
+
 export default {
   name: 'PlanLimitModal',
   data() {
@@ -72,30 +82,28 @@ export default {
     displayLimitLabel() {
       return this.limitLabel || this.limitType;
     },
+    overLimitScopeLabel() {
+      return this.isProjectScoped ? "this project's current plan limit" : 'your current plan limit';
+    },
     guidanceMessage() {
-      if (this.isOverLimit && this.isProjectScoped && !this.canUpgrade) {
-        return `Usage for ${this.displayLimitLabel.toLowerCase()} is already above this project's current plan limit. Ask the owner to reduce usage or upgrade before creating more.`;
-      }
-
       if (this.isOverLimit) {
-        const scopeLabel = this.isProjectScoped ? "this project's current plan limit" : 'your current plan limit';
+        const resolution =
+          this.isProjectScoped && !this.canUpgrade
+            ? PLAN_LIMIT_GUIDANCE.ownerOverLimitAction
+            : PLAN_LIMIT_GUIDANCE.selfOverLimitAction;
 
-        return `Usage for ${this.displayLimitLabel.toLowerCase()} is already above ${scopeLabel}. Reduce usage or upgrade before creating more.`;
-      }
-
-      if (this.isProjectScoped && !this.canUpgrade) {
-        return "This project limit is controlled by the project owner's subscription. Ask the owner to upgrade or reduce usage to continue.";
+        return `Usage for ${this.displayLimitLabel.toLowerCase()} is already above ${this.overLimitScopeLabel}. ${resolution}`;
       }
 
       if (this.reason === 'trial_expired') {
-        return 'Your trial has ended. Upgrade to continue using this feature.';
+        return PLAN_LIMIT_GUIDANCE.trialExpired;
       }
 
-      if (this.isProjectScoped && this.canUpgrade) {
-        return 'This project limit is tied to your subscription. Upgrade your plan to increase the project capacity.';
+      if (!this.isProjectScoped) {
+        return '';
       }
 
-      return '';
+      return this.canUpgrade ? PLAN_LIMIT_GUIDANCE.projectUpgrade : PLAN_LIMIT_GUIDANCE.projectOwnerManaged;
     },
     primaryActionLabel() {
       return this.reason === 'trial_expired' ? 'Upgrade to Pro' : 'Manage plan';
