@@ -244,6 +244,7 @@ class SubscriptionResourceTest extends TestCase
     }
 
     /**
+     * @param  TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
      * @return array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}|null
      */
     private function findLimitItem(TestResponse $response, string $key): ?array
@@ -256,7 +257,7 @@ class SubscriptionResourceTest extends TestCase
         }
 
         foreach ($limits as $item) {
-            if (($item['key'] ?? null) === $key) {
+            if ($item['key'] === $key) {
                 return $item;
             }
         }

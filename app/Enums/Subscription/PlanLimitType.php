@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Enums\Subscription;
 
 use App\Enums\TaskStatus;
-use Closure;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -62,7 +61,7 @@ enum PlanLimitType: string
     }
 
     /**
-     * @return array<int|string, string|Closure(Builder): Builder>
+     * @return array<int|string, string|callable>
      */
     public static function accountCountLoaders(): array
     {
@@ -70,7 +69,7 @@ enum PlanLimitType: string
     }
 
     /**
-     * @return array<int|string, string|Closure(Builder): Builder>
+     * @return array<int|string, string|callable>
      */
     public static function projectCountLoaders(): array
     {
@@ -106,7 +105,7 @@ enum PlanLimitType: string
     }
 
     /**
-     * @return array<int|string, string|Closure(Builder): Builder>
+     * @return array<int|string, string|callable>
      */
     public function countLoaders(): array
     {
@@ -125,7 +124,7 @@ enum PlanLimitType: string
 
     /**
      * @param  array<int, self>  $types
-     * @return array<int|string, string|Closure(Builder): Builder>
+     * @return array<int|string, string|callable>
      */
     private static function countLoadersFor(array $types): array
     {
@@ -137,7 +136,7 @@ enum PlanLimitType: string
     }
 
     /**
-     * @return array{configKey: string, exceptionKey: string, messageSubject: string, displayLabel: string, loadedCountAttribute: string, countLoaders: array<int|string, string|Closure(Builder): Builder>, scope: string}
+     * @return array{configKey: string, exceptionKey: string, messageSubject: string, displayLabel: string, loadedCountAttribute: string, countLoaders: array<int|string, string|callable>, scope: string}
      */
     private function definition(): array
     {

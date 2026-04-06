@@ -90,6 +90,9 @@ class PlanLimitTypeTest extends TestCase
         ];
     }
 
+    /**
+     * @param  array{value: string, config_key: string, exception_key: string, message_subject: string, display_label: string, loaded_count_attribute: string, count_loader_keys: array<int, string>, scope: string, requires_project: bool}  $expected
+     */
     #[Test]
     #[DataProvider('metadataProvider')]
     public function it_exposes_consistent_metadata_for_each_limit_type(PlanLimitType $type, array $expected): void
