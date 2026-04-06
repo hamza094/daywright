@@ -8,11 +8,9 @@ use App\Actions\Subscription\BuildPlanLimitExceededExceptionAction;
 use App\Actions\Subscription\ResolveUsageCountAction;
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
-use App\Enums\TaskStatus;
 use App\Models\Project;
 use App\Models\User;
 use Closure;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -49,11 +47,7 @@ final readonly class PlanLimitService
         return DB::transaction(function () use ($type, $user, $callback): mixed {
             $lockedUser = $this->lockUser($user);
 
-            $lockedUser->loadCount([
-                'projects',
-                'meetings',
-                'tokens',
-            ]);
+            $lockedUser->loadCount(PlanLimitType::accountCountLoaders());
 
             $this->assertWithinLimit($type, $lockedUser);
 
@@ -73,14 +67,10 @@ final readonly class PlanLimitService
 
         return DB::transaction(function () use ($type, $project, $callback): mixed {
             $lockedProject = $this->lockProject($project);
-            $projectOwner = $lockedProject->user;
 
-            $lockedProject->loadCount([
-                'tasks as active_tasks_count' => fn (Builder $query): Builder => $query->whereIn('status_id', TaskStatus::active()),
-                'activeMembers as active_members_count' => fn (Builder $query): Builder => $query,
-            ]);
+            $lockedProject->loadCount(PlanLimitType::projectCountLoaders());
 
-            $this->assertWithinLimit($type, $projectOwner, $lockedProject);
+            $this->assertWithinLimit($type, $lockedProject->user, $lockedProject);
 
             return $callback($lockedProject);
         }, self::TRANSACTION_RETRY_ATTEMPTS);

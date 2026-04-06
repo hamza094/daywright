@@ -26,19 +26,31 @@ final readonly class ResolveUsageCountAction
 
     private function accountCount(PlanLimitType $type, User $user): int
     {
+        $loadedCount = $this->loadedCount($user, $type->loadedCountAttribute());
+
+        if ($loadedCount !== null) {
+            return $loadedCount;
+        }
+
         return match ($type) {
-            PlanLimitType::Projects => $this->loadedCount($user, 'projects_count') ?? $user->projects()->count(),
-            PlanLimitType::CreatedMeetings => $this->loadedCount($user, 'meetings_count') ?? $user->meetings()->count(),
-            PlanLimitType::ApiTokens => $this->loadedCount($user, 'tokens_count') ?? $user->tokens()->count(),
+            PlanLimitType::Projects => $user->projects()->count(),
+            PlanLimitType::CreatedMeetings => $user->meetings()->count(),
+            PlanLimitType::ApiTokens => $user->tokens()->count(),
             default => throw new InvalidArgumentException("Invalid account limit type: {$type->value}"),
         };
     }
 
     private function projectCount(PlanLimitType $type, Project $project): int
     {
+        $loadedCount = $this->loadedCount($project, $type->loadedCountAttribute());
+
+        if ($loadedCount !== null) {
+            return $loadedCount;
+        }
+
         return match ($type) {
-            PlanLimitType::ActiveTasksPerProject => $this->loadedCount($project, 'active_tasks_count') ?? $project->tasks()->whereIn('status_id', TaskStatus::active())->count(),
-            PlanLimitType::MembersPerProject => $this->loadedCount($project, 'active_members_count') ?? $project->activeMembers()->count(),
+            PlanLimitType::ActiveTasksPerProject => $project->tasks()->whereIn('status_id', TaskStatus::active())->count(),
+            PlanLimitType::MembersPerProject => $project->activeMembers()->count(),
             default => throw new InvalidArgumentException("Invalid project limit type: {$type->value}"),
         };
     }

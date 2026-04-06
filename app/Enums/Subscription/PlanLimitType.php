@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Enums\Subscription;
 
+use App\Enums\TaskStatus;
+use Closure;
+use Illuminate\Database\Eloquent\Builder;
+
 /**
  * Canonical limit identifiers used by plan config, usage payloads, and enforcement.
  */
@@ -14,6 +18,10 @@ enum PlanLimitType: string
     case MembersPerProject = 'members_per_project';
     case CreatedMeetings = 'created_meetings';
     case ApiTokens = 'api_tokens';
+
+    private const SCOPE_ACCOUNT = 'account';
+
+    private const SCOPE_PROJECT = 'project';
 
     /**
      * @return array<string>
@@ -53,15 +61,25 @@ enum PlanLimitType: string
         ));
     }
 
+    /**
+     * @return array<int|string, string|Closure(Builder): Builder>
+     */
+    public static function accountCountLoaders(): array
+    {
+        return self::countLoadersFor(self::accountTypes());
+    }
+
+    /**
+     * @return array<int|string, string|Closure(Builder): Builder>
+     */
+    public static function projectCountLoaders(): array
+    {
+        return self::countLoadersFor(self::projectTypes());
+    }
+
     public function configKey(): string
     {
-        return match ($this) {
-            self::Projects => 'max_owned_projects',
-            self::ActiveTasksPerProject => 'max_active_tasks_per_project',
-            self::MembersPerProject => 'max_members_per_project',
-            self::CreatedMeetings => 'max_created_meetings',
-            self::ApiTokens => 'max_api_tokens',
-        };
+        return $this->definition()['configKey'];
     }
 
     /**
@@ -69,47 +87,110 @@ enum PlanLimitType: string
      */
     public function exceptionKey(): string
     {
-        return match ($this) {
-            self::Projects => 'projects',
-            self::ActiveTasksPerProject => 'active_tasks_per_project',
-            self::MembersPerProject => 'members',
-            self::CreatedMeetings => 'meetings',
-            self::ApiTokens => 'api_tokens',
-        };
+        return $this->definition()['exceptionKey'];
     }
 
     public function messageSubject(): string
     {
-        return match ($this) {
-            self::Projects => 'projects',
-            self::ActiveTasksPerProject => 'active tasks for this project',
-            self::MembersPerProject => 'members for this project',
-            self::CreatedMeetings => 'created meetings',
-            self::ApiTokens => 'API tokens',
-        };
+        return $this->definition()['messageSubject'];
     }
 
     public function displayLabel(): string
     {
-        return match ($this) {
-            self::Projects => 'Projects',
-            self::ActiveTasksPerProject => 'Active tasks',
-            self::MembersPerProject => 'Members',
-            self::CreatedMeetings => 'Created meetings',
-            self::ApiTokens => 'API tokens',
-        };
+        return $this->definition()['displayLabel'];
+    }
+
+    public function loadedCountAttribute(): string
+    {
+        return $this->definition()['loadedCountAttribute'];
+    }
+
+    /**
+     * @return array<int|string, string|Closure(Builder): Builder>
+     */
+    public function countLoaders(): array
+    {
+        return $this->definition()['countLoaders'];
     }
 
     public function scope(): string
     {
-        return $this->requiresProject() ? 'project' : 'account';
+        return $this->definition()['scope'];
     }
 
     public function requiresProject(): bool
     {
+        return $this->scope() === self::SCOPE_PROJECT;
+    }
+
+    /**
+     * @param  array<int, self>  $types
+     * @return array<int|string, string|Closure(Builder): Builder>
+     */
+    private static function countLoadersFor(array $types): array
+    {
+        return array_reduce(
+            $types,
+            static fn (array $loaders, self $type): array => array_merge($loaders, $type->countLoaders()),
+            [],
+        );
+    }
+
+    /**
+     * @return array{configKey: string, exceptionKey: string, messageSubject: string, displayLabel: string, loadedCountAttribute: string, countLoaders: array<int|string, string|Closure(Builder): Builder>, scope: string}
+     */
+    private function definition(): array
+    {
         return match ($this) {
-            self::ActiveTasksPerProject, self::MembersPerProject => true,
-            self::Projects, self::CreatedMeetings, self::ApiTokens => false,
+            self::Projects => [
+                'configKey' => 'max_owned_projects',
+                'exceptionKey' => 'projects',
+                'messageSubject' => 'projects',
+                'displayLabel' => 'Projects',
+                'loadedCountAttribute' => 'projects_count',
+                'countLoaders' => ['projects'],
+                'scope' => self::SCOPE_ACCOUNT,
+            ],
+            self::ActiveTasksPerProject => [
+                'configKey' => 'max_active_tasks_per_project',
+                'exceptionKey' => 'active_tasks_per_project',
+                'messageSubject' => 'active tasks for this project',
+                'displayLabel' => 'Active tasks',
+                'loadedCountAttribute' => 'active_tasks_count',
+                'countLoaders' => [
+                    'tasks as active_tasks_count' => static fn (Builder $query): Builder => $query->whereIn('status_id', TaskStatus::active()),
+                ],
+                'scope' => self::SCOPE_PROJECT,
+            ],
+            self::MembersPerProject => [
+                'configKey' => 'max_members_per_project',
+                'exceptionKey' => 'members',
+                'messageSubject' => 'members for this project',
+                'displayLabel' => 'Members',
+                'loadedCountAttribute' => 'active_members_count',
+                'countLoaders' => [
+                    'activeMembers as active_members_count' => static fn (Builder $query): Builder => $query,
+                ],
+                'scope' => self::SCOPE_PROJECT,
+            ],
+            self::CreatedMeetings => [
+                'configKey' => 'max_created_meetings',
+                'exceptionKey' => 'meetings',
+                'messageSubject' => 'created meetings',
+                'displayLabel' => 'Created meetings',
+                'loadedCountAttribute' => 'meetings_count',
+                'countLoaders' => ['meetings'],
+                'scope' => self::SCOPE_ACCOUNT,
+            ],
+            self::ApiTokens => [
+                'configKey' => 'max_api_tokens',
+                'exceptionKey' => 'api_tokens',
+                'messageSubject' => 'API tokens',
+                'displayLabel' => 'API tokens',
+                'loadedCountAttribute' => 'tokens_count',
+                'countLoaders' => ['tokens'],
+                'scope' => self::SCOPE_ACCOUNT,
+            ],
         };
     }
 }

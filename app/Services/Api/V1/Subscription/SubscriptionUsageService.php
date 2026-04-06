@@ -6,10 +6,8 @@ namespace App\Services\Api\V1\Subscription;
 
 use App\Actions\Subscription\ResolveUsageCountAction;
 use App\Enums\Subscription\PlanLimitType;
-use App\Enums\TaskStatus;
 use App\Models\Project;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Builds normalized usage payloads for account- and project-scoped limits.
@@ -26,11 +24,7 @@ final readonly class SubscriptionUsageService
      */
     public function accountUsage(User $user): array
     {
-        $user->loadCount([
-            'projects',
-            'meetings',
-            'tokens',
-        ]);
+        $user->loadCount(PlanLimitType::accountCountLoaders());
 
         return $this->buildUsage(PlanLimitType::accountTypes(), $user);
     }
@@ -40,10 +34,7 @@ final readonly class SubscriptionUsageService
      */
     public function projectUsage(User $user, Project $project): array
     {
-        $project->loadCount([
-            'tasks as active_tasks_count' => fn (Builder $query): Builder => $query->whereIn('status_id', TaskStatus::active()),
-            'activeMembers as active_members_count' => fn (Builder $query): Builder => $query,
-        ]);
+        $project->loadCount(PlanLimitType::projectCountLoaders());
 
         return $this->buildUsage(PlanLimitType::projectTypes(), $user, $project);
     }

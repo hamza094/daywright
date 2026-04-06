@@ -335,6 +335,9 @@ export default {
     projectLimitItems() {
       const limits = Array.isArray(this.project?.limits) ? this.project.limits : [];
 
+      // Note: items with `limit.max === null` (unlimited) are filtered out here.
+      // That means Pro users (unlimited) will see no limits; to show usage
+      // for unlimited plans (no cap), remove the `item.limit.max !== null` check.
       return limits.filter((item) => item?.limit && item.limit.max !== null);
     },
 

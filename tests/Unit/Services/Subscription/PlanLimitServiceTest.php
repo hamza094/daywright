@@ -280,6 +280,44 @@ class PlanLimitServiceTest extends TestCase
         ]);
     }
 
+    #[Test]
+    public function it_uses_preloaded_counts_for_every_account_limit_type(): void
+    {
+        $user = $this->makeUser();
+
+        $this->makeProject($user);
+
+        Project::factory()->for($user)->create();
+
+        $user->load('subscriptions', 'customer');
+        $user->loadCount(PlanLimitType::accountCountLoaders());
+
+        $this->expectsDatabaseQueryCount(0);
+
+        foreach (PlanLimitType::accountTypes() as $type) {
+            $this->service->assertWithinLimit($type, $user);
+        }
+    }
+
+    #[Test]
+    public function it_uses_preloaded_counts_for_every_project_limit_type(): void
+    {
+        $user = $this->makeUser();
+        $project = $this->makeProject($user);
+
+        $this->seedProjectJustBelowActiveTaskLimit($user, $project, $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject));
+        $this->seedProjectJustBelowMemberLimit($project, $this->freePlanLimit(PlanLimitType::MembersPerProject));
+
+        $user->load('subscriptions', 'customer');
+        $project->loadCount(PlanLimitType::projectCountLoaders());
+
+        $this->expectsDatabaseQueryCount(0);
+
+        foreach (PlanLimitType::projectTypes() as $type) {
+            $this->service->assertWithinLimit($type, $user, $project);
+        }
+    }
+
     /**
      * @param  callable(): null  $callback
      */
