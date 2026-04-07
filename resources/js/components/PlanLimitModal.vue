@@ -36,7 +36,11 @@
 
       <div class="plan-limit-modal_footer">
         <button class="btn btn-secondary btn-sm" @click.prevent="close">Close</button>
-        <router-link v-if="canUpgrade" to="/subscriptions" class="btn btn-primary btn-sm" @click.native="close">
+        <router-link
+          v-if="canUpgrade"
+          :to="{ name: 'Subscription' }"
+          class="btn btn-primary btn-sm"
+          @click.native="close">
           {{ primaryActionLabel }}
         </router-link>
       </div>

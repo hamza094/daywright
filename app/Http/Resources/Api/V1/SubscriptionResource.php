@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1;
 
 use App\Enums\Subscription\SubscriptionPlan;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Laravel\Paddle\Payment;
 use Override;
 
 /**
@@ -16,9 +18,19 @@ class SubscriptionResource extends JsonResource
     /**
      * @param  array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>  $limits
      * @param  array<int, array{name: string, label: string, interval_label: string, price: int, currency: string, currency_symbol: string, featured: bool}>  $availablePlans
+     * @param  array{subscribed: bool, billing_plan: ?string, next_payment: ?Payment, created_at: ?CarbonInterface}  $billing
+     * @param  array{active: bool, ends_at: ?CarbonInterface}  $trial
+     * @param  array{active: bool, ends_at: ?CarbonInterface}  $gracePeriod
      */
-    public function __construct($resource, private readonly SubscriptionPlan $plan, private readonly array $limits, private readonly array $availablePlans = [])
-    {
+    public function __construct(
+        $resource,
+        private readonly SubscriptionPlan $plan,
+        private readonly array $limits,
+        private readonly array $availablePlans,
+        private readonly array $billing,
+        private readonly array $trial,
+        private readonly array $gracePeriod,
+    ) {
         parent::__construct($resource);
     }
 
@@ -31,42 +43,41 @@ class SubscriptionResource extends JsonResource
     #[Override]
     public function toArray($request): array
     {
-        $subscription = $this->getSubscription();
-        $isBillingSubscribed = $subscription?->recurring() === true;
-        $hasGracePeriod = $this->hasGracePeriod();
-        $isBillingVisible = $isBillingSubscribed || $hasGracePeriod;
-
         return [
             'plan' => $this->plan->value,
             'entitled' => $this->plan === SubscriptionPlan::Pro,
-            'subscribed' => $isBillingSubscribed,
+            'subscribed' => $this->billing['subscribed'],
             'available_plans' => $this->availablePlans,
-            'billing_plan' => $isBillingVisible ? $this->displayBillingPlan() : null,
-            'next_payment' => $isBillingSubscribed ? $this->payment() : null,
-            'created_at' => $isBillingSubscribed && $subscription !== null
-                ? optional($subscription->created_at)->diffForHumans()
-                : null,
+            'billing_plan' => $this->billing['billing_plan'],
+            'next_payment' => $this->billing['next_payment'],
+            'created_at' => $this->formatDate($this->billing['created_at'], true),
             'receipts' => ReceiptResource::collection($this->whenLoaded('receipts')),
             'trial' => [
-                'active' => $this->isOnTrial(),
-                'ends_at' => $this->isOnTrial() ? $this->resolveTrialEndsAt() : null,
+                'active' => $this->trial['active'],
+                'ends_at' => $this->formatDate($this->trial['ends_at']),
             ],
 
             'grace_period' => [
-                'active' => $hasGracePeriod,
-                'ends_at' => $hasGracePeriod && $subscription !== null
-                    ? optional($subscription->ends_at)->isoFormat('MMMM Do YYYY')
-                    : null,
+                'active' => $this->gracePeriod['active'],
+                'ends_at' => $this->formatDate($this->gracePeriod['ends_at']),
             ],
 
             'limits' => $this->limits,
         ];
     }
 
-    private function resolveTrialEndsAt(): ?string
+    /**
+     * @return array{iso: string, human: string}|null
+     */
+    private function formatDate(?CarbonInterface $date, bool $relative = false): ?array
     {
-        $endsAt = $this->trialEndsAt($this->subscriptionName()) ?? $this->trialEndsAt();
+        if (! $date instanceof CarbonInterface) {
+            return null;
+        }
 
-        return optional($endsAt)->isoFormat('MMMM Do YYYY');
+        return [
+            'iso' => $date->toIso8601String(),
+            'human' => $relative ? $date->diffForHumans() : $date->isoFormat('MMMM Do YYYY'),
+        ];
     }
 }

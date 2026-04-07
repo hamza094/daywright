@@ -185,7 +185,7 @@ class PlanLimitServiceTest extends TestCase
         $this->{$consumeMethod}($user, $project);
 
         $this->assertPlanException(
-            callback: fn (): null => $this->service->assertWithinLimit($limitType, $user),
+            callback: fn (): null => $this->service->assertWithinLimit($limitType, $user, $project),
             expectedLimitType: $limitType->exceptionKey(),
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: $maxAllowed,
@@ -384,11 +384,11 @@ class PlanLimitServiceTest extends TestCase
     ): int {
         $maxAllowed = $this->freePlanLimit($limitType);
 
-        $this->service->assertWithinLimit($limitType, $user);
+        $this->service->assertWithinLimit($limitType, $user, $project);
 
         for ($usage = 1; $usage < $maxAllowed; $usage++) {
             $this->{$consumeMethod}($user, $project);
-            $this->service->assertWithinLimit($limitType, $user);
+            $this->service->assertWithinLimit($limitType, $user, $project);
         }
 
         return $maxAllowed;

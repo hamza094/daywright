@@ -335,10 +335,14 @@ export default {
     projectLimitItems() {
       const limits = Array.isArray(this.project?.limits) ? this.project.limits : [];
 
-      // Note: items with `limit.max === null` (unlimited) are filtered out here.
-      // That means Pro users (unlimited) will see no limits; to show usage
-      // for unlimited plans (no cap), remove the `item.limit.max !== null` check.
-      return limits.filter((item) => item?.limit && item.limit.max !== null);
+      // Only include limits whose `limit.max` is a finite number greater than zero.
+      // This excludes `null`/`undefined` (used to indicate unlimited/no-cap) and
+      // any non-positive values. To show unlimited items, adjust or remove this
+      // finite/positive check.
+      return limits.filter((item) => {
+        const max = item?.limit?.max;
+        return Number.isFinite(max) && max > 0;
+      });
     },
 
     showProjectLimits() {

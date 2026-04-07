@@ -34,9 +34,7 @@ enum SubscriptionPlan: string
      */
     public function limits(): array
     {
-        /** @var array<string, mixed> $limits */
-        return $limits = config("plan-limits.{$this->value}", []);
-
+        return config("plan-limits.{$this->value}", []);
     }
 
     public function maxFor(PlanLimitType $type): ?int

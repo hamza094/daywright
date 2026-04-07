@@ -61,11 +61,11 @@ class NotificationsController extends ApiController
      */
     public function updateStatus(Request $request, $notification): JsonResponse
     {
-        $request->validate(['status' => 'required|in:read,unread']);
+        $data = $request->validate(['status' => 'required|in:read,unread']);
 
         $userNotification = $this->authenticatedUser()->notifications()->findOrFail($notification);
 
-        $request->status === 'read'
+        $data['status'] === 'read'
             ? $userNotification->markAsRead()
             : $userNotification->update(['read_at' => null]);
 

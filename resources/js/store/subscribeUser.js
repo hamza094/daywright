@@ -39,25 +39,29 @@ const actions = {
       .get('/user/subscriptions', {})
       .then((response) => {
         commit('setSubscription', response.data.subscription);
-        commit('setErrors', '');
+        commit('setErrors', {});
         return response;
       })
       .catch((error) => {
         const safeErrors = error?.response?.data?.errors ?? error?.message ?? 'Unknown error';
         commit('setErrors', safeErrors);
-        // Re-throw so callers can chain if they need to
-        throw error;
+        // Do not re-throw after recording handled errors to avoid unhandled
+        // promise rejections in fire-and-forget dispatchers; callers that need
+        // to inspect failures should read `subscribeUser.errors` or check the
+        // returned value (null indicates a handled failure).
+        return null;
       });
   },
 
   userLogout({ commit }) {
     commit('setSubscription', {});
+    commit('setErrors', {});
   },
 
   // TODO: call API to cancel subscription and update store
-  deleteSubscription() {
+  /*deleteSubscription() {
     return Promise.reject(new Error('deleteSubscription not implemented.'));
-  },
+  },*/
 };
 
 const mutations = {

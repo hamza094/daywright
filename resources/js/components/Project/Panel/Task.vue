@@ -19,7 +19,7 @@
     <section class="collapse" id="taskProject">
       <article class="card card-body">
         <div v-if="!access">Only the project owner and members are allowed to access this feature.</div>
-        <div v-if="access">
+        <div v-else>
           <!-- Add new Task -->
           <div class="task-add">
             <form class="" @submit.prevent="add">
@@ -154,6 +154,10 @@ export default {
     },
 
     add() {
+      if (!this.form.title.trim()) {
+        this.$vToastify.warning('Please enter a task title');
+        return;
+      }
       axios
         .post('/projects/' + this.slug + '/tasks', this.form, { useProgress: true })
         .then(() => {
@@ -164,7 +168,6 @@ export default {
           this.refreshLimits(this.slug);
         })
         .catch((error) => {
-          this.form.title = '';
           this.handleErrorResponse(error);
         });
     },

@@ -7,6 +7,7 @@ namespace Tests\Feature\Api\V1\Subscriptions;
 use App\Models\Project;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
@@ -83,6 +84,8 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.entitled', true)
             ->assertJsonPath('subscription.subscribed', true)
             ->assertJsonPath('subscription.billing_plan', 'monthly')
+            ->assertJsonPath('subscription.created_at.iso', $subscription->created_at?->toIso8601String())
+            ->assertJsonPath('subscription.created_at.human', $subscription->created_at?->diffForHumans())
             ->assertJsonPath('subscription.trial.active', false)
             ->assertJsonPath('subscription.grace_period.active', false)
             ->assertJsonCount(3, 'subscription.limits');
@@ -110,6 +113,8 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.next_payment', null)
             ->assertJsonPath('subscription.created_at', null)
             ->assertJsonPath('subscription.grace_period.active', true)
+            ->assertJsonPath('subscription.grace_period.ends_at.iso', $subscription->ends_at?->toIso8601String())
+            ->assertJsonPath('subscription.grace_period.ends_at.human', $subscription->ends_at?->isoFormat('MMMM Do YYYY'))
             ->assertJsonPath('subscription.trial.active', false);
     }
 
@@ -170,11 +175,27 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.created_at', null)
             ->assertJsonPath('subscription.receipts', [])
             ->assertJsonPath('subscription.trial.active', true)
-            ->assertJsonPath('subscription.trial.ends_at', $trialEndsAt->isoFormat('MMMM Do YYYY'))
+            ->assertJsonPath('subscription.trial.ends_at.iso', $trialEndsAt->toIso8601String())
+            ->assertJsonPath('subscription.trial.ends_at.human', $trialEndsAt->isoFormat('MMMM Do YYYY'))
             ->assertJsonPath('subscription.grace_period.active', false)
             ->assertJsonCount(3, 'subscription.limits');
 
         $this->assertLimitItem($response, 'projects', 'Projects', 'account', 0, null);
+    }
+
+    #[Test]
+    public function subscription_resource_serializes_without_lazy_loading_subscription_state(): void
+    {
+        $this->createProSubscription($this->user);
+        $this->createTrialCustomer($this->user, Carbon::now()->addDays(5));
+
+        Model::preventLazyLoading();
+
+        try {
+            $this->subscriptionResponse();
+        } finally {
+            Model::preventLazyLoading(false);
+        }
     }
 
     /**

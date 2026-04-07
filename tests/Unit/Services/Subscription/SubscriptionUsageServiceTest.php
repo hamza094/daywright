@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Subscription;
 
+use App\Enums\Subscription\PlanLimitType;
+use App\Enums\Subscription\SubscriptionPlan;
 use App\Enums\TaskStatus as TaskStatusEnum;
 use App\Models\Project;
 use App\Models\Task;
@@ -89,24 +91,26 @@ class SubscriptionUsageServiceTest extends TestCase
      */
     private function assertAccountUsage(array $usage): void
     {
+        $free = SubscriptionPlan::Free;
+
         $this->assertSame([
             [
                 'key' => 'projects',
                 'label' => 'Projects',
                 'scope' => 'account',
-                'limit' => ['used' => 2, 'max' => 3],
+                'limit' => ['used' => 2, 'max' => $free->maxFor(PlanLimitType::Projects)],
             ],
             [
                 'key' => 'created_meetings',
                 'label' => 'Created meetings',
                 'scope' => 'account',
-                'limit' => ['used' => 1, 'max' => 1],
+                'limit' => ['used' => 1, 'max' => $free->maxFor(PlanLimitType::CreatedMeetings)],
             ],
             [
                 'key' => 'api_tokens',
                 'label' => 'API tokens',
                 'scope' => 'account',
-                'limit' => ['used' => 1, 'max' => 1],
+                'limit' => ['used' => 1, 'max' => $free->maxFor(PlanLimitType::ApiTokens)],
             ],
         ], $usage);
     }
@@ -116,18 +120,20 @@ class SubscriptionUsageServiceTest extends TestCase
      */
     private function assertProjectUsage(array $usage): void
     {
+        $free = SubscriptionPlan::Free;
+
         $this->assertSame([
             [
                 'key' => 'active_tasks_per_project',
                 'label' => 'Active tasks',
                 'scope' => 'project',
-                'limit' => ['used' => 3, 'max' => 10],
+                'limit' => ['used' => 3, 'max' => $free->maxFor(PlanLimitType::ActiveTasksPerProject)],
             ],
             [
                 'key' => 'members_per_project',
                 'label' => 'Members',
                 'scope' => 'project',
-                'limit' => ['used' => 2, 'max' => 3],
+                'limit' => ['used' => 2, 'max' => $free->maxFor(PlanLimitType::MembersPerProject)],
             ],
         ], $usage);
     }

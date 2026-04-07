@@ -50,12 +50,18 @@ class ZoomMeetingController extends ApiController
     {
         $this->authorize('manage', $project);
 
+        $user = $this->authenticatedUser();
+        $validated = $request->validated();
+
+        $planLimitService->assertWithinLimit(PlanLimitType::CreatedMeetings, $user);
+
+        $meeting = $zoom->createMeeting($validated, $user);
+
         $projectMeeting = $planLimitService->executeWithinAccountLimit(
             PlanLimitType::CreatedMeetings,
-            $this->authenticatedUser(),
-            function (User $user) use ($zoom, $project, $request): Meeting {
-                $meeting = $zoom->createMeeting($request->validated(), $user);
-                $meetingArray = (array) $meeting + ['user_id' => $user->id];
+            $user,
+            function (User $lockedUser) use ($meeting, $project): Meeting {
+                $meetingArray = (array) $meeting + ['user_id' => $lockedUser->id];
 
                 return $project->meetings()->create($meetingArray);
             }

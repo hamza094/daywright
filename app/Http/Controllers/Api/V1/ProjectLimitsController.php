@@ -20,7 +20,7 @@ final class ProjectLimitsController extends ApiController
     {
         return response()->json([
             'message' => 'Project limits retrieved successfully',
-            'limits' => $this->projectService->projectLimits($project, $this->authenticatedUser()) ?? [],
+            'limits' => $this->projectService->projectLimits($project, $this->authenticatedUser()) ?? (object) [],
         ], 200);
     }
 }

@@ -54,7 +54,8 @@ class InvitationController extends ApiController
      */
     public function invite(Project $project, InvitationUsersRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
-        $user = User::whereEmail($request->validated())->first();
+        $validated = $request->validated();
+        $user = User::query()->where('email', $validated['email'])->first();
 
         try {
             $planLimitService->executeWithinProjectLimit(

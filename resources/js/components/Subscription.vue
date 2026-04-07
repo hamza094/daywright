@@ -71,9 +71,9 @@
           <i class="fa-solid fa-exclamation-circle"></i> Your subscription has been canceled. You still have Pro access
           until <b>{{ gracePeriodEndsAt }}</b> during your grace period.
         </div>
-        <div v-if="subscription.created_at" class="alert alert-success" role="alert">
+        <div v-if="subscriptionCreatedAt" class="alert alert-success" role="alert">
           <i class="fa-solid fa-exclamation-circle"> </i> Your DayWright subscription started
-          <b>{{ subscription.created_at }}</b>
+          <b>{{ subscriptionCreatedAt }}</b>
         </div>
 
         <!-- Subscription actions (swap/cancel) -->
@@ -235,7 +235,7 @@ export default {
     },
 
     currentPlanLabel() {
-      return this.plan === 'pro' ? 'Pro' : 'Free';
+      return this.isFreeUser ? 'Free' : 'Pro';
     },
 
     billingPlan() {
@@ -265,11 +265,15 @@ export default {
     },
 
     trialEndsAt() {
-      return this.subscription?.trial?.ends_at || null;
+      return this.subscription?.trial?.ends_at?.human || null;
     },
 
     gracePeriodEndsAt() {
-      return this.subscription?.grace_period?.ends_at || null;
+      return this.subscription?.grace_period?.ends_at?.human || null;
+    },
+
+    subscriptionCreatedAt() {
+      return this.subscription?.created_at?.human || null;
     },
 
     accountUsageItems() {
@@ -277,7 +281,7 @@ export default {
     },
 
     showUpgradeCta() {
-      return this.plan === 'free';
+      return this.isFreeUser;
     },
 
     // Whether the user has any receipts

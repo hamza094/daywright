@@ -230,7 +230,9 @@ class PlanLimitServiceFeatureTest extends TestCase
 
         Meeting::factory()->count($meetingLimit)->for($this->user)->for($this->project)->create();
 
-        $this->mock(Zoom::class);
+        $this->mock(Zoom::class, function ($mock): void {
+            $mock->shouldNotReceive('createMeeting');
+        });
 
         $response = $this->createMeeting();
 
