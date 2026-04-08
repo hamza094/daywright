@@ -54,7 +54,7 @@ class TaskService
         }
     }
 
-    public function sendNotification($project): void
+    public function sendNotification(Project $project): void
     {
         $notifier = auth()->user()->getNotifierData();
 

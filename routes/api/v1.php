@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\NotificationsController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectDashboardController;
 use App\Http\Controllers\Api\V1\ProjectInsightsController;
+use App\Http\Controllers\Api\V1\ProjectLimitsController;
 use App\Http\Controllers\Api\V1\StageController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\TaskController;
@@ -71,7 +72,9 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
     Route::controller(ProjectDashboardController::class)->group(function (): void {
         Route::get('dashboard/chart-data', 'chartData')->name('dashboard.chart-data');
-        Route::get('dashboard/insights', 'kpis')->name('dashboard.insights');
+        Route::get('dashboard/insights', 'kpis')
+            ->middleware('subscription')
+            ->name('dashboard.insights');
         Route::get('/tasksdata', 'tasksData')->name('tasks.data');
         Route::get('/user/activities', 'activities');
         Route::get('/user/dashboard-projects', 'dashboardProjects');
@@ -88,6 +91,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
     Route::scopeBindings()->group(function (): void {
         Route::group(['prefix' => 'projects/{project}'], function (): void {
             Route::get('/', [ProjectController::class, 'show'])->name('projects.show')->withTrashed();
+            Route::get('/limits', ProjectLimitsController::class)->name('projects.limits')->withTrashed()->can('manage', 'project');
 
             Route::get('/insights', [ProjectInsightsController::class, 'index'])->name('projects.insights');
 
@@ -120,11 +124,10 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
                 // Chat Conversation Routes
                 Route::apiResource('/conversations', ConversationController::class)
-                    ->only(['store', 'destroy', 'index'])
-                    ->middleware('subscription');
+                    ->only(['store', 'destroy', 'index']);
             });
 
-            Route::middleware(['can:access,project', 'subscription'])->group(function (): void {
+            Route::middleware(['can:access,project'])->group(function (): void {
                 Route::apiResource('/tasks', TaskController::class)
                     ->except(['destroy'])
                     ->withTrashed(['show', 'index']);
@@ -159,7 +162,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                         Route::get('member/search', 'search')
                             ->name('members.search');
                     });
-                })->middleware('subscription');
+                });
 
             Route::controller(InvitationController::class)->group(function (): void {
                 Route::post('invitations', 'invite')

@@ -6,10 +6,10 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
 use App\Services\Api\V1\InvitationService;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class SearchableTest extends TestCase
 {

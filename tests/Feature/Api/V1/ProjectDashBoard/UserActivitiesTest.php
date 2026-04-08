@@ -8,11 +8,11 @@ use App\Models\Activity;
 use App\Models\Project;
 use App\Models\User;
 use App\Repository\DashBoardRepository;
-use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class UserActivitiesTest extends TestCase
 {

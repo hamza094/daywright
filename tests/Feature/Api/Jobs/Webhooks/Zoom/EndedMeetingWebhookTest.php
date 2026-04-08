@@ -7,14 +7,15 @@ namespace Tests\Feature\Api\Jobs\Webhooks\Zoom;
 use App\Events\MeetingStatusUpdate;
 use App\Jobs\Webhooks\Zoom\MeetingEndsWebhook;
 use App\Models\Meeting;
+use App\Models\Project;
 use App\Models\User;
 use App\Notifications\Zoom\MeetingEnded;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class EndedMeetingWebhookTest extends TestCase
 {
@@ -61,7 +62,7 @@ class EndedMeetingWebhookTest extends TestCase
         Notification::assertSentTo($users, MeetingEnded::class, fn ($notification, $channels): bool => $channels === ['mail', 'database', 'broadcast']);
     }
 
-    private function inviteAndActivateUser($project, \Illuminate\Database\Eloquent\Model $user): void
+    private function inviteAndActivateUser(Project $project, User $user): void
     {
         $project->invite($user);
         $project->members()->updateExistingPivot($user->id, ['active' => true]);

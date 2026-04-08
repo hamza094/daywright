@@ -23,7 +23,7 @@
                   <!-- Avatar Image -->
                   <img
                     v-if="member.avatar"
-                    :src="$options.filters.safeUrl(member.avatar)"
+                    :src="$safeUrl(member.avatar)"
                     :alt="member.name"
                     class="task-member_avatar" />
 
@@ -221,7 +221,7 @@ export default {
 
     ...mapMutations('SingleTask', ['setErrors', 'updateTaskStatus', 'updateTaskDue', 'unassignTaskMember', 'setForm']),
 
-    ...mapActions({ fetchTasks: 'task/fetchTasks' }),
+    ...mapActions({ fetchTasks: 'task/fetchTasks', refreshLimits: 'project/refreshLimits' }),
 
     changeStatus(statusId, id) {
       axios
@@ -231,6 +231,7 @@ export default {
           this.setErrors([]);
           this.updateTaskStatus(response.data.task.status);
           this.updateTask(response.data.task);
+          this.refreshLimits(this.slug);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -291,6 +292,7 @@ export default {
           this.removeTaskFromState(taskId);
           this.pushArchivedTask(task);
           this.$bus.emit('archiveTask', { taskId });
+          this.refreshLimits(this.slug);
           modalClose(this);
         })
         .catch((error) => {
@@ -305,6 +307,7 @@ export default {
           this.$vToastify.success(response.data.message);
           this.removeArchivedTask(taskId);
           this.fetchTasks({ slug: this.$route.params.slug, page: 1 });
+          this.refreshLimits(this.slug);
           modalClose(this);
           this.$bus.emit('unarchiveTask', { task });
         })

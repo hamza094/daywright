@@ -6,12 +6,12 @@ namespace Tests\Feature\Api\V1;
 
 use App\Events\NewMessage;
 use App\Models\Conversation;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class ConversationTest extends TestCase
 {

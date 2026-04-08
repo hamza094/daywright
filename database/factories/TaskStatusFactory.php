@@ -8,6 +8,9 @@ use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<TaskStatus>
+ */
 class TaskStatusFactory extends Factory
 {
     /**
@@ -20,9 +23,9 @@ class TaskStatusFactory extends Factory
     /**
      * Define the model's default state.
      *
-     * @return array
+     * @return array<string, mixed>
      */
-    public function definition()
+    public function definition(): array
     {
         return [
             'label' => 'Not Started',
@@ -32,9 +35,9 @@ class TaskStatusFactory extends Factory
         ];
     }
 
-    public function started()
+    public function started(): static
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes): array {
             return [
                 'label' => 'Started',
                 'color' => '#FFD700',
@@ -44,9 +47,9 @@ class TaskStatusFactory extends Factory
         });
     }
 
-    public function progress()
+    public function progress(): static
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes): array {
             return [
                 'label' => 'In Progress',
                 'color' => '#0000FF',
@@ -56,9 +59,9 @@ class TaskStatusFactory extends Factory
         });
     }
 
-    public function completed()
+    public function completed(): static
     {
-        return $this->state(function (array $attributes) {
+        return $this->state(function (array $attributes): array {
             return [
                 'label' => 'Completed',
                 'color' => '#00FF00',

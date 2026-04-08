@@ -9,6 +9,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 
 class OAuthAction
@@ -17,6 +18,10 @@ class OAuthAction
     {
         $user = User::where('email', $oAuthUser->getEmail())->first();
 
+        if (! $oAuthUser instanceof \Laravel\Socialite\Two\User) {
+            throw new InvalidArgumentException('Unsupported Socialite user implementation.');
+        }
+
         return $user = User::updateOrCreate(
             [
                 'email' => $oAuthUser->getEmail(),
@@ -24,7 +29,7 @@ class OAuthAction
             [
                 'name' => $user->name ?? $oAuthUser->getName(),
                 'password' => $user->password ?? Hash::make(Str::random(50)),
-                'username' => $user->username ?? ($oAuthUser->nickname ?? $oAuthUser->getNickname()),
+                'username' => $user->username ?? ($oAuthUser->getNickname() ?? $oAuthUser->nickname),
                 'oauth_id' => $oAuthUser->getId(),
                 'oauth_provider' => $provider->value,
                 'email_verified_at' => $user->email_verified_at ?? Carbon::now(),

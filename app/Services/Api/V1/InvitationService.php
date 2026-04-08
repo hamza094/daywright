@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class InvitationService
 {
@@ -23,24 +24,15 @@ class InvitationService
     {
         $this->validateInvitation($project, $user);
 
-        DB::beginTransaction();
-        try {
-            $project->invite($user);
+        $project->invite($user);
 
-            $this->recordActivity($project, $user, 'invitation_sent');
-
-            $user->notify(new ProjectInvitation(
-                $project->name,
-                $project->path(),
-                $project->user->getNotifierData()
-            ));
-
-            DB::commit();
-        } catch (Exception $ex) {
-            DB::rollBack();
-
-            throw $ex;
-        }
+        DB::afterCommit(function () use ($project, $user): void {
+            try {
+                $this->dispatchInvitationSideEffects($project, $user);
+            } catch (Throwable $e) {
+                report($e);
+            }
+        });
 
     }
 
@@ -166,5 +158,16 @@ class InvitationService
                 'user' => 'This user is not an active member of the project.',
             ]);
         }
+    }
+
+    private function dispatchInvitationSideEffects(Project $project, User $user): void
+    {
+        $this->recordActivity($project, $user, 'invitation_sent');
+
+        $user->notify(new ProjectInvitation(
+            $project->name,
+            $project->path(),
+            $project->user->getNotifierData()
+        ));
     }
 }

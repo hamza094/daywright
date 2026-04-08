@@ -1,39 +1,6 @@
 parameters:
 	ignoreErrors:
-		-
-			message: "#^Method App\\\\Actions\\\\NotificationAction\\:\\:isAuthUser\\(\\) has parameter \\$user with no type specified\\.$#"
-			count: 1
-			path: app/Actions/NotificationAction.php
 
-		-
-			message: "#^Method App\\\\Actions\\\\NotificationAction\\:\\:send\\(\\) has parameter \\$notification with no type specified\\.$#"
-			count: 1
-			path: app/Actions/NotificationAction.php
-
-		-
-			message: "#^Method App\\\\Actions\\\\NotificationAction\\:\\:send\\(\\) has parameter \\$project with no type specified\\.$#"
-			count: 1
-			path: app/Actions/NotificationAction.php
-
-		-
-			message: "#^Access to an undefined property Laravel\\\\Socialite\\\\Contracts\\\\User\\:\\:\\$refreshToken\\.$#"
-			count: 1
-			path: app/Actions/OAuthAction.php
-
-		-
-			message: "#^Access to an undefined property Laravel\\\\Socialite\\\\Contracts\\\\User\\:\\:\\$token\\.$#"
-			count: 1
-			path: app/Actions/OAuthAction.php
-
-		-
-			message: "#^Access to an undefined property App\\\\Models\\\\Message\\:\\:\\$project\\.$#"
-			count: 1
-			path: app/Console/Commands/ScheduledMessages.php
-
-		-
-			message: "#^Relation 'project' is not found in App\\\\Models\\\\Message model\\.$#"
-			count: 1
-			path: app/Console/Commands/ScheduledMessages.php
 
 		-
 			message: "#^Access to an undefined property Illuminate\\\\Database\\\\Eloquent\\\\Model\\:\\:\\$id\\.$#"

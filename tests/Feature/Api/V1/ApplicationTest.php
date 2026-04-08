@@ -6,12 +6,12 @@ namespace Tests\Feature\Api\V1;
 
 use App\Exports\ProjectsExport;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Maatwebsite\Excel\Facades\Excel;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class ApplicationTest extends TestCase
 {
@@ -23,7 +23,10 @@ class ApplicationTest extends TestCase
         $this->withoutExceptionHandling()->postJson($this->project->path().'/tasks',
             ['title' => 'My Project Task'])->assertCreated();
 
-        $this->project->invite($user = User::factory()->create());
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        $this->project->invite($user);
 
         Sanctum::actingAs($user);
 

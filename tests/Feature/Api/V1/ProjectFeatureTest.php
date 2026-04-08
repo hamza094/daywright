@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\TaskStatus as TaskStatusEnum;
 use App\Jobs\CancelZoomMeetingsJob;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\Task;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class ProjectFeatureTest extends TestCase
 {
@@ -111,10 +114,52 @@ class ProjectFeatureTest extends TestCase
     }
 
     /** @test */
+    public function project_show_includes_project_scoped_limits_only(): void
+    {
+        Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+            'status_id' => TaskStatusEnum::PENDING,
+        ]);
+        Task::factory()->for($this->user, 'owner')->for($this->project)->completed()->create();
+
+        $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
+        $this->project->members()->attach(User::factory()->create(), ['active' => false]);
+
+        $response = $this->getJson($this->project->path())
+            ->assertOk()
+            ->assertJsonCount(2, 'limits');
+
+        $this->assertProjectLimitItem($response, 'limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
+        $this->assertProjectLimitItem($response, 'limits', 'members_per_project', 'Members', 'project', 2, 3);
+    }
+
+    /** @test */
+    public function project_member_cannot_see_project_limits_on_show(): void
+    {
+        /** @var User $member */
+        $member = User::factory()->create();
+
+        Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+            'status_id' => TaskStatusEnum::PENDING,
+        ]);
+        $this->project->members()->attach($member, ['active' => true]);
+
+        Sanctum::actingAs($member);
+
+        $this->getJson($this->project->path())
+            ->assertOk()
+            ->assertJsonMissingPath('limits');
+    }
+
+    /** @test */
     public function allowed_user_can_update_project(): void
     {
         $name = 'My First Project';
         $notes = 'My project first notes';
+
+        Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+            'status_id' => TaskStatusEnum::PENDING,
+        ]);
+        $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
 
         $response = $this->patchJson($this->project->path(),
             ['name' => $name, 'notes' => $notes]);
@@ -132,7 +177,28 @@ class ProjectFeatureTest extends TestCase
                     'name' => $this->project->name,
                     'slug' => $this->project->slug,
                 ],
-            ]);
+            ])
+            ->assertJsonCount(2, 'project.limits');
+
+        $this->assertProjectLimitItem($response, 'project.limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
+        $this->assertProjectLimitItem($response, 'project.limits', 'members_per_project', 'Members', 'project', 2, 3);
+    }
+
+    /** @test */
+    public function project_member_cannot_see_project_limits_on_update(): void
+    {
+        /** @var User $member */
+        $member = User::factory()->create();
+        $this->project->members()->attach($member, ['active' => true]);
+
+        Sanctum::actingAs($member);
+
+        $this->patchJson($this->project->path(), [
+            'name' => 'Updated By Member',
+        ])
+            ->assertOk()
+            ->assertJsonPath('project.name', 'Updated By Member')
+            ->assertJsonMissingPath('project.limits');
     }
 
     /** @test */
@@ -298,5 +364,29 @@ class ProjectFeatureTest extends TestCase
 
         $this->assertCount(1, $this->user->projects()
             ->onlyTrashed()->get());
+    }
+
+    /**
+     * @param  \Illuminate\Testing\TestResponse<\Symfony\Component\HttpFoundation\Response>  $response
+     */
+    private function assertProjectLimitItem(
+        $response,
+        string $path,
+        string $key,
+        string $expectedLabel,
+        string $expectedScope,
+        int $expectedUsed,
+        int $expectedMax,
+    ): void {
+        /** @var array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>|null $limits */
+        $limits = $response->json($path);
+
+        $item = collect($limits)->firstWhere('key', $key);
+
+        $this->assertIsArray($item);
+        $this->assertSame($expectedLabel, $item['label']);
+        $this->assertSame($expectedScope, $item['scope']);
+        $this->assertSame($expectedUsed, $item['limit']['used']);
+        $this->assertSame($expectedMax, $item['limit']['max']);
     }
 }

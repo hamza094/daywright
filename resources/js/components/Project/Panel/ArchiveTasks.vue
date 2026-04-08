@@ -30,7 +30,7 @@
         height="auto"
         :scrollable="true"
         width="65%"
-        class="model-desin archive-modal"
+        class="modal-design archive-modal"
         :click-to-close="false"
         @modal-closed="closeModal">
         <TaskDetailModal :slug="slug" :state="state" />

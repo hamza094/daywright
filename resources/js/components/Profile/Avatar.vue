@@ -5,7 +5,7 @@
         {{ name.substring(0, 1) }}
       </div>
       <div v-else>
-        <img :src="$options.filters.safeUrl(avatar)" alt="" class="main-profile-img" />
+        <img :src="$safeUrl(avatar)" alt="" class="main-profile-img" />
       </div>
       <div class="img-avatar_overlay">
         <div class="img-avatar_overlay-text">Update</div>

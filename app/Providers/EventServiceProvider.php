@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Events\PasswordUpdateEvent;
 use App\Events\UserLogin;
+use App\Listeners\CreateTrialCustomer;
 use App\Listeners\PaddleErrorListener;
 use App\Listeners\PaddleEventListener;
 use App\Listeners\SaveUserTimezone;
@@ -33,6 +34,7 @@ class EventServiceProvider extends ServiceProvider
             PaddleErrorListener::class,
         ],
         Registered::class => [
+            CreateTrialCustomer::class,
             SendEmailVerificationNotification::class,
         ],
         UserLogin::class => [

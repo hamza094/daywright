@@ -22,17 +22,12 @@ window.axios = axios;
 // Default headers
 axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 axios.defaults.headers.common['Accept'] = 'application/json';
+axios.defaults.withCredentials = true;
+axios.defaults.withXSRFToken = true;
+axios.defaults.xsrfCookieName = true;
+axios.defaults.xsrfHeaderName = true;
 
 axios.defaults.baseURL = import.meta.env?.VITE_API_BASE_URL || '/api/v1';
-
-// Read CSRF token from the meta tag instead of relying on a global script
-const tokenMeta = document.head.querySelector('meta[name="csrf-token"]');
-
-if (tokenMeta) {
-  axios.defaults.headers.common['X-CSRF-TOKEN'] = tokenMeta.content;
-} else {
-  console.error('CSRF token meta tag not found: <meta name="csrf-token" content="...">');
-}
 
 /**
  * Echo exposes an expressive API for subscribing to channels and listening

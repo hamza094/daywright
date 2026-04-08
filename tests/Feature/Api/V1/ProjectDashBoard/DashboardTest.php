@@ -6,9 +6,9 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\Project;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class DashboardTest extends TestCase
 {

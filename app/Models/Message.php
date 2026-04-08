@@ -8,11 +8,15 @@ use App\Traits\RecordActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
+/**
+ * @property-read Project $project
+ */
 class Message extends Model
 {
-    use HasFactory,RecordActivity;
+    use HasFactory, RecordActivity;
 
     protected $casts = ['delivered_at' => 'datetime'];
 
@@ -20,7 +24,10 @@ class Message extends Model
 
     protected static $recordableEvents = ['created'];
 
-    public function project()
+    /**
+     * @phpstan-return BelongsTo<Project, $this>
+     */
+    public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }

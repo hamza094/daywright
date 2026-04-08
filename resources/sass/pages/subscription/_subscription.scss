@@ -3,6 +3,158 @@
   margin-bottom: 2rem;
 }
 
+.subscription-overview {
+  border: 1px solid $laravel-border-color;
+  border-radius: 16px;
+  box-shadow: 0 1rem 2rem rgba($color-secondary, 0.06);
+
+  &_header {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  &_eyebrow {
+    color: $color-secondary;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  &_title {
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  &_meta {
+    color: rgba($color-secondary, 0.8);
+    font-size: 0.98rem;
+  }
+
+  &_badges {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  &_footnote {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 1.5rem;
+    color: $color-dark-grey;
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+}
+
+.subscription-badge {
+  display: inline-flex;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+
+  &-plan {
+    color: $color-secondary;
+    background-color: rgba($color-secondary, 0.12);
+  }
+
+  &-trial {
+    color: #856404;
+    background-color: rgba(#ffc107, 0.22);
+  }
+
+  &-grace {
+    color: #0c5460;
+    background-color: rgba(#17a2b8, 0.18);
+  }
+}
+
+.subscription-usage {
+  display: grid;
+  gap: 1rem;
+}
+
+.subscription-usage_item {
+  @include usage-limit-surface(1rem 1.1rem, 0.1, 0.03);
+}
+
+.subscription-usage_row {
+  @include usage-limit-row;
+
+  margin-bottom: 0.75rem;
+}
+
+.subscription-usage_label {
+  color: $color-secondary;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.subscription-usage_value {
+  color: rgba($color-secondary, 0.76);
+  font-size: 0.95rem;
+}
+
+.subscription-usage_status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.subscription-usage_status-healthy {
+  @include usage-limit-tone(healthy);
+}
+
+.subscription-usage_status-warning {
+  @include usage-limit-tone(warning);
+}
+
+.subscription-usage_status-critical {
+  @include usage-limit-tone(critical);
+}
+
+.subscription-usage_status-over-limit {
+  @include usage-limit-tone(over-limit);
+}
+
+.subscription-usage_track {
+  @include usage-limit-track(0.65rem);
+}
+
+.subscription-usage_bar {
+  @include usage-limit-bar;
+}
+
+.subscription-usage_bar-healthy {
+  @include usage-limit-tone(healthy);
+}
+
+.subscription-usage_bar-warning {
+  @include usage-limit-tone(warning);
+}
+
+.subscription-usage_bar-critical {
+  @include usage-limit-tone(critical);
+}
+
+.subscription-usage_bar-over-limit {
+  @include usage-limit-tone(over-limit);
+}
+
 .subscription-plan-card {
   border: 1px solid $laravel-border-color;
   border-radius: 12px;
@@ -35,6 +187,20 @@
 }
 
 @media (width <= 575.98px) {
+  .subscription-overview {
+    &_header,
+    &_footnote {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    &_badges {
+      justify-content: flex-start;
+    }
+  }
+
+  @include usage-limit-stack('.subscription-overview .subscription-usage_row');
+
   .subscription_value {
     font-size: 2.1rem;
   }

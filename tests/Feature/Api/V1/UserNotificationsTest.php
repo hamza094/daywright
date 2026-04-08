@@ -6,10 +6,10 @@ namespace Tests\Feature\Api\V1;
 
 use App\Enums\NotificationFilter;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class UserNotificationsTest extends TestCase
 {
@@ -52,7 +52,7 @@ class UserNotificationsTest extends TestCase
         $response = $this->withoutExceptionHandling()->getJson('/api/v1/notifications/mark-all-read');
 
         $response->assertStatus(200);
-        $this->assertCount(0, $user->fresh()->unreadNotifications);
+        $this->assertCount(0, $user->fresh()->unreadNotifications()->get());
     }
 
     /** @test */

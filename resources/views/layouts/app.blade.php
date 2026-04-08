@@ -25,6 +25,7 @@
     </main>
 
     <slideout-panel></slideout-panel>
+    <plan-limit-modal></plan-limit-modal>
 
 </div>
 </body>

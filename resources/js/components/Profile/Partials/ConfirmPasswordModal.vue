@@ -4,7 +4,7 @@
     height="auto"
     :scrollable="true"
     width="40%"
-    class="model-desin"
+    class="modal-design"
     :click-to-close="false">
     <div class="edit-border-top p-3">
       <div class="edit-border-bottom">

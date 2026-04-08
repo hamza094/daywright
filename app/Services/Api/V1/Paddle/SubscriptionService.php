@@ -14,9 +14,7 @@ final class SubscriptionService implements Paddle
     #[Override]
     public function subscribe(User $user, string $plan): mixed
     {
-        if ($user->subscribedPlan() === $plan) {
-            throw new SubscriptionException('You are already subscribed to this plan.');
-        }
+        $this->validateSubscribeAllowed($user, $plan);
 
         $appUrl = rtrim((string) config('app.url'), '/');
 
@@ -31,7 +29,11 @@ final class SubscriptionService implements Paddle
     #[Override]
     public function swap(User $user, string $plan): array
     {
-        $currentPlan = $user->subscribedPlan();
+        if (! $user->isBillingSubscribed()) {
+            throw new SubscriptionException('You are not subscribed to a paid plan.');
+        }
+
+        $currentPlan = $user->activeBillingPlan();
 
         if ($currentPlan === $plan) {
             throw new SubscriptionException('You are already on this plan.');
@@ -50,7 +52,7 @@ final class SubscriptionService implements Paddle
     #[Override]
     public function cancel(User $user, string $plan): array
     {
-        if ($user->subscribedPlan() !== $plan) {
+        if (! $user->isBillingSubscribed() || $user->activeBillingPlan() !== $plan) {
             throw new SubscriptionException('You are not subscribed to this plan.');
         }
 
@@ -59,5 +61,22 @@ final class SubscriptionService implements Paddle
         return [
             'message' => 'Your subscription has been canceled successfully.',
         ];
+    }
+
+    private function validateSubscribeAllowed(User $user, string $plan): void
+    {
+        if (! $user->isSubscribed()) {
+            return;
+        }
+
+        if ($user->isBillingSubscribed()) {
+            throw new SubscriptionException(
+                $user->activeBillingPlan() === $plan
+                    ? 'You are already subscribed to this plan.'
+                    : 'You already have an active paid plan. Please swap plans instead.'
+            );
+        }
+
+        throw new SubscriptionException('You have an existing subscription. Please resume or swap your subscription instead.');
     }
 }

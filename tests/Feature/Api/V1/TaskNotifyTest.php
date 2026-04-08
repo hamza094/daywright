@@ -8,10 +8,10 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
 use App\Notifications\TaskDue;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class TaskNotifyTest extends TestCase
 {

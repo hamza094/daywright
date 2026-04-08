@@ -5,7 +5,7 @@
       name="view-schedules"
       height="auto"
       :scrollable="true"
-      class="model-desin"
+      class="modal-design"
       :click-to-close="false"
       width="75%">
       <div class="edit-border-top p-3">

@@ -4,19 +4,19 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\ProjectInvitaionResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
-class UserInvitationsController extends Controller
+class UserInvitationsController extends ApiController
 {
     /**
      * List all pending project invitations for the authenticated user.
      */
     public function myInvitations(): JsonResponse
     {
-        $user = auth()->user();
+        $user = $this->authenticatedUser();
 
         // Eager load 'user' relation if ProjectInvitaionResource expects it
         $pendingInvitations = $user->inactiveMembers()->with('user')->get();

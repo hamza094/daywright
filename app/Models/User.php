@@ -9,6 +9,7 @@ use App\Jobs\QueuedPasswordResetJob;
 use App\Jobs\QueuedVerifyEmailJob;
 use App\Traits\HasAdminAccess;
 use App\Traits\HasSubscription;
+use Database\Factories\UserFactory;
 use DateTimeImmutable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,6 +27,7 @@ use Laravel\Paddle\Billable;
 use Laravel\Sanctum\HasApiTokens;
 use Override;
 
+/** @use HasFactory<UserFactory> */
 class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenticatable
 {
     use Billable, HasAdminAccess, HasApiTokens, HasFactory, HasSubscription, Notifiable, SoftDeletes, TwoFactorAuthentication;

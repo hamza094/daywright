@@ -18,7 +18,7 @@ import moment from 'moment';
 import momenttz from 'moment-timezone';
 import 'emoji-mart-vue-fast/css/emoji-mart.css';
 import alertNotice from './mixins/alertNotice';
-import errorHandling from './mixins/errorHandling';
+import errorHandling, { handleGlobalApiError } from './mixins/errorHandling';
 import conversation from './mixins/conversation';
 import 'animate.css';
 import 'cropperjs/dist/cropper.css';
@@ -68,9 +68,12 @@ Vue.filter('shortDate', function (value) {
   return moment(value, 'MMMM Do YYYY, h:mm:ss a').format('MMM Do YY');
 });
 
-Vue.filter('reciept_date', function (data) {
+const receiptDateFilter = function (data) {
   return moment(data).format('MMM Do YYYY');
-});
+};
+
+// Correct spelling and keep alias for backwards compatibility
+Vue.filter('receipt_date', receiptDateFilter);
 
 Vue.filter('datetime', function (data) {
   return moment(data).format('MMM Do YY h:mm:ss a');
@@ -80,10 +83,10 @@ Vue.filter('msgTime', function (data) {
   return moment(data).calendar();
 });
 
-// Sanitize potentially user-controlled URLs before binding (href/src)
-Vue.filter('safeUrl', function (value) {
+// Provide a clear, explicit helper for templates/components to sanitize URLs
+Vue.prototype.$safeUrl = function (value) {
   return sanitizeUrl(value || '');
-});
+};
 
 import { Settings } from 'luxon';
 Settings.defaultLocale = 'en';
@@ -136,6 +139,13 @@ axios.interceptors.response.use(
     if (error.config && error.config.useProgress) {
       Vue.prototype.$Progress.fail();
     }
+
+    handleGlobalApiError(error, {
+      modal: Vue.prototype.$modal,
+      toast: Vue.prototype.$vToastify,
+      router,
+    });
+
     return Promise.reject(error);
   },
 );
@@ -158,6 +168,7 @@ const components = [
   ['project-stage', './components/Project/Stage.vue'],
   ['notifications', './components/Notification.vue'],
   ['profile', './components/Profile/ProfilePge.vue'],
+  ['plan-limit-modal', './components/PlanLimitModal.vue'],
   ['navbar', './components/Navbar.vue'],
   ['sidebar-nav-panel', './components/layouts/SidebarNavPanel.vue'],
 ];

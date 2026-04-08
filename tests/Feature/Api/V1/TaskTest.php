@@ -8,11 +8,11 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class TaskTest extends TestCase
 {

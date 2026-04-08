@@ -4,29 +4,85 @@
     <div class="page-top margin-small">Your Membership</div>
 
     <div class="container">
-      <!-- If user is subscribed, show subscription info and actions -->
-      <div v-if="isSubscribed" class="m-5 text-center">
-        <h3>You are currently subscribed to our {{ subscription.plan }} plan</h3>
+      <div class="subscription-overview card mb-4 mt-3">
+        <div class="card-body">
+          <div class="subscription-overview_header">
+            <div>
+              <p class="subscription-overview_eyebrow mb-2">Plan &amp; Usage</p>
+              <h3 class="subscription-overview_title mb-2">{{ currentPlanLabel }} Plan</h3>
+              <p class="subscription-overview_meta mb-0">
+                <span v-if="isOnTrial && trialEndsAt">Trial active until {{ trialEndsAt }}.</span>
+                <span v-else-if="isOnTrial">Trial active for a limited time.</span>
+                <span v-else-if="isInGracePeriod && gracePeriodEndsAt"
+                  >Grace period active until {{ gracePeriodEndsAt }}.</span
+                >
+                <span v-else-if="isActivelyBilling && billingPlanLabel"
+                  >You are billed {{ billingPlanLabel.toLowerCase() }}.</span
+                >
+                <span v-else>You are currently on the {{ currentPlanLabel }} plan.</span>
+              </p>
+            </div>
+
+            <div class="subscription-overview_badges">
+              <span class="subscription-badge subscription-badge-plan">{{ currentPlanLabel }}</span>
+              <span v-if="isOnTrial" class="subscription-badge subscription-badge-trial">Trial Active</span>
+              <span v-if="isInGracePeriod" class="subscription-badge subscription-badge-grace">Grace Period</span>
+            </div>
+          </div>
+
+          <div class="subscription-usage">
+            <div v-for="item in accountUsageItems" :key="item.key" class="subscription-usage_item">
+              <div class="subscription-usage_row">
+                <div>
+                  <p class="subscription-usage_label mb-1">{{ item.label }}</p>
+                  <p class="subscription-usage_value mb-0">{{ formatUsageLimit(item.limit) }}</p>
+                </div>
+                <span
+                  class="subscription-usage_status text-white"
+                  :class="usageLimitToneClass(item.limit, 'subscription-usage_status')">
+                  {{ usageLimitStatusLabel(item.limit) }}
+                </span>
+              </div>
+
+              <div class="subscription-usage_track">
+                <div
+                  class="subscription-usage_bar"
+                  :class="usageLimitToneClass(item.limit, 'subscription-usage_bar')"
+                  :style="{ width: usageLimitWidth(item.limit) }"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="subscription-overview_footnote">
+            <p v-if="showUpgradeCta" class="mb-0 text-dark font-weight-bold">Upgrade to Pro for Unlimited access.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- If user is actively billing, show billing info and actions -->
+      <div v-if="isActivelyBilling" class="m-5 text-center">
+        <h3>
+          You are currently on the {{ currentPlanLabel }} plan
+          <span v-if="billingPlanLabel">with {{ billingPlanLabel.toLowerCase() }} billing</span>
+        </h3>
 
         <!-- Grace period alert -->
-        <div v-if="subscription.grace_period" class="alert alert-primary" role="alert">
-          <i class="fa-solid fa-exclamation-circle"></i> Alert: Your subscription has been canceled, and you are
-          currently in the grace period.which is valid till <b>{{ subscription.grace_period_ends_at }}</b> Please note
-          that during this time, you still have access to all subscription benefits.
+        <div v-if="isInGracePeriod" class="alert alert-primary" role="alert">
+          <i class="fa-solid fa-exclamation-circle"></i> Your subscription has been canceled. You still have Pro access
+          until <b>{{ gracePeriodEndsAt }}</b> during your grace period.
         </div>
-        <div v-if="subscription" class="alert alert-success" role="alert">
-          <i class="fa-solid fa-exclamation-circle"> </i> You have created DayWright Subscription
-          <b> {{ subscription.created_at }}</b>
+        <div v-if="subscriptionCreatedAt" class="alert alert-success" role="alert">
+          <i class="fa-solid fa-exclamation-circle"> </i> Your DayWright subscription started
+          <b>{{ subscriptionCreatedAt }}</b>
         </div>
 
         <!-- Subscription actions (swap/cancel) -->
-        <div v-if="!subscription.grace_period">
-          <p>
-            <button v-if="subscription.plan === 'monthly'" class="btn btn-lg btn-link" @click.prevent="swap('yearly')">
-              Change Subscription to Yearly ($100/year)
-            </button>
-            <button v-else class="btn btn-lg btn-link" @click.prevent="swap('monthly')">
-              Change Subscription to Monthly ($12/month)
+        <div v-if="!isInGracePeriod && billingPlan">
+          <p v-if="alternateBillingPlan">
+            <button class="btn btn-lg btn-link" @click.prevent="swap(alternateBillingPlan.name)">
+              Change Subscription to {{ alternateBillingPlan.label }} ({{ formatPlanPrice(alternateBillingPlan) }}/{{
+                alternateBillingPlan.interval_label
+              }})
             </button>
           </p>
           <p>
@@ -37,7 +93,7 @@
 
       <!-- If not subscribed, show available plans -->
       <div v-else class="row m-5 subscription-plans align-items-stretch">
-        <div v-for="plan in plans" :key="plan.name" class="col-md-6 mb-4">
+        <div v-for="plan in availablePlans" :key="plan.name" class="col-md-6 mb-4">
           <div
             class="card text-center h-100 subscription-plan-card"
             :class="{ 'subscription-plan-card-featured border border-primary': plan.featured }">
@@ -47,17 +103,24 @@
               </div>
 
               <div class="mb-4">
-                <span class="subscription_value">${{ plan.price }}</span>
-                <span class="text-muted ml-2">/ {{ plan.intervalLabel }}</span>
+                <span class="subscription_value">{{ formatPlanPrice(plan) }}</span>
+                <span class="text-muted ml-2">/ {{ plan.interval_label }}</span>
               </div>
 
               <button
+                v-if="isFreeUser"
                 class="btn btn-primary btn-lg btn-block mt-auto"
                 @click="subscribe(plan.name)"
                 :disabled="isIframeOpen || isOpeningIframe">
                 Subscribe
               </button>
             </div>
+          </div>
+        </div>
+
+        <div v-if="availablePlans.length === 0" class="col-12">
+          <div class="alert alert-info mb-0">
+            Subscription plans are temporarily unavailable. Please try again shortly.
           </div>
         </div>
 
@@ -74,7 +137,7 @@
 
           <!-- Paddle payment iframe -->
           <iframe
-            :src="$options.filters.safeUrl(iframeSrc)"
+            :src="$safeUrl(iframeSrc)"
             class="subscription-modal-iframe"
             title="Paddle payment"
             @load="isOpeningIframe = false"></iframe>
@@ -103,7 +166,7 @@
                   <span>{{ receipt.created_at }}</span> -
                   <span>${{ receipt.amount }} {{ receipt.currency }}</span>
                   <span class="float-right">
-                    <a :href="$options.filters.safeUrl(receipt.receipt_url)" target="_blank" rel="noopener noreferrer"
+                    <a class="btn-link" :href="$safeUrl(receipt.receipt_url)" target="_blank" rel="noopener noreferrer"
                       >Download</a
                     >
                   </span>
@@ -117,10 +180,10 @@
           <div class="alert alert-info">Your receipts will appear here after your first payment is processed.</div>
         </div>
         <div class="col-md-6" v-if="subscription.next_payment">
-          <h3>Important Notice !</h3>
+          <h3>Next Payment</h3>
           <div class="alert alert-primary mt-2" role="alert">
             <p>
-              Your Next payment is scheduled on <b>{{ subscription.next_payment.date | reciept_date }}</b> with an
+              Your next payment is scheduled for <b>{{ subscription.next_payment.date | receipt_date }}</b> in the
               amount of <b>{{ subscription.next_payment.amount }}</b> {{ subscription.next_payment.currency }}
             </p>
             <ul>
@@ -137,9 +200,14 @@
 </template>
 
 <script>
-import { mapState, mapMutations } from 'vuex';
+import { mapState, mapMutations, mapGetters } from 'vuex';
+import alertNotice from '../mixins/alertNotice';
+import usageLimitHelpers from '../mixins/usageLimitHelpers';
+import { toastInfo, toastSuccess } from '../utils/toast';
 
 export default {
+  name: 'Subscription',
+  mixins: [alertNotice, usageLimitHelpers],
   // Component state
   data() {
     return {
@@ -147,21 +215,73 @@ export default {
       isIframeOpen: false,
       isOpeningIframe: false,
       iframeSrc: '',
-
-      // Available plans
-      plans: [
-        { name: 'monthly', label: 'Monthly', intervalLabel: 'month', price: 12, featured: false },
-        { name: 'yearly', label: 'Yearly', intervalLabel: 'year', price: 100, featured: true },
-      ],
     };
   },
 
   // Computed properties for derived state
   computed: {
     ...mapState('subscribeUser', ['subscription']),
-    // Whether the user is currently subscribed
-    isSubscribed() {
-      return !!this.subscription.subscribed;
+    ...mapGetters('subscribeUser', [
+      'accountLimits',
+      'isActivelyBilling',
+      'isInGracePeriod',
+      'isOnTrial',
+      'plan',
+      'isFreeUser',
+    ]),
+
+    availablePlans() {
+      return Array.isArray(this.subscription?.available_plans) ? this.subscription.available_plans : [];
+    },
+
+    currentPlanLabel() {
+      return this.isFreeUser ? 'Free' : 'Pro';
+    },
+
+    billingPlan() {
+      return this.subscription.billing_plan || null;
+    },
+
+    billingPlanLabel() {
+      if (this.billingPlan === 'monthly') {
+        return 'Monthly';
+      }
+
+      if (this.billingPlan === 'yearly') {
+        return 'Yearly';
+      }
+
+      return null;
+    },
+
+    alternateBillingPlan() {
+      if (!this.billingPlan) {
+        return null;
+      }
+
+      const targetPlan = this.billingPlan === 'monthly' ? 'yearly' : 'monthly';
+
+      return this.availablePlans.find((plan) => plan.name === targetPlan) || null;
+    },
+
+    trialEndsAt() {
+      return this.subscription?.trial?.ends_at?.human || null;
+    },
+
+    gracePeriodEndsAt() {
+      return this.subscription?.grace_period?.ends_at?.human || null;
+    },
+
+    subscriptionCreatedAt() {
+      return this.subscription?.created_at?.human || null;
+    },
+
+    accountUsageItems() {
+      return Array.isArray(this.accountLimits) ? this.accountLimits : [];
+    },
+
+    showUpgradeCta() {
+      return this.isFreeUser;
     },
 
     // Whether the user has any receipts
@@ -186,6 +306,14 @@ export default {
   // Methods
   methods: {
     ...mapMutations('subscribeUser', ['setSubscription']),
+
+    formatPlanPrice(plan) {
+      if (!plan) {
+        return '$0';
+      }
+
+      return `${plan.currency_symbol || '$'}${plan.price}`;
+    },
 
     // Fetch the user's subscription info from the API
     async fetchSubscription() {
@@ -227,7 +355,7 @@ export default {
         try {
           const response = await axios.get(`/user/subscription/swap/${encodeURIComponent(plan)}`);
           this.setSubscription(response.data.subscription);
-          this.$vToastify.success(response.data.message);
+          toastSuccess(response.data.message);
           // Wait 5 seconds, then refresh subscription data once
           setTimeout(() => {
             this.fetchSubscription();
@@ -242,14 +370,19 @@ export default {
 
     // Cancel the user's subscription
     async cancelSubscription() {
-      const plan = this.subscription.plan;
+      const plan = this.billingPlan;
+
+      if (!plan) {
+        return;
+      }
+
       const result = await this.sweetAlert('Yes, Cancel Subscription');
       if (result.value) {
         this.$Progress.start();
         try {
           const response = await axios.get(`/user/subscription/${encodeURIComponent(plan)}/cancel`);
           this.setSubscription(response.data.subscription);
-          this.$vToastify.info(response.data.message);
+          toastInfo(response.data.message);
         } catch (error) {
           this.showError(error);
           this.$Progress.fail();
