@@ -4,20 +4,22 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
+use App\Enums\Subscription\PlanLimitType;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Zoom\MeetingStoreRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingUpdateRequest;
 use App\Http\Resources\Api\V1\Zoom\MeetingResource;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\User;
 use App\Services\Api\V1\ExceptionService;
 use App\Services\Api\V1\MeetingService;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
-class ZoomMeetingController extends Controller
+class ZoomMeetingController extends ApiController
 {
     public function __construct(protected ExceptionService $exceptionService) {}
 
@@ -44,18 +46,26 @@ class ZoomMeetingController extends Controller
         return response()->json(['success' => true, 'data' => new MeetingResource($meeting)], 200);
     }
 
-    public function store(Zoom $zoom, Project $project, MeetingStoreRequest $request): JsonResponse
+    public function store(Zoom $zoom, Project $project, MeetingStoreRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
         $this->authorize('manage', $project);
 
-        $user = auth()->user();
+        $user = $this->authenticatedUser();
+        $validated = $request->validated();
 
-        $projectMeeting = DB::transaction(function () use ($zoom, $project, $user, $request) {
-            $meeting = $zoom->createMeeting($request->validated(), $user);
-            $meetingArray = (array) $meeting + ['user_id' => $user->id];
+        $planLimitService->assertWithinLimit(PlanLimitType::CreatedMeetings, $user);
 
-            return $project->meetings()->create($meetingArray);
-        });
+        $meeting = $zoom->createMeeting($validated, $user);
+
+        $projectMeeting = $planLimitService->executeWithinAccountLimit(
+            PlanLimitType::CreatedMeetings,
+            $user,
+            function (User $lockedUser) use ($meeting, $project): Meeting {
+                $meetingArray = (array) $meeting + ['user_id' => $lockedUser->id];
+
+                return $project->meetings()->create($meetingArray);
+            }
+        );
 
         return response()->json([
             'message' => 'Meeting Created Successfully',
@@ -67,9 +77,11 @@ class ZoomMeetingController extends Controller
     {
         $this->authorize('manage', $project);
 
-        DB::transaction(function () use ($zoom, $meeting, $request): void {
+        $user = $this->authenticatedUser();
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($zoom, $meeting, $request, $user): void {
             $meeting->update($request->validated());
-            $zoom->updateMeeting($request->validated(), auth()->user());
+            $zoom->updateMeeting($request->validated(), $user);
         });
 
         $meeting->load(['user']);
@@ -85,10 +97,11 @@ class ZoomMeetingController extends Controller
         $this->authorize('manage', $project);
 
         $meetingId = $meeting->meeting_id;
+        $user = $this->authenticatedUser();
 
-        DB::transaction(function () use ($zoom, $meeting, $meetingId): void {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($zoom, $meeting, $meetingId, $user): void {
             $meeting->delete();
-            $zoom->deleteMeeting($meetingId, auth()->user());
+            $zoom->deleteMeeting($meetingId, $user);
         });
 
         return response()->json([

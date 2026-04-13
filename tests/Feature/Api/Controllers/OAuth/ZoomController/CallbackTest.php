@@ -6,11 +6,11 @@ namespace Tests\Feature\Api\Controllers\OAuth\ZoomController;
 
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
+use Tests\Traits\ProjectSetup;
 
 class CallbackTest extends TestCase
 {

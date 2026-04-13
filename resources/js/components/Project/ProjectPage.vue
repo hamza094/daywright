@@ -145,6 +145,26 @@
                       <span>Last modified</span>
                       <p v-text="project.updated_at"></p>
                     </div>
+                    <div v-if="showProjectLimits" class="project-limits">
+                      <div class="project-limits_header">
+                        <span class="project-limits_title">Project plan limits</span>
+                        <router-link class="link-no-hover project-limits_link" :to="{ name: 'Subscription' }">
+                          Upgrade to Pro
+                        </router-link>
+                      </div>
+                      <div v-for="item in projectLimitItems" :key="item.key" class="project-limits_item">
+                        <div class="project-limits_row">
+                          <span class="project-limits_label">{{ item.label }}</span>
+                          <span class="project-limits_value">{{ formatUsageLimit(item.limit, { emptyMax: 0 }) }}</span>
+                        </div>
+                        <div class="project-limits_track">
+                          <div
+                            class="project-limits_bar"
+                            :class="usageLimitToneClass(item.limit, 'project-limits_bar')"
+                            :style="{ width: usageLimitWidth(item.limit) }"></div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -257,10 +277,12 @@ import Stage from './Stage.vue';
 import Task from './Panel/Task.vue';
 import PanelFeatues from './Panel/Features.vue';
 import RecentActivities from './RecentActivities.vue';
+import usageLimitHelpers from '../../mixins/usageLimitHelpers';
 import { permission } from '../../auth';
 import { mapState, mapMutations, mapActions } from 'vuex';
 
 export default {
+  name: 'ProjectPage',
   components: {
     Status,
     Stage,
@@ -269,6 +291,7 @@ export default {
     RecentActivities,
     Meeting,
   },
+  mixins: [usageLimitHelpers],
 
   beforeRouteLeave(to, from, next) {
     this.closeProjectChatPanel();
@@ -307,6 +330,23 @@ export default {
         hot: 'badge-success',
       };
       return map[this.project.health_status] || 'badge-secondary';
+    },
+
+    projectLimitItems() {
+      const limits = Array.isArray(this.project?.limits) ? this.project.limits : [];
+
+      // Only include limits whose `limit.max` is a finite number greater than zero.
+      // This excludes `null`/`undefined` (used to indicate unlimited/no-cap) and
+      // any non-positive values. To show unlimited items, adjust or remove this
+      // finite/positive check.
+      return limits.filter((item) => {
+        const max = item?.limit?.max;
+        return Number.isFinite(max) && max > 0;
+      });
+    },
+
+    showProjectLimits() {
+      return this.permission.owner && this.projectLimitItems.length > 0;
     },
   },
 

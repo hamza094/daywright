@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\Subscription\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\TaskRequest;
 use App\Http\Requests\Api\V1\TaskUpdate;
@@ -11,8 +12,8 @@ use App\Http\Resources\Api\V1\TaskResource;
 use App\Http\Resources\Api\V1\TasksResource;
 use App\Models\Project;
 use App\Models\Task;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use App\Services\Api\V1\Task\TaskService;
-use Auth;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -48,11 +49,18 @@ class TaskController extends ApiController
      *
      * This endpoint allows creating a new task related to a specific project.
      */
-    public function store(Project $project, TaskRequest $request, TaskService $taskService): JsonResponse
+    public function store(Project $project, TaskRequest $request, TaskService $taskService, PlanLimitService $planLimitService): JsonResponse
     {
-        $task = $project->tasks()->firstOrCreate(
-            $request->validated() + ['user_id' => Auth::id(),
-            ]);
+        $authenticatedUser = $this->authenticatedUser();
+
+        $task = $planLimitService->executeWithinProjectLimit(
+            PlanLimitType::ActiveTasksPerProject,
+            $project,
+            fn (Project $lockedProject): Task => $lockedProject->tasks()->firstOrCreate(
+                $request->validated() + ['user_id' => $authenticatedUser->id,
+                ]
+            )
+        );
 
         $taskService->sendNotification($project);
 

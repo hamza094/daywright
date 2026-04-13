@@ -38,7 +38,7 @@
                 </div>
                 <div class="d-flex align-items-center justify-content-center">
                   <img
-                    :src="$options.filters.safeUrl(ownerAvatar(project.owner))"
+                    :src="$safeUrl(ownerAvatar(project.owner))"
                     :alt="(project.owner && project.owner.name ? project.owner.name : 'Owner') + ' avatar'"
                     class="rounded-circle mr-2"
                     width="32"

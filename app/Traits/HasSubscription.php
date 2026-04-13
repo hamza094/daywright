@@ -4,36 +4,95 @@ declare(strict_types=1);
 
 namespace App\Traits;
 
+use Laravel\Paddle\Exceptions\PaddleException;
+use LogicException;
+
+/**
+ * @method bool onTrial(?string $name = null)
+ * @method mixed subscription(string $name)
+ * @method mixed trialEndsAt(?string $name = null)
+ */
 trait HasSubscription
 {
-    private const SUBSCRIPTION_NAME = 'DayWright';
-
-    /**
-     * Check if the user is subscribed to the DayWright plan.
-     */
-    public function isSubscribed(): bool
+    public function subscriptionName(): string
     {
-        return (bool) $this->getSubscription();
+        $subscriptionName = config('services.paddle.subscription_name');
+
+        if (! is_string($subscriptionName) || $subscriptionName === '') {
+            throw new LogicException('services.paddle.subscription_name must be configured.');
+        }
+
+        return $subscriptionName;
+    }
+
+    public function isOnTrial(): bool
+    {
+        return $this->onTrial() || $this->onTrial($this->subscriptionName());
+    }
+
+    public function hasSubscriptionRecord(): bool
+    {
+        return $this->getSubscription() !== null;
     }
 
     /**
-     * Get the user's current subscription plan name ('monthly', 'yearly', 'Not Subscribed', or 'Unknown').
-     * Optionally accepts plan IDs for testability.
+     * Check if the user has a valid DayWright subscription record.
      */
-    public function subscribedPlan(?int $monthlyPlanId = null, ?int $yearlyPlanId = null): string
+    public function isSubscribed(): bool
     {
         $subscription = $this->getSubscription();
-        if (! $subscription) {
-            return 'Not Subscribed';
-        }
-        $monthlyPlanId ??= (int) config('services.paddle.monthly');
-        $yearlyPlanId ??= (int) config('services.paddle.yearly');
-        $plans = [
-            $monthlyPlanId => 'monthly',
-            $yearlyPlanId => 'yearly',
-        ];
 
-        return $plans[$subscription->paddle_plan] ?? 'Unknown';
+        return $subscription?->valid() === true;
+    }
+
+    /**
+     * Check if the user has an actively recurring DayWright subscription.
+     */
+    public function isBillingSubscribed(): bool
+    {
+        $subscription = $this->getSubscription();
+
+        return $subscription?->recurring() === true;
+    }
+
+    /**
+     * Get the active recurring billing plan name.
+     */
+    public function activeBillingPlan(
+        ?int $monthlyPlanId = null,
+        ?int $yearlyPlanId = null,
+    ): string {
+        $subscription = $this->getSubscription();
+
+        if ($subscription?->recurring() !== true) {
+            return 'Not Subscribed Actively';
+        }
+
+        return $this->resolveBillingPlanName(
+            paddlePlan: $subscription->paddle_plan ?? null,
+            monthlyPlanId: $monthlyPlanId,
+            yearlyPlanId: $yearlyPlanId,
+        );
+    }
+
+    /**
+     * Get the billing plan name for an active subscription or a canceled one still in grace period.
+     */
+    public function displayBillingPlan(
+        ?int $monthlyPlanId = null,
+        ?int $yearlyPlanId = null,
+    ): string {
+        $subscription = $this->getSubscription();
+
+        if ($subscription === null) {
+            return 'Not Subscribed Actively';
+        }
+
+        return $this->resolveBillingPlanName(
+            paddlePlan: $subscription->paddle_plan ?? null,
+            monthlyPlanId: $monthlyPlanId,
+            yearlyPlanId: $yearlyPlanId,
+        );
     }
 
     /**
@@ -41,26 +100,55 @@ trait HasSubscription
      */
     public function hasGracePeriod(): bool
     {
-        $subscription = $this->getSubscription();
-
-        return $subscription ? $subscription->onGracePeriod() : false;
+        return $this->getSubscription()?->onGracePeriod() === true;
     }
 
     /**
-     * Get the user's next payment for the DayWright subscription, or a message if not subscribed.
+     * Get the user's next scheduled payment for the DayWright subscription.
      */
     public function payment(): mixed
     {
         $subscription = $this->getSubscription();
 
-        return $subscription ? $subscription->nextPayment() : 'No active subscription';
+        if ($subscription?->valid() !== true) {
+            return null;
+        }
+
+        try {
+            return $subscription->nextPayment();
+        } catch (PaddleException) {
+            return null;
+        }
     }
 
     /**
-     * Helper to get the DayWright subscription instance.
+     * Helper to get the DayWright subscription record, even if it is no longer valid.
      */
     public function getSubscription(): mixed
     {
-        return $this->subscription(self::SUBSCRIPTION_NAME);
+        return $this->subscription($this->subscriptionName());
+    }
+
+    protected function resolveBillingPlanName(
+        null|int|string $paddlePlan,
+        ?int $monthlyPlanId = null,
+        ?int $yearlyPlanId = null,
+    ): string {
+        $resolvedPaddlePlan = $this->resolveNullablePlanId($paddlePlan);
+        $monthlyPlanId ??= $this->resolveNullablePlanId(config('services.paddle.monthly'));
+        $yearlyPlanId ??= $this->resolveNullablePlanId(config('services.paddle.yearly'));
+
+        return match (true) {
+            $resolvedPaddlePlan !== null && $resolvedPaddlePlan === $monthlyPlanId => 'monthly',
+            $resolvedPaddlePlan !== null && $resolvedPaddlePlan === $yearlyPlanId => 'yearly',
+            default => 'Unknown',
+        };
+    }
+
+    protected function resolveNullablePlanId(mixed $planId): ?int
+    {
+        $resolvedPlanId = filter_var($planId, FILTER_VALIDATE_INT);
+
+        return $resolvedPlanId === false ? null : $resolvedPlanId;
     }
 }

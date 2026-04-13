@@ -1,6 +1,6 @@
 <template>
   <div>
-    <modal name="ViewMeeting" height="auto" :scrollable="true" width="40%" class="model-desin" :click-to-close="false">
+    <modal name="ViewMeeting" height="auto" :scrollable="true" width="40%" class="modal-design" :click-to-close="false">
       <div class="edit-border-top p-3">
         <div v-if="meeting && meeting.status === 'Started'" class="glowing-dot"></div>
 

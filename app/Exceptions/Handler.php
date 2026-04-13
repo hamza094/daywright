@@ -7,6 +7,7 @@ namespace App\Exceptions;
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\UnauthorizedException;
 use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Models\Project;
 use App\Models\Task;
 use Aws\S3\Exception\S3Exception;
@@ -17,6 +18,7 @@ use Laravel\Paddle\Exceptions\PaddleException as LaravelPaddleException;
 use Override;
 use Saloon\RateLimitPlugin\Exceptions\RateLimitReachedException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
@@ -80,6 +82,27 @@ class Handler extends ExceptionHandler
                 return response()->json([
                     'message' => 'Sorry Record not found.',
                 ], 404);
+            }
+        });
+
+        $this->renderable(function (PlanLimitExceededException $e, $request) {
+            if ($request->is(self::API_PREFIX)) {
+                $authenticatedUser = $request->user();
+                $canUpgrade = $e->limitScope() === PlanLimitExceededException::SCOPE_ACCOUNT
+                    || (int) ($authenticatedUser?->getKey() ?? 0) === $e->limitOwnerId();
+
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'error_type' => 'plan_limit_exceeded',
+                    'reason' => $e->reason(),
+                    'limit_type' => $e->limitType(),
+                    'limit_label' => $e->limitLabel(),
+                    'current_usage' => $e->currentUsage(),
+                    'max_allowed' => $e->maxAllowed(),
+                    'limit_scope' => $e->limitScope(),
+                    'can_upgrade' => $canUpgrade,
+                    'upgrade_required' => true,
+                ], 403);
             }
         });
 

@@ -8,10 +8,15 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex';
+
 export default {
+  name: 'SubscriptionChecker',
   computed: {
+    ...mapGetters('subscribeUser', ['isPro']),
+
     isSubscribed() {
-      return this.$store.state.subscribeUser.subscription.subscribed;
+      return this.isPro;
     },
   },
 };

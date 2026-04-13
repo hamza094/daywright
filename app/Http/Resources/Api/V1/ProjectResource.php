@@ -14,6 +14,14 @@ use Override;
 class ProjectResource extends JsonResource
 {
     /**
+     * @param  array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>|null  $limits
+     */
+    public function __construct($resource, private readonly ?array $limits = null)
+    {
+        parent::__construct($resource);
+    }
+
+    /**
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -22,7 +30,8 @@ class ProjectResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
-        $showRoute = $request->routeIs('projects.show');
+        $showsProjectDetails = $request->routeIs('projects.show');
+        $showsProjectLimits = $request->routeIs('projects.show', 'projects.update');
 
         return [
             /**
@@ -87,27 +96,26 @@ class ProjectResource extends JsonResource
                     ->format(config('app.date_formats.exact'))
             ),
 
-            'ownerNotAuthorized' => $this->when(
-                $showRoute,
-                auth()->user()->is($this->user) && ! auth()->user()->isConnectedToZoom(),
-            ),
+            $this->mergeWhen($showsProjectDetails, [
+                'ownerNotAuthorized' => $this->whenLoaded(
+                    'user',
+                    fn (): bool => auth()->user()->is($this->user) && ! auth()->user()->isConnectedToZoom(),
+                ),
 
-            'days_limit' => $this->when(
-                $showRoute,
-                config('app.project.abandonedLimit'),
-            ),
+                'days_limit' => config('app.project.abandonedLimit'),
 
-            'postponed_reason' => $this->when(
-                $showRoute,
-                $this->postponed_reason,
-            ),
+                'postponed_reason' => $this->postponed_reason,
 
-            /**
-             * Basic details of the project owner.
-             *
-             * @example [data]
-             */
-            'user' => $this->when($showRoute && $this->relationLoaded('user'), fn () => $this->user->only(['uuid', 'name', 'avatar_path', 'username', 'email'])),
+                /**
+                 * Basic details of the project owner.
+                 *
+                 * @example [data]
+                 */
+                'user' => $this->whenLoaded(
+                    'user',
+                    fn (): array => $this->user->only(['uuid', 'name', 'avatar_path', 'username', 'email']),
+                ),
+            ]),
 
             /**
              * Project status calculated on the based of score
@@ -131,12 +139,26 @@ class ProjectResource extends JsonResource
             /**
              * Current stage information for the project.
              */
-            'stage' => $this->when($showRoute && $this->relationLoaded('stage'), fn (): StageResource => new StageResource($this->stage)),
+            'stage' => $this->when(
+                $showsProjectDetails,
+                fn () => $this->whenLoaded('stage', fn (): StageResource => new StageResource($this->stage)),
+            ),
 
             /**
              * List of active project members.
              */
-            'members' => $this->when($showRoute && $this->relationLoaded('activeMembers'), fn () => InvitedUserResource::collection($this->activeMembers)),
+            'members' => $this->when(
+                $showsProjectDetails,
+                fn () => $this->whenLoaded(
+                    'activeMembers',
+                    fn () => InvitedUserResource::collection($this->activeMembers),
+                ),
+            ),
+
+            'limits' => $this->when(
+                $showsProjectLimits && $this->limits !== null,
+                $this->limits,
+            ),
 
             /**
              * Limited list of recent project activities.

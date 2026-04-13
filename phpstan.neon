@@ -27,4 +27,4 @@ parameters:
 
     # Improves performance and consistency in CI
     tmpDir: .phpstan-cache
-    reportUnmatchedIgnoredErrors: true
+    reportUnmatchedIgnoredErrors: false

@@ -6,10 +6,10 @@ namespace Tests\Feature\Api\Controllers\Zoom;
 
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Models\Meeting;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
+use Tests\Traits\ProjectSetup;
 
 class DeleteMeetingTest extends TestCase
 {

@@ -11,13 +11,13 @@ use App\Http\Resources\Api\V1\ProjectResource;
 use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Models\Project;
 use App\Services\Api\V1\ProjectService;
-use Auth;
-use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 class ProjectController extends ApiController
 {
+    public function __construct(private readonly ProjectService $projectService) {}
+
     /**
      * Create a new project.
      *
@@ -25,27 +25,9 @@ class ProjectController extends ApiController
     the project's basic details, such as the name, about information, stage, and optional notes and tasks.
     The response will include the newly created project's information along with related resources.
      */
-    public function store(ProjectStoreRequest $request, ProjectService $service): JsonResponse
+    public function store(ProjectStoreRequest $request): JsonResponse
     {
-        DB::beginTransaction();
-
-        try {
-
-            $project = Auth::user()->projects()
-                ->create($request->safe()->except(['tasks']));
-
-            if ($request->tasks) {
-                $service->addTasksToProject($project, $request->safe()->only(['tasks']));
-            }
-
-            DB::commit();
-
-        } catch (Exception $ex) {
-
-            DB::rollBack();
-
-            throw $ex;
-        }
+        $project = $this->projectService->createProject($this->authenticatedUser(), $request->validated());
 
         return response()->json([
             'message' => 'Project Created Successfully',
@@ -58,13 +40,13 @@ class ProjectController extends ApiController
      *
      * Returns detailed information about a project including its members, conversations, and activities
      */
-    public function show(Project $project): ProjectResource
+    public function show(Project $project, Request $request): ProjectResource
     {
         $this->authorize('access', $project);
 
-        $project->load(['stage', 'meetings', 'activeMembers', 'limitedActivities']);
+        $project->load(['user', 'stage', 'meetings', 'activeMembers', 'limitedActivities']);
 
-        return new ProjectResource($project);
+        return new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()));
     }
 
     /**
@@ -75,7 +57,7 @@ class ProjectController extends ApiController
      *
      * @response array{message: 'Project Updated Successfully',project:array{id:1, slug:'the-dimension', name:'The Dimension', about:'This is the project dimension description', score:5, created_at:'5 days ago', updated_at:'few seconds ago',links:array{self:'api/v1/projects/the-dimension'}}}
      */
-    public function update(Project $project, ProjectUpdateRequest $request, ProjectService $service): JsonResponse
+    public function update(Project $project, ProjectUpdateRequest $request): JsonResponse
     {
         $this->authorize('access', $project);
 
@@ -86,12 +68,13 @@ class ProjectController extends ApiController
         }
 
         $project->update($request->validated());
+        $project->loadMissing('user');
 
-        $service->sendNotification($project);
+        $this->projectService->sendNotification($project);
 
         return response()->json([
             'message' => 'Project Updated Successfully',
-            'project' => new ProjectResource($project),
+            'project' => new ProjectResource($project, $this->projectService->projectLimits($project, $request->user())),
         ], 200);
     }
 
@@ -117,11 +100,12 @@ class ProjectController extends ApiController
         return response()->json([
             'message' => $project->name.' restored successfully',
         ], 200);
+
     }
 
-    public function delete(Project $project, ProjectService $service): JsonResponse
+    public function delete(Project $project): JsonResponse
     {
-        $deleted = $service->forceDeleteIfAbandoned($project);
+        $deleted = $this->projectService->forceDeleteIfAbandoned($project);
 
         if (! $deleted) {
             return response()->json(['message' => 'Only abandoned projects can be deleted permanently.'], 403);

@@ -10,7 +10,6 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\UserInfo;
 use App\Services\Api\V1\UserService;
-use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -18,6 +17,7 @@ use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class UserTest extends TestCase
 {

@@ -6,10 +6,10 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\Task;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class TaskFeaturesTest extends TestCase
 {

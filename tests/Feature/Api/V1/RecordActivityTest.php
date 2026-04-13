@@ -6,10 +6,10 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\Task;
 use App\Models\User;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 use function Safe\json_encode;
 
@@ -28,6 +28,7 @@ class RecordActivityTest extends TestCase
             'description' => 'created_project',
         ]);
 
+        /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->latest()->first();
 
         $this->assertEquals('created_project', $activity->description);
@@ -42,6 +43,7 @@ class RecordActivityTest extends TestCase
 
         $this->assertEquals(2, $this->project->activities()->count());
 
+        /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
 
         $this->assertEquals('updated_project', $activity->description);
@@ -73,8 +75,10 @@ class RecordActivityTest extends TestCase
 
         $this->project->refresh();
 
-        $this->assertEquals('restored_project',
-            $this->project->activities()->first()->description);
+        /** @var \App\Models\Activity $activity */
+        $activity = $this->project->activities()->first();
+
+        $this->assertEquals('restored_project', $activity->description);
     }
 
     /** @test */
@@ -84,6 +88,7 @@ class RecordActivityTest extends TestCase
 
         $this->assertEquals(2, $this->project->activities()->count());
 
+        /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
 
         $this->assertEquals('created_task', $activity->description);
@@ -100,6 +105,7 @@ class RecordActivityTest extends TestCase
 
         $this->putJson($task->path(), ['title' => 'changed']);
 
+        /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
 
         $this->assertEquals('updated_task', $activity->description);
@@ -119,7 +125,10 @@ class RecordActivityTest extends TestCase
 
         $this->assertEquals(3, $this->project->activities()->count());
 
-        $this->assertEquals('deleted_task', $this->project->activities()->first()->description);
+        /** @var \App\Models\Activity $activity */
+        $activity = $this->project->activities()->first();
+
+        $this->assertEquals('deleted_task', $activity->description);
     }
 
     /** @test */
@@ -134,6 +143,7 @@ class RecordActivityTest extends TestCase
 
         $this->deleteJson($task->path().'/remove');
 
+        /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
         $this->assertEquals('deleted_task', $activity->description);
     }
@@ -141,6 +151,7 @@ class RecordActivityTest extends TestCase
     /** @test */
     public function records_activity_when_invitation_sent_to_user(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
 
         $this->postJson($this->project->path().'/invitations', [
@@ -149,33 +160,44 @@ class RecordActivityTest extends TestCase
 
         $this->assertEquals(2, $this->project->activities()->count());
 
-        $this->assertEquals('invitation_sent', $this->project->activities()->first()->description);
+        /** @var \App\Models\Activity $activity */
+        $activity = $this->project->activities()->first();
+
+        $this->assertEquals('invitation_sent', $activity->description);
     }
 
     /** @test */
     public function records_activity_when_user_accepted_project_invitation(): void
     {
-        $this->project->invite($user = User::factory()->create());
+        /** @var User $user */
+        $user = User::factory()->create();
 
-        Sanctum::actingAs(
-            $user,
-        );
+        $this->project->invite($user);
+
+        Sanctum::actingAs($user);
 
         $this->getJson($this->project->path().'/accept-invitation');
 
-        $this->assertEquals('invitation_accepted', $this->project->activities()->first()->description);
+        /** @var \App\Models\Activity $activity */
+        $activity = $this->project->activities()->first();
+
+        $this->assertEquals('invitation_accepted', $activity->description);
     }
 
     /** @test */
     public function it_records_activity_when_a_project_member_is_removed(): void
     {
+        /** @var User $user */
         $user = User::factory()->create();
 
         $this->project->members()->attach($user, ['active' => true]);
 
         $this->getJson($this->project->path().'/remove/member/'.$user->uuid);
 
-        $this->assertEquals('member_removed', $this->project->activities()->first()->description);
+        /** @var \App\Models\Activity $activity */
+        $activity = $this->project->activities()->first();
+
+        $this->assertEquals('member_removed', $activity->description);
     }
 
     /** @test */
@@ -193,6 +215,9 @@ class RecordActivityTest extends TestCase
 
         $this->assertEquals(3, $this->project->activities()->count());
 
-        $this->assertEquals('created_message', $this->project->activities()->first()->description);
+        /** @var \App\Models\Activity $activity */
+        $activity = $this->project->activities()->first();
+
+        $this->assertEquals('created_message', $activity->description);
     }
 }

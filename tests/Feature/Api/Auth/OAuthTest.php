@@ -6,6 +6,7 @@ namespace Tests\Feature\Api\Auth;
 
 use App\Enums\OAuthProvider;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -76,6 +77,45 @@ class OAuthTest extends TestCase
 
         $this->assertEquals('access-token', $user->oauth_token);
         $this->assertEquals('refresh-token', $user->oauth_refresh_token);
+    }
+
+    /** @test */
+    public function newly_created_o_auth_user_starts_generic_trial(): void
+    {
+        $this->travelTo(Carbon::parse('2026-03-16 11:00:00'));
+
+        try {
+            $this->performOAuthCallback();
+
+            $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful();
+
+            $user = User::query()->where('email', 'test@example.com')->firstOrFail();
+            /** @var \Laravel\Paddle\Customer|null $customer */
+            $customer = $user->customer()->first();
+
+            $this->assertNotNull($customer);
+            $this->assertTrue($user->fresh()->isOnTrial());
+            $this->assertTrue(
+                $customer->trial_ends_at->equalTo(now()->addDays((int) config('plan-limits.trial.duration_days')))
+            );
+        } finally {
+            $this->travelBack();
+        }
+    }
+
+    /** @test */
+    public function existing_o_auth_user_does_not_receive_a_new_trial_customer(): void
+    {
+        $user = User::factory(['email' => 'test@example.com'])->create();
+
+        $this->performOAuthCallback();
+
+        $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful();
+
+        $this->assertDatabaseMissing('customers', [
+            'billable_id' => (string) $user->getKey(),
+            'billable_type' => $user->getMorphClass(),
+        ]);
     }
 
     protected function mockSocialite($provider, $user = null)

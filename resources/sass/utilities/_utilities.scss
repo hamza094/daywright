@@ -56,6 +56,20 @@
   }
 }
 
+.link-no-hover {
+  color: $insight-accent-alt !important;
+  text-decoration: none !important;
+
+  &:hover,
+  &:focus,
+  &:active {
+    color: $color-secondary !important;
+    text-decoration: none !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
 .pagination {
   margin-top: 0.5rem;
 

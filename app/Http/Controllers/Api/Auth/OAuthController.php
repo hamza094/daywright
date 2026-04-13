@@ -8,6 +8,7 @@ use App\Actions\OAuthAction;
 use App\Enums\OAuthProvider;
 use App\Http\Controllers\Api\ApiController;
 use App\Services\Api\V1\Auth\LoginUserService;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -50,6 +51,10 @@ class OAuthController extends ApiController
             $oAuthUser = $socialiteDriver->stateless()->user();
 
             $user = $action->createUpdateUser($oAuthUser, $provider);
+
+            if ($user->wasRecentlyCreated) {
+                event(new Registered($user));
+            }
 
             $result = $this->loginUserService->startLoginFlow($user->email);
 

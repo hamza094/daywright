@@ -10,11 +10,11 @@ use App\Notifications\ProjectInvitation;
 use App\Notifications\ProjectTask;
 use App\Notifications\ProjectUpdated;
 use App\Notifications\UserMentioned;
-use App\Traits\ProjectSetup;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 class NotificationsTest extends TestCase
 {
@@ -40,7 +40,10 @@ class NotificationsTest extends TestCase
     {
         Notification::fake();
 
-        $this->project->invite($user = User::factory()->create());
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        $this->project->invite($user);
 
         Sanctum::actingAs($user);
 

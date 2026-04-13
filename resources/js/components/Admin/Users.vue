@@ -51,9 +51,7 @@
                     </td>
                     <td>{{ user.username }}</td>
                     <td>
-                      <img
-                        :src="$options.filters.safeUrl(user.avatar)"
-                        :alt="user.name ? user.name + ' avatar' : 'User avatar'" />
+                      <img :src="$safeUrl(user.avatar)" :alt="user.name ? user.name + ' avatar' : 'User avatar'" />
                     </td>
                     <td>{{ user.email }}</td>
                     <td>{{ user.timezone }}</td>

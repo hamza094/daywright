@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\Subscription\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\InvitationUsersRequest;
 use App\Http\Resources\Api\V1\InvitedUserResource;
@@ -12,7 +13,7 @@ use App\Http\Resources\Api\V1\Task\TaskMemberResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Api\V1\InvitationService;
-use Auth;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,12 +52,19 @@ class InvitationController extends ApiController
      * ### Authorization:
      * - This action can only be performed by the project owner
      */
-    public function invite(Project $project, InvitationUsersRequest $request): JsonResponse
+    public function invite(Project $project, InvitationUsersRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
-        $user = User::whereEmail($request->validated())->first();
+        $validated = $request->validated();
+        $user = User::query()->where('email', $validated['email'])->first();
 
         try {
-            $this->invitationService->sendInvitation($user, $project);
+            $planLimitService->executeWithinProjectLimit(
+                PlanLimitType::MembersPerProject,
+                $project,
+                function (Project $lockedProject) use ($user): void {
+                    $this->invitationService->sendInvitation($user, $lockedProject);
+                }
+            );
 
             return response()->json([
                 'message' => 'Project invitation sent to '.$user->name,
@@ -84,13 +92,14 @@ class InvitationController extends ApiController
     public function accept(Project $project): JsonResponse
     {
         try {
+            $user = $this->authenticatedUser();
 
             $this->invitationService->acceptInvitation($project);
 
             return response()->json([
                 'message' => 'You have accepted Project invitation',
                 'project' => new ProjectsResource($project),
-                'accepted_user' => new InvitedUserResource(Auth::user()),
+                'accepted_user' => new InvitedUserResource($user),
             ], 200);
 
         } catch (Exception) {
@@ -108,7 +117,7 @@ class InvitationController extends ApiController
      */
     public function reject(Project $project): JsonResponse
     {
-        $user = Auth::user();
+        $user = $this->authenticatedUser();
 
         $this->invitationService->rejectInvitation($project, $user);
 

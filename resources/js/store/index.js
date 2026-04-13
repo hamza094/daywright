@@ -3,7 +3,7 @@ import Vuex from 'vuex';
 
 import createPersistedState from 'vuex-persistedstate';
 import currentUser from './currentUser';
-import subscribeUser from './subscribeUser';
+import subscribeUser from './subscribeUser.js';
 import profile from './profile';
 import project from './project';
 import task from './task';

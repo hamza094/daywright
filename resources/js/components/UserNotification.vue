@@ -45,7 +45,7 @@
         <div class="d-flex align-items-center">
           <img
             v-if="notification.notifier.avatar"
-            :src="$options.filters.safeUrl(notification.notifier.avatar)"
+            :src="$safeUrl(notification.notifier.avatar)"
             alt="Avatar"
             class="rounded-circle mr-3"
             style="width: 40px; height: 40px" />

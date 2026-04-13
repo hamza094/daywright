@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Traits;
+namespace Tests\Traits;
 
 use App\Models\Project;
 use App\Models\TaskStatus;
@@ -12,29 +12,32 @@ use Laravel\Sanctum\Sanctum;
 
 trait ProjectSetup
 {
-    public $project;
+    public Project $project;
 
-    public $user;
+    public User $user;
 
-    public $status;
+    public TaskStatus $status;
 
     protected function setUp(): void
     {
-
         parent::setUp();
 
-        $this->user = User::factory()->create([
+        $user = User::factory()->create([
             'email' => 'johndoe@example.org',
             'password' => Hash::make('testpassword'),
         ]);
+
+        $this->user = $user;
 
         Sanctum::actingAs(
             $this->user,
         );
 
-        $this->status = TaskStatus::factory()->create();
+        $status = TaskStatus::factory()->create();
+        $this->status = $status;
 
-        $this->project = Project::factory()->for($this->user)->create();
+        $project = Project::factory()->for($this->user)->create();
+        $this->project = $project;
 
         // if ($this instanceof \Tests\Feature\TaskTest) {
         // $this->status = TaskStatus::factory()->create();
@@ -45,6 +48,5 @@ trait ProjectSetup
         ];
 
         $this->withoutMiddleware($middlewaresToRemove);
-
     }
 }

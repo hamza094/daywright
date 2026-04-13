@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1;
 
 use App\Models\Message;
-use App\Traits\ProjectSetup;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Override;
 use Tests\TestCase;
+use Tests\Traits\ProjectSetup;
 
 use function Safe\json_encode;
 
