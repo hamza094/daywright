@@ -11,7 +11,6 @@ use App\Interfaces\Zoom;
 use App\Models\User;
 use App\Services\Api\V1\Admin\Integration\PaddleService;
 use App\Services\Api\V1\Paddle\SubscriptionService;
-use App\Services\Api\V1\PaginationService;
 use App\Services\Api\V1\SendSmsService;
 use App\Services\Api\V1\Zoom\ZoomService;
 use Dedoc\Scramble\Scramble;
@@ -21,7 +20,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Routing\Route;
-use Illuminate\Support\Collection;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Pennant\Feature;
@@ -102,33 +100,5 @@ class AppServiceProvider extends ServiceProvider
                 'ressie03@example.net',
             ]);
         });*/
-
-        /**
-         * Paginate a standard Laravel Collection.
-         *
-         * @param  int  $perPage
-         * @param  int|null  $total
-         * @param  int|null  $page
-         * @param  string  $pageName
-         * @return PaginationService
-         */
-        Collection::macro('paginate', function ($perPage, $total = null, $page = null, $pageName = 'page'): PaginationService {
-            // Coerce scalar inputs to integers to satisfy strict_types and paginator requirements
-            $perPage = (int) $perPage;
-            $page = $page !== null ? (int) $page : PaginationService::resolveCurrentPage($pageName);
-            $resolvedTotal = $total !== null ? (int) $total : $this->count();
-
-            return new PaginationService(
-                $this->forPage($page, $perPage)->values(),
-                $resolvedTotal,
-                $perPage,
-                $page,
-                [
-                    'path' => PaginationService::resolveCurrentPath(),
-                    'pageName' => $pageName,
-                ]
-            );
-        });
-
     }
 }

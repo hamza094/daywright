@@ -4,29 +4,36 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\BuildPaginatedPayloadAction;
 use App\Enums\NotificationFilter;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\NotificationResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 class NotificationsController extends ApiController
 {
     /**
      * Display a listing of the user's notifications.
      */
-    public function index(Request $request): LengthAwarePaginator
+    public function index(Request $request, BuildPaginatedPayloadAction $buildPaginatedPayloadAction): JsonResponse
     {
-        $notifications = $this->authenticatedUser()
+        $query = $this->authenticatedUser()
             ->notifications()
             ->latest()
             ->when($request->filter === NotificationFilter::READ->value, fn ($query) => $query->whereNotNull('read_at'))
-            ->when($request->filter === NotificationFilter::UNREAD->value, fn ($query) => $query->whereNull('read_at'))
-            ->get();
+            ->when($request->filter === NotificationFilter::UNREAD->value, fn ($query) => $query->whereNull('read_at'));
 
-        return NotificationResource::collection($notifications)->paginate(25);
+        $paginator = $query->paginate(25);
+
+        if ($paginator->isEmpty()) {
+            return response()->json(['message' => 'No notifications found'], 200);
+        }
+
+        $payload = $buildPaginatedPayloadAction->handle($paginator, NotificationResource::class);
+
+        return response()->json($payload, 200);
     }
 
     /**

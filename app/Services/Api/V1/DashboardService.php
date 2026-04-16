@@ -9,22 +9,27 @@ use App\Models\User;
 use App\Repository\DashBoardRepository;
 use Auth;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class DashboardService
 {
     public function __construct(protected DashBoardRepository $dashboardRepository) {}
 
     /**
-     * @return Collection<int, \App\Models\Project>|null
+     * Return a paginated list of the user's projects.
      */
-    public function getUserProjects(DashboardProjectRequest $request): ?Collection
+    public function getUserProjects(DashboardProjectRequest $request): ?LengthAwarePaginator
     {
         $user = Auth::user();
         if (! $user instanceof User) {
             return null;
         }
 
-        return $this->filterProjects($user, $request);
+        $perPage = (int) config('app.project.items_limit');
+
+        $query = $this->filterProjects($user, $request);
+
+        return $query->paginate($perPage);
     }
 
     /**
@@ -45,9 +50,11 @@ class DashboardService
     }
 
     /**
-     * @return Collection<int,\App\Models\Project>
+     * Build the projects query according to supplied filters.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder
      */
-    private function filterProjects(User $user, DashboardProjectRequest $request): Collection
+    private function filterProjects(User $user, DashboardProjectRequest $request)
     {
         $filters = $this->getFilters($request);
 
@@ -59,8 +66,7 @@ class DashboardService
             ->with(['stage', 'user'])
             ->when($filters['abandoned'], fn ($query) => $query->trashed())
             ->when($filters['search'], fn ($query) => $query->search($filters['search']))
-            ->sortBy($filters['sort'])
-            ->get();
+            ->sortBy($filters['sort']);
     }
 
     /**

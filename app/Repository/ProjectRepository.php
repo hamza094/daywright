@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\Models\Project;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ProjectRepository
 {
     /**
      * Filter project activities based on the request parameters.
      *
-     * @param  Collection  $activities  The collection of activities to filter.
-     * @return Collection The filtered collection of activities.
+     * @param  HasMany|MorphMany  $activities  The activities relation query to filter.
+     * @return HasMany|MorphMany The filtered activities relation query.
      */
-    public function filterActivities(Collection $activities): Collection
+    public function filterActivities(HasMany|MorphMany $activities): HasMany|MorphMany
     {
         $filters = [
             'specifics' => 'filterActivityByProjectSpecified',
@@ -26,10 +24,9 @@ class ProjectRepository
             'mine' => 'filterActivityByAuthUser',
         ];
 
-        $filter = request()->only(array_keys($filters));
-        $filter = key($filter);
+        $filter = array_key_first(request()->only(array_keys($filters)));
 
-        if ($filter !== 0 && ($filter !== '' && $filter !== '0') && array_key_exists($filter, $filters)) {
+        if ($filter !== null && array_key_exists($filter, $filters)) {
             $method = $filters[$filter];
             $activities = $this->$method($activities);
         }
@@ -37,42 +34,31 @@ class ProjectRepository
         return $activities;
     }
 
-    /**
-     * Filter activities by authenticated user.
-     *
-     * @param  Collection  $activities
-     */
-    protected function filterActivityByAuthUser($activities): Collection
+    protected function filterActivityByAuthUser(HasMany|MorphMany $activities): HasMany|MorphMany
     {
         return $activities->where('user_id', auth()->id());
     }
 
-    /**
-     * Filter activities by project-related tasks.
-     *
-     * @param  Collection  $activities
-     */
-    protected function filterActivityByTasks($activities): Collection
+    protected function filterActivityByTasks(HasMany|MorphMany $activities): HasMany|MorphMany
     {
-        return $activities->filter(fn ($activity): bool => str_contains((string) $activity['description'], '_task'));
+        return $activities->whereIn('description', [
+            'created_task',
+            'updated_task',
+            'deleted_task',
+        ]);
     }
 
-    /**
-     * Filter activities by project-specified.
-     *
-     * @param  Collection  $activities
-     */
-    protected function filterActivityByProjectSpecified($activities): Collection
+    protected function filterActivityByProjectSpecified(HasMany|MorphMany $activities): HasMany|MorphMany
     {
-        return $activities->filter(fn ($activity): bool => str_contains((string) $activity['description'], '_project'));
+        return $activities->whereIn('description', [
+            'created_project',
+            'updated_project',
+            'deleted_project',
+            'restored_project',
+        ]);
     }
 
-    /**
-     * Filter activities by project-member releated.
-     *
-     * @param  Collection  $activities
-     */
-    protected function filterActivityByMembers($activities): Collection
+    protected function filterActivityByMembers(HasMany|MorphMany $activities): HasMany|MorphMany
     {
         $types = [
             'invitation_sent',
@@ -80,7 +66,7 @@ class ProjectRepository
             'member_removed',
         ];
 
-        return $activities->filter(fn ($activity): bool => in_array($activity['description'], $types));
+        return $activities->whereIn('description', $types);
 
     }
 }

@@ -19,7 +19,13 @@ class ActivityTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $response = $this->getJson($this->project->path().'/activities')->assertOk();
+        $response = $this->getJson($this->project->path().'/activities')
+            ->assertOk()
+            ->assertJsonStructure([
+                'data',
+                'links',
+                'meta',
+            ]);
 
         $data = $response->json()['data'];
 

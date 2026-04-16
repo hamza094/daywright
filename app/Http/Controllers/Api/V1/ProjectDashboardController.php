@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\BuildPaginatedPayloadAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\UserActivitiesRequest;
@@ -34,14 +35,24 @@ class ProjectDashboardController extends Controller
      *
      * @response AnonymousResourceCollection<LengthAwarePaginator<ProjectsResource>>
      */
-    public function userProjects(DashboardProjectRequest $request): JsonResponse
+    public function userProjects(DashboardProjectRequest $request, BuildPaginatedPayloadAction $buildPaginatedPayloadAction): JsonResponse
     {
-        $projects = $this->dashboardService->getUserProjects($request);
+        $projectsPaginator = $this->dashboardService->getUserProjects($request);
+
+        if (! $projectsPaginator) {
+            return response()->json([
+                'projects' => [],
+                'projectsCount' => 0,
+                'message' => 'Sorry No Projects Found',
+            ]);
+        }
+
+        $projectsPayload = $buildPaginatedPayloadAction->handle($projectsPaginator, ProjectsResource::class);
 
         return response()->json([
-            'projects' => ProjectsResource::collection($projects)->paginate(config('app.project.items_limit')),
-            'projectsCount' => $projects->count(),
-            'message' => $projects->isEmpty() ? 'Sorry No Projects Found' : '',
+            'projects' => $projectsPayload,
+            'projectsCount' => $projectsPaginator->total(),
+            'message' => $projectsPaginator->isEmpty() ? 'Sorry No Projects Found' : '',
         ]);
     }
 

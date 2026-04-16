@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Api\V1\Task;
 
+use App\Actions\BuildPaginatedPayloadAction;
 use App\Actions\NotificationAction;
 use App\Actions\Task\ResetTaskNotificationAction;
 use App\Http\Resources\Api\V1\TasksResource;
@@ -16,7 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class TaskService
 {
-    public function __construct(private readonly ResetTaskNotificationAction $resetTaskNotificationAction) {}
+    public function __construct(
+        private readonly ResetTaskNotificationAction $resetTaskNotificationAction,
+        private readonly BuildPaginatedPayloadAction $buildPaginatedPayloadAction,
+    ) {}
 
     public function getTasksData(Project $project, bool $isArchived): array
     {
@@ -36,12 +40,13 @@ class TaskService
 
         // Active tasks (paginated) - use config value for page size
         $perPage = (int) config('tasks.limit', 3);
+        $tasks = $query->paginate($perPage);
 
         return [
-            'message' => $query->get()->isEmpty()
+            'message' => $tasks->isEmpty()
               ? 'Sorry, no tasks found.'
               : $this->getMessage(false),
-            'tasksData' => TasksResource::collection($query->get())->paginate($perPage),
+            'tasksData' => $this->buildPaginatedPayloadAction->handle($tasks, TasksResource::class),
         ];
     }
 
@@ -79,7 +84,7 @@ class TaskService
     private function getTasks(Project $project, bool $isArchived): HasMany
     {
         return $project->tasks()
-            ->with('project')
+            ->with('project:id,slug')
             ->when(
                 $isArchived,
                 fn (Builder $query) => $query->archived(),
