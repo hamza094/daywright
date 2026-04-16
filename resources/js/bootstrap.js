@@ -24,8 +24,8 @@ axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 axios.defaults.headers.common['Accept'] = 'application/json';
 axios.defaults.withCredentials = true;
 axios.defaults.withXSRFToken = true;
-axios.defaults.xsrfCookieName = true;
-axios.defaults.xsrfHeaderName = true;
+axios.defaults.xsrfCookieName = 'XSRF-TOKEN';
+axios.defaults.xsrfHeaderName = 'X-XSRF-TOKEN';
 
 axios.defaults.baseURL = import.meta.env?.VITE_API_BASE_URL || '/api/v1';
 
