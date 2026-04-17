@@ -116,8 +116,7 @@
     overflow-y: auto;
     height: 420px;
     max-height: 55vh;
-    display: flex;
-    flex-direction: column-reverse;
+    overflow-anchor: none;
   }
 
   .chat-body {

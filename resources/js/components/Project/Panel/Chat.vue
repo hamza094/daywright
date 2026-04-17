@@ -20,7 +20,12 @@
       </div>
 
       <div class="chat-wrapper">
-        <div class="card-body chat-panel">
+        <div class="card-body chat-panel" ref="chatPanel">
+          <div v-if="hasMore" class="text-center mb-2">
+            <button class="btn btn-sm btn-outline-secondary" @click="loadMore" :disabled="isLoadingMore">
+              {{ isLoadingMore ? 'Loading...' : 'Load older messages' }}
+            </button>
+          </div>
           <ul class="chat">
             <li
               v-for="conversation in conversations.data"
@@ -173,6 +178,15 @@ import { Mentionable } from 'vue-mention';
 import { Picker, EmojiIndex } from 'emoji-mart-vue-fast';
 import FeatureDropdown from '../../FeatureDropdown.vue';
 import { debounce } from 'lodash';
+import { deleteChatConversation, loadChatConversations, sendChatMessage } from './chat/chatApi';
+import {
+  registerDeleteConversationListener,
+  registerNewMessageListener,
+  registerTypingListener,
+  restoreChatScrollPosition,
+  scrollChatToBottom,
+  whisperTypingIndicator,
+} from './chat/chatRealtime';
 
 export default {
   components: { Picker, Mentionable, FeatureDropdown },
@@ -222,6 +236,9 @@ export default {
       ],
       items: [],
       conversations: { data: [] },
+      nextCursor: null,
+      isLoadingMore: false,
+      hasMore: false,
       errors: [],
       users: [...this.members, this.owner],
       openMenuId: null,
@@ -245,7 +262,10 @@ export default {
   },
 
   created() {
-    this.loadConversations();
+    this.loadConversations().then(async () => {
+      await this.$nextTick();
+      this.scrollToBottom();
+    });
 
     this.listenToWhisperEvent();
 
@@ -318,17 +338,7 @@ export default {
       }
 
       this.isSending = true;
-      let formData = new FormData();
-      if (this.message) {
-        formData.append('message', this.message);
-      }
-
-      if (this.file) {
-        formData.append('file', this.file);
-      }
-
-      axios
-        .post('/projects/' + this.slug + '/conversations', formData, { useProgress: true })
+      sendChatMessage(this)
         .then(() => {
           this.message = '';
           this.removeFile();
@@ -351,8 +361,7 @@ export default {
     },
 
     deleteConversation(id) {
-      axios
-        .delete('/projects/' + this.slug + '/conversations/' + id, { useProgress: true })
+      deleteChatConversation(this, id)
         .then(() => {
           this.$vToastify.info('Conversation deleted sucessfully');
         })
@@ -362,69 +371,46 @@ export default {
     },
 
     isTyping: debounce(function () {
-      Echo.private(`typing.${this.slug}`).whisper('typing-indicator', {
-        user: this.auth,
-        typing: true,
-      });
+      whisperTypingIndicator(this.slug, this.auth);
     }, 500), // Only fires every 500ms
 
     toggleEmojiModal() {
       this.emojiModal = !this.emojiModal;
     },
 
-    loadConversations() {
-      return axios
-        .get('/projects/' + this.slug + `/conversations`)
-        .then((response) => {
-          const payload = response.data;
-          if (payload && Array.isArray(payload.data)) {
-            this.conversations = payload;
-            return;
-          }
-          if (Array.isArray(payload)) {
-            this.conversations = { data: payload };
-            return;
-          }
-          this.conversations = { data: [] };
-        })
-        .catch((error) => {
-          this.conversations = { data: [] };
-          this.handleErrorResponse(error);
-        });
+    scrollToBottom() {
+      scrollChatToBottom(this.$refs.chatPanel);
+    },
+
+    async loadConversations(cursor = null) {
+      await loadChatConversations(this, cursor);
+    },
+
+    async loadMore() {
+      if (this.isLoadingMore || !this.hasMore) return;
+      this.isLoadingMore = true;
+
+      const panel = this.$refs.chatPanel;
+      const previousScrollHeight = panel ? panel.scrollHeight : 0;
+      const previousScrollTop = panel ? panel.scrollTop : 0;
+
+      await this.loadConversations(this.nextCursor);
+
+      await restoreChatScrollPosition(this, previousScrollTop, previousScrollHeight);
+
+      this.isLoadingMore = false;
     },
 
     listenForNewMessage() {
-      Echo.private(`project.${this.slug}.conversations`)
-        .listen('NewMessage', (e) => {
-          if (!this.conversations.data.some((conv) => conv.id === e.id)) {
-            this.conversations.data.push(e);
-          }
-        })
-        .error((error) => {
-          this.handleErrorResponse(error);
-        });
+      registerNewMessageListener(this);
     },
 
     listenToDeleteConversation() {
-      Echo.private(`deleteConversation.${this.slug}`).listen('DeleteConversation', (e) => {
-        const index = this.conversations.data.findIndex((c) => c.id === e.conversation_id);
-        if (index !== -1) {
-          this.conversations.data.splice(index, 1);
-        }
-        this.$vToastify.success('conversation deleted');
-      });
+      registerDeleteConversationListener(this);
     },
 
     listenToWhisperEvent() {
-      Echo.private(`typing.${this.slug}`).listenForWhisper('typing-indicator', (e) => {
-        this.user = e.user;
-        this.typing = e.typing;
-
-        // remove is typing indicator after 0.3s
-        setTimeout(() => {
-          this.typing = false;
-        }, 3000);
-      });
+      registerTypingListener(this);
     },
   },
 };

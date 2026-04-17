@@ -4,26 +4,23 @@ declare(strict_types=1);
 
 namespace App\Repository\Api\V1;
 
-use App\Http\Resources\Api\V1\ConversationResource;
 use App\Models\Project;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\CursorPaginator;
 
 class ConversationRepository
 {
-    /**
-     * Fetch all project conversations in an optimized manner.
-     * Uses lazy loading to prevent memory overflow.
-     *
-     * @return Collection<int, ConversationResource>
-     */
-    public function getProjectConversations(Project $project): Collection
-    {
+    private const int PER_PAGE = 25;
 
+    /**
+     * Fetch project conversations with cursor-based pagination.
+     *
+     * @return CursorPaginator<\App\Models\Conversation>
+     */
+    public function getProjectConversations(Project $project, ?string $cursor = null): CursorPaginator
+    {
         return $project->conversations()
             ->with(['user', 'project:id,slug'])
-            ->orderBy('id')
-            ->lazyById(100) // Memory efficient
-            ->map(fn ($conversation): ConversationResource => new ConversationResource($conversation))
-            ->collect();
+            ->orderBy('created_at', 'desc')
+            ->cursorPaginate(self::PER_PAGE, ['*'], 'cursor', $cursor);
     }
 }

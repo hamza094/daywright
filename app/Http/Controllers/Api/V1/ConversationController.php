@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\BuildCursorPaginatedPayloadAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\ConversationRequest;
 use App\Http\Resources\Api\V1\ConversationResource;
@@ -12,6 +13,7 @@ use App\Models\Project;
 use App\Repository\Api\V1\ConversationRepository;
 use App\Services\Api\V1\ConversationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ConversationController extends ApiController
 {
@@ -22,15 +24,27 @@ class ConversationController extends ApiController
      */
     public function __construct(private readonly ConversationService $conversationService) {}
 
-    public function index(Project $project, ConversationRepository $repository): JsonResponse
-    {
+    public function index(
+        Project $project,
+        Request $request,
+        ConversationRepository $repository,
+        BuildCursorPaginatedPayloadAction $buildCursorPayload
+    ): JsonResponse {
         $this->authorize('access', $project);
 
-        $conversations = $repository->getProjectConversations($project);
+        $paginator = $repository->getProjectConversations($project, $request->query('cursor'));
 
-        return response()->json([
-            'data' => $conversations,
-        ]);
+        if ($paginator->isEmpty() && ! $request->has('cursor')) {
+            return response()->json([
+                'message' => 'No conversations found',
+                'data' => [],
+                'meta' => ['has_more' => false, 'next_cursor' => null, 'prev_cursor' => null],
+            ]);
+        }
+
+        $payload = $buildCursorPayload->handle($paginator, ConversationResource::class);
+
+        return response()->json($payload);
     }
 
     /**

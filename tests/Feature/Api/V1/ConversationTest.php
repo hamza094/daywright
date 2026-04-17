@@ -20,14 +20,41 @@ class ConversationTest extends TestCase
     /** @test */
     public function allowed_user_can_see_project_conversations(): void
     {
-        $conversation = Conversation::factory()->create(['project_id' => $this->project->id,
+        $conversation = Conversation::factory()->create([
+            'project_id' => $this->project->id,
         ]);
 
         $response = $this->withoutExceptionHandling()->getJson($this->project->path().'/conversations');
 
-        $response->assertJsonFragment([
-            'message' => $conversation->message,
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [['id', 'message', 'user', 'created_at']],
+                'meta' => ['per_page', 'next_cursor', 'prev_cursor', 'has_more'],
+            ])
+            ->assertJsonFragment([
+                'message' => $conversation->message,
+            ]);
+
+        $this->assertCount(1, $response->json('data'));
+    }
+
+    /** @test */
+    public function conversations_support_cursor_pagination(): void
+    {
+        Conversation::factory()->count(30)->create([
+            'project_id' => $this->project->id,
         ]);
+
+        $first = $this->getJson($this->project->path().'/conversations');
+        $first->assertOk();
+        $this->assertCount(25, $first->json('data'));
+        $this->assertTrue($first->json('meta.has_more'));
+
+        $nextCursor = $first->json('meta.next_cursor');
+        $second = $this->getJson($this->project->path().'/conversations?cursor='.$nextCursor);
+        $second->assertOk();
+        $this->assertCount(5, $second->json('data'));
+        $this->assertFalse($second->json('meta.has_more'));
     }
 
     /** @test */
