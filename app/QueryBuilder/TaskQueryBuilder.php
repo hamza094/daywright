@@ -47,24 +47,6 @@ class TaskQueryBuilder extends Builder
             ->where('status_id', '!=', TaskStatusEnum::COMPLETED);
     }
 
-    public function assignedToUser(int $userId): self
-    {
-        return $this->whereExists($this->assignedToUserExistsConstraint($userId));
-    }
-
-    public function orAssignedToUser(int $userId): self
-    {
-        return $this->orWhereExists($this->assignedToUserExistsConstraint($userId));
-    }
-
-    public function ownedOrAssignedToUser(int $userId): self
-    {
-        return $this->where(function ($query) use ($userId): void {
-            $query->where('user_id', $userId)
-                ->orAssignedToUser($userId);
-        });
-    }
-
     /**
      * Filter tasks due soon (within specified hours, default 48)
      */
@@ -100,6 +82,22 @@ class TaskQueryBuilder extends Builder
     }
 
     /**
+     * Filter tasks assigned to the given user through the task_user pivot.
+     */
+    public function assignedToUser(int $userId): self
+    {
+        return $this->whereExists($this->assignedToUserExistsConstraint($userId));
+    }
+
+    /**
+     * Filter tasks the user either owns directly or is assigned to through the pivot.
+     */
+    public function ownedOrAssignedToUser(int $userId): self
+    {
+        return $this->whereIn('tasks.id', $this->ownedOrAssignedTaskIdsSubquery($userId));
+    }
+
+    /**
      * @return Closure(QueryBuilder): mixed
      */
     private function assignedToUserExistsConstraint(int $userId): Closure
@@ -109,5 +107,37 @@ class TaskQueryBuilder extends Builder
             ->from('task_user')
             ->whereColumn('task_user.task_id', 'tasks.id')
             ->where('task_user.user_id', $userId);
+    }
+
+    /**
+     * Build a materialized subquery of task IDs the user owns or is assigned to.
+     */
+    private function ownedOrAssignedTaskIdsSubquery(int $userId): QueryBuilder
+    {
+        return DB::query()
+            ->select('task_id')
+            ->fromSub($this->userTaskIdsUnionSubquery($userId), 'user_task_ids');
+    }
+
+    /**
+     * Union the owned task IDs with the assigned task IDs for the user.
+     */
+    private function userTaskIdsUnionSubquery(int $userId): QueryBuilder
+    {
+        return DB::table('tasks')
+            ->select('id as task_id')
+            ->where('user_id', $userId)
+            ->whereNull('deleted_at')
+            ->union($this->assignedTaskIdsSubquery($userId));
+    }
+
+    /**
+     * Select task IDs assigned to the user from the task_user pivot table.
+     */
+    private function assignedTaskIdsSubquery(int $userId): QueryBuilder
+    {
+        return DB::table('task_user')
+            ->select('task_id')
+            ->where('user_id', $userId);
     }
 }

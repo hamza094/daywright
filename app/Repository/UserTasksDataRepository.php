@@ -26,7 +26,7 @@ class UserTasksDataRepository
         $this->applyUserContextFilters($query, $userId, $validated);
 
         return $query
-            ->select('id', 'title', 'user_id', 'project_id', 'status_id', 'due_at', 'created_at', 'deleted_at')
+            ->select('id', 'title', 'user_id', 'project_id', 'status_id', 'due_at', 'created_at')
             ->when($validated['completed'] ?? false, fn ($q) => $q->completed())
             ->when($validated['overdue'] ?? false, fn ($q) => $q->overdue())
             ->when($validated['remaining'] ?? false, fn ($q) => $q->remaining())

@@ -289,7 +289,7 @@ class Project extends Model
      */
     public function limitedActivities(): HasMany
     {
-        return $this->activities()->take(5);
+        return $this->activities()->limit(5);
     }
 
     public function state(): string
