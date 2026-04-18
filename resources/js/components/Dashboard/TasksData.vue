@@ -159,6 +159,12 @@
               </div>
             </div>
           </div>
+
+          <div v-if="hasMore" class="text-center py-3">
+            <button class="btn btn-sm btn-outline-secondary" @click="loadMore" :disabled="isLoadingMore">
+              {{ isLoadingMore ? 'Loading...' : 'Load older tasks' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -178,6 +184,9 @@ export default {
       totalTasks: 0,
       activeFilter: 'all',
       loading: false,
+      nextCursor: null,
+      hasMore: false,
+      isLoadingMore: false,
     };
   },
   computed: {},
@@ -187,19 +196,21 @@ export default {
   methods: {
     loadTasks(additionalParams = {}) {
       this.loading = true;
+      this.nextCursor = null;
+      this.hasMore = false;
       const params = { ...additionalParams };
 
-      // Use 1/0 format for boolean parameters as expected by backend
       if (this.form.assigned) params.task_assigned = 1;
       if (this.form.created) params.user_created = 1;
 
       axios
         .get('/tasksdata', { params })
         .then((response) => {
-          // Update to match backend API response structure
           this.userTasks = response.data.data || [];
           this.appliedFilters = response.data.meta?.applied_filters || [];
-          this.totalTasks = response.data.meta?.total || 0;
+          this.nextCursor = response.data.meta?.next_cursor || null;
+          this.hasMore = response.data.meta?.has_more || false;
+          this.totalTasks = this.userTasks.length;
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -209,6 +220,36 @@ export default {
         })
         .finally(() => {
           this.loading = false;
+        });
+    },
+
+    loadMore() {
+      if (this.isLoadingMore || !this.hasMore) return;
+      this.isLoadingMore = true;
+
+      const params = { cursor: this.nextCursor };
+
+      if (this.form.assigned) params.task_assigned = 1;
+      if (this.form.created) params.user_created = 1;
+
+      if (this.activeFilter !== 'all') {
+        params[this.activeFilter] = 1;
+      }
+
+      axios
+        .get('/tasksdata', { params })
+        .then((response) => {
+          const olderTasks = response.data.data || [];
+          this.userTasks = [...this.userTasks, ...olderTasks];
+          this.nextCursor = response.data.meta?.next_cursor || null;
+          this.hasMore = response.data.meta?.has_more || false;
+          this.totalTasks = this.userTasks.length;
+        })
+        .catch((error) => {
+          this.handleErrorResponse(error);
+        })
+        .finally(() => {
+          this.isLoadingMore = false;
         });
     },
 

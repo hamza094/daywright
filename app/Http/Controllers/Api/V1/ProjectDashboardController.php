@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\BuildCursorPaginatedPayloadAction;
 use App\Actions\BuildPaginatedPayloadAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\DashboardProjectRequest;
@@ -99,18 +100,18 @@ class ProjectDashboardController extends Controller
         ]);
     }
 
-    public function tasksData(UserTasksDataRepository $repository, UserTasksRequest $request): JsonResponse
-    {
-        $tasks = $repository->getTasks(auth()->id(), $request);
+    public function tasksData(
+        UserTasksDataRepository $repository,
+        UserTasksRequest $request,
+        BuildCursorPaginatedPayloadAction $buildCursorPayload
+    ): JsonResponse {
+        $paginator = $repository->getTasks(auth()->id(), $request);
         $appliedFilters = $repository->appliedFilters($request);
 
-        return response()->json([
-            'data' => UserTasksResource::collection($tasks),
-            'meta' => [
-                'applied_filters' => $appliedFilters,
-                'total' => $tasks->count(),
-            ],
-        ]);
+        $payload = $buildCursorPayload->handle($paginator, UserTasksResource::class);
+        $payload['meta']['applied_filters'] = $appliedFilters;
+
+        return response()->json($payload);
     }
 
     /**

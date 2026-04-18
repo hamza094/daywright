@@ -7,12 +7,17 @@ namespace App\Repository;
 use App\Http\Requests\Api\V1\UserTasksRequest;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Facades\DB;
 
 class UserTasksDataRepository
 {
-    public function getTasks(int $userId, UserTasksRequest $request): Collection
+    private const int PER_PAGE = 50;
+
+    /**
+     * @return CursorPaginator<Task>
+     */
+    public function getTasks(int $userId, UserTasksRequest $request): CursorPaginator
     {
         $validated = $request->validated();
 
@@ -33,7 +38,9 @@ class UserTasksDataRepository
                 'status',
                 'assignee' => fn ($query) => $query->select('users.id', 'users.uuid', 'users.name'),
             ])
-            ->get();
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
+            ->cursorPaginate(self::PER_PAGE, ['*'], 'cursor', $request->query('cursor'));
     }
 
     public function appliedFilters(UserTasksRequest $request): array

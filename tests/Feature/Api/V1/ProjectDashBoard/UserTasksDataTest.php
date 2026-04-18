@@ -83,7 +83,10 @@ class UserTasksDataTest extends TestCase
                 'data' => [],
                 'meta' => [
                     'applied_filters',
-                    'total',
+                    'per_page',
+                    'next_cursor',
+                    'prev_cursor',
+                    'has_more',
                 ],
             ]);
 
@@ -91,8 +94,7 @@ class UserTasksDataTest extends TestCase
 
         $this->assertEquals(['Filter by Created', 'Filter by Assigned'], $responseData['meta']['applied_filters']);
         $this->assertCount(4, $responseData['data']);
-        $this->assertEquals(4, $responseData['meta']['total']);
-        $this->assertEquals($assignedTask->title, $responseData['data'][3]['title']);
+        $this->assertEquals($assignedTask->title, $responseData['data'][0]['title']);
     }
 
     /** @test */
@@ -112,7 +114,6 @@ class UserTasksDataTest extends TestCase
 
         $this->assertEquals(['Filter by Created'], $responseData['meta']['applied_filters']);
         $this->assertCount(2, $responseData['data']);
-        $this->assertEquals(2, $responseData['meta']['total']);
     }
 
     /** @test */
@@ -133,7 +134,6 @@ class UserTasksDataTest extends TestCase
 
         $this->assertEquals(['Filter by Assigned'], $responseData['meta']['applied_filters']);
         $this->assertCount(1, $responseData['data']);
-        $this->assertEquals(1, $responseData['meta']['total']);
         $this->assertEquals($assignedTask->title, $responseData['data'][0]['title']);
     }
 
@@ -161,7 +161,6 @@ class UserTasksDataTest extends TestCase
 
         $this->assertEquals(['Filter by Created', 'Filter by Completed'], $responseData['meta']['applied_filters']);
         $this->assertCount(2, $responseData['data']);
-        $this->assertEquals(2, $responseData['meta']['total']);
     }
 
     /** @test */
@@ -270,6 +269,28 @@ class UserTasksDataTest extends TestCase
 
         // Should return 2 tasks: 1 created by user + 1 assigned to user
         $this->assertCount(2, $responseData['data']);
-        $this->assertEquals(2, $responseData['meta']['total']);
+    }
+
+    /** @test */
+    public function tasks_data_supports_cursor_pagination(): void
+    {
+        Task::factory([
+            'user_id' => $this->user->id,
+            'project_id' => $this->project->id,
+        ])->count(110)->create();
+
+        $first = $this->getJson('api/v1/tasksdata?user_created=1');
+        $first->assertOk();
+
+        $this->assertCount(100, $first->json('data'));
+        $this->assertTrue($first->json('meta.has_more'));
+        $this->assertNotNull($first->json('meta.next_cursor'));
+
+        $nextCursor = $first->json('meta.next_cursor');
+        $second = $this->getJson('api/v1/tasksdata?user_created=1&cursor='.$nextCursor);
+        $second->assertOk();
+
+        $this->assertCount(10, $second->json('data'));
+        $this->assertFalse($second->json('meta.has_more'));
     }
 }
