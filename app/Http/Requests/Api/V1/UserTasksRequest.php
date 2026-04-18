@@ -10,6 +10,14 @@ use Override;
 
 class UserTasksRequest extends FormRequest
 {
+    private const array FILTER_LABELS = [
+        'user_created' => 'Filter by Created',
+        'task_assigned' => 'Filter by Assigned',
+        'completed' => 'Filter by Completed',
+        'overdue' => 'Filter by Overdue',
+        'remaining' => 'Filter by Remaining',
+    ];
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -37,13 +45,21 @@ class UserTasksRequest extends FormRequest
      */
     public function filters(): array
     {
-        return $this->only([
-            'user_created',
-            'task_assigned',
-            'completed',
-            'overdue',
-            'remaining',
-        ]);
+        return collect($this->validated())
+            ->only(array_keys(self::FILTER_LABELS))
+            ->all();
+    }
+
+    public function appliedFilters(): array
+    {
+        $enabled = collect($this->filters())
+            ->filter(fn ($value): mixed => filter_var($value, FILTER_VALIDATE_BOOLEAN))
+            ->keys();
+
+        return collect(self::FILTER_LABELS)
+            ->only($enabled)
+            ->values()
+            ->all();
     }
 
     /**

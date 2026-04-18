@@ -106,7 +106,7 @@ class ProjectDashboardController extends Controller
         BuildCursorPaginatedPayloadAction $buildCursorPayload
     ): JsonResponse {
         $paginator = $repository->getTasks(auth()->id(), $request);
-        $appliedFilters = $repository->appliedFilters($request);
+        $appliedFilters = $request->appliedFilters();
 
         $payload = $buildCursorPayload->handle($paginator, UserTasksResource::class);
         $payload['meta']['applied_filters'] = $appliedFilters;

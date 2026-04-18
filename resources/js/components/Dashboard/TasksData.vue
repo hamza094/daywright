@@ -118,10 +118,10 @@
                   <span
                     v-if="task.due_at"
                     class="mr-3 due-date-label"
-                    :class="isOverdue(task) ? 'text-danger font-weight-bold' : 'text-danger font-weight-semibold'">
+                    :class="task.is_overdue ? 'text-danger font-weight-bold' : 'text-danger font-weight-semibold'">
                     <i class="fa-solid fa-calendar-alt text-danger"></i>
                     <strong>Due:</strong> {{ task.due_at }}
-                    <span v-if="isOverdue(task)" class="badge badge-danger ml-1 px-2 py-1" style="font-size: 0.65rem">
+                    <span v-if="task.is_overdue" class="badge badge-danger ml-1 px-2 py-1" style="font-size: 0.65rem">
                       OVERDUE
                     </span>
                   </span>
@@ -181,7 +181,6 @@ export default {
       },
       userTasks: [],
       appliedFilters: [],
-      totalTasks: 0,
       activeFilter: 'all',
       loading: false,
       nextCursor: null,
@@ -189,45 +188,66 @@ export default {
       isLoadingMore: false,
     };
   },
-  computed: {},
+  computed: {
+    totalTasks() {
+      return this.userTasks.length;
+    },
+  },
   mounted() {
     this.loadTasks();
   },
   methods: {
-    loadTasks(additionalParams = {}) {
+    async loadTasks() {
+      if (this.loading || this.isLoadingMore) {
+        return;
+      }
+
       this.loading = true;
       this.nextCursor = null;
       this.hasMore = false;
-      const params = { ...additionalParams };
 
-      if (this.form.assigned) params.task_assigned = 1;
-      if (this.form.created) params.user_created = 1;
+      try {
+        const response = await axios.get('/tasksdata', { params: this.buildParams() });
 
-      axios
-        .get('/tasksdata', { params })
-        .then((response) => {
-          this.userTasks = response.data.data || [];
-          this.appliedFilters = response.data.meta?.applied_filters || [];
-          this.nextCursor = response.data.meta?.next_cursor || null;
-          this.hasMore = response.data.meta?.has_more || false;
-          this.totalTasks = this.userTasks.length;
-        })
-        .catch((error) => {
-          this.handleErrorResponse(error);
-          this.userTasks = [];
-          this.appliedFilters = [];
-          this.totalTasks = 0;
-        })
-        .finally(() => {
-          this.loading = false;
-        });
+        this.userTasks = response.data.data || [];
+        this.applyMeta(response.data.meta);
+      } catch (error) {
+        this.handleErrorResponse(error);
+        this.resetTasksData();
+      } finally {
+        this.loading = false;
+      }
     },
 
-    loadMore() {
-      if (this.isLoadingMore || !this.hasMore) return;
+    async loadMore() {
+      if (this.loading || this.isLoadingMore || !this.hasMore) {
+        return;
+      }
+
       this.isLoadingMore = true;
 
-      const params = { cursor: this.nextCursor };
+      try {
+        const response = await axios.get('/tasksdata', {
+          params: this.buildParams({ cursor: this.nextCursor }),
+        });
+
+        const olderTasks = response.data.data || [];
+        this.userTasks = [...this.userTasks, ...olderTasks];
+        this.applyMeta(response.data.meta);
+      } catch (error) {
+        this.handleErrorResponse(error);
+      } finally {
+        this.isLoadingMore = false;
+      }
+    },
+
+    setFilter(filterType) {
+      this.activeFilter = filterType;
+      this.loadTasks();
+    },
+
+    buildParams({ cursor = null } = {}) {
+      const params = {};
 
       if (this.form.assigned) params.task_assigned = 1;
       if (this.form.created) params.user_created = 1;
@@ -236,51 +256,24 @@ export default {
         params[this.activeFilter] = 1;
       }
 
-      axios
-        .get('/tasksdata', { params })
-        .then((response) => {
-          const olderTasks = response.data.data || [];
-          this.userTasks = [...this.userTasks, ...olderTasks];
-          this.nextCursor = response.data.meta?.next_cursor || null;
-          this.hasMore = response.data.meta?.has_more || false;
-          this.totalTasks = this.userTasks.length;
-        })
-        .catch((error) => {
-          this.handleErrorResponse(error);
-        })
-        .finally(() => {
-          this.isLoadingMore = false;
-        });
-    },
-
-    setFilter(filterType) {
-      this.activeFilter = filterType;
-      const params = {};
-
-      switch (filterType) {
-        case 'overdue':
-          params.overdue = 1;
-          break;
-        case 'remaining':
-          params.remaining = 1;
-          break;
-        case 'completed':
-          params.completed = 1;
-          break;
-        case 'all':
-        default:
-          // No additional parameters for 'all'
-          break;
+      if (cursor) {
+        params.cursor = cursor;
       }
 
-      this.loadTasks(params);
+      return params;
     },
 
-    isOverdue(task) {
-      if (!task.due_at) return false;
-      const dueDate = new Date(task.due_at);
-      const now = new Date();
-      return dueDate < now && task.status?.label !== 'Completed';
+    applyMeta(meta = {}) {
+      this.appliedFilters = meta.applied_filters ?? [];
+      this.nextCursor = meta.next_cursor ?? null;
+      this.hasMore = Boolean(meta.has_more);
+    },
+
+    resetTasksData() {
+      this.userTasks = [];
+      this.appliedFilters = [];
+      this.nextCursor = null;
+      this.hasMore = false;
     },
   },
 };

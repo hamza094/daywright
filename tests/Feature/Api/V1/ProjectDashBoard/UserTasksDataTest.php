@@ -192,6 +192,45 @@ class UserTasksDataTest extends TestCase
     }
 
     /** @test */
+    public function tasks_data_includes_machine_safe_overdue_flag(): void
+    {
+        $overdueTask = Task::factory([
+            'title' => 'Overdue task',
+            'user_id' => $this->user->id,
+            'project_id' => $this->project->id,
+            'due_at' => Carbon::yesterday(),
+            'status_id' => TaskStatusEnum::IN_PROGRESS,
+        ])->create();
+
+        $upcomingTask = Task::factory([
+            'title' => 'Upcoming task',
+            'user_id' => $this->user->id,
+            'project_id' => $this->project->id,
+            'due_at' => Carbon::tomorrow(),
+            'status_id' => TaskStatusEnum::IN_PROGRESS,
+        ])->create();
+
+        $completedTask = Task::factory([
+            'title' => 'Completed task',
+            'user_id' => $this->user->id,
+            'project_id' => $this->project->id,
+            'due_at' => Carbon::yesterday(),
+            'status_id' => TaskStatusEnum::COMPLETED,
+        ])->create();
+
+        $response = $this->getJson('api/v1/tasksdata?user_created=1');
+
+        $response->assertOk();
+
+        $tasks = collect($response->json('data'))
+            ->mapWithKeys(fn (array $task): array => [$task['title'] => $task]);
+
+        $this->assertTrue($tasks[$overdueTask->title]['is_overdue']);
+        $this->assertFalse($tasks[$upcomingTask->title]['is_overdue']);
+        $this->assertFalse($tasks[$completedTask->title]['is_overdue']);
+    }
+
+    /** @test */
     public function auth_user_can_filter_tasks_by_remaining_status(): void
     {
         // Create remaining (not completed) tasks
