@@ -8,6 +8,7 @@ use App\Http\Requests\Api\V1\UserTasksRequest;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class UserTasksDataRepository
 {
@@ -21,13 +22,16 @@ class UserTasksDataRepository
         $this->applyUserContextFilters($query, $userId, $validated);
 
         return $query
+            ->select('id', 'title', 'user_id', 'project_id', 'status_id', 'due_at', 'created_at', 'deleted_at')
             ->when($validated['completed'] ?? false, fn ($q) => $q->completed())
             ->when($validated['overdue'] ?? false, fn ($q) => $q->overdue())
             ->when($validated['remaining'] ?? false, fn ($q) => $q->remaining())
             ->with([
-                'project' => fn ($q) => $q->withTrashed(),
+                'project' => fn ($query) => $query
+                    ->withTrashed()
+                    ->select('id', 'name', 'slug'),
                 'status',
-                'assignee',
+                'assignee' => fn ($query) => $query->select('users.id', 'users.uuid', 'users.name'),
             ])
             ->get();
     }
@@ -58,7 +62,12 @@ class UserTasksDataRepository
             // Both filters: tasks created by user OR assigned to user
             $query->where(function ($q) use ($userId): void {
                 $q->where('user_id', $userId)
-                    ->orWhereHas('assignee', fn ($sub) => $sub->where('users.id', $userId));
+                    ->orWhereExists(fn ($sub) => $sub
+                        ->select(DB::raw(1))
+                        ->from('task_user')
+                        ->whereColumn('task_user.task_id', 'tasks.id')
+                        ->where('task_user.user_id', $userId)
+                    );
             });
         } elseif ($created) {
             $query->where('user_id', $userId);
@@ -68,7 +77,12 @@ class UserTasksDataRepository
             // No explicit user context filters - default to user's tasks (created OR assigned)
             $query->where(function ($q) use ($userId): void {
                 $q->where('user_id', $userId)
-                    ->orWhereHas('assignee', fn ($sub) => $sub->where('users.id', $userId));
+                    ->orWhereExists(fn ($sub) => $sub
+                        ->select(DB::raw(1))
+                        ->from('task_user')
+                        ->whereColumn('task_user.task_id', 'tasks.id')
+                        ->where('task_user.user_id', $userId)
+                    );
             });
         }
     }
