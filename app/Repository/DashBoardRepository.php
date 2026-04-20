@@ -8,9 +8,9 @@ use App\Models\Activity;
 use App\Models\Project;
 use App\Models\Task;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashBoardRepository
@@ -65,24 +65,28 @@ class DashBoardRepository
      * @return \Illuminate\Database\Eloquent\Collection
      */
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, Activity>
+     * @return EloquentCollection<int, Activity>
      */
     public function getUserActivities(int $userId, Carbon $startDate, Carbon $endDate)
     {
-        $cacheKey = "activities_{$userId}_{$startDate->format('Ymd')}_{$endDate->format('Ymd')}";
-
-        return Cache::remember($cacheKey, now()->addSeconds(60), fn (): \Illuminate\Database\Eloquent\Collection => Activity::query()
+        return Activity::query()
             ->where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->with([
                 'subject',
-                'project' => function ($query): void {
-                    $query->withTrashed();
+                'project' => function (BelongsTo $query): void {
+                    $query->withTrashed()
+                        ->select([
+                            'name',
+                            'slug',
+                            'stage_id',
+                            'created_at',
+                        ]);
                 },
                 'project.stage',
             ])
             ->orderBy('created_at')
-            ->get());
+            ->get();
     }
 
     /*public function fetchTaskStatistics(): object
