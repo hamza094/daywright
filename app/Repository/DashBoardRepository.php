@@ -43,6 +43,7 @@ class DashBoardRepository
                 'project' => function (BelongsTo $query): void {
                     $query->withTrashed()
                         ->select([
+                            'id',
                             'name',
                             'slug',
                             'stage_id',

@@ -5,12 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1\ProjectDashboard;
 
 use App\Models\Activity;
-use App\Models\Project;
 use App\Models\User;
 use App\Repository\DashBoardRepository;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -40,6 +38,12 @@ class UserActivitiesTest extends TestCase
         $response = $this->getJson('api/v1/user/activities?start_date=2025-13-01&end_date=2025-08-32');
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['start_date', 'end_date']);
+
+        // Test date range larger than one month
+        $response = $this->getJson('api/v1/user/activities?start_date=2025-08-01&end_date=2025-09-01');
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['end_date'])
+            ->assertJsonPath('errors.end_date.0', 'The selected date range may not exceed 31 days.');
     }
 
     /** @test */
@@ -136,10 +140,17 @@ class UserActivitiesTest extends TestCase
             ->assertJson([]);
     }
 
-    public function test_get_user_activities_is_cached(): void
+    /** @test */
+    public function get_user_activities_returns_results_in_created_at_order(): void
     {
-        // create an activity inside the date range
-        Activity::factory()->forUser($this->user)->forProject($this->project)
+        Activity::factory()
+            ->forUser($this->user)
+            ->forProject($this->project)
+            ->create(['created_at' => '2025-08-20 10:00:00']);
+
+        Activity::factory()
+            ->forUser($this->user)
+            ->forProject($this->project)
             ->create(['created_at' => '2025-08-05 10:00:00']);
 
         $start = Carbon::parse('2025-08-01')->startOfDay();
@@ -149,14 +160,12 @@ class UserActivitiesTest extends TestCase
 
         $collection = $repo->getUserActivities($this->user->id, $start, $end);
 
-        Cache::shouldReceive('remember')
-            ->andReturnUsing(function ($key, $ttl, $callback) {
-                return $callback(); // run the original query callback
-            });
-
-        // ✅ On second call, should retrieve from cache
-        $collection2 = $repo->getUserActivities($this->user->id, $start, $end);
-
-        $this->assertEquals($collection->pluck('id')->all(), $collection2->pluck('id')->all());
+        $this->assertSame(
+            ['2025-08-05 10:00:00', '2025-08-20 10:00:00'],
+            $collection->pluck('created_at')
+                ->map(static fn (Carbon $createdAt): string => $createdAt->format('Y-m-d H:i:s'))
+                ->values()
+                ->all()
+        );
     }
 }

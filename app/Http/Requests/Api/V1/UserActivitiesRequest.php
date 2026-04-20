@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use Carbon\Carbon;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class UserActivitiesRequest extends FormRequest
 {
+    private const int MAX_DATE_RANGE_DAYS = 31;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -25,6 +29,30 @@ class UserActivitiesRequest extends FormRequest
         return [
             'start_date' => 'required|date_format:Y-m-d',
             'end_date' => 'required|date_format:Y-m-d|after_or_equal:start_date',
+        ];
+    }
+
+    /**
+     * @return array<int, Closure(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                if ($validator->errors()->has('start_date') || $validator->errors()->has('end_date')) {
+                    return;
+                }
+
+                $startDate = Carbon::createFromFormat('Y-m-d', (string) $this->input('start_date'));
+                $endDate = Carbon::createFromFormat('Y-m-d', (string) $this->input('end_date'));
+
+                if ($endDate->greaterThan($startDate->copy()->addDays(self::MAX_DATE_RANGE_DAYS - 1))) {
+                    $validator->errors()->add(
+                        'end_date',
+                        sprintf('The selected date range may not exceed %d days.', self::MAX_DATE_RANGE_DAYS)
+                    );
+                }
+            },
         ];
     }
 
