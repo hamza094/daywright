@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\ProjectDashboard;
 
+use App\Models\Project;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -44,13 +47,17 @@ class ProjectChartTests extends TestCase
 
         $response->assertOk()
             ->assertJsonStructure([
-                'active_projects',
-                'trashed_projects',
-                'member_projects',
-                'total_projects',
+                'success',
+                'message',
+                'data' => [
+                    'active_projects',
+                    'trashed_projects',
+                    'member_projects',
+                    'total_projects',
+                ],
             ]);
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertIsInt($data['active_projects']);
         $this->assertIsInt($data['trashed_projects']);
         $this->assertIsInt($data['member_projects']);
@@ -87,19 +94,19 @@ class ProjectChartTests extends TestCase
         // Act & Assert
         // 1. Current year filter
         $currentYearResponse = $this->getJson("/api/v1/dashboard/chart-data?year={$currentYear}");
-        $this->assertEquals(1, $currentYearResponse->json('active_projects'));
+        $this->assertEquals(1, $currentYearResponse->json('data.active_projects'));
 
         // 2. Previous year filter
         $previousYearResponse = $this->getJson("/api/v1/dashboard/chart-data?year={$previousYear}");
-        $this->assertEquals(1, $previousYearResponse->json('active_projects'));
+        $this->assertEquals(1, $previousYearResponse->json('data.active_projects'));
 
         // 3. Current year and month filter
         $monthFilterResponse = $this->getJson("/api/v1/dashboard/chart-data?year={$currentYear}&month={$currentMonth}");
-        $this->assertEquals(1, $monthFilterResponse->json('active_projects'));
+        $this->assertEquals(1, $monthFilterResponse->json('data.active_projects'));
 
         // 4. No filters
         $noFilterResponse = $this->getJson('/api/v1/dashboard/chart-data');
-        $this->assertEquals(2, $noFilterResponse->json('active_projects'));
+        $this->assertEquals(2, $noFilterResponse->json('data.active_projects'));
 
         // Assert all responses were successful
         collect([
@@ -108,5 +115,14 @@ class ProjectChartTests extends TestCase
             $monthFilterResponse,
             $noFilterResponse,
         ])->each->assertOk();
+    }
+
+    /** @test */
+    public function chart_data_validates_year_and_month_filters(): void
+    {
+        $response = $this->getJson('/api/v1/dashboard/chart-data?year=invalid&month=13');
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['year', 'month']);
     }
 }

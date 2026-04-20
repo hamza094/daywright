@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Actions\BuildCursorPaginatedPayloadAction;
 use App\Actions\BuildPaginatedPayloadAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\DashboardChartRequest;
 use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\UserActivitiesRequest;
 use App\Http\Requests\Api\V1\UserTasksRequest;
@@ -18,7 +19,6 @@ use App\Repository\UserTasksDataRepository;
 use App\Services\Api\V1\Dashboard\DashboardInsightsService;
 use App\Services\Api\V1\DashboardService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -89,9 +89,15 @@ class ProjectDashboardController extends Controller
         return UserActivitiesResource::collection($activities);
     }
 
-    public function chartData(Request $request, DashBoardRepository $dashboardRepository): JsonResponse
+    public function chartData(DashboardChartRequest $request, DashBoardRepository $dashboardRepository): JsonResponse
     {
-        $data = $dashboardRepository->getProjectStats($request);
+        $filters = $request->getChartFilters();
+
+        $data = $dashboardRepository->getProjectStats(
+            auth()->id(),
+            $filters['year'],
+            $filters['month']
+        );
 
         return response()->json([
             'success' => true,
