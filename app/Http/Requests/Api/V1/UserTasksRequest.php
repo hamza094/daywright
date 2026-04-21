@@ -10,12 +10,12 @@ use Override;
 
 class UserTasksRequest extends FormRequest
 {
-    private const array FILTER_LABELS = [
-        'user_created' => 'Filter by Created',
-        'task_assigned' => 'Filter by Assigned',
-        'completed' => 'Filter by Completed',
-        'overdue' => 'Filter by Overdue',
-        'remaining' => 'Filter by Remaining',
+    private const array FILTER_KEYS = [
+        'user_created',
+        'task_assigned',
+        'completed',
+        'overdue',
+        'remaining',
     ];
 
     /**
@@ -41,24 +41,13 @@ class UserTasksRequest extends FormRequest
     }
 
     /**
-     * Convenience: return only known filter keys
+     * @return array<string, bool>
      */
     public function filters(): array
     {
-        return collect($this->validated())
-            ->only(array_keys(self::FILTER_LABELS))
-            ->all();
-    }
-
-    public function appliedFilters(): array
-    {
-        $enabled = collect($this->filters())
-            ->filter(fn ($value): mixed => filter_var($value, FILTER_VALIDATE_BOOLEAN))
-            ->keys();
-
-        return collect(self::FILTER_LABELS)
-            ->only($enabled)
-            ->values()
+        return collect(self::FILTER_KEYS)
+            ->filter(fn (string $key): bool => $this->boolean($key))
+            ->mapWithKeys(fn (string $key): array => [$key => true])
             ->all();
     }
 
@@ -69,7 +58,7 @@ class UserTasksRequest extends FormRequest
     protected function passedValidation(): void
     {
         if (
-            ! $this->hasAnyFilter(['completed', 'overdue', 'remaining', 'user_created', 'task_assigned'])
+            ! $this->hasAnyFilter(self::FILTER_KEYS)
         ) {
             throw ValidationException::withMessages([
                 'filters' => 'At least one filter must be provided.',

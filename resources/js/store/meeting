@@ -1,42 +1,52 @@
 
 const state = {
-  meetings:{
+  meetings: {
     data: [],
     links: {},
-    meta: {}
+    meta: {},
   },
-    message:'',
+  message: '',
 };
 
+function normalizeMeetingsPayload(payload) {
+  const meetings = payload?.meetings ?? payload ?? {};
+
+  return {
+    data: Array.isArray(meetings?.data) ? meetings.data : [],
+    links: meetings?.links ?? {},
+    meta: meetings?.meta ?? {},
+  };
+}
+
 const mutations = {
-setMeetings(state,meetingsData) {
-    state.meetings = meetingsData.meetings;
+  setMeetings(state, meetingsData) {
+    state.meetings = normalizeMeetingsPayload(meetingsData);
   },
 
   UPDATE_MEETING_STATUS(state, { id, status }) {
-    const index = state.meetings.data.findIndex(m => m.id === id);
+    const index = state.meetings.data.findIndex((m) => m.id === id);
     if (index !== -1) {
       state.meetings.data[index].status = status;
     }
   },
 
-  setMessage(state,message) {
+  setMessage(state, message) {
     state.message = message;
   },
 
-  removeMeetingFromState(state, meetingId){
-    const index = state.meetings.data.findIndex(meeting => meeting.id === meetingId);
+  removeMeetingFromState(state, meetingId) {
+    const index = state.meetings.data.findIndex((meeting) => meeting.id === meetingId);
     if (index !== -1) {
       state.meetings.data.splice(index, 1);
     }
   },
 
-   addMeeting(state, meeting) {
+  addMeeting(state, meeting) {
     state.meetings.data.unshift(meeting);
   },
 
   meetingUpdate(state, updatedMeeting) {
-    const index = state.meetings.data.findIndex(meeting => meeting.id === updatedMeeting.id);
+    const index = state.meetings.data.findIndex((meeting) => meeting.id === updatedMeeting.id);
     if (index !== -1) {
       state.meetings.data.splice(index, 1, updatedMeeting);
     }
@@ -47,23 +57,24 @@ const actions = {
   fetchMeetings({ commit }, { slug, page, isPrevious }) {
     const params = isPrevious ? { request: 'previous', page } : { page };
     return axios.get(`/projects/${slug}/meetings`, { params })
-      .then(response => {
-        commit('setMeetings', { page, meetings: response.data.meetingsData });
+      .then((response) => {
+        commit('setMeetings', response.data.meetingsData);
         commit('setMessage', response.data.message);
       })
-      .catch(error => {
-        commit('setMeetings', { meetings: { data: [], links: {}, meta: {} } });
+      .catch((error) => {
+        commit('setMeetings', { data: [], links: {}, meta: {} });
         commit('setMessage', error.response?.data?.message || 'Failed to load project meetings');
       });
   },
-   updateMeetingStatus({ commit }, { id, status }) {
+
+  updateMeetingStatus({ commit }, { id, status }) {
     commit('UPDATE_MEETING_STATUS', { id, status });
   },
 };
 
-export default{
+export default {
   namespaced: true,
   state,
   mutations,
   actions,
-}
+};

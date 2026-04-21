@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Api\V1;
 
-use App\Actions\BuildPaginatedPayloadAction;
 use App\Http\Resources\Api\V1\Zoom\MeetingResource;
 use App\Models\Project;
 
 class MeetingService
 {
-    public function __construct(private readonly BuildPaginatedPayloadAction $buildPaginatedPayloadAction) {}
-
     public function getMeetingsData(Project $project, bool $isPrevious): array
     {
         $meetingsQuery = $project->meetings()->with('user');
@@ -24,7 +21,7 @@ class MeetingService
             ? 'Sorry, no meetings found.'
             : $this->getMessage($isPrevious);
 
-        $meetingsData = $this->buildPaginatedPayloadAction->handle($paginator, MeetingResource::class);
+        $meetingsData = MeetingResource::collection($paginator)->response()->getData(true);
 
         return ['message' => $message, 'meetingsData' => $meetingsData];
     }

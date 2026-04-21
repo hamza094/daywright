@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\BuildPaginatedPayloadAction;
 use App\Enums\NotificationFilter;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\NotificationResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class NotificationsController extends ApiController
 {
     /**
      * Display a listing of the user's notifications.
      */
-    public function index(Request $request, BuildPaginatedPayloadAction $buildPaginatedPayloadAction): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection|JsonResponse
     {
         $query = $this->authenticatedUser()
             ->notifications()
@@ -31,9 +31,7 @@ class NotificationsController extends ApiController
             return response()->json(['message' => 'No notifications found'], 200);
         }
 
-        $payload = $buildPaginatedPayloadAction->handle($paginator, NotificationResource::class);
-
-        return response()->json($payload, 200);
+        return NotificationResource::collection($paginator);
     }
 
     /**

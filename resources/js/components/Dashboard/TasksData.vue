@@ -172,6 +172,14 @@
 </template>
 
 <script>
+const FILTER_LABELS = {
+  user_created: 'Filter by Created',
+  task_assigned: 'Filter by Assigned',
+  completed: 'Filter by Completed',
+  overdue: 'Filter by Overdue',
+  remaining: 'Filter by Remaining',
+};
+
 export default {
   data() {
     return {
@@ -264,9 +272,15 @@ export default {
     },
 
     applyMeta(meta = {}) {
-      this.appliedFilters = meta.applied_filters ?? [];
+      this.appliedFilters = this.mapFilterLabels(meta.filters ?? {});
       this.nextCursor = meta.next_cursor ?? null;
       this.hasMore = Boolean(meta.has_more);
+    },
+
+    mapFilterLabels(filters = {}) {
+      return Object.entries(filters)
+        .filter(([, isEnabled]) => Boolean(isEnabled))
+        .map(([key]) => FILTER_LABELS[key] ?? key);
     },
 
     resetTasksData() {

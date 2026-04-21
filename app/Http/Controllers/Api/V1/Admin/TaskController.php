@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
-use App\Actions\BuildPaginatedPayloadAction;
 use App\Actions\Task\BulkDeleteTasksAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Admin\TaskBulkDeleteRequest;
@@ -21,13 +20,12 @@ class TaskController extends ApiController
     public function index(
         TaskRepository $taskRepository,
         TaskFilterRequest $request,
-        BuildPaginatedPayloadAction $buildPaginatedPayloadAction,
     ): JsonResponse {
         $perPage = 50;
 
         $tasks = $taskRepository->getTasksWithFilter($request, $perPage);
 
-        $tasksPayload = $buildPaginatedPayloadAction->handle($tasks, TaskResource::class);
+        $tasksPayload = TaskResource::collection($tasks)->response()->getData(true);
 
         if ($tasks->isEmpty()) {
             return response()->json(array_merge(['message' => 'Sorry no related tasks found'], $tasksPayload));

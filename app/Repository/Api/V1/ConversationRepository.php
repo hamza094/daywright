@@ -21,6 +21,7 @@ class ConversationRepository
         return $project->conversations()
             ->with(['user', 'project:id,slug'])
             ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc')
             ->cursorPaginate(self::PER_PAGE, ['*'], 'cursor', $cursor);
     }
 }

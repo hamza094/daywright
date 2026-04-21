@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\BuildCursorPaginatedPayloadAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\ConversationRequest;
 use App\Http\Resources\Api\V1\ConversationResource;
+use App\Http\Resources\Api\V1\CursorPaginatedResourceCollection;
 use App\Models\Conversation;
 use App\Models\Project;
 use App\Repository\Api\V1\ConversationRepository;
@@ -28,7 +28,6 @@ class ConversationController extends ApiController
         Project $project,
         Request $request,
         ConversationRepository $repository,
-        BuildCursorPaginatedPayloadAction $buildCursorPayload
     ): JsonResponse {
         $this->authorize('access', $project);
 
@@ -42,9 +41,7 @@ class ConversationController extends ApiController
             ]);
         }
 
-        $payload = $buildCursorPayload->handle($paginator, ConversationResource::class);
-
-        return response()->json($payload);
+        return (new CursorPaginatedResourceCollection($paginator, ConversationResource::class))->response();
     }
 
     /**

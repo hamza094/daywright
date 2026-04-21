@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\BuildCursorPaginatedPayloadAction;
-use App\Actions\BuildPaginatedPayloadAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\DashboardChartRequest;
 use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\UserActivitiesRequest;
 use App\Http\Requests\Api\V1\UserTasksRequest;
+use App\Http\Resources\Api\V1\CursorPaginatedResourceCollection;
 use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Http\Resources\Api\V1\UserActivitiesResource;
 use App\Http\Resources\Api\V1\UserTasksResource;
@@ -36,7 +35,7 @@ class ProjectDashboardController extends Controller
      *
      * @response AnonymousResourceCollection<LengthAwarePaginator<ProjectsResource>>
      */
-    public function userProjects(DashboardProjectRequest $request, BuildPaginatedPayloadAction $buildPaginatedPayloadAction): JsonResponse
+    public function userProjects(DashboardProjectRequest $request): AnonymousResourceCollection|JsonResponse
     {
         $projectsPaginator = $this->dashboardService->getUserProjects($request);
 
@@ -48,13 +47,12 @@ class ProjectDashboardController extends Controller
             ]);
         }
 
-        $projectsPayload = $buildPaginatedPayloadAction->handle($projectsPaginator, ProjectsResource::class);
-
-        return response()->json([
-            'projects' => $projectsPayload,
-            'projectsCount' => $projectsPaginator->total(),
-            'message' => $projectsPaginator->isEmpty() ? 'Sorry No Projects Found' : '',
-        ]);
+        return ProjectsResource::collection($projectsPaginator)
+            ->additional([
+                'message' => $projectsPaginator->isEmpty()
+                    ? 'Sorry No Projects Found'
+                    : '',
+            ]);
     }
 
     /**
@@ -109,15 +107,14 @@ class ProjectDashboardController extends Controller
     public function tasksData(
         UserTasksDataRepository $repository,
         UserTasksRequest $request,
-        BuildCursorPaginatedPayloadAction $buildCursorPayload
     ): JsonResponse {
         $paginator = $repository->getTasks(auth()->id(), $request);
-        $appliedFilters = $request->appliedFilters();
 
-        $payload = $buildCursorPayload->handle($paginator, UserTasksResource::class);
-        $payload['meta']['applied_filters'] = $appliedFilters;
-
-        return response()->json($payload);
+        return (new CursorPaginatedResourceCollection(
+            $paginator,
+            UserTasksResource::class,
+            ['filters' => $request->filters()],
+        ))->response();
     }
 
     /**

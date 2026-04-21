@@ -82,7 +82,7 @@ class UserTasksDataTest extends TestCase
             ->assertJsonStructure([
                 'data' => [],
                 'meta' => [
-                    'applied_filters',
+                    'filters',
                     'per_page',
                     'next_cursor',
                     'prev_cursor',
@@ -92,7 +92,10 @@ class UserTasksDataTest extends TestCase
 
         $responseData = $response->json();
 
-        $this->assertEquals(['Filter by Created', 'Filter by Assigned'], $responseData['meta']['applied_filters']);
+        $this->assertEquals([
+            'user_created' => true,
+            'task_assigned' => true,
+        ], $responseData['meta']['filters']);
         $this->assertCount(4, $responseData['data']);
         $this->assertEquals($assignedTask->title, $responseData['data'][0]['title']);
     }
@@ -112,7 +115,7 @@ class UserTasksDataTest extends TestCase
         $response->assertOk();
         $responseData = $response->json();
 
-        $this->assertEquals(['Filter by Created'], $responseData['meta']['applied_filters']);
+        $this->assertEquals(['user_created' => true], $responseData['meta']['filters']);
         $this->assertCount(2, $responseData['data']);
     }
 
@@ -132,7 +135,7 @@ class UserTasksDataTest extends TestCase
         $response->assertOk();
         $responseData = $response->json();
 
-        $this->assertEquals(['Filter by Assigned'], $responseData['meta']['applied_filters']);
+        $this->assertEquals(['task_assigned' => true], $responseData['meta']['filters']);
         $this->assertCount(1, $responseData['data']);
         $this->assertEquals($assignedTask->title, $responseData['data'][0]['title']);
     }
@@ -159,7 +162,10 @@ class UserTasksDataTest extends TestCase
         $response->assertOk();
         $responseData = $response->json();
 
-        $this->assertEquals(['Filter by Created', 'Filter by Completed'], $responseData['meta']['applied_filters']);
+        $this->assertEquals([
+            'user_created' => true,
+            'completed' => true,
+        ], $responseData['meta']['filters']);
         $this->assertCount(2, $responseData['data']);
     }
 
@@ -187,7 +193,10 @@ class UserTasksDataTest extends TestCase
         $response->assertOk();
         $responseData = $response->json();
 
-        $this->assertEquals(['Filter by Created', 'Filter by Overdue'], $responseData['meta']['applied_filters']);
+        $this->assertEquals([
+            'user_created' => true,
+            'overdue' => true,
+        ], $responseData['meta']['filters']);
         $this->assertCount(2, $responseData['data']);
     }
 
@@ -252,7 +261,10 @@ class UserTasksDataTest extends TestCase
         $response->assertOk();
         $responseData = $response->json();
 
-        $this->assertEquals(['Filter by Created', 'Filter by Remaining'], $responseData['meta']['applied_filters']);
+        $this->assertEquals([
+            'user_created' => true,
+            'remaining' => true,
+        ], $responseData['meta']['filters']);
         $this->assertCount(2, $responseData['data']);
     }
 
@@ -316,12 +328,12 @@ class UserTasksDataTest extends TestCase
         Task::factory([
             'user_id' => $this->user->id,
             'project_id' => $this->project->id,
-        ])->count(110)->create();
+        ])->count(60)->create();
 
         $first = $this->getJson('api/v1/tasksdata?user_created=1');
         $first->assertOk();
 
-        $this->assertCount(100, $first->json('data'));
+        $this->assertCount(50, $first->json('data'));
         $this->assertTrue($first->json('meta.has_more'));
         $this->assertNotNull($first->json('meta.next_cursor'));
 

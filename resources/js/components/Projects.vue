@@ -268,10 +268,32 @@ export default {
      * @param {string} type - Tab type
      */
     handleApiSuccess(response, type) {
-      const data = response.data;
-      this.tabData[type].list = data.projects.data;
-      this.tabData[type].count = data.projectsCount;
-      this.tabData[type].pagination = data.projects;
+      const normalizedProjects = this.normalizeProjectsResponse(response.data);
+
+      this.tabData[type].list = normalizedProjects.list;
+      this.tabData[type].count = normalizedProjects.count;
+      this.tabData[type].pagination = normalizedProjects.pagination;
+    },
+
+    /**
+     * Normalize project API responses from either the legacy payload shape
+     * or the paginated resource collection shape.
+     * @param {Object} data - Raw API response data
+     * @returns {{list: Array, count: number, pagination: Object|null}}
+     */
+    normalizeProjectsResponse(data) {
+      const projectsPayload = data.projects ?? data;
+      const list = Array.isArray(projectsPayload?.data)
+        ? projectsPayload.data
+        : Array.isArray(projectsPayload)
+          ? projectsPayload
+          : [];
+
+      return {
+        list,
+        count: data.projectsCount ?? projectsPayload?.meta?.total ?? list.length,
+        pagination: Array.isArray(projectsPayload) ? null : projectsPayload,
+      };
     },
 
     /**

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Api\V1\Task;
 
-use App\Actions\BuildPaginatedPayloadAction;
 use App\Actions\NotificationAction;
 use App\Actions\Task\ResetTaskNotificationAction;
 use App\Http\Resources\Api\V1\TasksResource;
@@ -19,7 +18,6 @@ class TaskService
 {
     public function __construct(
         private readonly ResetTaskNotificationAction $resetTaskNotificationAction,
-        private readonly BuildPaginatedPayloadAction $buildPaginatedPayloadAction,
     ) {}
 
     public function getTasksData(Project $project, bool $isArchived): array
@@ -46,7 +44,7 @@ class TaskService
             'message' => $tasks->isEmpty()
               ? 'Sorry, no tasks found.'
               : $this->getMessage(false),
-            'tasksData' => $this->buildPaginatedPayloadAction->handle($tasks, TasksResource::class),
+            'tasksData' => TasksResource::collection($tasks)->response()->getData(true),
         ];
     }
 
