@@ -22,11 +22,11 @@ use Illuminate\Support\Str;
 class PerformanceSeeder extends Seeder
 {
     // ── Volume knobs ────────────────────────────────────────
-    private const USERS = 500;
+    private const USERS = 10000;
 
-    private const PROJECTS_PER_USER = 15;
+    private const PROJECTS_PER_USER = 5;
 
-    private const TASKS_PER_PROJECT = 50;
+    private const TASKS_PER_PROJECT = 10;
 
     private const CONVERSATIONS_PER_PROJECT = 75;
 
@@ -34,9 +34,9 @@ class PerformanceSeeder extends Seeder
 
     private const MESSAGES_PER_PROJECT = 3;
 
-    private const MEETINGS_PER_PROJECT = 3;
+    private const MEETINGS_PER_PROJECT = 6;
 
-    private const MEMBERS_PER_PROJECT_MAX = 7;
+    private const MEMBERS_PER_PROJECT_MAX = 6;
 
     private const NOTIFICATIONS_PER_USER = 35;
 
@@ -329,6 +329,8 @@ class PerformanceSeeder extends Seeder
         $rows = [];
 
         for ($i = $start; $i <= $end; $i++) {
+            $createdAt = $this->historicalCreatedAt();
+
             $rows[] = [
                 'user_id' => $i,
                 'mobile' => rand(1000000000, 9999999999),
@@ -336,7 +338,7 @@ class PerformanceSeeder extends Seeder
                 'position' => $this->jobTitlePool[array_rand($this->jobTitlePool)],
                 'address' => $this->addressPool[array_rand($this->addressPool)],
                 'bio' => $this->paragraphPool[array_rand($this->paragraphPool)],
-                'created_at' => $this->nowString,
+                'created_at' => $createdAt,
                 'updated_at' => $this->nowString,
             ];
         }
@@ -402,6 +404,7 @@ class PerformanceSeeder extends Seeder
             $assigned = [];
 
             for ($m = 0; $m < $memberCount; $m++) {
+                $createdAt = $this->historicalCreatedAt();
                 $memberId = rand(1, self::USERS);
                 $attempts = 0;
 
@@ -420,7 +423,7 @@ class PerformanceSeeder extends Seeder
                     'project_id' => $projId,
                     'user_id' => $memberId,
                     'active' => (bool) rand(0, 1),
-                    'created_at' => $this->nowString,
+                    'created_at' => $createdAt,
                     'updated_at' => $this->nowString,
                 ];
             }
@@ -500,10 +503,12 @@ class PerformanceSeeder extends Seeder
                 continue;
             }
 
+            $createdAt = $this->historicalCreatedAt();
+
             $rows[] = [
                 'task_id' => $taskId,
                 'user_id' => rand(1, self::USERS),
-                'created_at' => $this->nowString,
+                'created_at' => $createdAt,
                 'updated_at' => $this->nowString,
             ];
 
@@ -784,7 +789,14 @@ class PerformanceSeeder extends Seeder
 
     private function randomDate(int $minDaysAgo, int $maxDaysAgo): string
     {
-        return date('Y-m-d H:i:s', $this->nowTs - rand($minDaysAgo * 86400, $maxDaysAgo * 86400));
+        return fake()
+            ->dateTimeBetween("-{$maxDaysAgo} days", "-{$minDaysAgo} days")
+            ->format('Y-m-d H:i:s');
+    }
+
+    private function historicalCreatedAt(): string
+    {
+        return fake()->dateTimeBetween('-2 years', 'now')->format('Y-m-d H:i:s');
     }
 
     /**
