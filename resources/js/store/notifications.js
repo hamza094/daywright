@@ -1,23 +1,34 @@
+const defaultMeta = () => ({
+  per_page: 25,
+  next_cursor: null,
+  prev_cursor: null,
+  has_more: false,
+});
+
+const defaultPage = () => ({
+  data: [],
+  meta: defaultMeta(),
+});
+
 const state = {
-  notifications: { data: [], links: {}, meta: {} },
-  allNotifications: {
-    data: [],
-    links: {},
-    meta: {},
-  },
+  notifications: defaultPage(),
+  allNotifications: defaultPage(),
 };
 
 const mutations = {
   setNotifications(state, payload) {
-    state.notifications = payload; // Assign the entire response object
+    state.notifications = normalizeNotificationsPayload(payload);
   },
 
   setAllNotifications(state, payload) {
-    state.allNotifications = payload; // Assign the entire response object
+    state.allNotifications = normalizeNotificationsPayload(payload);
   },
 
   addNotification(state, notification) {
-    state.notifications.data.unshift(notification); // Add to the beginning of the `data` array
+    state.notifications = {
+      ...state.notifications,
+      data: [normalizeNotification(notification), ...state.notifications.data],
+    };
   },
 
   updateNotification(state, updated) {
@@ -43,23 +54,22 @@ const actions = {
   async fetchNotifications({ dispatch }, { filter = null } = {}) {
     return dispatch('fetchNotificationsFromApi', {
       filter,
-      page: 1,
       mutation: 'setNotifications',
     });
   },
 
-  async getAllNotifications({ dispatch }, { filter = null, page = 1 } = {}) {
+  async getAllNotifications({ dispatch }, { filter = null, cursor = null } = {}) {
     return dispatch('fetchNotificationsFromApi', {
       filter,
-      page,
+      cursor,
       mutation: 'setAllNotifications',
     });
   },
 
-  async fetchNotificationsFromApi({ commit }, { filter = null, page = 1, mutation }) {
+  async fetchNotificationsFromApi({ commit }, { filter = null, cursor = null, mutation }) {
     const axiosParams = {};
     if (filter) axiosParams.filter = filter;
-    if (page) axiosParams.page = page;
+    if (cursor) axiosParams.cursor = cursor;
 
     const { data } = await axios.get('/notifications', { params: axiosParams });
     commit(mutation, data);
@@ -110,6 +120,32 @@ const actions = {
 function replaceNotification(array, updated) {
   const index = array.findIndex((n) => n.id === updated.id);
   if (index !== -1) array.splice(index, 1, updated);
+}
+
+function normalizeNotificationsPayload(payload = {}) {
+  return {
+    ...defaultPage(),
+    ...payload,
+    data: Array.isArray(payload.data) ? payload.data.map(normalizeNotification) : [],
+    meta: {
+      ...defaultMeta(),
+      ...(payload.meta || {}),
+    },
+  };
+}
+
+function normalizeNotification(notification = {}) {
+  const notifier = notification.notifier || {};
+
+  return {
+    ...notification,
+    read_at: notification.read_at ?? null,
+    created_at: notification.created_at ?? 'just now',
+    notifier: {
+      ...notifier,
+      avatar: notifier.avatar ?? notifier.avatar_path ?? null,
+    },
+  };
 }
 
 export default {

@@ -37,6 +37,8 @@
     </div>
 
     <ul class="list-group">
+      <li v-if="!notifications.data.length" class="list-group-item text-muted">No notifications found.</li>
+
       <li
         v-for="notification in notifications.data"
         :key="notification.id"
@@ -81,7 +83,12 @@
       </li>
     </ul>
 
-    <pagination :data="notifications" @pagination-change-page="getResults"></pagination>
+    <div v-if="notifications.data.length" class="d-flex justify-content-between align-items-center mt-3">
+      <button class="btn btn-outline-secondary" :disabled="!previousCursor" @click="getResults(previousCursor)">
+        Previous
+      </button>
+      <button class="btn btn-outline-primary" :disabled="!hasNextPage" @click="getResults(nextCursor)">Next</button>
+    </div>
   </div>
 </template>
 
@@ -96,13 +103,22 @@ export default {
     notifications() {
       return this.$store.state.notifications.allNotifications;
     },
+    nextCursor() {
+      return this.notifications.meta?.next_cursor ?? null;
+    },
+    previousCursor() {
+      return this.notifications.meta?.prev_cursor ?? null;
+    },
+    hasNextPage() {
+      return Boolean(this.notifications.meta?.has_more);
+    },
   },
   created() {
-    this.getResults(1);
+    this.getResults();
   },
   methods: {
-    getResults(page) {
-      this.$store.dispatch('getAllNotifications', { filter: this.filter, page });
+    getResults(cursor = null) {
+      this.$store.dispatch('getAllNotifications', { filter: this.filter, cursor });
     },
     deleteNotification(notificationId) {
       this.$store.dispatch('deleteNotification', notificationId);
@@ -125,7 +141,7 @@ export default {
     },
     filterNotifications(type) {
       this.filter = type;
-      this.getResults(1);
+      this.getResults();
     },
   },
 };

@@ -4,34 +4,40 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\NotificationFilter;
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Resources\Api\V1\CursorPaginatedResourceCollection;
 use App\Http\Resources\Api\V1\NotificationResource;
-use App\Models\User;
+use App\Repository\Api\V1\NotificationRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class NotificationsController extends ApiController
 {
     /**
      * Display a listing of the user's notifications.
      */
-    public function index(Request $request): AnonymousResourceCollection|JsonResponse
+    public function index(Request $request, NotificationRepository $repository): JsonResponse
     {
-        $query = $this->authenticatedUser()
-            ->notifications()
-            ->latest()
-            ->when($request->filter === NotificationFilter::READ->value, fn ($query) => $query->whereNotNull('read_at'))
-            ->when($request->filter === NotificationFilter::UNREAD->value, fn ($query) => $query->whereNull('read_at'));
+        $paginator = $repository->getUserNotifications(
+            $this->authenticatedUser(),
+            $request->query('filter'),
+            $request->query('cursor'),
+        );
 
-        $paginator = $query->paginate(25);
-
-        if ($paginator->isEmpty()) {
-            return response()->json(['message' => 'No notifications found'], 200);
+        if ($paginator->isEmpty() && ! $request->has('cursor')) {
+            return response()->json([
+                'message' => 'No notifications found',
+                'data' => [],
+                'meta' => [
+                    'per_page' => $repository->perPage(),
+                    'next_cursor' => null,
+                    'prev_cursor' => null,
+                    'has_more' => false,
+                ],
+            ]);
         }
 
-        return NotificationResource::collection($paginator);
+        return (new CursorPaginatedResourceCollection($paginator, NotificationResource::class))->response();
     }
 
     /**
