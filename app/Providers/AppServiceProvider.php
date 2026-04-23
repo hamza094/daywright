@@ -80,7 +80,7 @@ class AppServiceProvider extends ServiceProvider
                 'api/v1/oauth/zoom',
                 'api/v1/user/token',
                 'api/v1/user/jwt/token',
-                'api/v1/users/search',
+                'api/v1/projects/{project}/users/search',
                 'api/v1/projects/{project}/export',
                 'api/v1/projects/{project}/message',
                 'api/v1/projects/{project}/messages',

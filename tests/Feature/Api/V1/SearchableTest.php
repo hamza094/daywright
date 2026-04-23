@@ -7,7 +7,7 @@ namespace Tests\Feature\Api\V1;
 use App\Models\User;
 use App\Services\Api\V1\InvitationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -15,54 +15,71 @@ class SearchableTest extends TestCase
 {
     use ProjectSetup,RefreshDatabase;
 
-    /**
-     * A search feature test example.
-     */
+    #[Test]
     public function it_returns_an_empty_collection_when_no_query_is_provided(): void
     {
-        $request = new Request;
-
-        $service = new InvitationService;
-
-        $result = $service->usersSearch($request);
+        $result = $this->invitationService()->usersSearch($this->project, '   ');
 
         $this->assertTrue($result->isEmpty());
     }
 
-    /** @test */
+    #[Test]
     public function it_searches_for_users_by_name_or_email(): void
     {
-        $user = User::first();
+        $user = User::factory()->create([
+            'name' => 'Searchable User',
+            'email' => 'searchable-user@example.com',
+        ]);
 
-        $query = $user->name;
-        $request = new Request(['query' => $query]);
-
-        $service = new InvitationService;
-        $result = $service->usersSearch($request);
+        $result = $this->invitationService()->usersSearch($this->project, 'Search');
 
         $this->assertCount(1, $result);
+        $this->assertSame($user->id, $result->first()?->id);
     }
 
-    /** @test */
+    #[Test]
     public function test_search_returns_filtered_users(): void
     {
-        User::factory(5)->create(['name' => 'Test User']);
+        $searchableUser = User::factory()->create([
+            'name' => 'Test Candidate',
+            'email' => 'test-candidate@example.com',
+        ]);
 
-        User::factory(3)->create(['name' => 'Other User']);
+        $pendingUser = User::factory()->create([
+            'name' => 'Test Pending',
+            'email' => 'test-pending@example.com',
+        ]);
+
+        $memberUser = User::factory()->create([
+            'name' => 'Test Member',
+            'email' => 'test-member@example.com',
+        ]);
+
+        $this->project->invite($pendingUser);
+        $this->project->members()->attach($memberUser, ['active' => true]);
 
         $searchTerm = 'Test';
 
-        // Act
-        $response = $this->withoutExceptionHandling()->getJson(route('users.search', [
+        $response = $this->withoutExceptionHandling()->getJson(route('projects.users.search', [
+            'project' => $this->project,
             'query' => $searchTerm,
         ]));
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                '*' => ['uuid', 'name', 'email'],
-
+                '*' => ['id', 'uuid', 'name', 'username', 'email'],
             ])
-            ->assertJsonCount(5); // Ensure only the matching users are returned*/
+            ->assertJsonCount(1)
+            ->assertJsonFragment([
+                'uuid' => $searchableUser->uuid,
+                'name' => $searchableUser->name,
+                'email' => $searchableUser->email,
+            ]);
 
+    }
+
+    private function invitationService(): InvitationService
+    {
+        return $this->app->make(InvitationService::class);
     }
 }

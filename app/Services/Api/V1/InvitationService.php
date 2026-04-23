@@ -8,18 +8,19 @@ use App\Models\Project;
 use App\Models\User;
 use App\Notifications\AcceptInvitation;
 use App\Notifications\ProjectInvitation;
+use App\Repository\Api\V1\InvitationRepository;
 use Auth;
 use Exception;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class InvitationService
 {
+    public function __construct(private readonly InvitationRepository $invitationRepository) {}
+
     public function sendInvitation(User $user, Project $project): void
     {
         $this->validateInvitation($project, $user);
@@ -93,15 +94,13 @@ class InvitationService
     /**
      * @return EloquentCollection<int, User>
      */
-    public function usersSearch(Request $request): Collection
+    public function usersSearch(Project $project, string $searchTerm): EloquentCollection
     {
-        $searchTerm = (string) $request->string('query')->trim();
+        if ($searchTerm === '') {
+            return new EloquentCollection;
+        }
 
-        return User::query()
-            ->whereAny(['name', 'email'], 'LIKE', $searchTerm.'%')
-            ->select('uuid', 'name', 'email')
-            ->limit(5)
-            ->get();
+        return $this->invitationRepository->searchInvitableUsers($project, $searchTerm);
     }
 
     /**

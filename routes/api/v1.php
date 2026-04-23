@@ -165,6 +165,11 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 });
 
             Route::controller(InvitationController::class)->group(function (): void {
+                Route::get('users/search', 'search')
+                    ->name('projects.users.search')
+                    ->middleware('throttle:invite-actions')
+                    ->can('manage', 'project');
+
                 Route::post('invitations', 'invite')
                     ->name('send.invitation')
                     ->middleware('throttle:invite-actions')
@@ -194,9 +199,6 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
         });
     });
-
-    Route::get('users/search', [InvitationController::class, 'search'])
-        ->name('users.search');
 
     Route::apiResource('/users', UserController::class)->except(['store', 'index']);
     Route::delete('/users/{user}/force', [UserController::class, 'forceDestroy'])->name('users.forceDestroy');

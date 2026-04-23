@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\Subscription\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\InvitationSearchRequest;
 use App\Http\Requests\Api\V1\InvitationUsersRequest;
 use App\Http\Resources\Api\V1\InvitedUserResource;
 use App\Http\Resources\Api\V1\ProjectsResource;
@@ -16,7 +17,6 @@ use App\Services\Api\V1\InvitationService;
 use App\Services\Api\V1\Subscription\PlanLimitService;
 use Exception;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\ValidationException;
 
@@ -32,9 +32,11 @@ class InvitationController extends ApiController
     /**
      * Search Users to send project invitation.
      */
-    public function search(Project $project, Request $request): AnonymousResourceCollection
+    public function search(Project $project, InvitationSearchRequest $request): AnonymousResourceCollection
     {
-        $results = $this->invitationService->usersSearch($request);
+        $validated = $request->validated();
+
+        $results = $this->invitationService->usersSearch($project, (string) $validated['query']);
 
         return TaskMemberResource::collection($results);
     }

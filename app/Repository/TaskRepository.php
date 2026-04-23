@@ -13,8 +13,6 @@ class TaskRepository
 {
     public function searchMembers(Request $request, Project $project, Task $task): Collection
     {
-        // Check with load test
-
         $searchTerm = (string) $request->string('search')->trim();
 
         return $project->activeMembers()

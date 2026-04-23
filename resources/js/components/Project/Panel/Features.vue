@@ -47,7 +47,7 @@
       </div>
 
       <div class="collapse project-members_collapse" id="projectMembers">
-        <template v-if="access">
+        <template v-if="ownerLogin">
           <div class="invite">
             <p class="mb-2"><b>Project Invitations:</b></p>
 
@@ -251,7 +251,7 @@ export default {
       this.isLoading = true;
 
       axios
-        .get('/users/search', { params: { query } })
+        .get(`/projects/${this.slug}/users/search`, { params: { query } })
         .then((response) => {
           this.results = response.data;
         })

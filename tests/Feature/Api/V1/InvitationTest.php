@@ -197,4 +197,19 @@ class InvitationTest extends TestCase
         $this->assertCount(3, $response->json('pending_invitations'));
 
     }
+
+    /** @test */
+    public function project_member_cannot_search_users_for_invitations(): void
+    {
+        $member = User::factory()->create();
+
+        $this->project->members()->attach($member, ['active' => true]);
+
+        Sanctum::actingAs($member);
+
+        $this->getJson(route('projects.users.search', [
+            'project' => $this->project,
+            'query' => 'te',
+        ]))->assertForbidden();
+    }
 }
