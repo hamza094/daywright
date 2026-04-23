@@ -198,7 +198,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
     Route::get('users/search', [InvitationController::class, 'search'])
         ->name('users.search');
 
-    Route::apiResource('/users', UserController::class)->except(['store']);
+    Route::apiResource('/users', UserController::class)->except(['store', 'index']);
     Route::delete('/users/{user}/force', [UserController::class, 'forceDestroy'])->name('users.forceDestroy');
 
     Route::group(['prefix' => 'users/{user}'], function (): void {

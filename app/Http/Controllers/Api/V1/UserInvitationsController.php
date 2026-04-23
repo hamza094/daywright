@@ -18,8 +18,9 @@ class UserInvitationsController extends ApiController
     {
         $user = $this->authenticatedUser();
 
-        // Eager load 'user' relation if ProjectInvitaionResource expects it
-        $pendingInvitations = $user->inactiveMembers()->with('user')->get();
+        $pendingInvitations = $user->inactiveMembers()
+            ->with('user.twoFactorAuth')
+            ->get();
 
         if ($pendingInvitations->isEmpty()) {
             return response()->json([

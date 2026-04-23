@@ -17,22 +17,6 @@ use Illuminate\Http\Request;
 class UserController extends ApiController
 {
     /**
-     * List all users
-     *
-     * This endpoint returns a list of all users in the application.
-     */
-    public function index(): JsonResponse
-    {
-        $users = User::query()
-            ->with('twoFactorAuth')
-            ->get();
-
-        return response()->json([
-            'users' => UsersResource::collection($users),
-        ], 200);
-    }
-
-    /**
      * Get the currently authenticated user.
      */
     public function me(Request $request): JsonResponse
