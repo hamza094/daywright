@@ -19,7 +19,7 @@ class ProjectQueryBuilder extends Builder
      */
     public function search(string $search): self
     {
-        return $this->where('name', 'like', "%{$search}%");
+        return $this->where('name', 'like', "{$search}%");
     }
 
     /**

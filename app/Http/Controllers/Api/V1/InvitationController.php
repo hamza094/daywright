@@ -6,8 +6,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\Subscription\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\InvitationSearchRequest;
 use App\Http\Requests\Api\V1\InvitationUsersRequest;
+use App\Http\Requests\Api\V1\ProjectUserSearchRequest;
 use App\Http\Resources\Api\V1\InvitedUserResource;
 use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Http\Resources\Api\V1\Task\TaskMemberResource;
@@ -32,7 +32,7 @@ class InvitationController extends ApiController
     /**
      * Search Users to send project invitation.
      */
-    public function search(Project $project, InvitationSearchRequest $request): AnonymousResourceCollection
+    public function search(Project $project, ProjectUserSearchRequest $request): AnonymousResourceCollection
     {
         $validated = $request->validated();
 

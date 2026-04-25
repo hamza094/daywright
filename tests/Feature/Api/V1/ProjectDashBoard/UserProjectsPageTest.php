@@ -98,7 +98,7 @@ class UserProjectsPageTest extends TestCase
 
         $response->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
 
         // The search should only return "Frontend Project"
         $this->assertCount(1, $projects);
@@ -117,7 +117,7 @@ class UserProjectsPageTest extends TestCase
         $latestProject = $this->project; // Assuming this is the default project created in ProjectSetup
 
         $response = $this->getJson(route('user.projects', ['sort' => 'latest']));
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $this->assertEquals($latestProject->name, $projects[0]['name']);
     }
 
@@ -132,7 +132,7 @@ class UserProjectsPageTest extends TestCase
         // Assuming this is the default project created in ProjectSetup
 
         $response = $this->getJson(route('user.projects', ['sort' => 'oldest']));
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $this->assertEquals('Old Project', $projects[0]['name']);
     }
 
@@ -153,7 +153,7 @@ class UserProjectsPageTest extends TestCase
 
         $response->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $this->assertEquals('Alpha Project', $projects[0]['name']);
     }
 
@@ -175,7 +175,7 @@ class UserProjectsPageTest extends TestCase
 
         $response->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
 
         $this->assertCount(1, $projects);
         $this->assertEquals($memberProject->name, $projects[0]['name']);
@@ -191,7 +191,7 @@ class UserProjectsPageTest extends TestCase
 
         $response->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
 
         $this->assertCount(1, $projects);
         $this->assertEquals($this->project->name, $projects[0]['name']);

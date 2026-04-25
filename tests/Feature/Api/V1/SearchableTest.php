@@ -67,7 +67,7 @@ class SearchableTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                '*' => ['id', 'uuid', 'name', 'username', 'email'],
+                '*' => ['uuid', 'name', 'username', 'email'],
             ])
             ->assertJsonCount(1)
             ->assertJsonFragment([

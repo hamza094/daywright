@@ -138,12 +138,13 @@ class TaskFeaturesTest extends TestCase
         $response = $this->withoutExceptionHandling()->getJson(route('task.members.search', [
             'project' => $this->project->slug,
             'task' => $task->id,
-            'search' => 'test',
+            'query' => 'test',
         ]))->assertSuccessful();
 
         $payload = $response->json();
 
         $this->assertCount(1, $payload);
+        $this->assertSame($user->uuid, $payload[0]['uuid']);
     }
 
     /** @test */

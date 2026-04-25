@@ -7,7 +7,7 @@ namespace App\Http\Requests\Api\V1;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
-class InvitationSearchRequest extends FormRequest
+final class ProjectUserSearchRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

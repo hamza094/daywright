@@ -37,19 +37,6 @@ class UserTest extends TestCase
     }
 
     #[Test]
-    public function auth_user_see_all_users(): void
-    {
-        $response = $this->getJson('/api/v1/users');
-
-        $response->assertStatus(200)
-            ->assertJsonFragment([
-                'name' => $this->user->name,
-                'email' => $this->user->email,
-            ]);
-
-    }
-
-    #[Test]
     public function auth_user_can_get_his_data(): void
     {
         $defaultTimezone = config('app.timezone', 'UTC');

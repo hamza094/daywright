@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\ProjectUserSearchRequest;
 use App\Http\Requests\Api\V1\TaskMembersRequest;
 use App\Http\Resources\Api\V1\Task\TaskMemberResource;
 use App\Http\Resources\Api\V1\TaskResource;
@@ -133,13 +134,11 @@ class TaskFeaturesController extends Controller
      *   - The task owner.
      *   - The project owner
      * */
-    public function search(Project $project, Task $task, Request $request, TaskRepository $repository): AnonymousResourceCollection
+    public function search(Project $project, Task $task, ProjectUserSearchRequest $request, TaskRepository $repository): AnonymousResourceCollection
     {
-        $request->validate([
-            'search' => ['required', 'string', 'min:1'],
-        ]);
+        $validated = $request->validated();
 
-        $searchResults = $repository->searchMembers($request, $project, $task);
+        $searchResults = $repository->searchMembers($project, $task, (string) $validated['query']);
 
         return TaskMemberResource::collection($searchResults);
     }

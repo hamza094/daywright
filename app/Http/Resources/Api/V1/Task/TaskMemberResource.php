@@ -24,13 +24,6 @@ class TaskMemberResource extends JsonResource
     {
         return [
             /**
-             * User id
-             *
-             *  @example 1
-             * */
-            'id' => $this->id,
-
-            /**
              * User Uuid
              *
              *  @example 9b8ea076-6d80-4076-8a01-73b94f4c0bc3
