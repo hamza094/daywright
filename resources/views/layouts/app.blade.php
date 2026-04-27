@@ -17,7 +17,7 @@
 
 </head>
 <body>
-<div id="app">
+<div id="app" data-bootstrap-session="true">
     <main class="">
 
       <navbar></navbar>
