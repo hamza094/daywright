@@ -182,7 +182,7 @@ export default {
       }
 
       axios
-        .patch(`/users/${this.user.id}`, this.form)
+        .patch(`/users/${this.user.uuid}`, this.form)
         .then((response) => {
           this.$vToastify.success('Profile Updated Successfully');
           this.updateUser(response.data.user);

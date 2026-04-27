@@ -29,7 +29,7 @@
 
     <section class="page-content" aria-label="Profile">
       <div class="row">
-        <UserAvatar :user-id="user.id" :avatar="userAvatar" :name="user.name"></UserAvatar>
+        <UserAvatar :user-uuid="user.uuid" :avatar="userAvatar" :name="user.name"></UserAvatar>
 
         <div class="col-md-10">
           <div class="content">
@@ -148,7 +148,7 @@ export default {
           this.$vToastify.loader('Please Wait Removing Avatar');
 
           axios
-            .patch('/users/' + this.user.id + '/avatar_remove')
+            .patch('/users/' + encodeURIComponent(this.user.uuid) + '/avatar_remove')
             .then((response) => {
               this.$vToastify.info(response.data.message);
               this.user.avatar = null;
@@ -168,7 +168,7 @@ export default {
       this.sweetAlert('Yes, delete it!').then((result) => {
         if (result.value) {
           axios
-            .delete('/users/' + this.user.id)
+            .delete('/users/' + encodeURIComponent(this.user.uuid))
             .then((response) => {
               this.$vToastify.success(response.data.message);
               this.$store.dispatch('currentUser/deleteUser');
