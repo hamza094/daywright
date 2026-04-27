@@ -39,8 +39,7 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 window.Pusher = Pusher;
 
-const appUrl = import.meta.env?.VITE_APP_URL;
-const broadcastAuthEndpoint = appUrl ? `${appUrl.replace(/\/$/, '')}/api/broadcasting/auth` : '/api/broadcasting/auth';
+const broadcastAuthEndpoint = new URL('/api/broadcasting/auth', window.location.origin).toString();
 
 window.Echo = new Echo({
   broadcaster: 'pusher',
@@ -48,11 +47,19 @@ window.Echo = new Echo({
   cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
   encrypted: true,
   forceTLS: false, // true for production
-  authEndpoint: broadcastAuthEndpoint,
-  auth: {
-    headers: {
-      Accept: 'application/json',
+  authorizer: (channel) => ({
+    authorize: (socketId, callback) => {
+      axios
+        .post(broadcastAuthEndpoint, {
+          socket_id: socketId,
+          channel_name: channel.name,
+        })
+        .then((response) => {
+          callback(false, response.data);
+        })
+        .catch((error) => {
+          callback(true, error);
+        });
     },
-    withCredentials: true,
-  },
+  }),
 });
