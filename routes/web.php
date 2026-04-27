@@ -20,6 +20,17 @@ use Illuminate\Support\Facades\Route;
 */
 Route::get('/', fn () => view('welcome.home'));
 
+Route::middleware('guest')->group(function (): void {
+    Route::get('/register', HomeController::class)->defaults('shouldBootstrapSession', false);
+    Route::get('/login', HomeController::class)->defaults('shouldBootstrapSession', false);
+    Route::get('/forgot-password', HomeController::class)->defaults('shouldBootstrapSession', false);
+    Route::get('/auth/callback/{provider}', HomeController::class)->defaults('shouldBootstrapSession', false);
+    Route::get('/api/v1/password/reset/{token}', HomeController::class)->defaults('shouldBootstrapSession', false);
+});
+
+Route::get('/2fa/code', HomeController::class)->defaults('shouldBootstrapSession', false);
+Route::get('/api/v1/email/verify/{user}', HomeController::class)->defaults('shouldBootstrapSession', false);
+
 // SPA session auth endpoints (cookie-based via Sanctum stateful)
 Route::prefix('api/v1/session')->group(function (): void {
     // Login establishes a session; guest-only

@@ -17,7 +17,7 @@
 
 </head>
 <body>
-<div id="app" data-bootstrap-session="true">
+<div id="app" @if($shouldBootstrapSession ?? true) data-bootstrap-session="true" @endif>
     <main class="">
 
       <navbar></navbar>
