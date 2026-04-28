@@ -193,6 +193,9 @@ const initializeApp = async () => {
       }
     }
   } else {
+    store.commit('currentUser/setUser', {});
+    store.commit('currentUser/loggedIn', false);
+    store.commit('currentUser/clearErrors');
     store.commit('currentUser/setBootstrapped', true);
   }
 

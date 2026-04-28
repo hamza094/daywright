@@ -8,7 +8,7 @@ return [
         'max_active_tasks_per_project' => 10,
         'max_members_per_project' => 3,
         'max_created_meetings' => 3,
-        'max_api_tokens' => 10,
+        'max_api_tokens' => 1,
     ],
 
     'pro' => [
