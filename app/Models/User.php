@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\OAuthProvider;
 use App\Jobs\QueuedPasswordResetJob;
 use App\Jobs\QueuedVerifyEmailJob;
 use App\Traits\HasAdminAccess;
@@ -42,8 +41,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     protected $hidden = [
         'password',
         'remember_token',
-        'oauth_token',
-        'oauth_refresh_token',
     ];
 
     /**
@@ -56,9 +53,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         'admin_revoked_at' => 'datetime',
         'email_verified_at' => 'datetime',
         'is_admin' => 'boolean',
-        'oauth_provider' => OAuthProvider::class,
-        'oauth_token' => 'encrypted',
-        'oauth_refresh_token' => 'encrypted',
     ];
 
     #[Override]
@@ -119,6 +113,16 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     public function info(): HasOne
     {
         return $this->hasOne(UserInfo::class);
+    }
+
+    /**
+     * Get the user's linked social login providers.
+     *
+     * @return HasMany<UserSocialAccount>
+     */
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(UserSocialAccount::class);
     }
 
     /**

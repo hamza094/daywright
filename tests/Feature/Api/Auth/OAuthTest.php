@@ -6,6 +6,7 @@ namespace Tests\Feature\Api\Auth;
 
 use App\Enums\OAuthProvider;
 use App\Models\User;
+use App\Models\UserSocialAccount;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Facades\Socialite;
@@ -41,14 +42,20 @@ class OAuthTest extends TestCase
             'name' => $user->name,
             'username' => $user->username,
             'avatar_path' => $user->avatar_path,
-            'oauth_id' => '123',
-            'oauth_provider' => OAuthProvider::GitHub,
         ]);
 
         $user = User::where('email', 'test@example.com')->first();
+        $socialAccount = $user?->socialAccounts()->where('provider', OAuthProvider::GitHub->value)->first();
 
-        $this->assertEquals('access-token', $user->oauth_token);
-        $this->assertEquals('refresh-token', $user->oauth_refresh_token);
+        $this->assertNotNull($user);
+        $this->assertNotNull($socialAccount);
+        $this->assertDatabaseHas('user_social_accounts', [
+            'user_id' => $user->id,
+            'provider' => OAuthProvider::GitHub->value,
+            'provider_user_id' => '123',
+        ]);
+        $this->assertEquals('access-token', $socialAccount->access_token);
+        $this->assertEquals('refresh-token', $socialAccount->refresh_token);
     }
 
     /** @test */
@@ -66,17 +73,55 @@ class OAuthTest extends TestCase
         $this->assertAuthenticatedAs($user, 'web');
 
         $this->assertDatabaseHas('users', [
+            'email' => 'test@example.com',
             'name' => 'Test User',
             'username' => 'jinx004',
             'avatar_path' => 'https://example.com/avatar.jpg',
-            'oauth_id' => '123',
-            'oauth_provider' => OAuthProvider::GitHub,
         ]);
 
         $user = User::where('email', 'test@example.com')->first();
+        $socialAccount = $user?->socialAccounts()->where('provider', OAuthProvider::GitHub->value)->first();
 
-        $this->assertEquals('access-token', $user->oauth_token);
-        $this->assertEquals('refresh-token', $user->oauth_refresh_token);
+        $this->assertNotNull($user);
+        $this->assertNotNull($socialAccount);
+        $this->assertDatabaseHas('user_social_accounts', [
+            'user_id' => $user->id,
+            'provider' => OAuthProvider::GitHub->value,
+            'provider_user_id' => '123',
+        ]);
+        $this->assertEquals('access-token', $socialAccount->access_token);
+        $this->assertEquals('refresh-token', $socialAccount->refresh_token);
+    }
+
+    /** @test */
+    public function linked_social_account_is_resolved_before_email_lookup(): void
+    {
+        $user = User::factory(['email' => 'original@example.com'])->create();
+
+        UserSocialAccount::factory()
+            ->for($user)
+            ->forProvider(OAuthProvider::GitHub, '123')
+            ->create();
+
+        $this->performOAuthCallback([
+            'email' => 'changed@example.com',
+        ]);
+
+        $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful();
+
+        $socialAccount = $user->fresh()?->socialAccounts()->where('provider', OAuthProvider::GitHub->value)->first();
+
+        $this->assertAuthenticatedAs($user->fresh(), 'web');
+        $this->assertSame(1, User::count());
+        $this->assertNotNull($socialAccount);
+        $this->assertDatabaseHas('user_social_accounts', [
+            'user_id' => $user->id,
+            'provider' => OAuthProvider::GitHub->value,
+            'provider_user_id' => '123',
+        ]);
+        $this->assertDatabaseMissing('users', [
+            'email' => 'changed@example.com',
+        ]);
     }
 
     /** @test */
@@ -138,9 +183,9 @@ class OAuthTest extends TestCase
     /**
      * Perform the OAuth callback for testing.
      */
-    private function performOAuthCallback(): void
+    private function performOAuthCallback(array $overrides = []): void
     {
-        $this->mockSocialite('github', [
+        $this->mockSocialite('github', array_merge([
             'id' => '123',
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -148,6 +193,6 @@ class OAuthTest extends TestCase
             'nickname' => 'jinx004',
             'avatar' => 'https://example.com/avatar.jpg',
             'refreshToken' => 'refresh-token',
-        ]);
+        ], $overrides));
     }
 }

@@ -50,7 +50,7 @@ class OAuthController extends ApiController
 
             $oAuthUser = $socialiteDriver->stateless()->user();
 
-            $user = $action->createUpdateUser($oAuthUser, $provider);
+            $user = $action->resolveUserFromProvider($oAuthUser, $provider);
 
             if ($user->wasRecentlyCreated) {
                 event(new Registered($user));
