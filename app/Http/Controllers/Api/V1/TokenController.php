@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Api\V1\Subscription\PlanLimitService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class TokenController extends ApiController
 {
@@ -65,13 +66,7 @@ class TokenController extends ApiController
         $user = $this->authenticatedUser();
         $currentToken = $user->currentAccessToken();
 
-        // @phpstan-ignore-next-line
-        if (! $currentToken) {
-            return response()->json(['message' => 'No current access token found.'], 403);
-        }
-
-        /** @var \Laravel\Sanctum\PersonalAccessToken $currentToken */
-        if ($currentToken->id === $tokenId) {
+        if ($currentToken instanceof PersonalAccessToken && $currentToken->id === $tokenId) {
             return response()->json([
                 'message' => 'Cannot delete the current session token via this route.',
             ], 403);

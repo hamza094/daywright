@@ -85,6 +85,25 @@ class UserTokenTest extends TestCase
     }
 
     #[Test]
+    public function session_authenticated_user_can_delete_a_stored_personal_access_token(): void
+    {
+        $user = User::first();
+        $token = $user->createToken('Delete Token', ['*']);
+        $tokenId = $token->accessToken->id;
+
+        $response = $this
+            ->actingAs($user, 'web')
+            ->deleteJson('/api/v1/api-tokens/'.$tokenId);
+
+        $response->assertOk();
+        $response->assertJsonFragment(['message' => 'Token deleted.']);
+
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'id' => $tokenId,
+        ]);
+    }
+
+    #[Test]
     public function user_cannot_delete_current_session_token_via_route(): void
     {
         $user = User::first();
