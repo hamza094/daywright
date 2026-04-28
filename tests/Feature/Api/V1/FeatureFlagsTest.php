@@ -48,7 +48,7 @@ class FeatureFlagsTest extends TestCase
     #[Test]
     public function me_response_not_includes_feature_flags_for_non_admin_user_if_not_active(): void
     {
-        $this->getJson('/api/v1/me')
+        $this->getJson('/api/v1/users/me')
             ->assertOk()
             ->assertJson([
                 'features' => [],
@@ -60,7 +60,7 @@ class FeatureFlagsTest extends TestCase
     {
         $this->user->forceFill(['is_admin' => true])->save();
 
-        $this->getJson('/api/v1/me')
+        $this->getJson('/api/v1/users/me')
             ->assertOk()
             ->assertJson([
                 'features' => [

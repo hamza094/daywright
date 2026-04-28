@@ -39,7 +39,9 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->postJson("/api/v1/admin/users/{$target->uuid}/grant-admin")
+        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+            'is_admin' => true,
+        ])
             ->assertForbidden();
     }
 
@@ -53,7 +55,9 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->postJson("/api/v1/admin/users/{$target->uuid}/grant-admin")
+        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+            'is_admin' => true,
+        ])
             ->assertOk()
             ->assertJsonPath('user.isAdmin', true);
 
@@ -75,9 +79,32 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->postJson("/api/v1/admin/users/{$target->uuid}/grant-admin")
+        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+            'is_admin' => true,
+        ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['user']);
+    }
+
+    #[Test]
+    public function admin_role_update_requires_boolean_role_state(): void
+    {
+        $actor = $this->createAdminUser();
+        $this->enableTwoFactorForUser($actor);
+
+        $target = $this->createUser();
+
+        Sanctum::actingAs($actor);
+
+        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['is_admin']);
+
+        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+            'is_admin' => 'maybe',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['is_admin']);
     }
 
     #[Test]
@@ -94,7 +121,9 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->postJson("/api/v1/admin/users/{$target->uuid}/revoke-admin")
+        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+            'is_admin' => false,
+        ])
             ->assertOk()
             ->assertJsonPath('user.isAdmin', false);
 
@@ -120,7 +149,9 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->postJson("/api/v1/admin/users/{$target->uuid}/revoke-admin")
+        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+            'is_admin' => false,
+        ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['user']);
     }
@@ -133,7 +164,9 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->postJson("/api/v1/admin/users/{$actor->uuid}/revoke-admin")
+        $this->patchJson("/api/v1/admin/users/{$actor->uuid}/role", [
+            'is_admin' => false,
+        ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['user']);
     }

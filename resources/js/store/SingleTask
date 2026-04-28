@@ -58,7 +58,7 @@ const mutations = {
 
 const actions = {
   loadStatuses({ commit }) {
-    	return axios.get(`/task/statuses`)
+	    return axios.get(`/task-statuses`)
         .then(response => {
         commit('setStatuses', response.data.statuses);
         commit('setDueNotifies', response.data.due_notifies);

@@ -136,7 +136,7 @@ class RecordActivityTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $this->deleteJson(route('task.archive', [
+        $this->patchJson(route('task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]));
@@ -176,7 +176,7 @@ class RecordActivityTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->getJson($this->project->path().'/accept-invitation');
+        $this->postJson($this->project->path().'/invitations/accept');
 
         /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
@@ -192,7 +192,7 @@ class RecordActivityTest extends TestCase
 
         $this->project->members()->attach($user, ['active' => true]);
 
-        $this->getJson($this->project->path().'/remove/member/'.$user->uuid);
+        $this->deleteJson($this->project->path().'/members/'.$user->uuid);
 
         /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();

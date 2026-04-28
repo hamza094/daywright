@@ -189,12 +189,8 @@ export default {
       return window.confirm(`Are you sure you want to ${actionLabel} ${user.name}?`);
     },
 
-    getAdminMutationEndpoint(user, isRevoking) {
-      if (isRevoking) {
-        return `/admin/users/${user.uuid}/revoke-admin`;
-      }
-
-      return `/admin/users/${user.uuid}/grant-admin`;
+    getAdminMutationEndpoint(user) {
+      return `/admin/users/${user.uuid}/role`;
     },
 
     async refreshCurrentUserIfNeeded(updatedUser) {
@@ -241,9 +237,8 @@ export default {
       this.adminActionUserId = user.uuid;
 
       try {
-        const endpoint = this.getAdminMutationEndpoint(user, isRevoking);
-
-        const response = await axios.post(endpoint);
+        const endpoint = this.getAdminMutationEndpoint(user);
+        const response = await axios.patch(endpoint, { is_admin: !isRevoking });
         const updatedUser = response?.data?.user;
 
         if (updatedUser) {

@@ -119,7 +119,7 @@ export default {
     async becomeMember(slug) {
       this.$Progress.start();
       try {
-        const { data } = await axios.get(`/projects/${slug}/accept-invitation`);
+        const { data } = await axios.post(`/projects/${slug}/invitations/accept`);
         this.$Progress.finish();
         this.$vToastify.success(data.message);
 
@@ -132,7 +132,7 @@ export default {
     async rejectInvitation(slug) {
       this.$Progress.start();
       try {
-        const { data } = await axios.get(`/projects/${slug}/reject/invitation`);
+        const { data } = await axios.post(`/projects/${slug}/invitations/reject`);
         this.$Progress.finish();
         this.$vToastify.info(data.message);
 

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\Api\V1\FileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class AvatarController extends ApiController
 {
@@ -47,7 +48,7 @@ class AvatarController extends ApiController
         if (! $user->avatar) {
             return response()->json([
                 'message' => 'User does not have an avatar',
-            ], 404);
+            ], Response::HTTP_NOT_FOUND);
         }
 
         $service->deleteFile($user);
@@ -55,7 +56,7 @@ class AvatarController extends ApiController
         return response()->json([
             'message' => 'User avatar has been removed',
             'path' => $user->path(),
-        ], 200);
+        ], Response::HTTP_OK);
 
     }
 }

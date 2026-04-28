@@ -30,7 +30,7 @@ class ApplicationTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->getJson($this->project->path().'/accept-invitation')->assertOk();
+        $this->postJson($this->project->path().'/invitations/accept')->assertOk();
 
         $this->postJson($this->project->path().'/tasks',
             ['title' => 'My Project Task Updated'])->assertCreated();

@@ -76,7 +76,7 @@ class UserAvatarTest extends TestCase
             'avatar_path' => $file,
         ]);
 
-        $response = $this->patchJson(route(self::USER_AVATAR_REMOVE_ROUTE, ['user' => $user->uuid]));
+        $response = $this->deleteJson(route(self::USER_AVATAR_REMOVE_ROUTE, ['user' => $user->uuid]));
 
         $response
             ->assertJson([
@@ -87,7 +87,7 @@ class UserAvatarTest extends TestCase
 
         Storage::disk('s3')->assertMissing($file);
 
-        $response = $this->patchJson(route(self::USER_AVATAR_REMOVE_ROUTE, ['user' => $user->uuid]));
+        $response = $this->deleteJson(route(self::USER_AVATAR_REMOVE_ROUTE, ['user' => $user->uuid]));
 
         $response
             ->assertJson([

@@ -18,11 +18,22 @@ class GetZakTokenTest extends TestCase
     {
         $this->fakeZoom();
 
-        $response = $this->getJson('/api/v1/user/token');
+        $response = $this->getJson('/api/v1/users/me/zoom-token');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'zak_token',
+            ]);
+    }
+
+    /** @test */
+    public function successfully_get_zoom_jwt_token(): void
+    {
+        $response = $this->getJson('/api/v1/users/me/zoom-jwt-token?role=1&meetingId=123456789');
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'jwt_token',
             ]);
     }
 }

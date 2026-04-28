@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Symfony\Component\HttpFoundation\Response;
 
 class NotificationsController extends ApiController
 {
@@ -40,7 +41,7 @@ class NotificationsController extends ApiController
 
         return response()->json([
             'message' => 'All users notifications marked as read.',
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**

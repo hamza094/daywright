@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\Admin\UpdateUserRoleRequest;
 use App\Http\Resources\Api\V1\Admin\UsersResource;
 use App\Models\User;
 use App\Services\Admin\AdminAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends Controller
 {
@@ -37,21 +39,20 @@ class UserController extends Controller
         return UsersResource::collection($users);
     }
 
-    public function grantAdminAccess(Request $request, User $user): JsonResponse
+    public function updateRole(UpdateUserRoleRequest $request, User $user): JsonResponse
     {
-        $this->adminAccessService->grantAdminAccess($user, $request->user());
+        if ($request->boolean('is_admin')) {
+            $this->adminAccessService->grantAdminAccess($user, $request->user());
 
-        return response()->json([
-            'message' => 'Admin access granted successfully.',
-            'user' => new UsersResource($user->fresh([
-                'adminGrantedBy:id,name',
-                'adminRevokedBy:id,name',
-            ])),
-        ]);
-    }
+            return response()->json([
+                'message' => 'Admin access granted successfully.',
+                'user' => new UsersResource($user->fresh([
+                    'adminGrantedBy:id,name',
+                    'adminRevokedBy:id,name',
+                ])),
+            ], Response::HTTP_OK);
+        }
 
-    public function revokeAdminAccess(Request $request, User $user): JsonResponse
-    {
         $this->adminAccessService->revokeAdminAccess($user, $request->user());
 
         return response()->json([
@@ -60,6 +61,6 @@ class UserController extends Controller
                 'adminGrantedBy:id,name',
                 'adminRevokedBy:id,name',
             ])),
-        ]);
+        ], Response::HTTP_OK);
     }
 }

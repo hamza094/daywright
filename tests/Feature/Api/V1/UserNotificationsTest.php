@@ -49,7 +49,7 @@ class UserNotificationsTest extends TestCase
         $this->postJson($this->project->path().'/tasks', ['title' => 'new task added']);
         Sanctum::actingAs($user);
 
-        $response = $this->withoutExceptionHandling()->getJson('/api/v1/notifications/mark-all-read');
+        $response = $this->withoutExceptionHandling()->patchJson('/api/v1/notifications/read');
 
         $response->assertStatus(200);
         $this->assertCount(0, $user->fresh()->unreadNotifications()->get());

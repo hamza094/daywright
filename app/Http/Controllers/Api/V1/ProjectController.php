@@ -5,18 +5,32 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\ProjectStoreRequest;
 use App\Http\Requests\Api\V1\ProjectUpdateRequest;
 use App\Http\Resources\Api\V1\ProjectResource;
 use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Models\Project;
+use App\Services\Api\V1\DashboardService;
 use App\Services\Api\V1\ProjectService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class ProjectController extends ApiController
 {
     public function __construct(private readonly ProjectService $projectService) {}
+
+    public function index(DashboardProjectRequest $request, DashboardService $dashboardService): JsonResponse
+    {
+        $projects = $dashboardService->getUserProjects($request);
+
+        return response()->json([
+            'projects' => ProjectsResource::collection($projects)->paginate(config('app.project.items_limit')),
+            'projectsCount' => $projects?->count() ?? 0,
+            'message' => $projects === null || $projects->isEmpty() ? 'Sorry No Projects Found' : '',
+        ], Response::HTTP_OK);
+    }
 
     /**
      * Create a new project.

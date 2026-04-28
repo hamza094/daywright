@@ -95,7 +95,7 @@ export default {
     },
     remove(id) {
       axios
-        .delete('/projects/' + this.slug + '/messages/' + id + '/delete')
+        .delete('/projects/' + this.slug + '/messages/' + id)
         .then(() => {
           this.scheduledMessages();
         })

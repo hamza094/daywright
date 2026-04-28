@@ -286,7 +286,7 @@ export default {
     },
     archive(task, taskId) {
       axios
-        .delete(url(this.slug, taskId) + '/archive', { useProgress: true })
+        .patch(url(this.slug, taskId) + '/archive', {}, { useProgress: true })
         .then((response) => {
           this.$vToastify.warning(response.data.message);
           this.removeTaskFromState(taskId);
@@ -302,7 +302,7 @@ export default {
     },
     unArchive(task, taskId) {
       axios
-        .get(url(this.slug, taskId) + '/unarchive', { useProgress: true })
+        .patch(url(this.slug, taskId) + '/restore', {}, { useProgress: true })
         .then((response) => {
           this.$vToastify.success(response.data.message);
           this.removeArchivedTask(taskId);

@@ -90,7 +90,7 @@ class MessageTest extends TestCase
             ->create();
 
         $this->deleteJson($this->project->path().'/messages/'.
-               $message->id.'/delete');
+               $message->id);
 
         $this->assertModelMissing($message);
     }

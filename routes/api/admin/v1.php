@@ -46,9 +46,7 @@ Route::group(['prefix' => 'admin'], function (): void {
             Route::apiResource('/statuses', StatusController::class)
                 ->except(['index', 'show']);
 
-            Route::post('/users/{user}/grant-admin', [UserController::class, 'grantAdminAccess']);
-
-            Route::post('/users/{user}/revoke-admin', [UserController::class, 'revokeAdminAccess']);
+            Route::patch('/users/{user}/role', [UserController::class, 'updateRole']);
 
             Route::delete('/projects/bulk-delete', [ProjectController::class, 'bulkDelete']);
 

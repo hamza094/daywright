@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Enums\Subscription\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\InvitationUsersRequest;
+use App\Http\Requests\Api\V1\ProjectInvitationIndexRequest;
 use App\Http\Resources\Api\V1\InvitedUserResource;
 use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Http\Resources\Api\V1\Task\TaskMemberResource;
@@ -19,6 +20,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 
 class InvitationController extends ApiController
 {
@@ -100,10 +102,10 @@ class InvitationController extends ApiController
                 'message' => 'You have accepted Project invitation',
                 'project' => new ProjectsResource($project),
                 'accepted_user' => new InvitedUserResource($user),
-            ], 200);
+            ], Response::HTTP_OK);
 
         } catch (Exception) {
-            return response()->json(['error' => 'An unexpected error occurred.'], 500);
+            return response()->json(['error' => 'An unexpected error occurred.'], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -125,7 +127,7 @@ class InvitationController extends ApiController
             'message' => 'You have rejected the invitation to join the project.',
             'project' => new ProjectsResource($project),
             'user' => new InvitedUserResource($user),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -156,7 +158,7 @@ class InvitationController extends ApiController
             'message' => 'You have canceled the invitation for '.$user->name.' to join the project.',
             'project' => new ProjectsResource($project),
             'user' => new InvitedUserResource($user),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -178,9 +180,9 @@ class InvitationController extends ApiController
             return response()->json([
                 'message' => "Member {$user->name} has been removed from the project",
                 'user' => new InvitedUserResource($user),
-            ], 200);
+            ], Response::HTTP_OK);
         } catch (ValidationException $ex) {
-            return response()->json(['error' => $ex->getMessage()], 422);
+            return response()->json(['error' => $ex->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }
 
@@ -203,8 +205,10 @@ class InvitationController extends ApiController
      *   ]
      * }
      */
-    public function pending(Project $project): JsonResponse
+    public function pending(ProjectInvitationIndexRequest $request, Project $project): JsonResponse
     {
+        $request->validated();
+
         $members = $this->invitationService->pendingMembers($project);
 
         if ($members->isEmpty()) {

@@ -68,8 +68,8 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($invitedUser);
 
-        $this->getJson($this->project->path().
-            '/accept-invitation')
+        $this->postJson($this->project->path().
+            '/invitations/accept')
             ->assertJson([
                 'message' => 'You have accepted Project invitation',
                 'project' => ['id' => $this->project->id],
@@ -89,8 +89,8 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->getJson($this->project->path().
-            '/accept-invitation')
+        $this->postJson($this->project->path().
+            '/invitations/accept')
             ->assertForbidden();
     }
 
@@ -104,7 +104,7 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($invitedUser);
 
-        $this->getJson($this->project->path().'/reject/invitation')
+        $this->postJson($this->project->path().'/invitations/reject')
             ->assertJson([
                 'message' => 'You have rejected the invitation to join the project.',
                 'project' => ['id' => $this->project->id],
@@ -122,14 +122,14 @@ class InvitationTest extends TestCase
         /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
-        $this->getJson(route('projects.cancel-invitation',
+        $this->deleteJson(route('projects.cancel-invitation',
             ['project' => $this->project, 'user' => $invitedUser,
             ]))
             ->assertForbidden();
 
         $this->project->invite($invitedUser);
 
-        $this->getJson(route('projects.cancel-invitation',
+        $this->deleteJson(route('projects.cancel-invitation',
             ['project' => $this->project, 'user' => $invitedUser,
             ]))
             ->assertJson([
@@ -151,7 +151,7 @@ class InvitationTest extends TestCase
 
         $this->project->members()->attach($memberUser, ['active' => true]);
 
-        $this->getJson($this->project->path().'/remove/member/'.$memberUser->uuid)
+        $this->deleteJson($this->project->path().'/members/'.$memberUser->uuid)
             ->assertJson([
                 'message' => "Member {$memberUser->name} has been removed from the project",
             ]);
@@ -171,7 +171,7 @@ class InvitationTest extends TestCase
             ->members()
             ->attach($pendingUsers, ['active' => false]);
 
-        $response = $this->getJson($this->project->path().'/pending/invitations');
+        $response = $this->getJson($this->project->path().'/invitations?status=pending');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -196,5 +196,17 @@ class InvitationTest extends TestCase
         // Assert the count of pending invitations
         $this->assertCount(3, $response->json('pending_invitations'));
 
+    }
+
+    /** @test */
+    public function pending_project_invitations_requires_pending_status_filter(): void
+    {
+        $this->getJson($this->project->path().'/invitations')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+
+        $this->getJson($this->project->path().'/invitations?status=accepted')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
     }
 }

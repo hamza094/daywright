@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\SubscriptionRequest;
 use App\Interfaces\Paddle;
 use App\Services\Api\V1\Subscription\SubscriptionViewService;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class SubscriptionController extends ApiController
 {
@@ -27,7 +28,7 @@ class SubscriptionController extends ApiController
 
         return response()->json([
             'paylink' => $payLink,
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -43,7 +44,7 @@ class SubscriptionController extends ApiController
 
         return response()->json([
             'subscription' => $this->subscriptionViewService->createFor($user),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -61,7 +62,7 @@ class SubscriptionController extends ApiController
         return response()->json([
             'message' => $result['message'],
             'subscription' => $this->subscriptionViewService->createFor($user),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -79,6 +80,6 @@ class SubscriptionController extends ApiController
         return response()->json([
             'message' => $result['message'],
             'subscription' => $this->subscriptionViewService->createFor($user),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 }

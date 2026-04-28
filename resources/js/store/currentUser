@@ -99,7 +99,7 @@ const actions = {
 
   async bootstrapSession({ commit, dispatch }) {
     try {
-      const { data } = await axios.get('/me');
+      const { data } = await axios.get('/users/me');
 
       if (data?.user) {
         commit('setUser', normalizeUser(data.user, data.features));

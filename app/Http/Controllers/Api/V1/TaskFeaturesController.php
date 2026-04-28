@@ -17,6 +17,7 @@ use App\Services\Api\V1\Task\TaskFeatureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Symfony\Component\HttpFoundation\Response;
 
 class TaskFeaturesController extends Controller
 {
@@ -95,7 +96,7 @@ class TaskFeaturesController extends Controller
         return response()->json([
             'message' => 'Project task archived successfully',
             'task' => new TaskResource($task),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -117,9 +118,9 @@ class TaskFeaturesController extends Controller
         $service->unarchiveTask($task);
 
         return response()->json([
-            'message' => 'Project task unArchived successfully',
+            'message' => 'Project task restored successfully',
             'task' => new TaskResource($task),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /** Search Members

@@ -22,22 +22,22 @@ class UserActivitiesTest extends TestCase
     public function activities_endpoint_validates_date_parameters(): void
     {
         // Test missing parameters
-        $response = $this->getJson('api/v1/user/activities');
+        $response = $this->getJson('api/v1/dashboard/activities');
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['start_date', 'end_date']);
 
         // Test invalid date format
-        $response = $this->getJson('api/v1/user/activities?start_date=01-08-2025&end_date=15-08-2025');
+        $response = $this->getJson('api/v1/dashboard/activities?start_date=01-08-2025&end_date=15-08-2025');
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['start_date', 'end_date']);
 
         // Test end date before start date
-        $response = $this->getJson('api/v1/user/activities?start_date=2025-08-15&end_date=2025-08-01');
+        $response = $this->getJson('api/v1/dashboard/activities?start_date=2025-08-15&end_date=2025-08-01');
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['end_date']);
 
         // Test valid format but invalid dates
-        $response = $this->getJson('api/v1/user/activities?start_date=2025-13-01&end_date=2025-08-32');
+        $response = $this->getJson('api/v1/dashboard/activities?start_date=2025-13-01&end_date=2025-08-32');
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['start_date', 'end_date']);
     }
@@ -69,7 +69,7 @@ class UserActivitiesTest extends TestCase
             ->forProject($this->project)
             ->create(['created_at' => '2025-08-10 10:00:00']);
 
-        $response = $this->getJson('api/v1/user/activities?start_date=2025-08-01&end_date=2025-08-31');
+        $response = $this->getJson('api/v1/dashboard/activities?start_date=2025-08-01&end_date=2025-08-31');
 
         $response->json();
 
@@ -109,7 +109,7 @@ class UserActivitiesTest extends TestCase
         $start = Carbon::now()->startOfMonth()->toDateString();
         $end = Carbon::now()->endOfMonth()->toDateString();
 
-        $response = $this->getJson("api/v1/user/activities?start_date={$start}&end_date={$end}");
+        $response = $this->getJson("api/v1/dashboard/activities?start_date={$start}&end_date={$end}");
 
         $response->assertOk()
             ->assertJsonCount(2);
@@ -129,7 +129,7 @@ class UserActivitiesTest extends TestCase
             ->forProject($this->project)
             ->create(['created_at' => '2025-07-01 10:00:00']);
 
-        $response = $this->getJson('api/v1/user/activities?start_date=2025-08-01&end_date=2025-08-10');
+        $response = $this->getJson('api/v1/dashboard/activities?start_date=2025-08-01&end_date=2025-08-10');
 
         $response->assertOk()
             ->assertJsonCount(0)

@@ -52,11 +52,11 @@ Route::controller(ZoomWebhookController::class)
 
 Route::middleware(['auth:sanctum'])->group(function (): void {
 
-    Route::get('/me', [UserController::class, 'me'])->name('user.me');
+    Route::get('/users/me', [UserController::class, 'me'])->name('user.me');
 
-    Route::get('/user/token', [ZoomTokenController::class, 'getUserToken']);
+    Route::get('/users/me/zoom-token', [ZoomTokenController::class, 'getUserToken']);
 
-    Route::get('/user/jwt/token', [ZoomTokenController::class, 'getJwtToken']);
+    Route::get('/users/me/zoom-jwt-token', [ZoomTokenController::class, 'getJwtToken']);
 
     Route::controller(TokenController::class)
         ->prefix('api-tokens')
@@ -75,10 +75,9 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
         Route::get('dashboard/insights', 'kpis')
             ->middleware('subscription')
             ->name('dashboard.insights');
-        Route::get('/tasksdata', 'tasksData')->name('tasks.data');
-        Route::get('/user/activities', 'activities');
-        Route::get('/user/dashboard-projects', 'dashboardProjects');
-        Route::get('/user/projects', 'userProjects')->name('user.projects');
+        Route::get('dashboard/tasks', 'tasksData')->name('tasks.data');
+        Route::get('dashboard/activities', 'activities');
+        Route::get('dashboard/projects', 'dashboardProjects');
     })->middleware(['can:owner', 'user']);
 
     // Return All Stages
@@ -119,7 +118,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                     ->group(function (): void {
                         Route::post('message', 'message');
                         Route::get('messages/scheduled', 'scheduled');
-                        Route::delete('messages/{message}/delete', 'delete');
+                        Route::delete('messages/{message}', 'delete');
                     });
 
                 // Chat Conversation Routes
@@ -152,10 +151,10 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                     });
 
                     Route::middleware(['can:access,task'])->group(function (): void {
-                        Route::delete('archive', 'archive')
+                        Route::patch('archive', 'archive')
                             ->name('archive');
 
-                        Route::get('unarchive', 'unarchive')
+                        Route::patch('restore', 'unarchive')
                             ->name('unarchive')
                             ->withTrashed();
 
@@ -170,22 +169,22 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                     ->middleware('throttle:invite-actions')
                     ->can('manage', 'project');
 
-                Route::get('accept-invitation', 'accept')
+                Route::post('invitations/accept', 'accept')
                     ->name('accept.invitation')
                     ->can('canAcceptInvitation', 'project');
 
-                Route::get('reject/invitation', 'reject')
+                Route::post('invitations/reject', 'reject')
                     ->can('canAcceptInvitation', 'project');
 
-                Route::get('cancel/invitation/users/{user}', 'cancel')
+                Route::delete('invitations/{user}', 'cancel')
                     ->withoutScopedBindings()
                     ->name('projects.cancel-invitation');
 
-                Route::get('remove/member/{user}', 'remove')
+                Route::delete('members/{user}', 'remove')
                     ->withoutScopedBindings()
                     ->can('manage', 'project');
 
-                Route::get('pending/invitations', 'pending')
+                Route::get('invitations', 'pending')
                     ->can('manage', 'project')
                     ->name('project.pending.invitation');
             });
@@ -203,7 +202,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
     Route::group(['prefix' => 'users/{user}'], function (): void {
 
-        Route::patch('/avatar_remove', [AvatarController::class, 'removeAvatar'])->name('user.avatar.remove');
+        Route::delete('/avatar', [AvatarController::class, 'removeAvatar'])->name('user.avatar.remove');
 
         Route::post('/avatar', [AvatarController::class, 'avatar'])
             ->name('user.avatar');
@@ -214,33 +213,32 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
         ->name('notifications.')
         ->group(function (): void {
             Route::get('/', 'index')->name('index');
-            Route::get('/mark-all-read', 'markAllAsRead')->name('markAllAsRead');
+            Route::patch('/read', 'markAllAsRead')->name('markAllAsRead');
             Route::patch('/{notification}/status', 'updateStatus')->name('updateStatus');
             Route::delete('/{notification}', 'destroy')->name('destroy');
         });
+
+    Route::post('subscriptions', [SubscriptionController::class, 'subscribe'])
+        ->name('subscriptions.store');
+
+    Route::middleware(['subscription'])->group(function (): void {
+        Route::patch('subscriptions', [SubscriptionController::class, 'swap'])
+            ->name('subscription.swap');
+
+        Route::delete('subscriptions', [SubscriptionController::class, 'cancel'])
+            ->name('subscription.cancel');
+    });
 
     Route::controller(SubscriptionController::class)
         ->prefix('user')
         ->group(function (): void {
 
-            Route::get('subscribe/{plan}', 'subscribe')
-                ->name('user.subscribe');
-
             Route::get('subscriptions', 'subscriptions')
                 ->name('user.subscription');
 
-            Route::middleware(['subscription'])->group(function (): void {
-
-                Route::get('subscription/swap/{plan}', 'swap')
-                    ->name('subscription.swap');
-
-                Route::get('subscription/{plan}/cancel', 'cancel')
-                    ->name('subscription.cancel');
-            });
-
         });
 
-    Route::get('task/statuses', TaskStatusController::class)
+    Route::get('task-statuses', TaskStatusController::class)
         ->name('task.status');
 
     Route::controller(ZoomAuthController::class)

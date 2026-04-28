@@ -148,7 +148,7 @@ export default {
           this.$vToastify.loader('Please Wait Removing Avatar');
 
           axios
-            .patch('/users/' + this.user.id + '/avatar_remove')
+            .delete('/users/' + this.user.id + '/avatar')
             .then((response) => {
               this.$vToastify.info(response.data.message);
               this.user.avatar = null;

@@ -21,7 +21,7 @@ class UsersResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
-        if ($request->is('api/v1/tasksdata')) {
+        if ($request->is('api/v1/dashboard/tasks')) {
             return [
                 'uuid' => $this->uuid,
                 'name' => $this->name,

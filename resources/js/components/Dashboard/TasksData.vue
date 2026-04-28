@@ -194,7 +194,7 @@ export default {
       if (this.form.created) params.user_created = 1;
 
       axios
-        .get('/tasksdata', { params })
+        .get('/dashboard/tasks', { params })
         .then((response) => {
           // Update to match backend API response structure
           this.userTasks = response.data.data || [];

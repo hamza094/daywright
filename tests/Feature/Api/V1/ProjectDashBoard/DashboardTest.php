@@ -20,7 +20,7 @@ class DashboardTest extends TestCase
         // Create 5 projects for the user
         Project::factory()->count(5)->for($this->user)->create();
 
-        $response = $this->getJson('/api/v1/user/dashboard-projects');
+        $response = $this->getJson('/api/v1/dashboard/projects');
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -41,7 +41,7 @@ class DashboardTest extends TestCase
         // Delete the default project from ProjectSetup trait
         $this->project->delete();
 
-        $response = $this->getJson('/api/v1/user/dashboard-projects');
+        $response = $this->getJson('/api/v1/dashboard/projects');
 
         $response->assertOk();
 

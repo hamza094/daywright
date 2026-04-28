@@ -232,7 +232,7 @@ class TaskTest extends TestCase
             $user,
         );
 
-        $this->deleteJson(route('task.archive', [
+        $this->patchJson(route('task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]))->assertForbidden();

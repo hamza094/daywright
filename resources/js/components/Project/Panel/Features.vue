@@ -288,7 +288,7 @@ export default {
       this.sweetAlert('Yes, Remove Member').then((result) => {
         if (result.isConfirmed) {
           axios
-            .get('/projects/' + this.slug + '/remove/member/' + id, { useProgress: true })
+            .delete('/projects/' + this.slug + '/members/' + id, { useProgress: true })
             .then((response) => {
               this.detachMember(response.data.user.uuid);
               this.$vToastify.info(response.data.message);
@@ -306,7 +306,7 @@ export default {
         if (!result.isConfirmed) return;
 
         axios
-          .get(`/projects/${this.slug}/cancel/invitation/users/${userId}`, { useProgress: true })
+          .delete(`/projects/${this.slug}/invitations/${userId}`, { useProgress: true })
           .then((response) => {
             this.pendingMembers = this.pendingMembers.filter((pendingMember) => pendingMember.uuid !== userId);
             this.$vToastify.info(response.data.message);
@@ -319,7 +319,9 @@ export default {
 
     loadPendingRequests() {
       axios
-        .get(`/projects/${this.slug}/pending/invitations`)
+        .get(`/projects/${this.slug}/invitations`, {
+          params: { status: 'pending' },
+        })
         .then((response) => {
           this.pendingMembers = response.data.pending_invitations;
         })

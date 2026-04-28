@@ -87,7 +87,7 @@ const actions = {
   },
 
   markAllAsRead({ commit, state }) {
-    return axios.get('/notifications/mark-all-read').then(() => {
+    return axios.patch('/notifications/read').then(() => {
       // Update the `read_at` field for all notifications in the current page
       const updatedNotifications = {
         ...state.notifications,

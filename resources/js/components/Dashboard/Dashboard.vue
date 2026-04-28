@@ -125,7 +125,7 @@ export default {
         });
     },
     loadDashboardProjects() {
-      axios.get('/user/dashboard-projects').then(({ data }) => this.getData(data));
+      axios.get('/dashboard/projects').then(({ data }) => this.getData(data));
     },
 
     getData(data) {

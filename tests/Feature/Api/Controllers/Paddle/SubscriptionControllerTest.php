@@ -38,7 +38,9 @@ class SubscriptionControllerTest extends TestCase
     public function it_creates_a_paylink_for_subscription(): void
     {
         $plan = 'monthly';
-        $response = $this->getJson('/api/v1/user/subscribe/'.$plan);
+        $response = $this->postJson('/api/v1/subscriptions', [
+            'plan' => $plan,
+        ]);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -53,7 +55,9 @@ class SubscriptionControllerTest extends TestCase
 
         $plan = 'yearly';
 
-        $response = $this->getJson('/api/v1/user/subscription/swap/'.$plan);
+        $response = $this->patchJson('/api/v1/subscriptions', [
+            'plan' => $plan,
+        ]);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -67,7 +71,9 @@ class SubscriptionControllerTest extends TestCase
         $this->withoutMiddleware(CheckSubscription::class);
 
         $plan = 'yearly';
-        $response = $this->getJson('/api/v1/user/subscription/'.$plan.'/cancel');
+        $response = $this->deleteJson('/api/v1/subscriptions', [
+            'plan' => $plan,
+        ]);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -79,7 +85,9 @@ class SubscriptionControllerTest extends TestCase
     public function it_denies_access_for_non_subscribed_users(): void
     {
         $plan = 'monthly';
-        $response = $this->getJson('/api/v1/user/subscription/swap/'.$plan);
+        $response = $this->patchJson('/api/v1/subscriptions', [
+            'plan' => $plan,
+        ]);
 
         $response->assertStatus(403)
             ->assertJson([
@@ -93,7 +101,9 @@ class SubscriptionControllerTest extends TestCase
     public function it_fails_validation_for_invalid_plan(): void
     {
         $invalidPlan = 'weekly';
-        $response = $this->getJson('/api/v1/user/subscribe/'.$invalidPlan);
+        $response = $this->postJson('/api/v1/subscriptions', [
+            'plan' => $invalidPlan,
+        ]);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['plan']);

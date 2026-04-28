@@ -23,7 +23,7 @@ class ProjectsResource extends JsonResource
     public function toArray($request)
     {
 
-        if ($request->is('api/v1/tasksdata')) {
+        if ($request->is('api/v1/dashboard/tasks')) {
             return [
                 'name' => $this->name,
                 'slug' => $this->slug,

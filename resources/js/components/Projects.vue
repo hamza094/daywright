@@ -259,7 +259,7 @@ export default {
      * @returns {Promise} API response
      */
     async makeApiRequest(params) {
-      return axios.get('/user/projects', { params });
+      return axios.get('/projects', { params });
     },
 
     /**

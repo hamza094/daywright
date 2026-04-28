@@ -93,14 +93,14 @@ class TaskFeaturesTest extends TestCase
     {
         $task = Task::factory()->for($this->project)->create();
 
-        $this->deleteJson(route('task.archive', [
+        $this->patchJson(route('task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]));
 
         $this->assertSoftDeleted($task);
 
-        $this->getJson(route('task.unarchive', [
+        $this->patchJson(route('task.unarchive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]));
@@ -151,7 +151,7 @@ class TaskFeaturesTest extends TestCase
     {
         $task = Task::factory()->for($this->project)->create();
 
-        $this->deleteJson(route('task.archive', [
+        $this->patchJson(route('task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]));

@@ -8,14 +8,16 @@ use App\Enums\TaskDueNotifies;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\TaskStatusResource;
 use App\Models\TaskStatus;
+use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class TaskStatusController extends Controller
 {
-    public function __invoke()
+    public function __invoke(): JsonResponse
     {
         return response()->json([
             'statuses' => TaskStatusResource::collection(TaskStatus::all()),
             'due_notifies' => TaskDueNotifies::values(),
-        ]);
+        ], Response::HTTP_OK);
     }
 }

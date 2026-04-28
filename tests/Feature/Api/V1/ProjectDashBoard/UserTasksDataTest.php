@@ -76,7 +76,7 @@ class UserTasksDataTest extends TestCase
         $assignedTask = Task::factory(['user_id' => $randomUser->id])->create();
         $assignedTask->assignee()->attach($this->user);
 
-        $response = $this->getJson('api/v1/tasksdata?task_assigned=1&user_created=1');
+        $response = $this->getJson('api/v1/dashboard/tasks?task_assigned=1&user_created=1');
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -105,7 +105,7 @@ class UserTasksDataTest extends TestCase
         $randomUser = User::factory()->create();
         Task::factory(['user_id' => $randomUser->id])->create();
 
-        $response = $this->getJson('api/v1/tasksdata?user_created=1');
+        $response = $this->getJson('api/v1/dashboard/tasks?user_created=1');
 
         $response->assertOk();
         $responseData = $response->json();
@@ -126,7 +126,7 @@ class UserTasksDataTest extends TestCase
         // Create a task by authenticated user (should not appear with task_assigned filter only)
         Task::factory(['user_id' => $this->user->id, 'project_id' => $this->project->id])->create();
 
-        $response = $this->getJson('api/v1/tasksdata?task_assigned=1');
+        $response = $this->getJson('api/v1/dashboard/tasks?task_assigned=1');
 
         $response->assertOk();
         $responseData = $response->json();
@@ -154,7 +154,7 @@ class UserTasksDataTest extends TestCase
             'status_id' => TaskStatusEnum::IN_PROGRESS,
         ])->create();
 
-        $response = $this->withoutExceptionHandling()->getJson('api/v1/tasksdata?user_created=1&completed=1');
+        $response = $this->withoutExceptionHandling()->getJson('api/v1/dashboard/tasks?user_created=1&completed=1');
 
         $response->assertOk();
         $responseData = $response->json();
@@ -183,7 +183,7 @@ class UserTasksDataTest extends TestCase
             'status_id' => TaskStatusEnum::IN_PROGRESS,
         ])->create();
 
-        $response = $this->getJson('api/v1/tasksdata?user_created=1&overdue=1');
+        $response = $this->getJson('api/v1/dashboard/tasks?user_created=1&overdue=1');
 
         $response->assertOk();
         $responseData = $response->json();
@@ -209,7 +209,7 @@ class UserTasksDataTest extends TestCase
             'status_id' => TaskStatusEnum::COMPLETED,
         ])->create();
 
-        $response = $this->getJson('api/v1/tasksdata?user_created=1&remaining=1');
+        $response = $this->getJson('api/v1/dashboard/tasks?user_created=1&remaining=1');
 
         $response->assertOk();
         $responseData = $response->json();
@@ -221,7 +221,7 @@ class UserTasksDataTest extends TestCase
     /** @test */
     public function request_requires_at_least_one_filter(): void
     {
-        $response = $this->getJson('api/v1/tasksdata');
+        $response = $this->getJson('api/v1/dashboard/tasks');
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['filters']);
@@ -230,7 +230,7 @@ class UserTasksDataTest extends TestCase
     /** @test */
     public function request_with_false_values_requires_at_least_one_filter(): void
     {
-        $response = $this->getJson('api/v1/tasksdata?user_created=0&completed=0');
+        $response = $this->getJson('api/v1/dashboard/tasks?user_created=0&completed=0');
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['filters']);
@@ -263,7 +263,7 @@ class UserTasksDataTest extends TestCase
         ])->create();
         $assignedTask->assignee()->attach($this->user);
 
-        $response = $this->getJson('api/v1/tasksdata?overdue=1');
+        $response = $this->getJson('api/v1/dashboard/tasks?overdue=1');
 
         $response->assertOk();
         $responseData = $response->json();

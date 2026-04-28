@@ -47,7 +47,7 @@ class NotificationsTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->getJson($this->project->path().'/accept-invitation');
+        $this->postJson($this->project->path().'/invitations/accept');
 
         Notification::assertSentTo($this->project->user, AcceptInvitation::class);
     }

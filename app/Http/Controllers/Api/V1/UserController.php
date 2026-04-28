@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Api\V1\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends ApiController
 {
@@ -44,7 +45,7 @@ class UserController extends ApiController
             'message' => 'Authenticated user data',
             'user' => $user ? new UsersResource($user) : null,
             'features' => new FeatureFlagsResource($user),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**

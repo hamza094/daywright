@@ -337,7 +337,7 @@ export default {
       }
       this.isOpeningIframe = true;
       try {
-        const response = await axios.get(`/user/subscribe/${encodeURIComponent(plan)}`);
+        const response = await axios.post('/subscriptions', { plan });
         this.iframeSrc = response.data.paylink;
         this.isIframeOpen = true;
       } catch (error) {
@@ -353,7 +353,7 @@ export default {
       if (result.value) {
         this.$Progress.start();
         try {
-          const response = await axios.get(`/user/subscription/swap/${encodeURIComponent(plan)}`);
+          const response = await axios.patch('/subscriptions', { plan });
           this.setSubscription(response.data.subscription);
           toastSuccess(response.data.message);
           // Wait 5 seconds, then refresh subscription data once
@@ -380,7 +380,7 @@ export default {
       if (result.value) {
         this.$Progress.start();
         try {
-          const response = await axios.get(`/user/subscription/${encodeURIComponent(plan)}/cancel`);
+          const response = await axios.delete('/subscriptions', { data: { plan } });
           this.setSubscription(response.data.subscription);
           toastInfo(response.data.message);
         } catch (error) {
