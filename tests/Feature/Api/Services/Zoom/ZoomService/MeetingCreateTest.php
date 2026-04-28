@@ -57,10 +57,10 @@ class MeetingCreateTest extends TestCase
         ]);
         (new ZoomService)->createMeeting($this->meetingData, $expiredUser);
         Saloon::assertSent(GetRefreshTokenRequest::class);
-        $expiredUser->refresh();
-        $this->assertEquals('new-access-token-here', $expiredUser->zoom_access_token);
-        $this->assertEquals('new-refresh-token-here', $expiredUser->zoom_refresh_token);
-        $this->assertTrue(now()->addHour()->equalTo($expiredUser->zoom_expires_at));
+        $expiredUser->refresh()->load('zoomConnection');
+        $this->assertEquals('new-access-token-here', $expiredUser->zoomConnection->access_token);
+        $this->assertEquals('new-refresh-token-here', $expiredUser->zoomConnection->refresh_token);
+        $this->assertTrue(now()->addHour()->equalTo($expiredUser->zoomConnection->expires_at));
     }
 
     /** @test */
@@ -106,11 +106,7 @@ class MeetingCreateTest extends TestCase
 
     private function userCreate($expireAt): User
     {
-        return User::factory()->create([
-            'zoom_access_token' => 'access-token-here',
-            'zoom_refresh_token' => 'refresh-token-here',
-            'zoom_expires_at' => $expireAt,
-        ]);
+        return User::factory()->connectedToZoom($expireAt)->create();
     }
 
     private function mockMeetingResponse(): MockResponse

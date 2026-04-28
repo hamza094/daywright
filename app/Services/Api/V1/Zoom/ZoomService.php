@@ -17,6 +17,7 @@ use App\Http\Integrations\Zoom\Requests\UpdateMeeting;
 use App\Http\Integrations\Zoom\ZoomConnector;
 use App\Interfaces\Zoom;
 use App\Models\User;
+use App\Models\UserZoomConnection;
 use Illuminate\Support\Str;
 use Override;
 use Saloon\Http\Auth\AccessTokenAuthenticator;
@@ -86,10 +87,6 @@ final class ZoomService implements Zoom
     #[Override]
     public function createMeeting(array $validated, User $user): Meeting
     {
-        if (! $user->isConnectedToZoom()) {
-            throw new ZoomException(self::USER_NOT_CONNECTED);
-        }
-
         return $this->connectorForUser($user)
             ->send(new CreateMeeting($validated))
             ->dtoOrFail();
@@ -101,10 +98,6 @@ final class ZoomService implements Zoom
     #[Override]
     public function updateMeeting(array $validated, User $user): SaloonResponse
     {
-        if (! $user->isConnectedToZoom()) {
-            throw new ZoomException(self::USER_NOT_CONNECTED);
-        }
-
         return $this->connectorForUser($user)
             ->send(new UpdateMeeting($validated))
             ->throw();
@@ -113,10 +106,6 @@ final class ZoomService implements Zoom
     #[Override]
     public function deleteMeeting(int $meetingId, User $user): SaloonResponse
     {
-        if (! $user->isConnectedToZoom()) {
-            throw new ZoomException(self::USER_NOT_CONNECTED);
-        }
-
         return $this->connectorForUser($user)
             ->send(new DeleteMeeting($meetingId))
             ->throw();
@@ -125,10 +114,6 @@ final class ZoomService implements Zoom
     #[Override]
     public function getZakToken(User $user): string
     {
-        if (! $user->isConnectedToZoom()) {
-            throw new ZoomException(self::USER_NOT_CONNECTED);
-        }
-
         $response = $this->connectorForUser($user)
             ->send(new GetZakToken)
             ->json();
@@ -163,11 +148,26 @@ final class ZoomService implements Zoom
 
     private function getZoomOAuthDetails(User $user): AccessTokenAuthenticator
     {
+        $zoomConnection = $this->getZoomConnection($user);
+
         return new AccessTokenAuthenticator(
-            $user->zoom_access_token,
-            $user->zoom_refresh_token,
-            $user->zoom_expires_at->toDateTimeImmutable(),
+            $zoomConnection->access_token,
+            $zoomConnection->refresh_token,
+            $zoomConnection->expires_at->toDateTimeImmutable(),
         );
+    }
+
+    private function getZoomConnection(User $user): UserZoomConnection
+    {
+        $user->loadMissing('zoomConnection');
+
+        $zoomConnection = $user->zoomConnection;
+
+        if (! $zoomConnection instanceof UserZoomConnection || ! $zoomConnection->hasValidCredentials()) {
+            throw new ZoomException(self::USER_NOT_CONNECTED);
+        }
+
+        return $zoomConnection;
     }
 
     private function updateZoomOAuthDetails(

@@ -31,9 +31,6 @@ return new class extends Migration
             $table->string('oauth_token', 1000)->nullable();
             $table->string('oauth_refresh_token')->nullable();
             $table->dateTime('last_active_at')->nullable();
-            $table->string('zoom_access_token', 2000)->nullable();
-            $table->string('zoom_refresh_token', 2000)->nullable();
-            $table->dateTime('zoom_expires_at')->nullable();
         });
     }
 

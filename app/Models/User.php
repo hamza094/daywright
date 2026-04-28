@@ -44,9 +44,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         'remember_token',
         'oauth_token',
         'oauth_refresh_token',
-        'zoom_access_token',
-        'zoom_refresh_token',
-        'zoom_expires_at',
     ];
 
     /**
@@ -62,9 +59,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         'oauth_provider' => OAuthProvider::class,
         'oauth_token' => 'encrypted',
         'oauth_refresh_token' => 'encrypted',
-        'zoom_access_token' => 'encrypted',
-        'zoom_refresh_token' => 'encrypted',
-        'zoom_expires_at' => 'datetime',
     ];
 
     #[Override]
@@ -125,6 +119,16 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     public function info(): HasOne
     {
         return $this->hasOne(UserInfo::class);
+    }
+
+    /**
+     * Get the user's Zoom OAuth credentials.
+     *
+     * @return HasOne<UserZoomConnection>
+     */
+    public function zoomConnection(): HasOne
+    {
+        return $this->hasOne(UserZoomConnection::class);
     }
 
     /**
@@ -224,17 +228,18 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         string $refreshToken,
         DateTimeImmutable $expiresAt
     ): void {
-        $this->zoom_access_token = $accessToken;
-        $this->zoom_refresh_token = $refreshToken;
-        $this->zoom_expires_at = $expiresAt;
-        $this->save();
+        $zoomConnection = $this->zoomConnection()->updateOrCreate([], [
+            'access_token' => $accessToken,
+            'refresh_token' => $refreshToken,
+            'expires_at' => $expiresAt,
+        ]);
+
+        $this->setRelation('zoomConnection', $zoomConnection);
     }
 
     public function isConnectedToZoom(): bool
     {
-        return $this->zoom_access_token
-        && $this->zoom_refresh_token
-        && $this->zoom_expires_at;
+        return $this->currentZoomConnection()?->hasValidCredentials() ?? false;
     }
 
     /**
@@ -282,5 +287,16 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         static::forceDeleting(function ($user): void {
             $user->notifications()->delete();
         });
+    }
+
+    private function currentZoomConnection(): ?UserZoomConnection
+    {
+        $this->loadMissing('zoomConnection');
+
+        $zoomConnection = $this->getRelation('zoomConnection');
+
+        return $zoomConnection instanceof UserZoomConnection
+            ? $zoomConnection
+            : null;
     }
 }

@@ -39,10 +39,7 @@ class GetZakTokenTest extends TestCase
     private function userCreate($expireAt)
     {
         return User::factory()
-            ->create([
-                'zoom_access_token' => 'access-token-here',
-                'zoom_refresh_token' => 'refresh-token-here',
-                'zoom_expires_at' => $expireAt,
-            ]);
+            ->connectedToZoom($expireAt)
+            ->create();
     }
 }

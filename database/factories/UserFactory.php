@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Models\User;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -46,5 +47,19 @@ class UserFactory extends Factory
         return $this->state(fn (): array => [
             'is_admin' => true,
         ]);
+    }
+
+    public function connectedToZoom(
+        ?DateTimeInterface $expiresAt = null,
+        string $accessToken = 'access-token-here',
+        string $refreshToken = 'refresh-token-here'
+    ): static {
+        return $this->afterCreating(function (User $user) use ($accessToken, $expiresAt, $refreshToken): void {
+            $user->zoomConnection()->create([
+                'access_token' => $accessToken,
+                'refresh_token' => $refreshToken,
+                'expires_at' => $expiresAt ?? now()->addWeek(),
+            ]);
+        });
     }
 }
