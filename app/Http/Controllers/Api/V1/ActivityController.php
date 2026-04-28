@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\ActivityResource;
 use App\Models\Project;
 use App\Repository\ProjectRepository;
 use F9Web\ApiResponseHelpers;
 
-class ActivityController extends Controller
+class ActivityController extends ApiController
 {
     use ApiResponseHelpers;
 
