@@ -82,6 +82,7 @@ class TaskFeaturesController extends ApiController
     public function archive(Project $project, Task $task, TaskFeatureService $service): JsonResponse
     {
         $service->archiveTask($task);
+        $task->loadMissing('project:id,slug');
 
         return response()->json([
             'message' => 'Project task archived successfully',
@@ -106,6 +107,7 @@ class TaskFeaturesController extends ApiController
     public function unarchive(Project $project, Task $task, TaskFeatureService $service): JsonResponse
     {
         $service->unarchiveTask($task);
+        $task->loadMissing('project:id,slug');
 
         return response()->json([
             'message' => 'Project task restored successfully',

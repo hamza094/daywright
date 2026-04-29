@@ -98,6 +98,9 @@ class TaskResource extends JsonResource
                 $this->updated_at->isAfter($this->created_at),
                 fn (): string => $this->formatDate($this->updated_at),
             ),
+            'links' => [
+                'self' => $this->path(),
+            ],
         ];
     }
 

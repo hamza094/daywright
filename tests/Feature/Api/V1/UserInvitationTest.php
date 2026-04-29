@@ -26,11 +26,12 @@ class UserInvitationTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'invitations' => [
-                    ['id', 'name', 'status', 'slug', 'invitation_sent_at', 'created_at', 'path'],
+                    ['id', 'name', 'status', 'slug', 'invitation_sent_at', 'created_at', 'links' => ['project']],
                 ],
             ]);
 
         $this->assertEquals($project->id, $response->json('invitations.0.id'));
+        $this->assertEquals($project->path(), $response->json('invitations.0.links.project'));
     }
 
     /** @test */

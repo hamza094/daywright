@@ -57,7 +57,7 @@ class ProjectStageResource extends JsonResource
              * }
              */
             'links' => [
-                'self' => '/api/v1/projects/'.$this->slug,
+                'self' => $this->path(),
             ],
         ];
     }

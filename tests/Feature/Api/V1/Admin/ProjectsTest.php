@@ -84,7 +84,7 @@ class ProjectsTest extends TestCase
     #[Test]
     public function can_filter_projects_by_search(): void
     {
-        $this->createProject(['name' => 'Alpha Project']);
+        $alphaProject = $this->createProject(['name' => 'Alpha Project']);
         $this->createProject(['name' => 'Beta Project']);
 
         $response = $this->getJson(self::PROJECTS_ROUTE.'?search=Alpha')
@@ -94,6 +94,7 @@ class ProjectsTest extends TestCase
         $this->assertIsArray($projects);
         $this->assertCount(1, $projects);
         $this->assertStringContainsString('Alpha', $projects[0]['name']);
+        $this->assertEquals($alphaProject->path(), $projects[0]['links']['self']);
     }
 
     #[Test]

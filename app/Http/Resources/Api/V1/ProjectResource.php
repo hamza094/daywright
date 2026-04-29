@@ -165,12 +165,9 @@ class ProjectResource extends JsonResource
              */
             'activities' => $this->whenLoaded('limitedActivities', fn () => ActivityResource::collection($this->limitedActivities)),
 
-            'links' => $this->when(
-                $request->routeIs('projects.update'),
-                [
-                    'self' => '/api/v1/'.$this->slug,
-                ],
-            ),
+            'links' => [
+                'self' => $this->path(),
+            ],
         ];
 
     }

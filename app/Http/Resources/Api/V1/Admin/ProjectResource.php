@@ -34,7 +34,7 @@ class ProjectResource extends JsonResource
             'status' => $this->health_status,
             'health_score_calculated_at' => $this->health_score_calculated_at?->toDateTimeString(),
             'links' => [
-                'self' => '/api/v1/'.$this->slug,
+                'self' => $this->path(),
             ],
         ];
     }

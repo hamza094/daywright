@@ -65,6 +65,7 @@ class TaskService
             )
         );
 
+        $task->loadMissing('project:id,slug');
         $task->load('status');
 
         $this->sendNotification($project, $user);
@@ -86,6 +87,7 @@ class TaskService
         $payload = $this->resetTaskNotificationAction->apply($task, $validated);
 
         $task->update($payload);
+        $task->loadMissing('project:id,slug');
 
         if (array_key_exists('status_id', $validated)) {
             $task->load('status');
@@ -109,7 +111,7 @@ class TaskService
     private function getTasks(Project $project, bool $isArchived): HasMany
     {
         return $project->tasks()
-            ->with('project')
+            ->with('project:id,slug')
             ->when(
                 $isArchived,
                 fn (Builder $query) => $query->archived(),

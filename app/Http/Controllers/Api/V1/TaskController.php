@@ -64,7 +64,7 @@ class TaskController extends ApiController
      */
     public function show(Project $project, Task $task): TaskResource
     {
-        $task->load(['status', 'assignee']);
+        $task->loadMissing(['project:id,slug', 'status', 'assignee']);
 
         return new TaskResource($task);
     }

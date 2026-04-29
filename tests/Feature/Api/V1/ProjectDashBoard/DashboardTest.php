@@ -33,6 +33,11 @@ class DashboardTest extends TestCase
         $this->assertCount(3, $response->json('projects'));
         $this->assertEquals(3, $response->json('projectsCount'));
         $this->assertNotEmpty($response->json('projects'));
+
+        collect($response->json('projects'))->pluck('links.self')->each(function (?string $path): void {
+            $this->assertNotNull($path);
+            $this->assertStringStartsWith('/api/v1/projects/', $path);
+        });
     }
 
     /** @test */

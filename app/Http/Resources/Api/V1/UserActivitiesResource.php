@@ -35,18 +35,6 @@ class UserActivitiesResource extends JsonResource
         ];
     }
 
-    /*protected function getSubjectDetails(): array
-    {
-      if ($this->relationLoaded('subject') && $this->subject) {
-        return [
-          'id' => $this->subject->id ?? null,
-          'type' => class_basename($this->subject),
-          'name' => $this->subject->name ?? ($this->subject->title ?? null),
-        ];
-      }
-      return [];
-    }*/
-
     protected function getSubjectDetails(): array
     {
         return [

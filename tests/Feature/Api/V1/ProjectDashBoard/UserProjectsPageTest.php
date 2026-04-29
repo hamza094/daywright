@@ -90,7 +90,7 @@ class UserProjectsPageTest extends TestCase
     public function auth_user_can_filter_projects_by_search(): void
     {
         // Create projects with different names
-        Project::factory()->create(['name' => 'Frontend Project', 'user_id' => $this->user->id]);
+        $frontendProject = Project::factory()->create(['name' => 'Frontend Project', 'user_id' => $this->user->id]);
         Project::factory()->create(['name' => 'Backend Project', 'user_id' => $this->user->id]);
         Project::factory()->create(['name' => 'Mobile App', 'user_id' => $this->user->id]);
 
@@ -103,6 +103,7 @@ class UserProjectsPageTest extends TestCase
         // The search should only return "Frontend Project"
         $this->assertCount(1, $projects);
         $this->assertEquals('Frontend Project', $projects[0]['name']);
+        $this->assertEquals($frontendProject->path(), $projects[0]['links']['self']);
     }
 
     /** @test */

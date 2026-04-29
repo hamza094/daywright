@@ -40,15 +40,24 @@ class TaskTest extends TestCase
             ->for($this->project)
             ->create();
 
-        $this->getJson($this->project->path().'/tasks')
+        $response = $this->getJson($this->project->path().'/tasks')
             ->assertOk()
             ->assertJsonCount(3, 'tasksData')
             ->assertJsonStructure([
                 'message',
                 'tasksData' => [
-                    'data' => [], 'links', 'meta',
+                    'data' => [
+                        '*' => [
+                            'links' => ['self'],
+                        ],
+                    ], 'links', 'meta',
                 ],
             ]);
+
+        collect($response->json('tasksData.data'))->pluck('links.self')->each(function (?string $path): void {
+            $this->assertNotNull($path);
+            $this->assertStringStartsWith($this->project->path().'/tasks/', $path);
+        });
     }
 
     /** @test */

@@ -28,7 +28,7 @@ class ProjectCollectionResource extends JsonResource
                 'name' => $this->name,
                 'slug' => $this->slug,
                 'links' => [
-                    'self' => '/api/v1/'.$this->slug,
+                    'self' => $this->path(),
                 ],
             ];
         }
@@ -76,7 +76,7 @@ class ProjectCollectionResource extends JsonResource
              * }
              */
             'links' => [
-                'self' => '/api/v1/projects/'.$this->slug,
+                'self' => $this->path(),
             ],
         ];
     }

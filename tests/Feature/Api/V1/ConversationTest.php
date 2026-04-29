@@ -28,6 +28,8 @@ class ConversationTest extends TestCase
         $response->assertJsonFragment([
             'message' => $conversation->message,
         ]);
+
+        $this->assertEquals($this->project->path(), $response->json('data.0.links.project'));
     }
 
     /** @test */

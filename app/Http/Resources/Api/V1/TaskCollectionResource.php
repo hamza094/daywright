@@ -66,7 +66,7 @@ class TaskCollectionResource extends JsonResource
              * }
              */
             'links' => [
-                'self' => '/api/v1/projets/'.$this->project->slug.'/tasks/'.$this->id,
+                'self' => $this->path(),
             ],
         ];
     }

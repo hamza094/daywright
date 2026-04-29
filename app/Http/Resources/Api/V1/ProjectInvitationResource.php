@@ -70,14 +70,18 @@ class ProjectInvitationResource extends JsonResource
              *
              * @example "2 days ago"
              */
-            'created_at' => $this->created_at->diffforHumans(),
+            'created_at' => $this->created_at->diffForHumans(),
 
             /**
-             * Project API path
+             * Links related to the project invitation.
              *
-             * @example "/api/v1/my-project"
+             * @example {
+             *   "project": "/api/v1/projects/my-project"
+             * }
              */
-            'path' => $this->path(),
+            'links' => [
+                'project' => $this->path(),
+            ],
         ];
     }
 }

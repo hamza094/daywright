@@ -37,9 +37,9 @@ class ConversationResource extends JsonResource
             'created_at' => $this->created_at
                 ->diffForHumans(),
 
-            'links' => [
-                'project_link' => $this->project->path(),
-            ],
+            'links' => $this->whenLoaded('project', fn () => [
+                'project' => $this->project->path(),
+            ]),
         ];
     }
 

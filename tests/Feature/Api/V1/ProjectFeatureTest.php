@@ -111,6 +111,8 @@ class ProjectFeatureTest extends TestCase
             'id' => $this->project->id,
             'name' => $this->project->name,
         ]);
+
+        $response->assertJsonPath('links.self', $this->project->path());
     }
 
     /** @test */
@@ -178,6 +180,7 @@ class ProjectFeatureTest extends TestCase
                     'slug' => $this->project->slug,
                 ],
             ])
+            ->assertJsonPath('project.links.self', $this->project->path())
             ->assertJsonCount(2, 'project.limits');
 
         $this->assertProjectLimitItem($response, 'project.limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
