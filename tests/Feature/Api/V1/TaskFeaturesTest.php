@@ -147,6 +147,19 @@ class TaskFeaturesTest extends TestCase
     }
 
     /** @test */
+    public function search_project_members_requires_a_search_term(): void
+    {
+        $task = Task::factory()->create(['project_id' => $this->project->id]);
+
+        $this->getJson(route('task.members.search', [
+            'project' => $this->project->slug,
+            'task' => $task->id,
+        ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('search');
+    }
+
+    /** @test */
     public function allowed_user_can_remove_archived_task_from_database(): void
     {
         $task = Task::factory()->for($this->project)->create();
@@ -161,9 +174,26 @@ class TaskFeaturesTest extends TestCase
         $this->deleteJson(route('task.remove', [
             'project' => $this->project->slug,
             'task' => $task->id,
-        ]));
+        ]))->assertNoContent();
 
         $this->assertModelMissing($task);
+    }
+
+    /** @test */
+    public function active_task_cannot_be_removed_until_it_is_archived(): void
+    {
+        $task = Task::factory()->for($this->project)->create();
+
+        $this->deleteJson(route('task.remove', [
+            'project' => $this->project->slug,
+            'task' => $task->id,
+        ]))
+            ->assertForbidden()
+            ->assertJson([
+                'message' => 'Task must be trashed to perform this action',
+            ]);
+
+        $this->assertModelExists($task);
     }
 
     protected function assignMembersToTask(Task $task, array $members)

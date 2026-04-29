@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Api\V1;
 
+use App\Enums\Subscription\PlanLimitType;
 use App\Models\Project;
 use App\Models\User;
 use App\Notifications\AcceptInvitation;
 use App\Notifications\ProjectInvitation;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Auth;
 use Exception;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -20,6 +22,24 @@ use Throwable;
 
 class InvitationService
 {
+    public function __construct(private readonly PlanLimitService $planLimitService) {}
+
+    /**
+     * Invite a user by email, enforcing project plan limits.
+     */
+    public function sendInvitationByEmail(Project $project, string $email): void
+    {
+        $user = User::where('email', $email)->firstOrFail();
+
+        $this->planLimitService->executeWithinProjectLimit(
+            PlanLimitType::MembersPerProject,
+            $project,
+            function (Project $lockedProject) use ($user): void {
+                $this->sendInvitation($user, $lockedProject);
+            }
+        );
+    }
+
     public function sendInvitation(User $user, Project $project): void
     {
         $this->validateInvitation($project, $user);

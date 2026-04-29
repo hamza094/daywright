@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\TaskMemberSearchRequest;
 use App\Http\Requests\Api\V1\TaskMembersRequest;
+use App\Http\Requests\Api\V1\TaskMemberUnassignRequest;
 use App\Http\Resources\Api\V1\Task\TaskMemberResource;
 use App\Http\Resources\Api\V1\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
-use App\Models\User;
 use App\Repository\TaskRepository;
-use App\Rules\TaskAssigneeMember;
 use App\Services\Api\V1\Task\TaskFeatureService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response as HttpResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class TaskFeaturesController extends ApiController
@@ -53,21 +53,11 @@ class TaskFeaturesController extends ApiController
      *   - The task owner.
      *   - The project owner
      * */
-    public function unassign(Project $project, Task $task, Request $request): JsonResponse
+    public function unassign(Project $project, Task $task, TaskMemberUnassignRequest $request, TaskFeatureService $service): JsonResponse
     {
-        $request->validate([
-            /**
-             * The user to be unassigned must:
-             * - Exist in the `users` table.
-             * - Be a valid assignee of the given task.
-             */
-            'member' => ['required', 'exists:users,id',
-                new TaskAssigneeMember($task)],
-        ]);
+        $memberId = (int) $request->validated('member');
 
-        $task->assignee()->detach($request->member);
-
-        $user = User::find($request->member);
+        $user = $service->unassignMember($task, $memberId);
 
         return response()->json([
             'message' => 'Task member Unassigned',
@@ -134,12 +124,8 @@ class TaskFeaturesController extends ApiController
      *   - The task owner.
      *   - The project owner
      * */
-    public function search(Project $project, Task $task, Request $request, TaskRepository $repository): AnonymousResourceCollection
+    public function search(Project $project, Task $task, TaskMemberSearchRequest $request, TaskRepository $repository): AnonymousResourceCollection
     {
-        $request->validate([
-            'search' => ['required', 'string', 'min:1'],
-        ]);
-
         $searchResults = $repository->searchMembers($request, $project, $task);
 
         return TaskMemberResource::collection($searchResults);
@@ -157,14 +143,10 @@ class TaskFeaturesController extends ApiController
      * - Deletes all associated activities of the task.
      * - Permanently removes the task from the database (force delete).
      */
-    public function remove(Project $project, Task $task, TaskFeatureService $service): JsonResponse
+    public function remove(Project $project, Task $task, TaskFeatureService $service): HttpResponse
     {
-        if (! $task->trashed()) {
-            abort(403, 'Task must be trashed to perform this action');
-        }
-
         $service->removeTask($task);
 
-        return response()->json(204);
+        return response()->noContent();
     }
 }

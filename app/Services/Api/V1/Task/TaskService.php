@@ -6,17 +6,23 @@ namespace App\Services\Api\V1\Task;
 
 use App\Actions\NotificationAction;
 use App\Actions\Task\ResetTaskNotificationAction;
+use App\Enums\Subscription\PlanLimitType;
 use App\Http\Resources\Api\V1\TasksResource;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\User;
 use App\Notifications\ProjectTask;
+use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Validation\ValidationException;
 
 class TaskService
 {
-    public function __construct(private readonly ResetTaskNotificationAction $resetTaskNotificationAction) {}
+    public function __construct(
+        private readonly ResetTaskNotificationAction $resetTaskNotificationAction,
+        private readonly PlanLimitService $planLimitService,
+    ) {}
 
     public function getTasksData(Project $project, bool $isArchived): array
     {
@@ -45,18 +51,52 @@ class TaskService
         ];
     }
 
-    public function checkValidation($request, $task): void
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    public function createTask(Project $project, User $user, array $validated): Task
     {
-        if (! $request->validated()) {
+        /** @var Task $task */
+        $task = $this->planLimitService->executeWithinProjectLimit(
+            PlanLimitType::ActiveTasksPerProject,
+            $project,
+            fn (Project $lockedProject): Task => $lockedProject->tasks()->firstOrCreate(
+                $validated + ['user_id' => $user->id]
+            )
+        );
+
+        $task->load('status');
+
+        $this->sendNotification($project, $user);
+
+        return $task;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    public function updateTask(Task $task, array $validated): Task
+    {
+        if ($validated === []) {
             throw ValidationException::withMessages([
                 'task' => ['Field missing in task'],
             ]);
         }
+
+        $payload = $this->resetTaskNotificationAction->apply($task, $validated);
+
+        $task->update($payload);
+
+        if (array_key_exists('status_id', $validated)) {
+            $task->load('status');
+        }
+
+        return $task;
     }
 
-    public function sendNotification(Project $project): void
+    private function sendNotification(Project $project, User $actor): void
     {
-        $notifier = auth()->user()->getNotifierData();
+        $notifier = $actor->getNotifierData();
 
         NotificationAction::send(
             new ProjectTask(
@@ -64,16 +104,6 @@ class TaskService
                 $project->path(),
                 $notifier
             ), $project);
-    }
-
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    public function updateTask(Task $task, array $validated): void
-    {
-        $payload = $this->resetTaskNotificationAction->apply($task, $validated);
-
-        $task->update($payload);
     }
 
     private function getTasks(Project $project, bool $isArchived): HasMany

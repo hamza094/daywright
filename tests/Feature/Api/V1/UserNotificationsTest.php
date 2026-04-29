@@ -85,6 +85,18 @@ class UserNotificationsTest extends TestCase
         $this->assertNull($notification->fresh()->read_at);
     }
 
+    /** @test */
+    public function notification_status_must_be_read_or_unread(): void
+    {
+        $user = $this->actingAsInvitedUser();
+
+        $notification = $user->notifications()->latest()->first();
+
+        $this->patchJson("/api/v1/notifications/{$notification->id}/status", ['status' => 'archived'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('status');
+    }
+
     public function projectUpdate($project, $user): void
     {
         $this->patchJson($project->path(), ['notes' => 'Project notes updated.']);

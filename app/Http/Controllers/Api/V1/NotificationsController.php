@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\NotificationFilter;
+use App\Actions\BuildPaginatedPayloadAction;
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\NotificationStatusUpdateRequest;
 use App\Http\Resources\Api\V1\NotificationResource;
-use App\Models\User;
+use App\Services\Api\V1\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpFoundation\Response;
 
 class NotificationsController extends ApiController
@@ -18,26 +18,31 @@ class NotificationsController extends ApiController
     /**
      * Display a listing of the user's notifications.
      */
-    public function index(Request $request): LengthAwarePaginator
-    {
-        $notifications = $this->authenticatedUser()
-            ->notifications()
-            ->latest()
-            ->when($request->filter === NotificationFilter::READ->value, fn ($query) => $query->whereNotNull('read_at'))
-            ->when($request->filter === NotificationFilter::UNREAD->value, fn ($query) => $query->whereNull('read_at'))
-            ->get();
+    public function index(
+        Request $request,
+        BuildPaginatedPayloadAction $buildPaginatedPayloadAction,
+        NotificationService $notificationService,
+    ): JsonResponse {
+        $paginator = $notificationService->paginateForUser(
+            $this->authenticatedUser(),
+            $request->query('filter'),
+        );
 
-        return NotificationResource::collection($notifications)->paginate(25);
+        if ($paginator->isEmpty()) {
+            return response()->json(['message' => 'No notifications found'], Response::HTTP_OK);
+        }
+
+        $payload = $buildPaginatedPayloadAction->handle($paginator, NotificationResource::class);
+
+        return response()->json($payload, Response::HTTP_OK);
     }
 
     /**
      * Mark all notifications as read.
      */
-    public function markAllAsRead(): JsonResponse
+    public function markAllAsRead(NotificationService $notificationService): JsonResponse
     {
-        $this->authenticatedUser()->unreadNotifications()->update([
-            'read_at' => now(),
-        ]);
+        $notificationService->markAllAsRead($this->authenticatedUser());
 
         return response()->json([
             'message' => 'All users notifications marked as read.',
@@ -47,29 +52,27 @@ class NotificationsController extends ApiController
     /**
      * Remove the specified notification.
      */
-    public function destroy($notification): JsonResponse
+    public function destroy(string $notification, NotificationService $notificationService): JsonResponse
     {
-        $this->authenticatedUser()->notifications()
-            ->findOrFail($notification)->delete();
+        $notificationService->deleteForUser($this->authenticatedUser(), $notification);
 
         return response()->json([
             'message' => 'Notification deleted successfully.',
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**
      * Update the status of a notification.
      */
-    public function updateStatus(Request $request, $notification): JsonResponse
-    {
-        $data = $request->validate(['status' => 'required|in:read,unread']);
+    public function updateStatus(
+        NotificationStatusUpdateRequest $request,
+        string $notification,
+        NotificationService $notificationService,
+    ): JsonResponse {
+        $status = $request->validated('status');
 
-        $userNotification = $this->authenticatedUser()->notifications()->findOrFail($notification);
+        $notificationService->updateStatus($this->authenticatedUser(), $notification, $status);
 
-        $data['status'] === 'read'
-            ? $userNotification->markAsRead()
-            : $userNotification->update(['read_at' => null]);
-
-        return response()->json(['message' => 'Notification status updated.']);
+        return response()->json(['message' => 'Notification status updated.'], Response::HTTP_OK);
     }
 }

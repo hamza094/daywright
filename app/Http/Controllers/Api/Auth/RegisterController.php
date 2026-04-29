@@ -8,10 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\RegisterUserRequest;
 use App\Http\Resources\Api\V1\UsersResource;
-use App\Models\User;
-use App\Providers\RouteServiceProvider;
-use App\Services\Api\V1\Auth\LoginUserService;
-use Illuminate\Auth\Events\Registered;
+use App\Services\Api\V1\Auth\RegisterUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -30,41 +27,26 @@ class RegisterController extends ApiController
     */
 
     /**
-     * Where to redirect users after registration.
-     *
-     * @var string
-     */
-    protected $redirectTo = RouteServiceProvider::HOME;
-
-    /**
      * @unauthenticated
      * Register User
      *
      * Registers a new user and returns the user API resource.
      */
-    public function register(RegisterUserRequest $request, LoginUserService $loginUserService): JsonResponse
+    public function register(RegisterUserRequest $request, RegisterUserService $registerUserService): JsonResponse
     {
-
-        $validatedData = $request->validated();
-
-        $validatedData['password'] = bcrypt($validatedData['password']);
+        $validated = $request->validated();
 
         try {
-            $user = User::create($validatedData);
-            event(new Registered($user));
-
-            $loginUserService->dispatchTimezoneIfNeeded($user);
+            $user = $registerUserService->register($validated);
 
             return response()->json([
                 'message' => 'User Registered Successfully',
                 'user' => new UsersResource($user),
             ], 201);
-
         } catch (Throwable $e) {
             Log::error('User registration failed', ['exception' => $e]);
 
             return response()->json(['error' => 'User registration failed.'], 500);
         }
-
     }
 }

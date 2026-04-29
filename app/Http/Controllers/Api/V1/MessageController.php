@@ -10,24 +10,25 @@ use App\Models\Message;
 use App\Models\Project;
 use App\Services\Api\V1\MessageService;
 use F9Web\ApiResponseHelpers;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 
 class MessageController extends ApiController
 {
     use ApiResponseHelpers;
 
-    public function message(Project $project, MessageRequest $request, MessageService $message)
+    public function message(Project $project, MessageRequest $request, MessageService $messageService): JsonResponse
     {
-        $message->checkOptionSelect($request);
+        $responseMessage = $messageService->send($project, $request->validated());
 
-        $users = collect($request->users)->filter(fn ($user): bool => ! empty($user['user_id']))->pluck('user_id');
-
-        return $message->send($project, $users);
+        return response()->json(['message' => $responseMessage], 200);
     }
 
-    public function scheduled(Project $project): \Illuminate\Http\JsonResponse|\Illuminate\Support\Collection
+    public function scheduled(Project $project, MessageService $messageService): JsonResponse|Collection
     {
+        $scheduledMessages = $messageService->scheduledMessages($project);
 
-        if ($project->scheduledMessages()->isEmpty()) {
+        if ($scheduledMessages->isEmpty()) {
 
             return $this->respondNoContent([
                 'message' => 'No project schedule messages found',
@@ -35,15 +36,12 @@ class MessageController extends ApiController
 
         }
 
-        return $project->scheduledMessages();
+        return $scheduledMessages;
     }
 
-    public function delete(Project $project, Message $message): \Illuminate\Http\JsonResponse
+    public function delete(Project $project, Message $message, MessageService $messageService): JsonResponse
     {
-
-        $message->activities()->delete();
-
-        $message->delete();
+        $messageService->deleteScheduledMessage($message);
 
         return $this->respondNoContent([
             'message' => 'Scheduled message deleted Successfully',

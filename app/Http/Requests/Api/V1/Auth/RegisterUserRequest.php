@@ -21,7 +21,6 @@ class RegisterUserRequest extends FormRequest
             'required',
             'string',
             'confirmed',
-            'min:8',
             Password::default(),
         ];
     }

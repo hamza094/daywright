@@ -6,56 +6,87 @@ namespace App\Services\Api\V1;
 
 use App\Models\Message;
 use App\Models\Project;
-use F9Web\ApiResponseHelpers;
+use Illuminate\Bus\Batch;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Validation\ValidationException;
 use Safe\DateTimeImmutable;
+use Throwable;
 use Timezone;
 
 class MessageService
 {
-    use ApiResponseHelpers;
-
-    public function checkOptionSelect($request): void
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function send(Project $project, array $payload): string
     {
-        if (! $request->mail && ! $request->sms) {
-            throw ValidationException::withMessages([
-                'option' => 'Please choose any options.',
-            ]);
-        }
-    }
+        $this->ensureDeliveryOptionSelected($payload);
 
-    public function send(Project $project, Collection $users)
-    {
-        $response = '';
+        $users = $this->extractRecipientIds($payload['users'] ?? []);
+        $isScheduled = ! empty($payload['date']);
 
-        $types = ['mail', 'sms'];
-
-        $send_or_schedule = request()->filled('date') ? 'Scheduled' : 'Sent';
-
-        foreach ($types as $type) {
-            if (request()->boolean($type)) {
-                $message = $this->messageCreate($project, $type, $users);
-                $this->sendOrScheduledMessage($project, $message);
+        foreach (['mail', 'sms'] as $type) {
+            if (! $this->deliveryOptionEnabled($payload, $type)) {
+                continue;
             }
+
+            $message = $this->createMessage($project, $type, $users, $payload);
+            $this->sendOrScheduleMessage($project, $message, $payload);
         }
 
-        $response = "Messages {$send_or_schedule} Successfully";
-
-        return response()->json(['message' => $response], 200);
+        return 'Messages '.($isScheduled ? 'Scheduled' : 'Sent').' Successfully';
     }
 
-    public function messageCreate(Project $project, string $type, Collection $users): Message
+    /**
+     * @return Collection<int, mixed>
+     */
+    public function scheduledMessages(Project $project): Collection
+    {
+        return $project->scheduledMessages();
+    }
+
+    public function deleteScheduledMessage(Message $message): void
+    {
+        $message->activities()->delete();
+        $message->delete();
+    }
+
+    /**
+     * @return Collection<int, int|string>
+     */
+    public function extractRecipientIds(mixed $users): Collection
+    {
+        return collect($users)
+            ->map(function (mixed $user): int|string|null {
+                if (is_array($user)) {
+                    return $user['user_id'] ?? $user['id'] ?? null;
+                }
+
+                if (is_object($user)) {
+                    return $user->user_id ?? $user->id ?? null;
+                }
+
+                return is_scalar($user) && $user !== '' ? $user : null;
+            })
+            ->filter(fn (mixed $userId): bool => ! empty($userId))
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, int|string>  $users
+     * @param  array<string, mixed>  $payload
+     */
+    public function createMessage(Project $project, string $type, Collection $users, array $payload): Message
     {
         $message = Message::create([
             'project_id' => $project->id,
             'type' => $type,
-            'message' => request()->message,
+            'message' => (string) ($payload['message'] ?? ''),
         ]);
 
         if ($message->type === 'mail') {
-            $message->subject = request()->get('subject');
+            $message->subject = isset($payload['subject']) ? (string) $payload['subject'] : null;
             $message->save();
         }
 
@@ -64,11 +95,14 @@ class MessageService
         return $message;
     }
 
-    public function sendOrScheduledMessage($project, $message): void
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function sendOrScheduleMessage(Project $project, Message $message, array $payload): void
     {
-        request()->date ?
-        $this->scheduledMessage($message) :
-        $this->sendNow($project, $message);
+        ! empty($payload['date'])
+            ? $this->scheduledMessage($message, $payload)
+            : $this->sendNow($project, $message);
     }
 
     public function sendNow(Project $project, Message $message): void
@@ -94,14 +128,40 @@ class MessageService
         ]);
     }
 
-    public function scheduledMessage(Message $message): void
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function scheduledMessage(Message $message, array $payload): void
     {
-        $this->saveMessageDateAndTime($message);
+        $this->saveMessageDateAndTime(
+            $message,
+            (string) ($payload['date'] ?? ''),
+            isset($payload['time']) ? (string) $payload['time'] : null,
+        );
     }
 
-    private function saveMessageDateAndTime(Message $message): void
+    private function ensureDeliveryOptionSelected(array $payload): void
     {
-        $datetime = new DateTimeImmutable(request()->date.' '.request()->time);
+        if ($this->deliveryOptionEnabled($payload, 'mail') || $this->deliveryOptionEnabled($payload, 'sms')) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'option' => 'Please choose any options.',
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function deliveryOptionEnabled(array $payload, string $type): bool
+    {
+        return filter_var($payload[$type] ?? false, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function saveMessageDateAndTime(Message $message, string $date, ?string $time): void
+    {
+        $datetime = new DateTimeImmutable(trim($date.' '.($time ?? '')));
 
         $formattedTime = $datetime->format('Y-m-d H:i:s');
 

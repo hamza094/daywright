@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\Subscription\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\InvitationUsersRequest;
 use App\Http\Requests\Api\V1\ProjectInvitationIndexRequest;
@@ -14,7 +13,6 @@ use App\Http\Resources\Api\V1\Task\TaskMemberResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Api\V1\InvitationService;
-use App\Services\Api\V1\Subscription\PlanLimitService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,19 +52,14 @@ class InvitationController extends ApiController
      * ### Authorization:
      * - This action can only be performed by the project owner
      */
-    public function invite(Project $project, InvitationUsersRequest $request, PlanLimitService $planLimitService): JsonResponse
+    public function invite(Project $project, InvitationUsersRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $user = User::query()->where('email', $validated['email'])->first();
 
         try {
-            $planLimitService->executeWithinProjectLimit(
-                PlanLimitType::MembersPerProject,
-                $project,
-                function (Project $lockedProject) use ($user): void {
-                    $this->invitationService->sendInvitation($user, $lockedProject);
-                }
-            );
+            $this->invitationService->sendInvitationByEmail($project, $validated['email']);
+
+            $user = User::query()->where('email', $validated['email'])->first();
 
             return response()->json([
                 'message' => 'Project invitation sent to '.$user->name,

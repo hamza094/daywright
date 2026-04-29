@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\Subscription\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\TaskRequest;
 use App\Http\Requests\Api\V1\TaskUpdate;
@@ -12,7 +11,6 @@ use App\Http\Resources\Api\V1\TaskResource;
 use App\Http\Resources\Api\V1\TasksResource;
 use App\Models\Project;
 use App\Models\Task;
-use App\Services\Api\V1\Subscription\PlanLimitService;
 use App\Services\Api\V1\Task\TaskService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -49,22 +47,9 @@ class TaskController extends ApiController
      *
      * This endpoint allows creating a new task related to a specific project.
      */
-    public function store(Project $project, TaskRequest $request, TaskService $taskService, PlanLimitService $planLimitService): JsonResponse
+    public function store(Project $project, TaskRequest $request, TaskService $taskService): JsonResponse
     {
-        $authenticatedUser = $this->authenticatedUser();
-
-        $task = $planLimitService->executeWithinProjectLimit(
-            PlanLimitType::ActiveTasksPerProject,
-            $project,
-            fn (Project $lockedProject): Task => $lockedProject->tasks()->firstOrCreate(
-                $request->validated() + ['user_id' => $authenticatedUser->id,
-                ]
-            )
-        );
-
-        $taskService->sendNotification($project);
-
-        $task->load('status');
+        $task = $taskService->createTask($project, $this->authenticatedUser(), $request->validated());
 
         return response()->json([
             'message' => 'Task added Successfully',
@@ -90,15 +75,9 @@ class TaskController extends ApiController
      * This endpoint allows you to update the details of a specific task associated with a given project.
      * The user must have proper authorization to access and modify the task.
      */
-    public function update(Project $project, Task $task, TaskUpdate $request, TaskService $taskService)
+    public function update(Project $project, Task $task, TaskUpdate $request, TaskService $taskService): JsonResponse
     {
-        $taskService->checkValidation($request, $task);
-
-        $taskService->updateTask($task, $request->validated());
-
-        if ($request->safe()->has('status_id')) {
-            $task->load('status');
-        }
+        $task = $taskService->updateTask($task, $request->validated());
 
         return response()->json([
             'message' => 'Task Updated Successfully',

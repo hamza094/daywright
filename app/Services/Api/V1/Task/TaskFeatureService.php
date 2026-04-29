@@ -11,6 +11,7 @@ use App\Notifications\TaskAssigned;
 use Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Symfony\Component\HttpFoundation\Response;
 
 class TaskFeatureService
 {
@@ -43,8 +44,19 @@ class TaskFeatureService
         });
     }
 
+    public function unassignMember(Task $task, int $memberId): User
+    {
+        return DB::transaction(function () use ($task, $memberId): User {
+            $task->assignee()->detach($memberId);
+
+            return User::query()->findOrFail($memberId);
+        });
+    }
+
     public function removeTask(Task $task): void
     {
+        abort_if(! $task->trashed(), Response::HTTP_FORBIDDEN, 'Task must be trashed to perform this action');
+
         $task->forceDelete();
     }
 
