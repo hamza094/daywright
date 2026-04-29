@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Resources\Api\V1\ProjectInvitaionResource;
+use App\Http\Resources\Api\V1\ProjectInvitationResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
@@ -29,7 +29,7 @@ class UserInvitationsController extends ApiController
         }
 
         return response()->json([
-            'invitations' => ProjectInvitaionResource::collection($pendingInvitations),
+            'invitations' => ProjectInvitationResource::collection($pendingInvitations),
         ]);
     }
 }

@@ -14,7 +14,7 @@ use Timezone;
 /**
  * @mixin \App\Models\Task
  */
-class TasksResource extends JsonResource
+class TaskCollectionResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

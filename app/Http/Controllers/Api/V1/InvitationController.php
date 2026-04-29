@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\InvitationUsersRequest;
 use App\Http\Requests\Api\V1\ProjectInvitationIndexRequest;
 use App\Http\Resources\Api\V1\InvitedUserResource;
-use App\Http\Resources\Api\V1\ProjectsResource;
+use App\Http\Resources\Api\V1\ProjectResource;
 use App\Http\Resources\Api\V1\Task\TaskMemberResource;
 use App\Models\Project;
 use App\Models\User;
@@ -63,7 +63,7 @@ class InvitationController extends ApiController
 
             return response()->json([
                 'message' => 'Project invitation sent to '.$user->name,
-                'project' => new ProjectsResource($project),
+                'project' => new ProjectResource($project),
                 'invited_user' => new InvitedUserResource($user),
             ], 200);
 
@@ -93,7 +93,7 @@ class InvitationController extends ApiController
 
             return response()->json([
                 'message' => 'You have accepted Project invitation',
-                'project' => new ProjectsResource($project),
+                'project' => new ProjectResource($project),
                 'accepted_user' => new InvitedUserResource($user),
             ], Response::HTTP_OK);
 
@@ -118,7 +118,7 @@ class InvitationController extends ApiController
 
         return response()->json([
             'message' => 'You have rejected the invitation to join the project.',
-            'project' => new ProjectsResource($project),
+            'project' => new ProjectResource($project),
             'user' => new InvitedUserResource($user),
         ], Response::HTTP_OK);
     }
@@ -149,7 +149,7 @@ class InvitationController extends ApiController
 
         return response()->json([
             'message' => 'You have canceled the invitation for '.$user->name.' to join the project.',
-            'project' => new ProjectsResource($project),
+            'project' => new ProjectResource($project),
             'user' => new InvitedUserResource($user),
         ], Response::HTTP_OK);
     }

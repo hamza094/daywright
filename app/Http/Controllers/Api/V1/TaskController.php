@@ -6,9 +6,9 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\TaskRequest;
-use App\Http\Requests\Api\V1\TaskUpdate;
+use App\Http\Requests\Api\V1\TaskUpdateRequest;
+use App\Http\Resources\Api\V1\TaskCollectionResource;
 use App\Http\Resources\Api\V1\TaskResource;
-use App\Http\Resources\Api\V1\TasksResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\Api\V1\Task\TaskService;
@@ -27,7 +27,7 @@ class TaskController extends ApiController
      *  - Archived tasks are returned without pagination.
      * - Active tasks are paginated for easier navigation.
      *
-     * @response AnonymousResourceCollection<LengthAwarePaginator<TasksResource>>
+     * @response AnonymousResourceCollection<LengthAwarePaginator<TaskCollectionResource>>
      */
     public function index(Project $project, Request $request, TaskService $taskService): JsonResponse
     {
@@ -52,8 +52,8 @@ class TaskController extends ApiController
         $task = $taskService->createTask($project, $this->authenticatedUser(), $request->validated());
 
         return response()->json([
-            'message' => 'Task added Successfully',
-            'task' => new TasksResource($task),
+            'message' => 'Task added successfully.',
+            'task' => new TaskResource($task),
         ], 201);
 
     }
@@ -75,12 +75,12 @@ class TaskController extends ApiController
      * This endpoint allows you to update the details of a specific task associated with a given project.
      * The user must have proper authorization to access and modify the task.
      */
-    public function update(Project $project, Task $task, TaskUpdate $request, TaskService $taskService): JsonResponse
+    public function update(Project $project, Task $task, TaskUpdateRequest $request, TaskService $taskService): JsonResponse
     {
         $task = $taskService->updateTask($task, $request->validated());
 
         return response()->json([
-            'message' => 'Task Updated Successfully',
+            'message' => 'Task updated successfully.',
             'task' => new TaskResource($task),
         ], 200);
     }

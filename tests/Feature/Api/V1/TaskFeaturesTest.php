@@ -33,7 +33,7 @@ class TaskFeaturesTest extends TestCase
         $this->assignMembersToTask($task, $members)
             ->assertSuccessful()
             ->assertJson([
-                'message' => 'Task assigned to member Successfully',
+                'message' => 'Task assigned successfully.',
             ]);
 
         $this->assertDatabaseHas('task_user', [
@@ -76,7 +76,7 @@ class TaskFeaturesTest extends TestCase
 
         $this->unassignMemberFromTask($task, $this->user->id)
             ->assertSuccessful()
-            ->assertJson(['message' => 'Task member Unassigned']);
+            ->assertJson(['message' => 'Task member unassigned.']);
 
         $this->assertDatabaseMissing('task_user', [
             'task_id' => $task->id,

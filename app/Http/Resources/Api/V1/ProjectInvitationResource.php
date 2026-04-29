@@ -12,7 +12,7 @@ use Override;
 /**
  * @mixin \App\Models\Project
  */
-class ProjectInvitaionResource extends JsonResource
+class ProjectInvitationResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

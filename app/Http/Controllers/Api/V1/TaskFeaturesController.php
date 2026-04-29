@@ -38,7 +38,7 @@ class TaskFeaturesController extends ApiController
         $service->assignMembers($task, $members, $project);
 
         return response()->json([
-            'message' => 'Task assigned to member Successfully',
+            'message' => 'Task assigned successfully.',
             'taskMembers' => TaskMemberResource::collection($task->assignee),
         ], 200);
     }
@@ -60,7 +60,7 @@ class TaskFeaturesController extends ApiController
         $user = $service->unassignMember($task, $memberId);
 
         return response()->json([
-            'message' => 'Task member Unassigned',
+            'message' => 'Task member unassigned.',
             'member' => new TaskMemberResource($user),
         ], 200);
     }

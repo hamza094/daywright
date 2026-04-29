@@ -11,7 +11,7 @@ use Override;
 /**
  * @mixin \App\Models\Project
  */
-class ProjectsResource extends JsonResource
+class ProjectCollectionResource extends JsonResource
 {
     /**
      * Transform the resource into an array.

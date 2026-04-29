@@ -22,7 +22,7 @@ class SearchableTest extends TestCase
     {
         $request = new Request;
 
-        $service = new InvitationService;
+        $service = app(InvitationService::class);
 
         $result = $service->usersSearch($request);
 
@@ -37,7 +37,7 @@ class SearchableTest extends TestCase
         $query = $user->name;
         $request = new Request(['query' => $query]);
 
-        $service = new InvitationService;
+        $service = app(InvitationService::class);
         $result = $service->usersSearch($request);
 
         $this->assertCount(1, $result);

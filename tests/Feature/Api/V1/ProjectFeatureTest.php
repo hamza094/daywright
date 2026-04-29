@@ -172,7 +172,7 @@ class ProjectFeatureTest extends TestCase
         $response
             ->assertStatus(200)
             ->assertJson([
-                'message' => 'Project Updated Successfully',
+                'message' => 'Project updated successfully.',
                 'project' => [
                     'name' => $this->project->name,
                     'slug' => $this->project->slug,

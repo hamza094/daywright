@@ -73,7 +73,7 @@ class UserController extends ApiController
         $userService->updateUser($user, $request->validated());
 
         return response()->json([
-            'message' => 'User Data Updated Sucessfully',
+            'message' => 'User data updated successfully.',
             'user' => new UserResource($user),
         ], 200);
     }
@@ -90,7 +90,7 @@ class UserController extends ApiController
         $user->delete(); // Soft delete
 
         return response()->json([
-            'message' => 'User Data Deleted Successfully',
+            'message' => 'User data deleted successfully.',
         ], 200);
     }
 
@@ -107,7 +107,7 @@ class UserController extends ApiController
         $getUser->forceDelete();
 
         return response()->json([
-            'message' => 'User Data Permanently Deleted',
+            'message' => 'User data permanently deleted.',
         ], 200);
     }
 }

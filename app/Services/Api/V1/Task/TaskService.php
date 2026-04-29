@@ -7,7 +7,7 @@ namespace App\Services\Api\V1\Task;
 use App\Actions\NotificationAction;
 use App\Actions\Task\ResetTaskNotificationAction;
 use App\Enums\Subscription\PlanLimitType;
-use App\Http\Resources\Api\V1\TasksResource;
+use App\Http\Resources\Api\V1\TaskCollectionResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -36,7 +36,7 @@ class TaskService
                 'message' => $results->isEmpty()
                   ? 'Sorry, no tasks found.'
                   : $this->getMessage(true),
-                'tasksData' => TasksResource::collection($results),
+                'tasksData' => TaskCollectionResource::collection($results),
             ];
         }
 
@@ -47,7 +47,7 @@ class TaskService
             'message' => $query->get()->isEmpty()
               ? 'Sorry, no tasks found.'
               : $this->getMessage(false),
-            'tasksData' => TasksResource::collection($query->get())->paginate($perPage),
+            'tasksData' => TaskCollectionResource::collection($query->get())->paginate($perPage),
         ];
     }
 

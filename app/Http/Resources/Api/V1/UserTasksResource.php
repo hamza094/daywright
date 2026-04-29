@@ -28,7 +28,7 @@ class UserTasksResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'status' => new TaskStatusResource($this->whenLoaded('status')),
-            'project' => new ProjectsResource($this->whenLoaded('project')),
+            'project' => new ProjectResource($this->whenLoaded('project')),
             'assignee' => UsersResource::collection($this->whenLoaded('assignee')),
             'due_at' => $this->when($this->due_at, fn () => Timezone::convertToLocal(Carbon::parse($this->due_at))),
             'state' => $this->when($this->user_id !== auth()->id(), 'assigned', 'created'),

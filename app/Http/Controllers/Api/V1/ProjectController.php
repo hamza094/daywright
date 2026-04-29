@@ -8,8 +8,8 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\ProjectStoreRequest;
 use App\Http\Requests\Api\V1\ProjectUpdateRequest;
+use App\Http\Resources\Api\V1\ProjectCollectionResource;
 use App\Http\Resources\Api\V1\ProjectResource;
-use App\Http\Resources\Api\V1\ProjectsResource;
 use App\Models\Project;
 use App\Services\Api\V1\DashboardService;
 use App\Services\Api\V1\ProjectService;
@@ -26,9 +26,9 @@ class ProjectController extends ApiController
         $projects = $dashboardService->getUserProjects($request);
 
         return response()->json([
-            'projects' => ProjectsResource::collection($projects)->paginate(config('app.project.items_limit')),
+            'projects' => ProjectCollectionResource::collection($projects)->paginate(config('app.project.items_limit')),
             'projectsCount' => $projects?->count() ?? 0,
-            'message' => $projects === null || $projects->isEmpty() ? 'Sorry No Projects Found' : '',
+            'message' => $projects === null || $projects->isEmpty() ? 'No projects found.' : '',
         ], Response::HTTP_OK);
     }
 
@@ -44,8 +44,8 @@ class ProjectController extends ApiController
         $project = $this->projectService->createProject($this->authenticatedUser(), $request->validated());
 
         return response()->json([
-            'message' => 'Project Created Successfully',
-            'project' => new ProjectsResource($project),
+            'message' => 'Project created successfully.',
+            'project' => new ProjectResource($project),
         ], 201);
     }
 
@@ -69,7 +69,7 @@ class ProjectController extends ApiController
      *  This endpoint allows you to update the details of an existing project.
      * It requires the project's slug and the updated fields (name, about, notes) when they are present in the request body and returns the updated resource.
      *
-     * @response array{message: 'Project Updated Successfully',project:array{id:1, slug:'the-dimension', name:'The Dimension', about:'This is the project dimension description', score:5, created_at:'5 days ago', updated_at:'few seconds ago',links:array{self:'api/v1/projects/the-dimension'}}}
+     * @response array{message: 'Project updated successfully.',project:array{id:1, slug:'the-dimension', name:'The Dimension', about:'This is the project dimension description', score:5, created_at:'5 days ago', updated_at:'few seconds ago',links:array{self:'api/v1/projects/the-dimension'}}}
      */
     public function update(Project $project, ProjectUpdateRequest $request): JsonResponse
     {
@@ -87,7 +87,7 @@ class ProjectController extends ApiController
         $this->projectService->sendNotification($project);
 
         return response()->json([
-            'message' => 'Project Updated Successfully',
+            'message' => 'Project updated successfully.',
             'project' => new ProjectResource($project, $this->projectService->projectLimits($project, $request->user())),
         ], 200);
     }

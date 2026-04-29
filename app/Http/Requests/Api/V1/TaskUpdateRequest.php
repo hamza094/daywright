@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 use Override;
 use Timezone;
 
-class TaskUpdate extends FormRequest
+class TaskUpdateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

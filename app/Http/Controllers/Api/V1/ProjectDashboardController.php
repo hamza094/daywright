@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\UserActivitiesRequest;
 use App\Http\Requests\Api\V1\UserTasksRequest;
-use App\Http\Resources\Api\V1\ProjectsResource;
+use App\Http\Resources\Api\V1\ProjectCollectionResource;
 use App\Http\Resources\Api\V1\UserActivitiesResource;
 use App\Http\Resources\Api\V1\UserTasksResource;
 use App\Repository\DashBoardRepository;
@@ -32,16 +32,16 @@ class ProjectDashboardController extends ApiController
      *
      * List and filter user's projects. Supports pagination with defined items per page.
      *
-     * @response AnonymousResourceCollection<LengthAwarePaginator<ProjectsResource>>
+     * @response AnonymousResourceCollection<LengthAwarePaginator<ProjectCollectionResource>>
      */
     public function userProjects(DashboardProjectRequest $request): JsonResponse
     {
         $projects = $this->dashboardService->getUserProjects($request);
 
         return response()->json([
-            'projects' => ProjectsResource::collection($projects)->paginate(config('app.project.items_limit')),
+            'projects' => ProjectCollectionResource::collection($projects)->paginate(config('app.project.items_limit')),
             'projectsCount' => $projects->count(),
-            'message' => $projects->isEmpty() ? 'Sorry No Projects Found' : '',
+            'message' => $projects->isEmpty() ? 'No projects found.' : '',
         ]);
     }
 
@@ -52,7 +52,7 @@ class ProjectDashboardController extends ApiController
     {
         $projects = $this->dashboardService->getDashboardProjects();
 
-        $projectsResource = ProjectsResource::collection($projects);
+        $projectsResource = ProjectCollectionResource::collection($projects);
 
         return response()->json([
             'projects' => $projectsResource,
