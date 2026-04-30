@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Api\V1;
+namespace App\Http\Resources\Api\V1\Project;
 
 use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Illuminate\Http\Request;

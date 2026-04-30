@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Api\V1;
+namespace App\Http\Resources\Api\V1\Project;
 
+use App\Http\Resources\Api\V1\ActivityResource;
+use App\Http\Resources\Api\V1\StageResource;
 use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
@@ -31,9 +33,6 @@ class ProjectResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
-        $showsProjectDetails = $request->routeIs('projects.show');
-        $showsProjectLimits = $request->routeIs('projects.show', 'projects.update');
-
         return [
             /**
              *  @example 1
@@ -97,26 +96,24 @@ class ProjectResource extends JsonResource
                     ->format(config('app.date_formats.exact'))
             ),
 
-            $this->mergeWhen($showsProjectDetails, [
-                'ownerNotAuthorized' => $this->whenLoaded(
-                    'user',
-                    fn (): bool => auth()->user()->is($this->user) && ! auth()->user()->isConnectedToZoom(),
-                ),
+            'ownerNotAuthorized' => $this->whenLoaded(
+                'user',
+                fn (): bool => auth()->user()?->is($this->user) && ! auth()->user()?->isConnectedToZoom(),
+            ),
 
-                'days_limit' => config('app.project.abandonedLimit'),
+            'days_limit' => config('app.project.abandonedLimit'),
 
-                'postponed_reason' => $this->postponed_reason,
+            'postponed_reason' => $this->postponed_reason,
 
-                /**
-                 * Basic details of the project owner.
-                 *
-                 * @example [data]
-                 */
-                'user' => $this->whenLoaded(
-                    'user',
-                    fn (): array => $this->user->only(['uuid', 'name', 'avatar_path', 'username', 'email']),
-                ),
-            ]),
+            /**
+             * Basic details of the project owner.
+             *
+             * @example [data]
+             */
+            'user' => $this->whenLoaded(
+                'user',
+                fn (): array => $this->user->only(['uuid', 'name', 'avatar_path', 'username', 'email']),
+            ),
 
             /**
              * Project status calculated on the based of score
@@ -140,24 +137,21 @@ class ProjectResource extends JsonResource
             /**
              * Current stage information for the project.
              */
-            'stage' => $this->when(
-                $showsProjectDetails,
-                fn () => $this->whenLoaded('stage', fn (): StageResource => new StageResource($this->stage)),
+            'stage' => $this->whenLoaded(
+                'stage',
+                fn (): StageResource => new StageResource($this->stage),
             ),
 
             /**
              * List of active project members.
              */
-            'members' => $this->when(
-                $showsProjectDetails,
-                fn () => $this->whenLoaded(
-                    'activeMembers',
-                    fn () => InvitedUserResource::collection($this->activeMembers),
-                ),
+            'members' => $this->whenLoaded(
+                'activeMembers',
+                fn () => InvitedUserResource::collection($this->activeMembers),
             ),
 
             'limits' => $this->when(
-                $showsProjectLimits && $this->limits !== null,
+                $this->limits !== null,
                 $this->limits,
             ),
 
@@ -170,6 +164,5 @@ class ProjectResource extends JsonResource
                 'self' => $this->path(),
             ],
         ];
-
     }
 }

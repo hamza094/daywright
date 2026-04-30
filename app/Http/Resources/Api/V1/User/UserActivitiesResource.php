@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Api\V1;
+namespace App\Http\Resources\Api\V1\User;
 
+use App\Http\Resources\Api\V1\Project\ProjectSummaryResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 use JsonSerializable;
@@ -27,7 +28,7 @@ class UserActivitiesResource extends JsonResource
             'description' => method_exists($this, $this->description)
               ? $this->{$this->description}()
               : $this->description,
-            'project' => $this->whenLoaded('project') && $this->project ? new ProjectResource($this->project) : null,
+            'project' => $this->whenLoaded('project') && $this->project ? new ProjectSummaryResource($this->project) : null,
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'subject' => $this->getSubjectDetails(),
             'color' => $this->color(),

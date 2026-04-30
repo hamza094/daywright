@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1\Admin;
 
 use App\Http\Resources\Api\V1\Admin\User\AdminUserSummaryResource;
-use App\Http\Resources\Api\V1\TaskStatusResource;
+use App\Http\Resources\Api\V1\Task\TaskStatusResource;
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;

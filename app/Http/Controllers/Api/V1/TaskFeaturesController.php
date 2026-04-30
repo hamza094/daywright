@@ -9,7 +9,7 @@ use App\Http\Requests\Api\V1\TaskMemberSearchRequest;
 use App\Http\Requests\Api\V1\TaskMembersRequest;
 use App\Http\Requests\Api\V1\TaskMemberUnassignRequest;
 use App\Http\Resources\Api\V1\Task\TaskMemberResource;
-use App\Http\Resources\Api\V1\TaskResource;
+use App\Http\Resources\Api\V1\Task\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Repository\TaskRepository;

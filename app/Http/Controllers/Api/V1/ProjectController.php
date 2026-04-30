@@ -8,8 +8,8 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\ProjectStoreRequest;
 use App\Http\Requests\Api\V1\ProjectUpdateRequest;
-use App\Http\Resources\Api\V1\ProjectCollectionResource;
-use App\Http\Resources\Api\V1\ProjectResource;
+use App\Http\Resources\Api\V1\Project\ProjectCollectionResource;
+use App\Http\Resources\Api\V1\Project\ProjectResource;
 use App\Models\Project;
 use App\Services\Api\V1\DashboardService;
 use App\Services\Api\V1\ProjectService;
@@ -42,10 +42,11 @@ class ProjectController extends ApiController
     public function store(ProjectStoreRequest $request): JsonResponse
     {
         $project = $this->projectService->createProject($this->authenticatedUser(), $request->validated());
+        $project->load(['user', 'stage', 'activeMembers', 'limitedActivities']);
 
         return response()->json([
             'message' => 'Project created successfully.',
-            'project' => new ProjectResource($project),
+            'project' => new ProjectResource($project, $this->projectService->projectLimits($project, $request->user())),
         ], 201);
     }
 
@@ -82,7 +83,7 @@ class ProjectController extends ApiController
         }
 
         $project->update($request->validated());
-        $project->loadMissing('user');
+        $project->load(['user', 'stage', 'activeMembers', 'limitedActivities']);
 
         $this->projectService->sendNotification($project);
 

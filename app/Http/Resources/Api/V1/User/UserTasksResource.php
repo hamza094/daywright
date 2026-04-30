@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Api\V1;
+namespace App\Http\Resources\Api\V1\User;
 
-use App\Http\Resources\Api\V1\User\UserSummaryResource;
+use App\Http\Resources\Api\V1\Project\ProjectSummaryResource;
+use App\Http\Resources\Api\V1\Task\TaskStatusResource;
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
@@ -29,7 +30,7 @@ class UserTasksResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'status' => new TaskStatusResource($this->whenLoaded('status')),
-            'project' => new ProjectResource($this->whenLoaded('project')),
+            'project' => new ProjectSummaryResource($this->whenLoaded('project')),
             'assignee' => UserSummaryResource::collection($this->whenLoaded('assignee')),
             'due_at' => $this->when($this->due_at, fn () => Timezone::convertToLocal(Carbon::parse($this->due_at))),
             'state' => $this->when($this->user_id !== auth()->id(), 'assigned', 'created'),

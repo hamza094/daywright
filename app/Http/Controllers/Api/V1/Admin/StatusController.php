@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\TaskStatusRequest;
-use App\Http\Resources\Api\V1\TaskStatusResource;
+use App\Http\Resources\Api\V1\Task\TaskStatusResource;
 use App\Models\TaskStatus as Status;
 use F9Web\ApiResponseHelpers;
 

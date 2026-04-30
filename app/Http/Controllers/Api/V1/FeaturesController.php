@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exports\ProjectsExport;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\StageRequest;
-use App\Http\Resources\Api\V1\ProjectStageResource;
+use App\Http\Resources\Api\V1\Project\ProjectStageResource;
 use App\Models\Project;
 use App\Services\Api\V1\FeatureService;
 use App\Services\Api\V1\ProjectService;

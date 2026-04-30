@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Api\V1;
+namespace App\Http\Resources\Api\V1\Project;
 
+use App\Http\Resources\Api\V1\StageResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
@@ -22,17 +23,6 @@ class ProjectCollectionResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
-
-        if ($request->is('api/v1/dashboard/tasks')) {
-            return [
-                'name' => $this->name,
-                'slug' => $this->slug,
-                'links' => [
-                    'self' => $this->path(),
-                ],
-            ];
-        }
-
         return [
             /**
              * @example 1

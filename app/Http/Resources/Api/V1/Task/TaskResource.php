@@ -2,9 +2,8 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Api\V1;
+namespace App\Http\Resources\Api\V1\Task;
 
-use App\Http\Resources\Api\V1\Task\TaskMemberResource;
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
@@ -26,8 +25,6 @@ class TaskResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
-        $showRoute = $request->routeIs('tasks.show');
-
         return [
             'id' => $this->id,
             /**
@@ -58,9 +55,9 @@ class TaskResource extends JsonResource
             /*
           * Users associated to task
           */
-            'members' => $this->when(
-                $showRoute,
-                fn () => TaskMemberResource::collection($this->whenLoaded('assignee'))
+            'members' => $this->whenLoaded(
+                'assignee',
+                fn () => TaskMemberResource::collection($this->assignee),
             ),
 
             /**

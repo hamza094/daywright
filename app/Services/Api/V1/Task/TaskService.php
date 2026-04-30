@@ -7,7 +7,7 @@ namespace App\Services\Api\V1\Task;
 use App\Actions\NotificationAction;
 use App\Actions\Task\ResetTaskNotificationAction;
 use App\Enums\Subscription\PlanLimitType;
-use App\Http\Resources\Api\V1\TaskCollectionResource;
+use App\Http\Resources\Api\V1\Task\TaskCollectionResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
