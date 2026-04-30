@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Auth;
 
-use App\Http\Resources\Api\V1\UsersResource;
+use App\Http\Resources\Api\V1\User\AuthenticatedUserResource;
 use App\Models\User;
 
 final class AuthPayload
@@ -25,7 +25,7 @@ final class AuthPayload
     {
         $data = [
             'message' => $this->message,
-            'user' => new UsersResource($this->user),
+            'user' => new AuthenticatedUserResource($this->user),
             'status' => $this->status,
         ];
 

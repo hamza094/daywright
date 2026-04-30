@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Admin;
 
+use App\Http\Resources\Api\V1\Admin\User\AdminUserSummaryResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 use JsonSerializable;
@@ -25,7 +26,7 @@ class ActivitiesResource extends JsonResource
             'project' => $this->whenLoaded('project') ? new ProjectsResource($this->project) : null,
             'time' => $this->created_at->diffForHumans(),
             'subject_id' => $this->subject_type === \App\Models\Task::class ? ($this->subject ? $this->subject->id : null) : $this->subject_type,
-            'user' => new UserResource($this->whenLoaded('user')),
+            'user' => new AdminUserSummaryResource($this->whenLoaded('user')),
         ];
     }
 

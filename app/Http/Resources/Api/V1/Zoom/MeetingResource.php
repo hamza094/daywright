@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Zoom;
 
-use App\Http\Resources\Api\V1\UsersResource;
+use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
@@ -34,7 +34,7 @@ class MeetingResource extends JsonResource
                 'join' => ', ',
             ]),
             'updated_at' => $this->updated_at->diffForHumans(),
-            'owner' => new UsersResource($this->whenLoaded('user')),
+            'owner' => new UserSummaryResource($this->whenLoaded('user')),
             'start_time' => Carbon::parse($this->start_time)->format('j F Y, H:i'),
             'duration' => $this->duration,
             'start_url' => $this->start_url,

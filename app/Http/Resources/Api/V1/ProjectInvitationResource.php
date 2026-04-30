@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
@@ -63,7 +64,7 @@ class ProjectInvitationResource extends JsonResource
              *
              * @example {"uuid":176890,"name":"Owner Name",...}
              */
-            'owner' => new UsersResource($this->whenLoaded('user')),
+            'owner' => new UserSummaryResource($this->whenLoaded('user')),
 
             /**
              * Project creation date (human readable)

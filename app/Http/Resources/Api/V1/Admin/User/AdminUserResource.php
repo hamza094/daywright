@@ -2,26 +2,29 @@
 
 declare(strict_types=1);
 
-namespace App\Http\Resources\Api\V1\Admin;
+namespace App\Http\Resources\Api\V1\Admin\User;
 
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use JsonSerializable;
 use Override;
 use Timezone;
 
-class UsersResource extends JsonResource
+/**
+ * @mixin \App\Models\User
+ */
+class AdminUserResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
+     * @return array<string, mixed>
      */
     #[Override]
-    public function toArray($request)
+    public function toArray(Request $request): array
     {
         return [
+            'id' => $this->id,
             'uuid' => $this->uuid,
             'name' => $this->name,
             'username' => $this->username,

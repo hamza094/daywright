@@ -43,10 +43,24 @@ class UserTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonFragment([
+                'uuid' => $this->user->uuid,
                 'name' => $this->user->name,
+            ])
+            ->assertJsonMissing([
                 'email' => $this->user->email,
             ]);
 
+    }
+
+    #[Test]
+    public function me_endpoint_returns_authenticated_user_contract(): void
+    {
+        $this->getJson(route('user.me'))
+            ->assertOk()
+            ->assertJsonPath('user.id', $this->user->id)
+            ->assertJsonPath('user.uuid', $this->user->uuid)
+            ->assertJsonPath('user.isAdmin', false)
+            ->assertJsonPath('user.twoFactorEnabled', false);
     }
 
     #[Test]

@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\UpdateUserRoleRequest;
-use App\Http\Resources\Api\V1\Admin\UsersResource;
+use App\Http\Resources\Api\V1\Admin\User\AdminUserResource;
 use App\Models\User;
 use App\Services\Admin\AdminAccessService;
 use Illuminate\Http\JsonResponse;
@@ -36,7 +36,7 @@ class UserController extends Controller
             })
             ->paginate($perPage);
 
-        return UsersResource::collection($users);
+        return AdminUserResource::collection($users);
     }
 
     public function updateRole(UpdateUserRoleRequest $request, User $user): JsonResponse
@@ -46,7 +46,7 @@ class UserController extends Controller
 
             return response()->json([
                 'message' => 'Admin access granted successfully.',
-                'user' => new UsersResource($user->fresh([
+                'user' => new AdminUserResource($user->fresh([
                     'adminGrantedBy:id,name',
                     'adminRevokedBy:id,name',
                 ])),
@@ -57,7 +57,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Admin access revoked successfully.',
-            'user' => new UsersResource($user->fresh([
+            'user' => new AdminUserResource($user->fresh([
                 'adminGrantedBy:id,name',
                 'adminRevokedBy:id,name',
             ])),

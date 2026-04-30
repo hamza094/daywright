@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\RegisterUserRequest;
-use App\Http\Resources\Api\V1\UsersResource;
+use App\Http\Resources\Api\V1\User\AuthenticatedUserResource;
 use App\Services\Api\V1\Auth\RegisterUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -41,7 +41,7 @@ class RegisterController extends ApiController
 
             return response()->json([
                 'message' => 'User Registered Successfully',
-                'user' => new UsersResource($user),
+                'user' => new AuthenticatedUserResource($user),
             ], 201);
         } catch (Throwable $e) {
             Log::error('User registration failed', ['exception' => $e]);
