@@ -56,11 +56,11 @@
                     <td>{{ user.email }}</td>
                     <td>{{ user.timezone }}</td>
                     <td>{{ user.created_at }}</td>
-                    <td>{{ user.isSubscribed }}</td>
+                    <td>{{ user.is_subscribed }}</td>
                     <td>{{ user.projects_count }}</td>
                     <td>{{ user.projects_member }}</td>
                     <td>
-                      <span class="me-2">{{ user.isAdmin ? 'Yes' : 'No' }}</span>
+                      <span class="me-2">{{ user.is_admin ? 'Yes' : 'No' }}</span>
                       <div class="small text-muted">
                         <div v-if="user.admin_granted_by && user.admin_granted_at">
                           Granted by {{ user.admin_granted_by }} on {{ user.admin_granted_at }}
@@ -72,9 +72,9 @@
                       <button
                         :disabled="adminActionUserId === user.uuid"
                         class="btn btn-sm"
-                        :class="user.isAdmin ? 'btn-outline-danger' : 'btn-outline-success'"
+                        :class="user.is_admin ? 'btn-outline-danger' : 'btn-outline-success'"
                         @click="toggleAdminAccess(user)">
-                        {{ user.isAdmin ? 'Revoke' : 'Grant' }}
+                        {{ user.is_admin ? 'Revoke' : 'Grant' }}
                       </button>
                     </td>
                   </tr>
@@ -118,7 +118,7 @@ export default {
     canMutateAdmin() {
       const user = this.getCurrentUser();
 
-      return !!user.isAdmin && !!user.twoFactorEnabled;
+      return !!user.is_admin && !!user.two_factor_enabled;
     },
 
     guardAdminMutation() {
@@ -176,7 +176,7 @@ export default {
     },
 
     isAdminRevokeAction(user) {
-      return Boolean(user.isAdmin);
+      return Boolean(user.is_admin);
     },
 
     getAdminActionLabel(isRevoking) {
@@ -204,7 +204,7 @@ export default {
     },
 
     shouldRedirectAfterSelfRevoke(isRevoking) {
-      return isRevoking && !this.getCurrentUser()?.isAdmin;
+      return isRevoking && !this.getCurrentUser()?.is_admin;
     },
 
     getAdminSuccessMessage(responseMessage, user, isRevoking) {

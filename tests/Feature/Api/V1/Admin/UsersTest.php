@@ -59,7 +59,7 @@ class UsersTest extends TestCase
             'is_admin' => true,
         ])
             ->assertOk()
-            ->assertJsonPath('user.isAdmin', true);
+            ->assertJsonPath('user.is_admin', true);
 
         $this->assertDatabaseHas('users', [
             'id' => $target->id,
@@ -125,7 +125,7 @@ class UsersTest extends TestCase
             'is_admin' => false,
         ])
             ->assertOk()
-            ->assertJsonPath('user.isAdmin', false);
+            ->assertJsonPath('user.is_admin', false);
 
         $this->assertDatabaseHas('users', [
             'id' => $target->id,

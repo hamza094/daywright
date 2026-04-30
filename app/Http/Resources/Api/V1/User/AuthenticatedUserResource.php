@@ -28,8 +28,8 @@ class AuthenticatedUserResource extends JsonResource
             'username' => $this->username,
             'email' => $this->email,
             'timezone' => $this->timezone ?? config('app.timezone', 'UTC'),
-            'isAdmin' => $this->isAdmin(),
-            'twoFactorEnabled' => $this->hasTwoFactorEnabled(),
+            'is_admin' => $this->isAdmin(),
+            'two_factor_enabled' => $this->hasTwoFactorEnabled(),
             'avatar' => $this->when($this->avatar, fn () => $this->avatar_path),
             'verified' => (bool) $this->email_verified_at,
         ];

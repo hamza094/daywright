@@ -416,7 +416,7 @@ export default {
   },
   computed: {
     admin() {
-      const { access } = admin(this.auth.isAdmin);
+      const { access } = admin(this.auth.is_admin);
       return { access };
     },
   },

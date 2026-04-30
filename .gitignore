@@ -17,3 +17,4 @@ extra.txt
 .phpstan-result/
 phpstan.neon.tmp
 .vscode/settings.json
+date_formatplan.md

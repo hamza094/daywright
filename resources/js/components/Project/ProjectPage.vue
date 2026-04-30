@@ -318,7 +318,7 @@ export default {
     ...mapState('project', ['project', 'user', 'getStage', 'tasks']),
 
     permission() {
-      const { access, owner } = permission(this.auth.uuid, this.project.members, this.user.uuid, this.auth.isAdmin);
+      const { access, owner } = permission(this.auth.uuid, this.project.members, this.user.uuid, this.auth.is_admin);
 
       return { access, owner };
     },

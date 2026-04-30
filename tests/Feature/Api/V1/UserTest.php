@@ -59,8 +59,8 @@ class UserTest extends TestCase
             ->assertOk()
             ->assertJsonPath('user.id', $this->user->id)
             ->assertJsonPath('user.uuid', $this->user->uuid)
-            ->assertJsonPath('user.isAdmin', false)
-            ->assertJsonPath('user.twoFactorEnabled', false);
+            ->assertJsonPath('user.is_admin', false)
+            ->assertJsonPath('user.two_factor_enabled', false);
     }
 
     #[Test]

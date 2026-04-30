@@ -81,7 +81,7 @@ export default {
       return this.user.uuid || this.user.id || null;
     },
     isAdmin() {
-      return !!this.user?.isAdmin;
+      return !!this.user?.is_admin;
     },
   },
   methods: {

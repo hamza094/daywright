@@ -172,7 +172,7 @@ export default {
     canMutateAdmin() {
       const user = this.$store.state.currentUser.user || {};
 
-      return !!user.isAdmin && !!user.twoFactorEnabled;
+      return !!user.is_admin && !!user.two_factor_enabled;
     },
     guardAdminMutation() {
       if (this.canMutateAdmin()) {
