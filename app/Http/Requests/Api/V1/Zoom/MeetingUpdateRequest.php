@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Zoom;
 
-use Exception;
+use App\Rules\Iso8601Timestamp;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
-use Safe\DateTimeImmutable;
 
 class MeetingUpdateRequest extends FormRequest
 {
@@ -31,7 +30,13 @@ class MeetingUpdateRequest extends FormRequest
             'topic' => 'string|max:200|sometimes',
             'agenda' => 'string|sometimes|max:2000',
             'duration' => 'integer|sometimes',
-            'start_time' => 'sometimes|after:now',
+            'start_time' => [
+                'sometimes',
+                'bail',
+                'string',
+                new Iso8601Timestamp,
+                'after:now',
+            ],
             'timezone' => 'string|timezone:all|sometimes',
             'password' => 'string|max:10|sometimes',
             'join_before_host' => 'boolean|sometimes',
@@ -39,18 +44,20 @@ class MeetingUpdateRequest extends FormRequest
     }
 
     #[Override]
-    protected function prepareForValidation()
+    protected function prepareForValidation(): void
     {
-        if ($this->has('start_time')) {
-            try {
-                $this->merge([
-                    'start_time' => (new DateTimeImmutable($this->input('start_time')))->format('Y-m-d H:i:s'),
-                ]);
-            } catch (Exception) {
-                $this->merge([
-                    'start_time' => null,
-                ]);
-            }
+        if (! $this->has('start_time')) {
+            return;
         }
+
+        $normalizedStartTime = Iso8601Timestamp::normalizeToUtc((string) $this->input('start_time'));
+
+        if ($normalizedStartTime === null) {
+            return;
+        }
+
+        $this->merge([
+            'start_time' => $normalizedStartTime,
+        ]);
     }
 }

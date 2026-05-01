@@ -322,7 +322,7 @@
                           >
                         </span>
                       </div>
-                      <div class="text-secondary">{{ activity.time }}</div>
+                      <div class="text-secondary">{{ activity.time | msgTime }}</div>
                     </div>
                   </div>
                 </div>

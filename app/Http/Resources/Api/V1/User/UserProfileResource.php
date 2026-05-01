@@ -31,11 +31,11 @@ class UserProfileResource extends JsonResource
             'email' => $this->email,
             'verified' => $this->when(
                 $request->user()?->is($this->resource),
-                fn () => $this->email_verified_at?->diffForHumans(),
+                fn () => $this->email_verified_at?->toIso8601String(),
             ),
             'info' => new UserInfoResource($this->info),
-            'created_at' => $this->created_at->diffForHumans(),
-            'updated_at' => $this->updated_at->diffForHumans(),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

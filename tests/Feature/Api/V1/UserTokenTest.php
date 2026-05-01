@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
@@ -42,6 +43,10 @@ class UserTokenTest extends TestCase
         $response = $this->getJson('/api/v1/api-tokens');
         $response->assertOk();
         $response->assertJsonFragment(['name' => 'Test Token']);
+        $this->assertMatchesRegularExpression(
+            '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$/',
+            (string) $response->json('tokens.0.created_at')
+        );
     }
 
     #[Test]
@@ -58,11 +63,62 @@ class UserTokenTest extends TestCase
             'name' => 'My API Token',
         ]);
         $response->assertCreated();
-        $response->assertJsonFragment(['message' => 'Token created successfully.']);
+        $response->assertJsonFragment(['message' => 'Token created successfully.'])
+            ->assertJsonPath('token_resource.expires_at', null);
         $this->assertDatabaseHas('personal_access_tokens', [
             'name' => 'My API Token',
             'tokenable_id' => $user->id,
         ]);
+
+        $token = $user->tokens()->latest('id')->first();
+
+        $this->assertNotNull($token);
+        $this->assertNull($token->expires_at);
+    }
+
+    #[Test]
+    public function user_can_create_a_token_with_iso_expiration(): void
+    {
+        $user = User::first();
+
+        Sanctum::actingAs(
+            $user,
+            ['*'],
+        );
+
+        $expiresAt = '2026-05-20T15:30:00+02:00';
+        $expectedExpiration = CarbonImmutable::parse($expiresAt)->setTimezone('UTC')->toIso8601String();
+
+        $response = $this->postJson('/api/v1/api-tokens', [
+            'name' => 'Expiring API Token',
+            'expires_at' => $expiresAt,
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('token_resource.expires_at', $expectedExpiration);
+
+        $token = $user->tokens()->latest('id')->first();
+
+        $this->assertNotNull($token);
+        $this->assertSame($expectedExpiration, $token->expires_at?->toIso8601String());
+    }
+
+    #[Test]
+    public function expires_at_must_be_iso_8601_with_timezone_offset(): void
+    {
+        $user = User::first();
+
+        Sanctum::actingAs(
+            $user,
+            ['*'],
+        );
+
+        $this->postJson('/api/v1/api-tokens', [
+            'name' => 'Legacy Token',
+            'expires_at' => '2026-05-20 15:30:00',
+        ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['expires_at']);
     }
 
     #[Test]

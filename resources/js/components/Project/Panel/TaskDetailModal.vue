@@ -42,7 +42,7 @@
             <span class="text-danger font-italic" v-if="errors?.member" v-text="errors?.member"></span>
 
             <p v-if="task.due_at">
-              <small><b>Task due: </b> </small> {{ task.due_at }} {{ auth.timezone }}
+              <small><b>Task due: </b> </small> {{ task.due_at | datetime }} {{ displayTimezone }}
             </p>
 
             <p v-if="task.notified">
@@ -54,11 +54,11 @@
             </p>
 
             <p>
-              <small><b>Task Created At:</b> {{ task.created_at }}</small>
+              <small><b>Task Created At:</b> {{ task.created_at | datetime }}</small>
             </p>
 
             <p v-if="task.updated_at">
-              <small><b>Task Updated At:</b> {{ task.updated_at }}</small>
+              <small><b>Task Updated At:</b> {{ task.updated_at | datetime }}</small>
             </p>
           </div>
 
@@ -105,8 +105,8 @@
                     <datetime
                       type="datetime"
                       v-model="form.due_at"
-                      value-zone="local"
-                      zone="local"
+                      value-zone="UTC"
+                      :zone="displayTimezone"
                       :min-datetime="modifiedDate"></datetime>
                   </span>
 
@@ -163,6 +163,7 @@ import TopPanel from './Modal/TopArea.vue';
 import TaskDescription from './Modal/TaskDescription.vue';
 import TaskMembers from './Modal/TaskMembers.vue';
 import { modalClose } from '../../../mixins/modalClose';
+import { getDisplayTimezone } from '../../../utils/dateTime';
 
 export default {
   components: { TopPanel, TaskDescription, TaskMembers },
@@ -196,6 +197,9 @@ export default {
   },
   computed: {
     ...mapState('SingleTask', ['task', 'errors', 'form', 'statuses', 'due_notifies']),
+    displayTimezone() {
+      return getDisplayTimezone();
+    },
     modifiedDate() {
       const modifiedDate = new Date(this.dateTime.getTime() + 30 * 60000);
       return modifiedDate.toISOString();
@@ -249,7 +253,6 @@ export default {
           this.updateTaskDue({
             dueAt: taskData.due_at,
             notified: taskData.notified,
-            dueAtUtc: taskData.due_at_utc,
           });
           this.cancelDue();
         })

@@ -64,15 +64,15 @@
             </p>
 
             <p class="crm-info">
-              <b>Created At</b>: <span> {{ user.created_at }} </span>
+              <b>Created At</b>: <span> {{ user.created_at | datetime }} </span>
             </p>
 
             <p class="crm-info">
-              <b>Updated At</b>: <span> {{ user.updated_at }} </span>
+              <b>Updated At</b>: <span> {{ user.updated_at | datetime }} </span>
             </p>
 
             <p class="crm-info">
-              <b>Last Seen</b>: <span> {{ user.updated_at }} </span>
+              <b>Last Seen</b>: <span> {{ user.updated_at | msgTime }} </span>
             </p>
           </div>
 

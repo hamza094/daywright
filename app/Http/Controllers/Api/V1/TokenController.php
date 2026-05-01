@@ -37,6 +37,7 @@ class TokenController extends ApiController
     public function store(UserTokenRequest $request, PlanLimitService $planLimitService): JsonResponse
     {
         $data = $request->validated();
+        $expiresAt = ! empty($data['expires_at']) ? Carbon::parse($data['expires_at']) : null;
 
         $token = $planLimitService->executeWithinAccountLimit(
             PlanLimitType::ApiTokens,
@@ -44,7 +45,7 @@ class TokenController extends ApiController
             fn (User $user) => $user->createToken(
                 $data['name'],
                 ['*'],
-                Carbon::parse($data['expires_at'] ?? null)
+                $expiresAt
             )
         );
 

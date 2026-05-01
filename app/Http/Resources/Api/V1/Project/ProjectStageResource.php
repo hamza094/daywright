@@ -44,11 +44,11 @@ class ProjectStageResource extends JsonResource
             'postponed_reason' => $this->when($this->postponed_reason !== null, $this->postponed_reason),
 
             /**
-             * The human-readable creation date of the project set in config file.
+             * Project stage update timestamp in UTC ISO 8601 format.
              *
-             * @example "2 hours ago"
+             * @example "2024-06-10T09:15:00+00:00"
              */
-            'stage_updated_at' => $this->stage_updated_at->format(config('app.date_formats.exact')),
+            'stage_updated_at' => $this->stage_updated_at?->toIso8601String(),
 
             /**
              * Links related to the project.

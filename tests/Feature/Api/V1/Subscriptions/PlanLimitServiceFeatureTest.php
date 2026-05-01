@@ -377,7 +377,7 @@ class PlanLimitServiceFeatureTest extends TestCase
             'topic' => 'Test Meeting',
             'agenda' => 'Test Agenda',
             'duration' => 30,
-            'start_time' => Carbon::now()->addDay()->toDateTimeString(),
+            'start_time' => Carbon::now()->addDay()->toIso8601String(),
             'timezone' => 'UTC',
             'password' => 'abc1234',
             'join_before_host' => false,

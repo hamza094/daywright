@@ -10,9 +10,7 @@ use Illuminate\Bus\Batch;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Validation\ValidationException;
-use Safe\DateTimeImmutable;
 use Throwable;
-use Timezone;
 
 class MessageService
 {
@@ -24,7 +22,7 @@ class MessageService
         $this->ensureDeliveryOptionSelected($payload);
 
         $users = $this->extractRecipientIds($payload['users'] ?? []);
-        $isScheduled = ! empty($payload['date']);
+        $isScheduled = ! empty($payload['delivered_at']);
 
         foreach (['mail', 'sms'] as $type) {
             if (! $this->deliveryOptionEnabled($payload, $type)) {
@@ -100,7 +98,7 @@ class MessageService
      */
     public function sendOrScheduleMessage(Project $project, Message $message, array $payload): void
     {
-        ! empty($payload['date'])
+        ! empty($payload['delivered_at'])
             ? $this->scheduledMessage($message, $payload)
             : $this->sendNow($project, $message);
     }
@@ -133,11 +131,7 @@ class MessageService
      */
     public function scheduledMessage(Message $message, array $payload): void
     {
-        $this->saveMessageDateAndTime(
-            $message,
-            (string) ($payload['date'] ?? ''),
-            isset($payload['time']) ? (string) $payload['time'] : null,
-        );
+        $this->saveScheduledDeliveryAt($message, (string) ($payload['delivered_at'] ?? ''));
     }
 
     private function ensureDeliveryOptionSelected(array $payload): void
@@ -159,14 +153,9 @@ class MessageService
         return filter_var($payload[$type] ?? false, FILTER_VALIDATE_BOOLEAN);
     }
 
-    private function saveMessageDateAndTime(Message $message, string $date, ?string $time): void
+    private function saveScheduledDeliveryAt(Message $message, string $deliveredAt): void
     {
-        $datetime = new DateTimeImmutable(trim($date.' '.($time ?? '')));
-
-        $formattedTime = $datetime->format('Y-m-d H:i:s');
-
-        $message->delivered_at = Timezone::convertFromLocal($formattedTime);
-
+        $message->delivered_at = $deliveredAt;
         $message->save();
     }
 }

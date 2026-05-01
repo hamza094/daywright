@@ -42,12 +42,13 @@ class TaskService
 
         // Active tasks (paginated) - use config value for page size
         $perPage = (int) config('tasks.limit', 3);
+        $paginatedTasks = $query->paginate($perPage);
 
         return [
-            'message' => $query->get()->isEmpty()
+            'message' => $paginatedTasks->isEmpty()
               ? 'Sorry, no tasks found.'
               : $this->getMessage(false),
-            'tasksData' => TaskCollectionResource::collection($query->get())->paginate($perPage),
+            'tasksData' => TaskCollectionResource::collection($paginatedTasks)->response()->getData(true),
         ];
     }
 

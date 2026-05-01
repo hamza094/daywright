@@ -75,7 +75,8 @@ class StageTest extends TestCase
                 'stage' => ['name' => $this->project->stage->name,
                     'id' => $this->project->stage->id],
                 'stage_updated_at' => $this->project->stage_updated_at
-                    ->format(config('app.date_formats.exact'))],
+                    ->setTimezone('UTC')
+                    ->toIso8601String()],
         ]);
     }
 

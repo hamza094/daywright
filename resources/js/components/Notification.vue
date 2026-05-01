@@ -31,7 +31,7 @@
                   <span v-if="!notification.read_at" class="notification-unread_dot"></span>
                 </div>
                 <small class="notification-time"
-                  ><i>{{ notification.created_at }}</i></small
+                  ><i>{{ notification.created_at | msgTime }}</i></small
                 >
               </div>
             </router-link>

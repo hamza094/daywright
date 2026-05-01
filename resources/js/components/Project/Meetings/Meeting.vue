@@ -68,9 +68,9 @@
               <div class="card-body">
                 <h3 class="card-title">{{ meeting.topic }}</h3>
                 <p class="text-secondary">{{ meeting.agenda }}</p>
-                <p><b>Start Time:</b> {{ meeting.start_time }}</p>
+                <p><b>Start Time:</b> {{ meeting.start_time | datetime }}</p>
                 <p><b>Timezone:</b> {{ meeting.timezone }}</p>
-                <p><b>Created At:</b> {{ meeting.created_at }}</p>
+                <p><b>Created At:</b> {{ meeting.created_at | datetime }}</p>
               </div>
               <footer class="card-footer">
                 <button

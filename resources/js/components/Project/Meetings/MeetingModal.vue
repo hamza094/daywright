@@ -81,7 +81,7 @@
               </FormGroup>
 
               <FormGroup id="start_time" label="Start Time:" :error="errors.start_time">
-                <datetime type="datetime" v-model="form.start_time" value-zone="local" zone="local"></datetime>
+                <datetime type="datetime" v-model="form.start_time" value-zone="UTC" :zone="displayTimezone"></datetime>
               </FormGroup>
             </div>
 
@@ -104,6 +104,7 @@
 <script>
 import { mapMutations } from 'vuex';
 import FormGroup from './../FormGroup.vue';
+import { getDisplayTimezone, toUtcIsoString } from '../../../utils/dateTime';
 
 export default {
   components: { FormGroup },
@@ -126,6 +127,12 @@ export default {
       loading: false,
       loaderId: null,
     };
+  },
+
+  computed: {
+    displayTimezone() {
+      return getDisplayTimezone();
+    },
   },
 
   mounted() {
@@ -160,6 +167,7 @@ export default {
 
     initializeMeetingCreation() {
       this.booleanJoinBeforeHost();
+      this.form.start_time = toUtcIsoString(this.form.start_time) || this.form.start_time;
 
       this.loaderId = this.$vToastify.loader('Creating meeting, please wait...');
 

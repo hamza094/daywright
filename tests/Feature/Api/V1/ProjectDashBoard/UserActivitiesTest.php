@@ -86,11 +86,11 @@ class UserActivitiesTest extends TestCase
             ])
             ->assertJsonFragment([
                 'user_id' => $this->user->id,
-                'created_at' => '2025-08-01 10:00:00',
+                'created_at' => Carbon::parse('2025-08-01 10:00:00', 'UTC')->toIso8601String(),
             ])
             ->assertJsonFragment([
                 'user_id' => $this->user->id,
-                'created_at' => '2025-08-15 10:00:00',
+                'created_at' => Carbon::parse('2025-08-15 10:00:00', 'UTC')->toIso8601String(),
             ])
             ->assertJsonMissing(['user_id' => $otherUser->id]);
 

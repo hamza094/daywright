@@ -20,6 +20,7 @@ class UserInvitationTest extends TestCase
         $project = project::factory()->create();
 
         $project->members()->attach($this->user->id, ['active' => false, 'created_at' => now(), 'updated_at' => now()]);
+        $pivot = $project->members()->whereKey($this->user->id)->firstOrFail()->pivot;
 
         $response = $this->getJson('/api/v1/me/invitations');
 
@@ -32,6 +33,8 @@ class UserInvitationTest extends TestCase
 
         $this->assertEquals($project->id, $response->json('invitations.0.id'));
         $this->assertEquals($project->path(), $response->json('invitations.0.links.project'));
+        $this->assertEquals($project->created_at?->setTimezone('UTC')->toIso8601String(), $response->json('invitations.0.created_at'));
+        $this->assertEquals($pivot->created_at?->setTimezone('UTC')->toIso8601String(), $response->json('invitations.0.invitation_sent_at'));
     }
 
     /** @test */

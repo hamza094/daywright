@@ -68,7 +68,7 @@
                   </span>
                 </p>
                 <span class="float-right chat-time">
-                  <i>{{ conversation.created_at }}</i>
+                  <i>{{ conversation.created_at | msgTime }}</i>
                 </span>
               </div>
             </li>

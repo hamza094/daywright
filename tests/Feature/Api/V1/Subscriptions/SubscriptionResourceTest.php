@@ -84,8 +84,7 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.entitled', true)
             ->assertJsonPath('subscription.subscribed', true)
             ->assertJsonPath('subscription.billing_plan', 'monthly')
-            ->assertJsonPath('subscription.created_at.iso', $subscription->created_at?->toIso8601String())
-            ->assertJsonPath('subscription.created_at.human', $subscription->created_at?->diffForHumans())
+            ->assertJsonPath('subscription.created_at', $subscription->created_at?->setTimezone('UTC')->toIso8601String())
             ->assertJsonPath('subscription.trial.active', false)
             ->assertJsonPath('subscription.grace_period.active', false)
             ->assertJsonCount(3, 'subscription.limits');
@@ -113,8 +112,7 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.next_payment', null)
             ->assertJsonPath('subscription.created_at', null)
             ->assertJsonPath('subscription.grace_period.active', true)
-            ->assertJsonPath('subscription.grace_period.ends_at.iso', $subscription->ends_at?->toIso8601String())
-            ->assertJsonPath('subscription.grace_period.ends_at.human', $subscription->ends_at?->isoFormat('MMMM Do YYYY'))
+            ->assertJsonPath('subscription.grace_period.ends_at', $subscription->ends_at?->setTimezone('UTC')->toIso8601String())
             ->assertJsonPath('subscription.trial.active', false);
     }
 
@@ -175,8 +173,7 @@ class SubscriptionResourceTest extends TestCase
             ->assertJsonPath('subscription.created_at', null)
             ->assertJsonPath('subscription.receipts', [])
             ->assertJsonPath('subscription.trial.active', true)
-            ->assertJsonPath('subscription.trial.ends_at.iso', $trialEndsAt->toIso8601String())
-            ->assertJsonPath('subscription.trial.ends_at.human', $trialEndsAt->isoFormat('MMMM Do YYYY'))
+            ->assertJsonPath('subscription.trial.ends_at', $trialEndsAt->setTimezone('UTC')->toIso8601String())
             ->assertJsonPath('subscription.grace_period.active', false)
             ->assertJsonCount(3, 'subscription.limits');
 

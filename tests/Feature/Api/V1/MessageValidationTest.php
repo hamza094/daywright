@@ -48,4 +48,33 @@ class MessageValidationTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('option');
     }
+
+    /** @test */
+    public function delivered_at_must_be_iso_8601_with_timezone_offset(): void
+    {
+        $users = json_encode(User::factory(2)->create());
+
+        $this->postJson($this->project->path().'/message', [
+            'message' => 'this is my post',
+            'users' => $users,
+            'sms' => true,
+            'delivered_at' => '2024-12-04T15:00:00',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('delivered_at');
+    }
+
+    /** @test */
+    public function legacy_schedule_fields_are_rejected(): void
+    {
+        $users = json_encode(User::factory(2)->create());
+
+        $this->postJson($this->project->path().'/message', [
+            'message' => 'this is my post',
+            'users' => $users,
+            'sms' => true,
+            'date' => '2024-12-04',
+            'time' => '15:00:00',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['date', 'time']);
+    }
 }

@@ -35,8 +35,7 @@ class ConversationResource extends JsonResource
 
             'user' => new InvitedUserResource($this->whenLoaded('user')),
 
-            'created_at' => $this->created_at
-                ->diffForHumans(),
+            'created_at' => $this->created_at?->toIso8601String(),
 
             'links' => $this->whenLoaded('project', fn () => [
                 'project' => $this->project->path(),

@@ -4,11 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
-use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
-use Timezone;
 
 class ReceiptResource extends JsonResource
 {
@@ -23,13 +21,13 @@ class ReceiptResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'created_at' => Timezone::convertToLocal(Carbon::parse($this->created_at)),
+            'created_at' => $this->created_at?->toIso8601String(),
             'currency' => $this->currency,
             'quantity' => $this->quantity,
             'receipt_url' => $this->receipt_url,
             'tax' => $this->tax,
             'amount' => $this->amount,
-            'updated_at' => $this->updated_at->diffForHumans(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

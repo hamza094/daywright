@@ -120,7 +120,7 @@
                     class="mr-3 due-date-label"
                     :class="isOverdue(task) ? 'text-danger font-weight-bold' : 'text-danger font-weight-semibold'">
                     <i class="fa-solid fa-calendar-alt text-danger"></i>
-                    <strong>Due:</strong> {{ task.due_at }}
+                    <strong>Due:</strong> {{ task.due_at | datetime }}
                     <span v-if="isOverdue(task)" class="badge badge-danger ml-1 px-2 py-1" style="font-size: 0.65rem">
                       OVERDUE
                     </span>
@@ -138,7 +138,7 @@
                   </span>
 
                   <!-- Created At -->
-                  <span> <i class="fa-regular fa-clock"></i> {{ task.created_at }} </span>
+                  <span> <i class="fa-regular fa-clock"></i> {{ task.created_at | datetime }} </span>
                 </div>
 
                 <!-- Assignees -->

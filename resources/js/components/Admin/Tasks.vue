@@ -121,11 +121,11 @@
                       <div v-for="member in task.members" :key="member.id || member.name">{{ member.name }}</div>
                     </td>
                     <td>
-                      <span v-if="task.due_at">{{ task.due_at }}</span>
+                      <span v-if="task.due_at">{{ task.due_at | datetime }}</span>
                       <span v-else>Not Defined</span>
                     </td>
-                    <td>{{ task.created_at }}</td>
-                    <td>{{ task.updated_at }}</td>
+                    <td>{{ task.created_at | datetime }}</td>
+                    <td>{{ task.updated_at | datetime }}</td>
                   </tr>
                 </tbody>
               </table>

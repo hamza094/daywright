@@ -113,13 +113,23 @@
               <div class="panel-top_content">
                 <span class="form-inline"
                   ><h6>Date:</h6>
-                  <span> </span> <datetime v-model="model.date" format="yyyy-MM-dd"></datetime>
+                  <span> </span>
+                  <datetime
+                    v-model="model.date"
+                    type="date"
+                    :zone="displayTimezone"
+                    :value-zone="displayTimezone"
+                    format="yyyy-MM-dd"></datetime>
                   <span>: Message Schedule To </span>
                 </span>
 
                 <span class="form-inline">
                   <h6>Time:</h6>
-                  <datetime type="time" v-model="model.time" value-zone="local" zone="local"></datetime>
+                  <datetime
+                    type="time"
+                    v-model="model.time"
+                    :value-zone="displayTimezone"
+                    :zone="displayTimezone"></datetime>
                 </span>
               </div>
 
@@ -140,6 +150,12 @@
 <script>
 import ScheduleMessages from './Schedule.vue';
 import SubscriptionCheck from '../../SubscriptionChecker.vue';
+import {
+  combineDateAndTimeToUtcIso,
+  formatInUserTimezone,
+  getDisplayTimezone,
+  isFutureDateTime,
+} from '../../../utils/dateTime';
 
 export default {
   components: { ScheduleMessages, SubscriptionCheck },
@@ -151,11 +167,9 @@ export default {
   data() {
     return {
       auth: this.$store.state.currentUser.user,
-      newDate: moment().add(1, 'days').format('YYYY-MM-DD'),
       buttonMessage: 'Send',
       form: {
-        date: '',
-        time: '',
+        delivered_at: '',
         message: '',
         subject: '',
         mail: '',
@@ -170,6 +184,11 @@ export default {
       errors: {},
     };
   },
+  computed: {
+    displayTimezone() {
+      return getDisplayTimezone();
+    },
+  },
   methods: {
     sendMessage() {
       axios
@@ -179,11 +198,12 @@ export default {
           subject: this.form.subject,
           message: this.form.message,
           users: JSON.stringify(this.form.users),
-          date: this.form.date,
-          time: this.form.time,
+          delivered_at: this.form.delivered_at,
         })
         .then(() => {
-          this.$vToastify.success('Message Sent Successfully');
+          this.$vToastify.success(
+            this.form.delivered_at ? 'Message Scheduled Successfully' : 'Message Sent Successfully',
+          );
           this.modalClose();
         })
         .catch((error) => {
@@ -193,32 +213,44 @@ export default {
     },
 
     scheduled() {
-      this.validateScheduled();
+      const deliveredAt = this.validateScheduled();
 
-      ((this.form.date = moment(this.model.date).format('YYYY-MM-DD')),
-        (this.form.time = moment(this.model.time).format('HH:mm:ss')),
-        (this.form.scheduled_at = this.scheduledTime()));
+      if (!deliveredAt) {
+        return;
+      }
+
+      this.form.delivered_at = deliveredAt;
+      this.form.scheduled_at = this.scheduledTime(deliveredAt);
       this.$modal.hide('schedule-message');
     },
 
     validateScheduled() {
       if (!this.model.date || !this.model.time) {
-        return this.$vToastify.warning('Please select date and time');
+        this.$vToastify.warning('Please select date and time');
+        return '';
       }
 
-      if (this.model.date < this.newDate) {
-        return this.$vToastify.warning('Date must be greater');
+      const deliveredAt = combineDateAndTimeToUtcIso(this.model.date, this.model.time, this.displayTimezone);
+
+      if (!deliveredAt) {
+        this.$vToastify.warning('Please select a valid schedule');
+        return '';
       }
+
+      if (!isFutureDateTime(deliveredAt)) {
+        this.$vToastify.warning('Scheduled time must be in the future');
+        return '';
+      }
+
+      return deliveredAt;
     },
 
-    scheduledTime() {
-      const date = this.$options.filters.date(this.model.date);
-      const time = this.$options.filters.time(this.model.time);
-      return `${date} at ${time}`;
+    scheduledTime(deliveredAt = this.form.delivered_at) {
+      return formatInUserTimezone(deliveredAt, 'MMM Do YY [at] h:mm:ss a');
     },
 
     messageButton() {
-      if (this.form.date && this.form.time) {
+      if (this.form.delivered_at) {
         return 'Schedule';
       }
       return 'Send';
@@ -228,8 +260,7 @@ export default {
       this.$modal.hide('project-message');
       this.errors = '';
       this.form = {
-        date: '',
-        time: '',
+        delivered_at: '',
         message: '',
         subject: '',
         mail: '',
@@ -237,12 +268,17 @@ export default {
         users: [],
         scheduled_at: '',
       };
+      this.model = {
+        date: '',
+        time: '',
+      };
     },
     modalFalse() {
       this.$modal.hide('schedule-message');
-      this.form.date = '';
-      this.form.time = '';
+      this.form.delivered_at = '';
       this.form.scheduled_at = '';
+      this.model.date = '';
+      this.model.time = '';
     },
   },
 };

@@ -9,7 +9,7 @@
           {{ activity.description }}
           <p class="activity-info">
             <span v-text="activity.user.name"></span><span class="activity-info_dot"></span>
-            <span v-text="activity.time"></span>
+            <span>{{ activity.time | msgTime }}</span>
           </p>
         </li>
 

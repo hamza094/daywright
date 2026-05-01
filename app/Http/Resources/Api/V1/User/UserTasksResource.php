@@ -6,11 +6,9 @@ namespace App\Http\Resources\Api\V1\User;
 
 use App\Http\Resources\Api\V1\Project\ProjectSummaryResource;
 use App\Http\Resources\Api\V1\Task\TaskStatusResource;
-use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
-use Timezone;
 
 /**
  * @mixin \App\Models\Task
@@ -32,9 +30,9 @@ class UserTasksResource extends JsonResource
             'status' => new TaskStatusResource($this->whenLoaded('status')),
             'project' => new ProjectSummaryResource($this->whenLoaded('project')),
             'assignee' => UserSummaryResource::collection($this->whenLoaded('assignee')),
-            'due_at' => $this->when($this->due_at, fn () => Timezone::convertToLocal(Carbon::parse($this->due_at))),
+            'due_at' => $this->when($this->due_at, fn (): string => $this->due_at->toIso8601String()),
             'state' => $this->when($this->user_id !== auth()->id(), 'assigned', 'created'),
-            'created_at' => $this->created_at->diffForHumans(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

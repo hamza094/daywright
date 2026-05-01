@@ -23,15 +23,13 @@ class MeetingService
 
         $meetingsQuery->when($isPrevious, fn ($query) => $query->previous(), fn ($query) => $query->scheduled());
 
-        $meetings = $meetingsQuery->get();
+        $meetings = $meetingsQuery->paginate(3);
 
         $message = $meetings->isEmpty()
             ? 'Sorry, no meetings found.'
             : $this->getMessage($isPrevious);
 
-        $meetingsData = MeetingResource::collection($meetings);
-
-        $meetingsData = $meetingsData->paginate(3);
+        $meetingsData = MeetingResource::collection($meetings)->response()->getData(true);
 
         return ['message' => $message, 'meetingsData' => $meetingsData];
     }

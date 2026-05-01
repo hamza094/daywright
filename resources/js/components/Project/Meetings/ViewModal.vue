@@ -42,7 +42,7 @@
 
             <meeting-detail label="Start Time" :is-editing="isEditing">
               <template v-if="!isEditing">
-                <span>{{ meeting.start_time }}</span>
+                <span>{{ meeting.start_time | datetime }}</span>
               </template>
 
               <template v-else>
@@ -50,8 +50,8 @@
                   type="datetime"
                   :value="meeting.start_time"
                   v-model="form.start_time"
-                  value-zone="local"
-                  zone="local"
+                  value-zone="UTC"
+                  :zone="displayTimezone"
                   format="YYYY-MM-DD HH:mm:ss" />
                 <span class="text-danger font-italic" v-if="errors.start_time" v-text="errors.start_time[0]"></span>
               </template>
@@ -77,7 +77,10 @@
 
             <meeting-detail v-if="!isEditing && meeting.owner" label="Created By" :value="meeting.owner.name" />
 
-            <meeting-detail v-if="!isEditing" label="Created At" :value="meeting.created_at" />
+            <meeting-detail
+              v-if="!isEditing"
+              label="Created At"
+              :value="$options.filters.datetime(meeting.created_at)" />
 
             <meeting-detail label="Timezone" :is-editing="isEditing">
               <template v-if="!isEditing">
@@ -101,7 +104,10 @@
               </template>
             </meeting-detail>
 
-            <meeting-detail v-if="!isEditing" label="Updated At" :value="meeting.updated_at" />
+            <meeting-detail
+              v-if="!isEditing"
+              label="Updated At"
+              :value="$options.filters.datetime(meeting.updated_at)" />
 
             <meeting-detail label="Join Before Host" :is-editing="isEditing">
               <template v-if="!isEditing">
@@ -187,6 +193,7 @@
 import { mapMutations } from 'vuex';
 import MeetingDetail from './MeetingDetail.vue';
 import { shouldShowStartButton, shouldShowJoinButton } from '../../../utils/meetingUtils';
+import { getDisplayTimezone, toUtcIsoString } from '../../../utils/dateTime';
 
 export default {
   name: 'ViewMeetingModal',
@@ -218,6 +225,12 @@ export default {
         password: '',
       },
     };
+  },
+
+  computed: {
+    displayTimezone() {
+      return getDisplayTimezone();
+    },
   },
 
   created() {
@@ -328,7 +341,7 @@ export default {
 
     initializeUpdateMeeting() {
       this.form.meeting_id = this.meeting.meeting_id;
-      this.form.start_time = this.convertToISO(this.form.start_time);
+      this.form.start_time = toUtcIsoString(this.form.start_time) || this.form.start_time;
       this.errors = {};
       this.loading = true;
       this.setLoading('Updating meeting, please wait...', 'start');
@@ -341,10 +354,6 @@ export default {
         this.$vToastify.stopLoader(this.loaderId);
         this.loaderId = null;
       }
-    },
-
-    convertToISO(date) {
-      return date ? new Date(date).toISOString() : date;
     },
   },
 };

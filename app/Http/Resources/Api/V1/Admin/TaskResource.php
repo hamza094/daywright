@@ -6,11 +6,9 @@ namespace App\Http\Resources\Api\V1\Admin;
 
 use App\Http\Resources\Api\V1\Admin\User\AdminUserSummaryResource;
 use App\Http\Resources\Api\V1\Task\TaskStatusResource;
-use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
-use Timezone;
 
 class TaskResource extends JsonResource
 {
@@ -32,18 +30,12 @@ class TaskResource extends JsonResource
             'project' => new TaskProjectResource($this->whenLoaded('project')),
             'members' => AdminUserSummaryResource::collection($this->whenLoaded('assignee')),
 
-            'due_at_utc' => $this->due_at,
             'notified' => $this->notified,
             'owner' => new AdminUserSummaryResource($this->whenLoaded('owner')),
-            'due_at' => $this->when($this->due_at, fn () => Timezone::convertToLocal(Carbon::parse($this->due_at))),
+            'due_at' => $this->when($this->due_at, fn (): string => $this->due_at->toIso8601String()),
             'state' => $this->state(),
-            'created_at' => $this->created_at->diffForHumans([
-                'parts' => 3,
-                'short' => true,
-            ]),
-            'updated_at' => $this->updated_at->diffForHumans([
-                'parts' => 2,
-            ]),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

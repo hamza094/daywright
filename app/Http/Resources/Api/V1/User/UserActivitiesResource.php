@@ -29,7 +29,7 @@ class UserActivitiesResource extends JsonResource
               ? $this->{$this->description}()
               : $this->description,
             'project' => $this->whenLoaded('project') && $this->project ? new ProjectSummaryResource($this->project) : null,
-            'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
+            'created_at' => $this->created_at?->toIso8601String(),
             'subject' => $this->getSubjectDetails(),
             'color' => $this->color(),
             'user_id' => $this->user_id,

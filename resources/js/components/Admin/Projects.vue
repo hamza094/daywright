@@ -272,7 +272,7 @@
                         <div>({{ project.owner.username }})</div>
                       </router-link>
                     </td>
-                    <td><span class="text-white badge bg-success me-1"></span> {{ project.created_at }}</td>
+                    <td><span class="text-white badge bg-success me-1"></span> {{ project.created_at | datetime }}</td>
                     <td>{{ project.tasks_count }}</td>
                     <td>{{ project.members_count }}</td>
                   </tr>

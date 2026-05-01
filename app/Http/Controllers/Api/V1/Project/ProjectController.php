@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
+use App\Actions\BuildPaginatedPayloadAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\ProjectStoreRequest;
@@ -12,6 +13,7 @@ use App\Http\Resources\Api\V1\Project\ProjectCollectionResource;
 use App\Http\Resources\Api\V1\Project\ProjectResource;
 use App\Models\Project;
 use App\Services\Api\V1\DashboardService;
+use App\Services\Api\V1\PaginationService;
 use App\Services\Api\V1\ProjectService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,12 +23,30 @@ class ProjectController extends ApiController
 {
     public function __construct(private readonly ProjectService $projectService) {}
 
-    public function index(DashboardProjectRequest $request, DashboardService $dashboardService): JsonResponse
-    {
+    public function index(
+        DashboardProjectRequest $request,
+        DashboardService $dashboardService,
+        BuildPaginatedPayloadAction $buildPaginatedPayloadAction,
+    ): JsonResponse {
         $projects = $dashboardService->getUserProjects($request);
+        $perPage = (int) config('app.project.items_limit');
+        $page = (int) $request->validated('page', 1);
+
+        $paginatedProjects = new PaginationService(
+            $projects?->forPage($page, $perPage)->values() ?? collect(),
+            $projects?->count() ?? 0,
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'pageName' => 'page',
+            ],
+        );
+
+        $projectsPayload = $buildPaginatedPayloadAction->handle($paginatedProjects, ProjectCollectionResource::class);
 
         return response()->json([
-            'projects' => ProjectCollectionResource::collection($projects)->paginate(config('app.project.items_limit')),
+            'projects' => $projectsPayload,
             'projectsCount' => $projects?->count() ?? 0,
             'message' => $projects === null || $projects->isEmpty() ? 'No projects found.' : '',
         ], Response::HTTP_OK);

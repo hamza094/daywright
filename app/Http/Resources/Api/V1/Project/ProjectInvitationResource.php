@@ -53,11 +53,11 @@ class ProjectInvitationResource extends JsonResource
             'slug' => $this->slug,
 
             /**
-             * Date/time when the invitation was sent (formatted)
+             * Invitation sent timestamp in UTC ISO 8601 format.
              *
-             * @example "2025-07-09 14:00:00"
+             * @example "2025-07-09T14:00:00+00:00"
              */
-            'invitation_sent_at' => $this->pivot->created_at->format(config('app.date_formats.exact')),
+            'invitation_sent_at' => $this->pivot->created_at->toIso8601String(),
 
             /**
              * Project owner details
@@ -67,11 +67,11 @@ class ProjectInvitationResource extends JsonResource
             'owner' => new UserSummaryResource($this->whenLoaded('user')),
 
             /**
-             * Project creation date (human readable)
+             * Project creation timestamp in UTC ISO 8601 format.
              *
-             * @example "2 days ago"
+             * @example "2025-07-07T14:00:00+00:00"
              */
-            'created_at' => $this->created_at->diffForHumans(),
+            'created_at' => $this->created_at?->toIso8601String(),
 
             /**
              * Links related to the project invitation.

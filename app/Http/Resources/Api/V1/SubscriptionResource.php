@@ -50,7 +50,7 @@ class SubscriptionResource extends JsonResource
             'available_plans' => $this->availablePlans,
             'billing_plan' => $this->billing['billing_plan'],
             'next_payment' => $this->billing['next_payment'],
-            'created_at' => $this->formatDate($this->billing['created_at'], true),
+            'created_at' => $this->formatDate($this->billing['created_at']),
             'receipts' => ReceiptResource::collection($this->whenLoaded('receipts')),
             'trial' => [
                 'active' => $this->trial['active'],
@@ -66,18 +66,12 @@ class SubscriptionResource extends JsonResource
         ];
     }
 
-    /**
-     * @return array{iso: string, human: string}|null
-     */
-    private function formatDate(?CarbonInterface $date, bool $relative = false): ?array
+    private function formatDate(?CarbonInterface $date): ?string
     {
         if (! $date instanceof CarbonInterface) {
             return null;
         }
 
-        return [
-            'iso' => $date->toIso8601String(),
-            'human' => $relative ? $date->diffForHumans() : $date->isoFormat('MMMM Do YYYY'),
-        ];
+        return $date->setTimezone('UTC')->toIso8601String();
     }
 }

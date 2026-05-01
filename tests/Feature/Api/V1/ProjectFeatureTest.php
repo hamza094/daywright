@@ -113,6 +113,7 @@ class ProjectFeatureTest extends TestCase
         ]);
 
         $response->assertJsonPath('links.self', $this->project->path());
+        $response->assertJsonPath('created_at', $this->project->created_at?->setTimezone('UTC')->toIso8601String());
     }
 
     /** @test */

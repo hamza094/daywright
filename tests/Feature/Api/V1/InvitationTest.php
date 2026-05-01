@@ -193,6 +193,13 @@ class InvitationTest extends TestCase
                 'message' => 'List of project pending member requests',
             ]);
 
+        foreach ($response->json('pending_invitations') as $invitation) {
+            $this->assertMatchesRegularExpression(
+                '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$/',
+                $invitation['invitation_sent_at']
+            );
+        }
+
         // Assert the count of pending invitations
         $this->assertCount(3, $response->json('pending_invitations'));
 

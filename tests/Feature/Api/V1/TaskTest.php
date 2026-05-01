@@ -138,6 +138,7 @@ class TaskTest extends TestCase
         $task = $this->project->tasks()->create([
             'title' => 'Project Task',
             'user_id' => $this->project->user->id,
+            'due_at' => Carbon::create(2026, 5, 1, 12, 30, 0, 'UTC'),
         ]);
 
         $this->getJson($task->path())
@@ -145,7 +146,9 @@ class TaskTest extends TestCase
             ->assertJson([
                 'id' => $task->id,
                 'title' => $task->title,
-            ]);
+            ])
+            ->assertJsonPath('due_at', $task->due_at?->setTimezone('UTC')->toIso8601String())
+            ->assertJsonPath('created_at', $task->created_at?->setTimezone('UTC')->toIso8601String());
     }
 
     /** @test */
@@ -217,17 +220,28 @@ class TaskTest extends TestCase
             'timezone' => 'Asia/Karachi',
         ]);
 
-        $due_at = '2024-12-04T15:00:00';
+        $dueAt = Carbon::create(2024, 12, 4, 15, 0, 0, 'Asia/Karachi')->toIso8601String();
 
         $task = $this->project->addTask('test task');
 
         $this->putJson($task->path(), [
-            'due_at' => $due_at,
-        ]);
+            'due_at' => $dueAt,
+        ])->assertOk();
 
-        $expectedDueAt = Carbon::parse($due_at, $this->user->timezone)->setTimezone('UTC');
+        $expectedDueAt = Carbon::parse($dueAt)->setTimezone('UTC');
 
         $this->assertEquals($expectedDueAt->toDateTimeString(), $task->refresh()->due_at->toDateTimeString());
+    }
+
+    /** @test */
+    public function due_at_must_be_iso_8601_with_timezone_offset(): void
+    {
+        $task = $this->project->addTask('test task');
+
+        $this->putJson($task->path(), [
+            'due_at' => '2024-12-04T15:00:00',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors('due_at');
     }
 
     /** @test */
@@ -259,7 +273,7 @@ class TaskTest extends TestCase
         ]);
 
         $this->putJson($task->path(), [
-            'due_at' => now()->addDays(3)->format('Y-m-d\TH:i:s'),
+            'due_at' => now()->addDays(3)->toIso8601String(),
         ])->assertOk();
 
         $this->assertEquals(0, (int) $task->fresh()->notify_sent);
@@ -278,7 +292,7 @@ class TaskTest extends TestCase
 
         $this->putJson($task->path(), [
             'notified' => '5 Minutes Before',
-            'due_at' => $task->due_at->format('Y-m-d\TH:i:s'),
+            'due_at' => $task->due_at->toIso8601String(),
         ])->assertOk();
 
         $this->assertEquals(0, (int) $task->fresh()->notify_sent);

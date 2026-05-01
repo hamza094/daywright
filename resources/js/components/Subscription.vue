@@ -163,7 +163,7 @@
             <div class="card-body">
               <div v-for="receipt in subscription.receipts" :key="receipt.id">
                 <p>
-                  <span>{{ receipt.created_at }}</span> -
+                  <span>{{ receipt.created_at | datetime }}</span> -
                   <span>${{ receipt.amount }} {{ receipt.currency }}</span>
                   <span class="float-right">
                     <a class="btn-link" :href="$safeUrl(receipt.receipt_url)" target="_blank" rel="noopener noreferrer"
@@ -204,6 +204,7 @@ import { mapState, mapMutations, mapGetters } from 'vuex';
 import alertNotice from '../mixins/alertNotice';
 import usageLimitHelpers from '../mixins/usageLimitHelpers';
 import { toastInfo, toastSuccess } from '../utils/toast';
+import { formatInUserTimezone } from '../utils/dateTime';
 
 export default {
   name: 'Subscription',
@@ -265,15 +266,19 @@ export default {
     },
 
     trialEndsAt() {
-      return this.subscription?.trial?.ends_at?.human || null;
+      return this.subscription?.trial?.ends_at
+        ? formatInUserTimezone(this.subscription.trial.ends_at, 'MMM Do YYYY')
+        : null;
     },
 
     gracePeriodEndsAt() {
-      return this.subscription?.grace_period?.ends_at?.human || null;
+      return this.subscription?.grace_period?.ends_at
+        ? formatInUserTimezone(this.subscription.grace_period.ends_at, 'MMM Do YYYY')
+        : null;
     },
 
     subscriptionCreatedAt() {
-      return this.subscription?.created_at?.human || null;
+      return this.subscription?.created_at ? formatInUserTimezone(this.subscription.created_at, 'MMM Do YYYY') : null;
     },
 
     accountUsageItems() {

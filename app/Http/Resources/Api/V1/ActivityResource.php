@@ -25,7 +25,7 @@ class ActivityResource extends JsonResource
     {
         return [
             'description' => $this->{$this->description}(),
-            'time' => $this->created_at->format('Y-m-d H:i:s'),
+            'time' => $this->created_at?->toIso8601String(),
             'subject' => $this->getSubjectDetails(),
             'user' => $this->user,
             'affected_users' => $this->when(! empty($this->affected_users), $this->loadAffectedUsers()),

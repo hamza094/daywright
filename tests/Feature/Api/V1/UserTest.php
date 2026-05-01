@@ -76,7 +76,9 @@ class UserTest extends TestCase
                 'name' => $this->user->name,
                 'email' => $this->user->email,
                 'timezone' => $defaultTimezone,
-            ]);
+            ])
+            ->assertJsonPath('user.created_at', $this->user->created_at?->setTimezone('UTC')->toIso8601String())
+            ->assertJsonPath('user.updated_at', $this->user->updated_at?->setTimezone('UTC')->toIso8601String());
     }
 
     #[Test]

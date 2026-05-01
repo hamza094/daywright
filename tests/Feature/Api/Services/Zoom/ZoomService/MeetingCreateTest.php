@@ -36,7 +36,7 @@ class MeetingCreateTest extends TestCase
             'duration' => 30,
             'password' => 'hacker',
             'join_before_host' => false,
-            'start_time' => (new DateTimeImmutable('2024-06-18T18:00:07Z'))->format('Y-m-d H:i:s'),
+            'start_time' => (new DateTimeImmutable('2024-06-18T18:00:07Z'))->format('Y-m-d\TH:i:s\Z'),
             'timezone' => 'UTC',
         ];
         $this->user = $this->userCreate(now()->addWeek());

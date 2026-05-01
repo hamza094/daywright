@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Task;
 
-use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 use JsonSerializable;
 use Override;
-use Timezone;
 
 /**
  * @mixin \App\Models\Task
@@ -61,48 +59,36 @@ class TaskResource extends JsonResource
             ),
 
             /**
-             * Task Due at UTC timezone
-             *
-             * @example 2024-12-09T10:25:00.000000
-             */
-            'due_at_utc' => $this->due_at,
-
-            /**
              * Task notified wheater notificatopn sent to asinee or not
              */
             'notified' => $this->notified,
 
             /**
-             * Task due at at user timezone
+             * Task due at in UTC ISO 8601 format.
              *
-             * @example '9th December 2024 3:25:pm'
+             * @example 2024-12-09T10:25:00+00:00
              */
-            'due_at' => $this->when($this->due_at, fn () => Timezone::convertToLocal(Carbon::parse($this->due_at))),
+            'due_at' => $this->when($this->due_at, fn (): string => $this->due_at->toIso8601String()),
 
             /**
-             * Task created at utc timezone
+             * Task created at in UTC ISO 8601 format.
              *
-             * @example 'December 4th 2024, 11:41:34 am'
+             * @example 2024-12-04T11:41:34+00:00
              */
-            'created_at' => $this->formatDate($this->created_at),
+            'created_at' => $this->created_at?->toIso8601String(),
 
             /**
-             * Task updated at utc timezone if its present
+             * Task updated at in UTC ISO 8601 format if present.
              *
-             * @example 'December 10th 2024, 9:41:34 am'
+             * @example 2024-12-10T09:41:34+00:00
              */
             'updated_at' => $this->when(
                 $this->updated_at->isAfter($this->created_at),
-                fn (): string => $this->formatDate($this->updated_at),
+                fn (): string => $this->updated_at->toIso8601String(),
             ),
             'links' => [
                 'self' => $this->path(),
             ],
         ];
-    }
-
-    private function formatDate($date): string
-    {
-        return $date->isoFormat('MMMM Do YYYY, h:mm:ss a');
     }
 }

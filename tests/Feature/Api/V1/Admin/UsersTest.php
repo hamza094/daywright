@@ -59,7 +59,8 @@ class UsersTest extends TestCase
             'is_admin' => true,
         ])
             ->assertOk()
-            ->assertJsonPath('user.is_admin', true);
+            ->assertJsonPath('user.is_admin', true)
+            ->assertJsonPath('user.admin_granted_at', $target->fresh()->admin_granted_at?->setTimezone('UTC')->toIso8601String());
 
         $this->assertDatabaseHas('users', [
             'id' => $target->id,
@@ -125,7 +126,8 @@ class UsersTest extends TestCase
             'is_admin' => false,
         ])
             ->assertOk()
-            ->assertJsonPath('user.is_admin', false);
+            ->assertJsonPath('user.is_admin', false)
+            ->assertJsonPath('user.admin_revoked_at', $target->fresh()->admin_revoked_at?->setTimezone('UTC')->toIso8601String());
 
         $this->assertDatabaseHas('users', [
             'id' => $target->id,

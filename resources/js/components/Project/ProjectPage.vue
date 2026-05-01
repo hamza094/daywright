@@ -67,7 +67,7 @@
                     <p class="content-info">
                       Created On
                       <span class="content-dot"></span>
-                      {{ project.created_at }}
+                      {{ project.created_at | datetime }}
                     </p>
                     <p class="content-info">
                       Created By<span class="content-dot"></span>
@@ -80,7 +80,9 @@
                     <div class="alert alert-danger" role="alert">
                       This project is abandoned to access project features active this project, or it will be deleted
                       automatically after {{ project.days_limit }} days from the abandoned date.
-                      <p>Abandoned on: <b v-text="project.deleted_at"></b></p>
+                      <p>
+                        Abandoned on: <b>{{ project.deleted_at | datetime }}</b>
+                      </p>
                       <a class="btn btn-info" @click.prevent="restore()">Restore Project</a>
                     </div>
                   </div>
@@ -139,11 +141,11 @@
                     </div>
                     <div class="project-info_rec">
                       <span>Score Updated</span>
-                      <p v-text="project.health_score_calculated_at"></p>
+                      <p>{{ project.health_score_calculated_at | datetime }}</p>
                     </div>
                     <div class="project-info_rec">
                       <span>Last modified</span>
-                      <p v-text="project.updated_at"></p>
+                      <p>{{ project.updated_at | datetime }}</p>
                     </div>
                     <div v-if="showProjectLimits" class="project-limits">
                       <div class="project-limits_header">

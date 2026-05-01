@@ -29,7 +29,7 @@ class StoreMeetingTest extends TestCase
             'duration' => 30,
             'password' => 'metingpass',
             'join_before_host' => false,
-            'start_time' => Carbon::now()->addWeek(),
+            'start_time' => Carbon::now()->addWeek()->toIso8601String(),
             'timezone' => 'UTC',
         ];
 
@@ -55,7 +55,7 @@ class StoreMeetingTest extends TestCase
             'duration' => 30,
             'password' => 'metingpass',
             'join_before_host' => false,
-            'start_time' => Carbon::now()->addWeek(),
+            'start_time' => Carbon::now()->addWeek()->toIso8601String(),
             'timezone' => 'UTC',
         ];
 
@@ -79,7 +79,7 @@ class StoreMeetingTest extends TestCase
             'duration' => 'not-an-integer',
             'password' => '',
             'join_before_host' => 'not-a-boolean',
-            'start_time' => Carbon::now()->subWeek(),
+            'start_time' => Carbon::now()->subWeek()->toIso8601String(),
             'timezone' => 'invalid/timezone',
         ];
 
@@ -96,5 +96,22 @@ class StoreMeetingTest extends TestCase
             'start_time',
             'timezone',
         ]);
+    }
+
+    /** @test */
+    public function start_time_must_be_iso_8601_with_timezone_offset(): void
+    {
+        $response = $this->postJson(route('meetings.store', ['project' => $this->project->slug]), [
+            'topic' => 'test-repo',
+            'agenda' => 'test-description',
+            'duration' => 30,
+            'password' => 'metingpass',
+            'join_before_host' => false,
+            'start_time' => '2024-05-18T18:00:07',
+            'timezone' => 'UTC',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['start_time']);
     }
 }

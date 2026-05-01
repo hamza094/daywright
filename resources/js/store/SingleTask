@@ -39,10 +39,9 @@ const mutations = {
     state.task.status_id = status.id;
     state.task.status=status;
   },
-  updateTaskDue(state,{ dueAt, notified, dueAtUtc }){
+  updateTaskDue(state,{ dueAt, notified }){
     state.task.due_at = dueAt;
     state.task.notified= notified;
-    state.task.due_at_utc= dueAtUtc;
   },
 
   updateTaskMembers(state,members){

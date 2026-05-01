@@ -60,40 +60,39 @@ class ProjectResource extends JsonResource
             'notes' => $this->notes,
 
             /**
-             * Date when the project was created, displayed in a human-readable format.
+             * Project creation timestamp in UTC ISO 8601 format.
              *
-             * @example 4 June 2024
+             * @example 2024-06-04T00:00:00+00:00
              */
-            'created_at' => $this->created_at->diffforHumans(),
+            'created_at' => $this->created_at?->toIso8601String(),
 
             /**
-             * Date when the project was last updated, displayed in a human-readable format.
+             * Project update timestamp in UTC ISO 8601 format.
              *
-             * @example 4 June 2024
+             * @example 2024-06-04T12:30:00+00:00
              */
-            'updated_at' => $this->updated_at->diffforHumans(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
 
             /**
-             * Shows the date the project was deleted if it is currently in the "trashed" state.
+             * Project deletion timestamp in UTC ISO 8601 format when the project is trashed.
              *
-             * @example 10 June 2024
+             * @example 2024-06-10T09:15:00+00:00
              */
             'deleted_at' => $this->when(
                 ! empty($this->deleted_at),
-                fn () => $this->deleted_at->diffforHumans()
+                fn () => $this->deleted_at->toIso8601String()
             ),
 
             'is_trashed' => $this->trashed(),
 
             /**
-             * Date when the project's last stage was updated, formatted based on the application's date format configuration.
+             * Last stage update timestamp in UTC ISO 8601 format.
              *
-             * @example 10 June 2024
+             * @example 2024-06-10T09:15:00+00:00
              */
             'stage_updated_at' => $this->when(
                 ! empty($this->stage_updated_at),
-                fn () => $this->stage_updated_at
-                    ->format(config('app.date_formats.exact'))
+                fn () => $this->stage_updated_at->toIso8601String()
             ),
 
             'ownerNotAuthorized' => $this->whenLoaded(
@@ -128,11 +127,11 @@ class ProjectResource extends JsonResource
             'health_score' => $this->health_score,
 
             /**
-             * Timestamp when the health score was last calculated
+             * Health score calculation timestamp in UTC ISO 8601 format.
              *
-             * @example 2024-10-01 15:30:00
+             * @example 2024-10-01T15:30:00+00:00
              */
-            'health_score_calculated_at' => $this->health_score_calculated_at?->toDateTimeString(),
+            'health_score_calculated_at' => $this->health_score_calculated_at?->toIso8601String(),
 
             /**
              * Current stage information for the project.

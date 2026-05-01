@@ -26,8 +26,8 @@ class NotificationResource extends JsonResource
             'message' => $this->data['message'],
             'link' => $this->data['link'],
             'notifier' => new InvitedUserResource((object) ($this->data['notifier'] ?? [])),
-            'read_at' => $this->read_at,
-            'created_at' => $this->created_at->diffForHumans(),
+            'read_at' => $this->read_at?->toIso8601String(),
+            'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
 }

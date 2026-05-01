@@ -26,8 +26,11 @@ class MeetingsResource extends JsonResource
             'id' => $this->id,
             'topic' => $this->topic,
             'agenda' => $this->agenda,
-            'created_at' => $this->created_at->diffForHumans(),
-            'start_time' => Carbon::parse($this->start_time)->diffForHumans(),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'start_time' => $this->when(
+                $this->start_time,
+                fn (): string => Carbon::parse($this->start_time)->setTimezone('UTC')->toIso8601String(),
+            ),
             'status' => $this->status,
             'timezone' => $this->timezone,
         ];

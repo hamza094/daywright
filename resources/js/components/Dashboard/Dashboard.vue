@@ -54,7 +54,7 @@
                     Created:
                   </span>
                   <span class="info-value"
-                    ><b>{{ project.created_at }}</b></span
+                    ><b>{{ project.created_at | date }}</b></span
                   >
                 </div>
               </div>

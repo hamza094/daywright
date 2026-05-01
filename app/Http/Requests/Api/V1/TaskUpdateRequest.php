@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use App\Enums\TaskDueNotifies;
-use Carbon\Carbon;
+use App\Rules\Iso8601Timestamp;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;
-use Timezone;
 
 class TaskUpdateRequest extends FormRequest
 {
@@ -46,11 +45,17 @@ class TaskUpdateRequest extends FormRequest
             /*
                     * Task's Due Date
                     * - This field required with notified
-                    * - Field must be valid date
+                    * - Field must be a valid ISO 8601 timestamp with a timezone offset
                     *
-                    @example "2024-12-09T15:25:00.00"
+                    @example "2024-12-09T15:25:00+00:00"
                     */
-            'due_at' => 'date|sometimes|required_with:notified',
+            'due_at' => [
+                'sometimes',
+                'required_with:notified',
+                'bail',
+                'string',
+                new Iso8601Timestamp,
+            ],
             /**
              * TaskStatus id which task associated to
              *
@@ -71,17 +76,18 @@ class TaskUpdateRequest extends FormRequest
     #[Override]
     protected function prepareForValidation(): void
     {
-        $dueAt = $this->input('due_at');
-
-        if ($dueAt) {
-
-            $parsedDueAt = Carbon::parse($dueAt);
-            $formattedTime = $parsedDueAt->format('Y-m-d H:i:s');
-            $convertedTime = Timezone::convertFromLocal($formattedTime);
-
-            $this->merge([
-                'due_at' => $convertedTime,
-            ]);
+        if (! $this->has('due_at')) {
+            return;
         }
+
+        $normalizedDueAt = Iso8601Timestamp::normalizeToUtc((string) $this->input('due_at'));
+
+        if ($normalizedDueAt === null) {
+            return;
+        }
+
+        $this->merge([
+            'due_at' => $normalizedDueAt,
+        ]);
     }
 }

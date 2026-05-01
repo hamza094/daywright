@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1;
 
 use App\Models\Meeting;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
@@ -29,7 +30,9 @@ class MeetingTest extends TestCase
                     'id' => $meeting->id,
                     'meeting_id' => $meeting->meeting_id,
                 ],
-            ]);
+            ])
+            ->assertJsonPath('data.start_time', Carbon::parse($meeting->start_time)->setTimezone('UTC')->toIso8601String())
+            ->assertJsonPath('data.created_at', $meeting->created_at?->setTimezone('UTC')->toIso8601String());
     }
 
     /** @test */

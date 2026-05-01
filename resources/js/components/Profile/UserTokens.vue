@@ -75,9 +75,9 @@
             <tbody>
               <tr v-for="token in tokens" :key="token.id">
                 <td>{{ token.name }}</td>
-                <td>{{ token.created_at }}</td>
-                <td>{{ token.last_used_at ? token.last_used_at : 'Never' }}</td>
-                <td>{{ token.expires_at ? token.expires_at : 'Never' }}</td>
+                <td>{{ token.created_at | datetime }}</td>
+                <td>{{ token.last_used_at ? $options.filters.msgTime(token.last_used_at) : 'Never' }}</td>
+                <td>{{ token.expires_at ? $options.filters.datetime(token.expires_at) : 'Never' }}</td>
                 <td>
                   <input
                     :type="showTokenMap[token.id] ? 'text' : 'password'"
@@ -173,10 +173,9 @@ export default {
       this.$Progress.start();
       let payload = { name: this.form.name };
       if (this.form.expires_in) {
-        // Set expires_at as ISO string (now + days)
         const expires = new Date();
         expires.setDate(expires.getDate() + Number(this.form.expires_in));
-        payload.expires_at = expires.toISOString().slice(0, 19).replace('T', ' ');
+        payload.expires_at = expires.toISOString();
       }
       axios
         .post('/api-tokens', payload)

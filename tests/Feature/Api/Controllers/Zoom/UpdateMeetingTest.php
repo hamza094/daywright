@@ -76,4 +76,18 @@ class UpdateMeetingTest extends TestCase
         ])->assertStatus(422)
             ->assertJsonValidationErrors(['meeting_id']);
     }
+
+    /** @test */
+    public function update_start_time_must_be_iso_8601_with_timezone_offset(): void
+    {
+        $meeting = Meeting::factory()
+            ->for($this->project)
+            ->create(['user_id' => $this->user->id]);
+
+        $this->patchJson('/api/v1/projects/'.$this->project->slug.'/meetings/'.$meeting->id, [
+            'meeting_id' => 18976,
+            'start_time' => '2024-05-18T18:00:07',
+        ])->assertStatus(422)
+            ->assertJsonValidationErrors(['start_time']);
+    }
 }

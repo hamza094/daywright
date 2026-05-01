@@ -55,7 +55,7 @@
                     </td>
                     <td>{{ user.email }}</td>
                     <td>{{ user.timezone }}</td>
-                    <td>{{ user.created_at }}</td>
+                    <td>{{ user.created_at | datetime }}</td>
                     <td>{{ user.is_subscribed }}</td>
                     <td>{{ user.projects_count }}</td>
                     <td>{{ user.projects_member }}</td>
@@ -63,10 +63,10 @@
                       <span class="me-2">{{ user.is_admin ? 'Yes' : 'No' }}</span>
                       <div class="small text-muted">
                         <div v-if="user.admin_granted_by && user.admin_granted_at">
-                          Granted by {{ user.admin_granted_by }} on {{ user.admin_granted_at }}
+                          Granted by {{ user.admin_granted_by }} on {{ user.admin_granted_at | datetime }}
                         </div>
                         <div v-if="user.admin_revoked_by && user.admin_revoked_at">
-                          Revoked by {{ user.admin_revoked_by }} on {{ user.admin_revoked_at }}
+                          Revoked by {{ user.admin_revoked_by }} on {{ user.admin_revoked_at | datetime }}
                         </div>
                       </div>
                       <button

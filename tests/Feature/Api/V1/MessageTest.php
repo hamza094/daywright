@@ -46,6 +46,29 @@ class MessageTest extends TestCase
     }
 
     /** @test */
+    public function message_can_be_scheduled_with_iso_delivered_at(): void
+    {
+        $deliveredAt = Carbon::create(2026, 5, 1, 12, 30, 0, 'Asia/Karachi')->toIso8601String();
+
+        $this->postJson($this->project->path().'/message', [
+            'message' => 'this is project message',
+            'users' => json_encode([$this->user->id]),
+            'sms' => true,
+            'delivered_at' => $deliveredAt,
+        ])->assertOk()
+            ->assertJson([
+                'message' => 'Messages Scheduled Successfully',
+            ]);
+
+        $message = Message::query()->sole();
+
+        $this->assertSame(
+            Carbon::parse($deliveredAt)->setTimezone('UTC')->toIso8601String(),
+            $message->refresh()->delivered_at?->toIso8601String(),
+        );
+    }
+
+    /** @test */
     public function message_option_must_be_selected(): void
     {
         $response = $this->postJson($this->project->path().'/message', [

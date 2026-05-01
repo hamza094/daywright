@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Rules\Iso8601Timestamp;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;
@@ -47,8 +48,14 @@ class MessageRequest extends FormRequest
             'subject' => Rule::requiredIf(request()->mail === true),
             'sms' => 'sometimes',
             'users' => 'present|required',
-            'date' => 'required_with:time',
-            'time' => 'sometimes',
+            'delivered_at' => [
+                'sometimes',
+                'bail',
+                'string',
+                new Iso8601Timestamp,
+            ],
+            'date' => 'prohibited',
+            'time' => 'prohibited',
         ];
     }
 
@@ -58,5 +65,23 @@ class MessageRequest extends FormRequest
         return [
             'users.required' => "You haven't selected any user",
         ];
+    }
+
+    #[Override]
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('delivered_at')) {
+            return;
+        }
+
+        $normalizedDeliveredAt = Iso8601Timestamp::normalizeToUtc((string) $this->input('delivered_at'));
+
+        if ($normalizedDeliveredAt === null) {
+            return;
+        }
+
+        $this->merge([
+            'delivered_at' => $normalizedDeliveredAt,
+        ]);
     }
 }

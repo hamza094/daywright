@@ -51,6 +51,7 @@
 <script>
 import VCalendar from 'v-calendar';
 import moment from 'moment';
+import { toDateInUserTimezone } from '../../utils/dateTime';
 
 export default {
   name: 'ActivityCalendar',
@@ -70,7 +71,7 @@ export default {
     attributes() {
       return this.activities
         .map((activity) => ({
-          dates: activity.created_at ? moment(activity.created_at).toDate() : null,
+          dates: activity.created_at ? toDateInUserTimezone(activity.created_at) : null,
           bar: { color: activity.color },
           popover: true,
           customData: activity,

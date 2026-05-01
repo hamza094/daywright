@@ -43,7 +43,7 @@ final class ResetTaskNotificationAction
             return false;
         }
 
-        $oldDue = $task->due_at?->format('Y-m-d H:i:s');
+        $oldDue = $task->due_at?->toIso8601String();
 
         return (string) $validated['due_at'] !== $oldDue;
     }
