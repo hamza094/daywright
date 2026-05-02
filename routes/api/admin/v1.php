@@ -27,7 +27,7 @@ Route::group(['prefix' => 'admin'], function (): void {
 
         Route::get('/users', [UserController::class, 'index']);
 
-        Route::get('/backup/database', [DashboardController::class, 'backup']);
+        Route::post('/backup/database', [DashboardController::class, 'backup']);
 
         // Public (read) endpoints for stages/statuses — only throttle applied
         Route::apiResource('/stages', StageController::class)

@@ -35,7 +35,7 @@ class TaskFeaturesController extends ApiController
     {
         $members = $request->validated(['members']);
 
-        $service->assignMembers($task, $members, $project);
+        $service->assignMembers($task, $members, $project, $this->authenticatedUser());
 
         return response()->json([
             'message' => 'Task assigned successfully.',

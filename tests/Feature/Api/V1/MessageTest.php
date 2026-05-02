@@ -107,6 +107,14 @@ class MessageTest extends TestCase
     }
 
     /** @test */
+    public function get_project_scheduled_messages_returns_empty_array_when_none_exist(): void
+    {
+        $this->getJson($this->project->path().'/messages/scheduled')
+            ->assertOk()
+            ->assertExactJson([]);
+    }
+
+    /** @test */
     public function project_message_can_be_deleted(): void
     {
         $message = Message::factory()->for($this->project)

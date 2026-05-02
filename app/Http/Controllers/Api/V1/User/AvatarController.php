@@ -16,7 +16,7 @@ class AvatarController extends ApiController
     /**
      * Uploads and updates the user's avatar.
      */
-    public function avatar(User $user, UserAvatarStoreRequest $request, AvatarService $service): JsonResponse
+    public function store(User $user, UserAvatarStoreRequest $request, AvatarService $service): JsonResponse
     {
         $this->authorize('owner', $user);
 
@@ -32,7 +32,7 @@ class AvatarController extends ApiController
     /**
      * Removes the user's avatar and returns a JSON response.
      */
-    public function removeAvatar(User $user, AvatarService $service): JsonResponse
+    public function destroy(User $user, AvatarService $service): JsonResponse
     {
         $this->authorize('owner', $user);
 

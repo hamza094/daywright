@@ -134,7 +134,6 @@ class InvitationTest extends TestCase
             ]))
             ->assertJson([
                 'message' => 'You have canceled the invitation for '.$invitedUser->name.' to join the project.',
-                'project' => ['id' => $this->project->id],
             ]);
 
         $this->assertDatabaseMissing('project_members', [

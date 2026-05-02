@@ -99,6 +99,18 @@ class StagesTest extends TestCase
             ->assertOk();
     }
 
+    #[Test]
+    public function can_delete_a_stage_with_message_response(): void
+    {
+        $stage = Stage::factory()->create(['name' => 'Planning']);
+
+        $this->deleteJson("/api/v1/admin/stages/{$stage->id}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Stage deleted successfully');
+
+        $this->assertDatabaseMissing('stages', ['id' => $stage->id]);
+    }
+
     private function enableTwoFactorForUser(User $user): void
     {
         $twoFactor = $user->createTwoFactorAuth();

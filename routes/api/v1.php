@@ -3,24 +3,39 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\OAuth\ZoomAuthController;
+use App\Http\Controllers\Api\V1\DashboardActivitiesController;
+use App\Http\Controllers\Api\V1\DashboardChartDataController;
+use App\Http\Controllers\Api\V1\DashboardKpisController;
+use App\Http\Controllers\Api\V1\DashboardProjectsController;
+use App\Http\Controllers\Api\V1\DashboardTasksController;
 use App\Http\Controllers\Api\V1\NotificationsController;
+use App\Http\Controllers\Api\V1\Project\AcceptProjectInvitationController;
 use App\Http\Controllers\Api\V1\Project\ActivityController;
 use App\Http\Controllers\Api\V1\Project\ConversationController;
 use App\Http\Controllers\Api\V1\Project\FeaturesController;
-use App\Http\Controllers\Api\V1\Project\InvitationController;
-use App\Http\Controllers\Api\V1\Project\MessageController;
+use App\Http\Controllers\Api\V1\Project\ForceDeleteProjectController;
 use App\Http\Controllers\Api\V1\Project\ProjectController;
 use App\Http\Controllers\Api\V1\Project\ProjectInsightsController;
+use App\Http\Controllers\Api\V1\Project\ProjectInvitationController;
 use App\Http\Controllers\Api\V1\Project\ProjectLimitsController;
+use App\Http\Controllers\Api\V1\Project\ProjectMemberController;
+use App\Http\Controllers\Api\V1\Project\ProjectMessageController;
+use App\Http\Controllers\Api\V1\Project\RejectProjectInvitationController;
+use App\Http\Controllers\Api\V1\Project\ScheduledProjectMessagesController;
 use App\Http\Controllers\Api\V1\Project\StageController;
 use App\Http\Controllers\Api\V1\Project\ZoomMeetingController;
-use App\Http\Controllers\Api\V1\ProjectDashboardController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
+use App\Http\Controllers\Api\V1\Task\ArchiveTaskController;
+use App\Http\Controllers\Api\V1\Task\AssignTaskMembersController;
+use App\Http\Controllers\Api\V1\Task\RestoreTaskController;
 use App\Http\Controllers\Api\V1\Task\TaskController;
-use App\Http\Controllers\Api\V1\Task\TaskFeaturesController;
+use App\Http\Controllers\Api\V1\Task\TaskMemberSearchController;
 use App\Http\Controllers\Api\V1\Task\TaskStatusController;
+use App\Http\Controllers\Api\V1\Task\UnassignTaskMemberController;
 use App\Http\Controllers\Api\V1\TokenController;
 use App\Http\Controllers\Api\V1\User\AvatarController;
+use App\Http\Controllers\Api\V1\User\ForceDeleteUserController;
+use App\Http\Controllers\Api\V1\User\InvitationUserSearchController;
 use App\Http\Controllers\Api\V1\User\UserController;
 use App\Http\Controllers\Api\V1\User\UserInvitationsController;
 use App\Http\Controllers\Api\V1\Webhooks\ZoomWebhookController;
@@ -70,15 +85,13 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
     Route::get('/me/invitations', [UserInvitationsController::class, 'myInvitations'])
         ->name('user.invitations');
 
-    Route::controller(ProjectDashboardController::class)->group(function (): void {
-        Route::get('dashboard/chart-data', 'chartData')->name('dashboard.chart-data');
-        Route::get('dashboard/insights', 'kpis')
-            ->middleware('subscription')
-            ->name('dashboard.insights');
-        Route::get('dashboard/tasks', 'tasksData')->name('tasks.data');
-        Route::get('dashboard/activities', 'activities');
-        Route::get('dashboard/projects', 'dashboardProjects');
-    })->middleware(['can:owner', 'user']);
+    Route::get('dashboard/chart-data', DashboardChartDataController::class)->name('dashboard.chart-data');
+    Route::get('dashboard/insights', DashboardKpisController::class)
+        ->middleware('subscription')
+        ->name('dashboard.insights');
+    Route::get('dashboard/tasks', DashboardTasksController::class)->name('tasks.data');
+    Route::get('dashboard/activities', DashboardActivitiesController::class);
+    Route::get('dashboard/projects', DashboardProjectsController::class);
 
     // Return All Stages
     Route::get('/stages', [StageController::class, 'index']);
@@ -94,7 +107,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
             Route::get('/insights', [ProjectInsightsController::class, 'index'])->name('projects.insights');
 
-            Route::delete('/force', [ProjectController::class, 'delete'])->withTrashed()->can('manage', 'project');
+            Route::delete('/force', ForceDeleteProjectController::class)->withTrashed()->can('manage', 'project');
             Route::patch('/restore', [ProjectController::class, 'restore'])->withTrashed()->can('manage', 'project');
 
             Route::middleware(['can:access,project'])->group(function (): void {
@@ -110,16 +123,14 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                     Route::patch('stage', 'stage');
                 });
 
-                Route::controller(MessageController::class)
-                    ->middleware([
-                        'subscription',
-                        EnsureFeaturesAreActive::using('project-messaging'),
-                    ])
-                    ->group(function (): void {
-                        Route::post('message', 'message');
-                        Route::get('messages/scheduled', 'scheduled');
-                        Route::delete('messages/{message}', 'delete');
-                    });
+                Route::middleware([
+                    'subscription',
+                    EnsureFeaturesAreActive::using('project-messaging'),
+                ])->group(function (): void {
+                    Route::post('message', [ProjectMessageController::class, 'store']);
+                    Route::get('messages/scheduled', ScheduledProjectMessagesController::class);
+                    Route::delete('messages/{message}', [ProjectMessageController::class, 'destroy']);
+                });
 
                 // Chat Conversation Routes
                 Route::apiResource('/conversations', ConversationController::class)
@@ -128,83 +139,73 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
             Route::middleware(['can:access,project'])->group(function (): void {
                 Route::apiResource('/tasks', TaskController::class)
-                    ->except(['destroy'])
-                    ->withTrashed(['show', 'index']);
+                    ->withTrashed(['show', 'index', 'destroy']);
             });
 
-            Route::controller(TaskFeaturesController::class)
-                ->name('task.')
+            Route::name('task.')
                 ->prefix('tasks/{task}')
                 ->group(function (): void {
-
                     Route::middleware(['can:manage,task'])->group(function (): void {
-
-                        Route::patch('assign', 'assign')
+                        Route::patch('assign', AssignTaskMembersController::class)
                             ->name('assign');
 
-                        Route::patch('unassign', 'unassign')
+                        Route::patch('unassign', UnassignTaskMemberController::class)
                             ->name('unassign');
-
-                        Route::delete('/remove', 'remove')
-                            ->name('remove')
-                            ->withTrashed();
                     });
 
                     Route::middleware(['can:access,task'])->group(function (): void {
-                        Route::patch('archive', 'archive')
+                        Route::patch('archive', ArchiveTaskController::class)
                             ->name('archive');
 
-                        Route::patch('restore', 'unarchive')
+                        Route::patch('restore', RestoreTaskController::class)
                             ->name('unarchive')
                             ->withTrashed();
 
-                        Route::get('member/search', 'search')
+                        Route::get('member/search', TaskMemberSearchController::class)
                             ->name('members.search');
                     });
                 });
 
-            Route::controller(InvitationController::class)->group(function (): void {
-                Route::post('invitations', 'invite')
-                    ->name('send.invitation')
-                    ->middleware('throttle:invite-actions')
-                    ->can('manage', 'project');
+            Route::post('invitations', [ProjectInvitationController::class, 'store'])
+                ->name('send.invitation')
+                ->middleware('throttle:invite-actions')
+                ->can('manage', 'project');
 
-                Route::post('invitations/accept', 'accept')
-                    ->name('accept.invitation')
-                    ->can('canAcceptInvitation', 'project');
+            Route::post('invitations/accept', AcceptProjectInvitationController::class)
+                ->name('accept.invitation')
+                ->can('canAcceptInvitation', 'project');
 
-                Route::post('invitations/reject', 'reject')
-                    ->can('canAcceptInvitation', 'project');
+            Route::post('invitations/reject', RejectProjectInvitationController::class)
+                ->can('canAcceptInvitation', 'project');
 
-                Route::delete('invitations/{user}', 'cancel')
-                    ->withoutScopedBindings()
-                    ->name('projects.cancel-invitation');
+            Route::delete('invitations/{user}', [ProjectInvitationController::class, 'destroy'])
+                ->withoutScopedBindings()
+                ->name('projects.cancel-invitation');
 
-                Route::delete('members/{user}', 'remove')
-                    ->withoutScopedBindings()
-                    ->can('manage', 'project');
+            Route::delete('members/{user}', ProjectMemberController::class)
+                ->withoutScopedBindings()
+                ->can('manage', 'project');
 
-                Route::get('invitations', 'pending')
-                    ->can('manage', 'project')
-                    ->name('project.pending.invitation');
-            });
+            Route::get('invitations', [ProjectInvitationController::class, 'index'])
+                ->can('manage', 'project')
+                ->name('project.pending.invitation');
 
             Route::apiResource('/meetings', ZoomMeetingController::class);
 
         });
     });
 
-    Route::get('users/search', [InvitationController::class, 'search'])
+    Route::get('users/search', InvitationUserSearchController::class)
         ->name('users.search');
 
     Route::apiResource('/users', UserController::class)->except(['store']);
-    Route::delete('/users/{user}/force', [UserController::class, 'forceDestroy'])->name('users.forceDestroy');
+    Route::delete('/users/{user}/force', ForceDeleteUserController::class)->name('users.forceDestroy')->withTrashed();
 
     Route::group(['prefix' => 'users/{user}'], function (): void {
 
-        Route::delete('/avatar', [AvatarController::class, 'removeAvatar'])->name('user.avatar.remove');
+        Route::delete('/avatar', [AvatarController::class, 'destroy'])->name('user.avatar.remove');
 
-        Route::post('/avatar', [AvatarController::class, 'avatar'])
+        Route::post('/avatar', [AvatarController::class, 'store'])
             ->name('user.avatar');
     });
 

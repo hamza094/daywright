@@ -6,7 +6,9 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskAssigned;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
@@ -21,6 +23,8 @@ class TaskFeaturesTest extends TestCase
     /** @test */
     public function members_assign_to_task_and_pervent_duplication(): void
     {
+        Notification::fake();
+
         $task = $this->project->addTask('test task');
 
         $user = User::factory()->create();
@@ -41,7 +45,8 @@ class TaskFeaturesTest extends TestCase
             'user_id' => $user->id,
         ]);
 
-        $this->assertCount(1, $user->notifications);
+        Notification::assertSentTo($user, TaskAssigned::class);
+        Notification::assertNotSentTo($this->user, TaskAssigned::class);
 
         // Attempt to reassign the same member to the task
         $this->assignMembersToTask($task, $members)
@@ -171,10 +176,11 @@ class TaskFeaturesTest extends TestCase
 
         $this->assertSoftDeleted($task);
 
-        $this->deleteJson(route('task.remove', [
-            'project' => $this->project->slug,
-            'task' => $task->id,
-        ]))->assertNoContent();
+        $this->deleteJson($task->path())
+            ->assertOk()
+            ->assertJson([
+                'message' => 'Task deleted successfully.',
+            ]);
 
         $this->assertModelMissing($task);
     }
@@ -184,10 +190,7 @@ class TaskFeaturesTest extends TestCase
     {
         $task = Task::factory()->for($this->project)->create();
 
-        $this->deleteJson(route('task.remove', [
-            'project' => $this->project->slug,
-            'task' => $task->id,
-        ]))
+        $this->deleteJson($task->path())
             ->assertForbidden()
             ->assertJson([
                 'message' => 'Task must be trashed to perform this action',

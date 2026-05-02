@@ -32,7 +32,7 @@ class InvitationController extends ApiController
     /**
      * Search Users to send project invitation.
      */
-    public function search(Project $project, Request $request): AnonymousResourceCollection
+    public function search(Request $request): AnonymousResourceCollection
     {
         $results = $this->invitationService->usersSearch($request);
 
@@ -89,7 +89,7 @@ class InvitationController extends ApiController
         try {
             $user = $this->authenticatedUser();
 
-            $this->invitationService->acceptInvitation($project);
+            $this->invitationService->acceptInvitation($project, $user);
 
             return response()->json([
                 'message' => 'You have accepted Project invitation',

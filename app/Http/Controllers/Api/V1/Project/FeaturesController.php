@@ -38,7 +38,7 @@ class FeaturesController extends ApiController
 
         $this->featureService->updateStageStatus($project, $validated);
 
-        $service->sendNotification($project);
+        $service->sendNotification($project, $this->authenticatedUser());
 
         return response()->json([
             'message' => 'Project Stage Updated Successfully',

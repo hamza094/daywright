@@ -79,13 +79,16 @@ class ConversationTest extends TestCase
     {
         Storage::fake('s3');
 
+        Storage::disk('s3')->put('photo1.jpg', 'test');
+
         $conversation = Conversation::factory()->create([
             'project_id' => $this->project->id,
             'user_id' => $this->user->id,
-            'file' => UploadedFile::fake()->image('photo1.jpg'),
+            'file' => 'photo1.jpg',
         ]);
 
-        $this->deleteJson($this->project->path().'/conversations/'.$conversation->id);
+        $this->deleteJson($this->project->path().'/conversations/'.$conversation->id)
+            ->assertNoContent();
 
         $this->assertModelMissing($conversation);
 

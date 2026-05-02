@@ -321,9 +321,9 @@ export default {
     },
     trash(taskId) {
       axios
-        .delete(url(this.slug, taskId) + '/remove', { useProgress: true })
-        .then(() => {
-          this.$vToastify.success('Task deleted successfully');
+        .delete(url(this.slug, taskId), { useProgress: true })
+        .then((response) => {
+          this.$vToastify.success(response.data.message);
           this.removeArchivedTask(taskId);
           modalClose(this);
         })

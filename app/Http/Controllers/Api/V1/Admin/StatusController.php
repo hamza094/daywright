@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Admin\TaskStatusRequest;
 use App\Http\Resources\Api\V1\Task\TaskStatusResource;
 use App\Models\TaskStatus as Status;
 use F9Web\ApiResponseHelpers;
+use Illuminate\Http\JsonResponse;
 
 class StatusController extends Controller
 {
@@ -21,7 +22,7 @@ class StatusController extends Controller
         return TaskStatusResource::collection($statuses);
     }
 
-    public function store(TaskStatusRequest $request): \Illuminate\Http\JsonResponse
+    public function store(TaskStatusRequest $request): JsonResponse
     {
         $status = Status::create($request->validated());
 
@@ -31,7 +32,7 @@ class StatusController extends Controller
         ]);
     }
 
-    public function update(TaskStatusRequest $request, Status $status): \Illuminate\Http\JsonResponse
+    public function update(TaskStatusRequest $request, Status $status): JsonResponse
     {
         $status->update($request->validated());
 
@@ -41,10 +42,12 @@ class StatusController extends Controller
         ]);
     }
 
-    public function destroy(Status $status): \Illuminate\Http\JsonResponse
+    public function destroy(Status $status): JsonResponse
     {
         $status->delete();
 
-        return $this->respondOk('Status deleted successfully');
+        return response()->json([
+            'message' => 'Status deleted successfully',
+        ], 200);
     }
 }

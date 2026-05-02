@@ -64,6 +64,7 @@ class NotificationsTest extends TestCase
         $this->patchJson($this->project->path(), ['notes' => 'Project notes updated.']);
 
         Notification::assertSentTo($user, ProjectUpdated::class);
+        Notification::assertNotSentTo($this->user, ProjectUpdated::class);
     }
 
     /** @test */

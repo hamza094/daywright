@@ -75,4 +75,4 @@ Route::prefix('api/v1/twofactor')
     });
 
 // SPA Routes
-Route::get('{path}', HomeController::class)->where('path', '(.*)');
+Route::get('{path}', HomeController::class)->where('path', '^(?!api(?:/|$)).*');

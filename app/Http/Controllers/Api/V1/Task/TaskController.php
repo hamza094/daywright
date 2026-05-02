@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\TaskUpdateRequest;
 use App\Http\Resources\Api\V1\Task\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
+use App\Services\Api\V1\Task\TaskFeatureService;
 use App\Services\Api\V1\Task\TaskService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -81,6 +82,17 @@ class TaskController extends ApiController
         return response()->json([
             'message' => 'Task updated successfully.',
             'task' => new TaskResource($task),
+        ], 200);
+    }
+
+    public function destroy(Project $project, Task $task, TaskFeatureService $taskFeatureService): JsonResponse
+    {
+        $this->authorize('manage', $task);
+
+        $taskFeatureService->removeTask($task);
+
+        return response()->json([
+            'message' => 'Task deleted successfully.',
         ], 200);
     }
 }

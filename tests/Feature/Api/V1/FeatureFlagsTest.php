@@ -26,7 +26,8 @@ class FeatureFlagsTest extends TestCase
         $this->user->forceFill(['is_admin' => true])->save();
 
         $this->getJson($this->project->path().'/messages/scheduled')
-            ->assertNoContent();
+            ->assertOk()
+            ->assertExactJson([]);
     }
 
     #[Test]

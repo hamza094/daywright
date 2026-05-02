@@ -290,7 +290,7 @@ export default {
           axios
             .delete('/projects/' + this.slug + '/members/' + id, { useProgress: true })
             .then((response) => {
-              this.detachMember(response.data.user.uuid);
+              this.detachMember(id);
               this.$vToastify.info(response.data.message);
               this.refreshLimits(this.slug);
             })

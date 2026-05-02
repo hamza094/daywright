@@ -12,32 +12,22 @@ use App\Models\Project;
 use App\Repository\Api\V1\ConversationRepository;
 use App\Services\Api\V1\ConversationService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response as HttpResponse;
 
 class ConversationController extends ApiController
 {
-    /**
-     * Service For Conversation Feature
-     *
-     * App\Service\Api\V1\ConversationService
-     */
     public function __construct(private readonly ConversationService $conversationService) {}
 
     public function index(Project $project, ConversationRepository $repository): JsonResponse
     {
         $this->authorize('access', $project);
 
-        $conversations = $repository->getProjectConversations($project);
-
         return response()->json([
-            'data' => $conversations,
+            'data' => $repository->getProjectConversations($project),
         ]);
     }
 
-    /**
-     * Store project group conversation.
-     */
-    public function store(Project $project,
-        ConversationRequest $request): JsonResponse
+    public function store(Project $project, ConversationRequest $request): JsonResponse
     {
         $this->authorize('access', $project);
 
@@ -46,18 +36,16 @@ class ConversationController extends ApiController
         return response()->json([
             'message' => 'New Conversation added Successfully',
             'conversation' => new ConversationResource($conversation),
-        ], 201);
+            'path' => $project->path(),
+        ]);
     }
 
-    public function destroy(Project $project, Conversation $conversation): JsonResponse
+    public function destroy(Project $project, Conversation $conversation): HttpResponse
     {
         $this->authorize('delete', $conversation);
 
         $this->conversationService->deleteConversation($conversation, $project);
 
-        return response()->json([
-            'message' => 'Project Conversation deleted successfully',
-            'path' => $project->path(),
-        ], 204);
+        return response()->noContent();
     }
 }

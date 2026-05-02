@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Api\V1;
 
-use App\Actions\NotificationAction;
-use App\Actions\Project\CancelProjectZoomMeetingsAction;
+use App\Actions\Project\ForceDeleteAbandonedProjectAction;
+use App\Actions\Project\SendProjectUpdatedNotificationAction;
 use App\Enums\Subscription\PlanLimitType;
-use App\Jobs\CancelZoomMeetingsJob;
 use App\Models\Project;
 use App\Models\User;
-use App\Notifications\ProjectUpdated;
 use App\Services\Api\V1\Subscription\PlanLimitService;
 use App\Services\Api\V1\Subscription\SubscriptionUsageService;
 use Illuminate\Support\Arr;
@@ -20,6 +18,8 @@ class ProjectService
     public function __construct(
         private readonly SubscriptionUsageService $subscriptionUsageService,
         private readonly PlanLimitService $planLimitService,
+        private readonly SendProjectUpdatedNotificationAction $sendProjectUpdatedNotificationAction,
+        private readonly ForceDeleteAbandonedProjectAction $forceDeleteAbandonedProjectAction,
     ) {}
 
     /**
@@ -69,36 +69,13 @@ class ProjectService
         $project->addTasks($tasksWithUser->toArray());
     }
 
-    public function sendNotification(Project $project): void
+    public function sendNotification(Project $project, User $actor): void
     {
-        if ($project->activeMembers->isEmpty()) {
-            return;
-        }
-
-        $notifier = auth()->user()->getNotifierData();
-
-        NotificationAction::send(
-            new ProjectUpdated(
-                $project->name,
-                $project->path(),
-                $notifier
-            ), $project);
+        $this->sendProjectUpdatedNotificationAction->execute($project, $actor);
     }
 
     public function forceDeleteIfAbandoned(Project $project): bool
     {
-        if (! $project->trashed()) {
-            return false;
-        }
-
-        $meetings = (new CancelProjectZoomMeetingsAction)->execute($project);
-
-        if ($meetings !== []) {
-            CancelZoomMeetingsJob::dispatch($meetings);
-        }
-
-        $project->forceDelete();
-
-        return true;
+        return $this->forceDeleteAbandonedProjectAction->execute($project);
     }
 }

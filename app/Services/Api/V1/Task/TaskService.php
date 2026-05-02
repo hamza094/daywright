@@ -106,7 +106,7 @@ class TaskService
                 $project->name,
                 $project->path(),
                 $notifier
-            ), $project);
+            ), $project, $actor);
     }
 
     private function getTasks(Project $project, bool $isArchived): HasMany

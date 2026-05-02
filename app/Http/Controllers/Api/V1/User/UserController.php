@@ -96,21 +96,4 @@ class UserController extends ApiController
             'message' => 'User data deleted successfully.',
         ], 200);
     }
-
-    /**
-     * Force delete user
-     *
-     * Permanently delete the specified user .
-     */
-    public function forceDestroy(User $user): JsonResponse
-    {
-        $this->authorize('owner', $user);
-
-        $getUser = User::withTrashed()->findOrFail($user->id);
-        $getUser->forceDelete();
-
-        return response()->json([
-            'message' => 'User data permanently deleted.',
-        ], 200);
-    }
 }

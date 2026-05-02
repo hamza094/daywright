@@ -104,6 +104,21 @@ class StatusesTest extends TestCase
         ]);
     }
 
+    #[Test]
+    public function can_delete_a_status_with_message_response(): void
+    {
+        $status = TaskStatus::factory()->create([
+            'label' => 'Active',
+            'color' => '#000000',
+        ]);
+
+        $this->deleteJson("/api/v1/admin/statuses/{$status->id}")
+            ->assertOk()
+            ->assertJsonPath('message', 'Status deleted successfully');
+
+        $this->assertDatabaseMissing('statuses', ['id' => $status->id]);
+    }
+
     private function enableTwoFactorForUser(User $user): void
     {
         $twoFactor = $user->createTwoFactorAuth();

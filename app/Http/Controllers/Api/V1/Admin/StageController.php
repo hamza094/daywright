@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Admin\StageRequest;
 use App\Http\Resources\Api\V1\Admin\StageResource;
 use App\Models\Stage;
 use F9Web\ApiResponseHelpers;
+use Illuminate\Http\JsonResponse;
 
 class StageController extends Controller
 {
@@ -21,7 +22,7 @@ class StageController extends Controller
         return StageResource::collection($stages);
     }
 
-    public function store(StageRequest $request): \Illuminate\Http\JsonResponse
+    public function store(StageRequest $request): JsonResponse
     {
         $stage = Stage::create($request->validated());
 
@@ -31,7 +32,7 @@ class StageController extends Controller
         ]);
     }
 
-    public function update(StageRequest $request, Stage $stage): \Illuminate\Http\JsonResponse
+    public function update(StageRequest $request, Stage $stage): JsonResponse
     {
         $stage->update($request->validated());
 
@@ -41,10 +42,12 @@ class StageController extends Controller
         ]);
     }
 
-    public function destroy(Stage $stage): \Illuminate\Http\JsonResponse
+    public function destroy(Stage $stage): JsonResponse
     {
         $stage->delete();
 
-        return $this->respondOk('Stage deleted successfully');
+        return response()->json([
+            'message' => 'Stage deleted successfully',
+        ], 200);
     }
 }

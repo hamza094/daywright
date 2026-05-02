@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Api\V1\Admin\DashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
 use Override;
@@ -151,8 +152,32 @@ class DashboardTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::BACKUP_ROUTE)
+        $this->postJson(self::BACKUP_ROUTE)
             ->assertForbidden();
+    }
+
+    #[Test]
+    public function admin_can_trigger_backup_via_post_route(): void
+    {
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('backup:clean');
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('backup:run');
+
+        $this->postJson(self::BACKUP_ROUTE)
+            ->assertOk()
+            ->assertJsonPath('message', 'Backup process started');
+    }
+
+    #[Test]
+    public function backup_route_is_not_exposed_via_get(): void
+    {
+        $this->getJson(self::BACKUP_ROUTE)
+            ->assertNotFound()
+            ->assertJsonPath('message', 'Not Found.');
     }
 
     // Error Handling

@@ -10,17 +10,17 @@ use Illuminate\Notifications\Notification;
 
 class NotificationAction
 {
-    public static function send(Notification $notification, Project $project): void
+    public static function send(Notification $notification, Project $project, ?User $actor = null): void
     {
         $users = $project->activeMembers->push($project->user);
 
         $users
-            ->reject(fn (User $user): bool => self::isAuthUser($user))
+            ->reject(fn (User $user): bool => self::isActor($user, $actor))
             ->each(fn (User $user) => $user->notify($notification));
     }
 
-    private static function isAuthUser(User $user): bool
+    private static function isActor(User $user, ?User $actor): bool
     {
-        return auth()->id() === $user->id;
+        return $actor !== null && $user->is($actor);
     }
 }

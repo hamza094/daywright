@@ -173,6 +173,18 @@ class UserTest extends TestCase
     }
 
     #[Test]
+    public function user_can_force_delete_a_trashed_profile(): void
+    {
+        $this->deleteJson('api/v1/users/'.$this->user->uuid)->assertOk();
+
+        $this->deleteJson('api/v1/users/'.$this->user->uuid.'/force')
+            ->assertOk()
+            ->assertJsonPath('message', 'User data permanently deleted.');
+
+        $this->assertDatabaseMissing('users', ['id' => $this->user->id]);
+    }
+
+    #[Test]
     public function it_permanently_deletes_user_and_handles_projects_after_15_days(): void
     {
         // Create a user and soft delete them 16 days ago

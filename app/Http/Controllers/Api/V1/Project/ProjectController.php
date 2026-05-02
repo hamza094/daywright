@@ -105,7 +105,7 @@ class ProjectController extends ApiController
         $project->update($request->validated());
         $project->load(['user', 'stage', 'activeMembers', 'limitedActivities']);
 
-        $this->projectService->sendNotification($project);
+        $this->projectService->sendNotification($project, $this->authenticatedUser());
 
         return response()->json([
             'message' => 'Project updated successfully.',
@@ -136,18 +136,5 @@ class ProjectController extends ApiController
             'message' => $project->name.' restored successfully',
         ], 200);
 
-    }
-
-    public function delete(Project $project): JsonResponse
-    {
-        $deleted = $this->projectService->forceDeleteIfAbandoned($project);
-
-        if (! $deleted) {
-            return response()->json(['message' => 'Only abandoned projects can be deleted permanently.'], 403);
-        }
-
-        return response()->json([
-            'message' => 'Project deleted successfully',
-        ], 200);
     }
 }
