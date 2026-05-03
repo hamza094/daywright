@@ -33,8 +33,8 @@ class ActivityTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $response = $this->getJson($this->project->path().'/activities?tasks=1')
-            ->assertJsonCount(1, ['data'])
+        $response = $this->getJson($this->activityUrl(['type' => 'tasks']))
+            ->assertJsonCount(1, 'data')
             ->assertOk();
 
         $this->assertEquals('Task "'.($task->title).'" added', $response->json()['data'][0]['description']);
@@ -45,7 +45,7 @@ class ActivityTest extends TestCase
     {
         $this->project->addTask('test task');
 
-        $response = $this->getJson($this->project->path().'/activities?mine='.$this->project->user->id)->assertOk();
+        $response = $this->getJson($this->activityUrl(['type' => 'mine']))->assertOk();
 
         $this->assertEquals('New project created', $response->json()['data'][1]['description']);
     }
@@ -55,9 +55,25 @@ class ActivityTest extends TestCase
     {
         $this->project->addTask('test task');
 
-        $response = $this->getJson($this->project->path().'/activities?members=1')
+        $response = $this->getJson($this->activityUrl(['type' => 'members']))
             ->assertOk();
 
         $this->assertEquals($response->json(), ['message' => 'No related activities found']);
+    }
+
+    /** @test */
+    public function it_validates_activity_filter_type(): void
+    {
+        $this->getJson($this->activityUrl(['type' => 'invalid']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter.type');
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function activityUrl(array $filters = []): string
+    {
+        return $this->project->path().'/activities'.($filters === [] ? '' : '?'.http_build_query(['filter' => $filters]));
     }
 }

@@ -24,25 +24,49 @@ class UserTasksRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_created' => 'sometimes|boolean',
-            'task_assigned' => 'sometimes|boolean',
-            'completed' => 'sometimes|boolean',
-            'overdue' => 'sometimes|boolean',
-            'remaining' => 'sometimes|boolean',
+            'filter' => ['sometimes', 'array'],
+            'filter.user_created' => ['sometimes', 'boolean'],
+            'filter.task_assigned' => ['sometimes', 'boolean'],
+            'filter.completed' => ['sometimes', 'boolean'],
+            'filter.overdue' => ['sometimes', 'boolean'],
+            'filter.remaining' => ['sometimes', 'boolean'],
         ];
     }
 
     /**
      * Convenience: return only known filter keys
+     *
+     * @return array{user_created: bool, task_assigned: bool, completed: bool, overdue: bool, remaining: bool}
      */
     public function filters(): array
     {
-        return $this->only([
-            'user_created',
-            'task_assigned',
-            'completed',
-            'overdue',
-            'remaining',
+        $validatedFilters = $this->validated('filter', []);
+
+        return [
+            'user_created' => (bool) ($validatedFilters['user_created'] ?? false),
+            'task_assigned' => (bool) ($validatedFilters['task_assigned'] ?? false),
+            'completed' => (bool) ($validatedFilters['completed'] ?? false),
+            'overdue' => (bool) ($validatedFilters['overdue'] ?? false),
+            'remaining' => (bool) ($validatedFilters['remaining'] ?? false),
+        ];
+    }
+
+    #[Override]
+    protected function prepareForValidation(): void
+    {
+        $inputFilters = $this->input('filter', []);
+        $filters = is_array($inputFilters) ? $inputFilters : [];
+
+        foreach (['user_created', 'task_assigned', 'completed', 'overdue', 'remaining'] as $key) {
+            if (! array_key_exists($key, $filters) && $this->has($key)) {
+                $filters[$key] = $this->normalizeBooleanValue($this->input($key));
+            } elseif (array_key_exists($key, $filters)) {
+                $filters[$key] = $this->normalizeBooleanValue($filters[$key]);
+            }
+        }
+
+        $this->merge([
+            'filter' => $filters,
         ]);
     }
 
@@ -52,26 +76,35 @@ class UserTasksRequest extends FormRequest
     #[Override]
     protected function passedValidation(): void
     {
-        if (
-            ! $this->hasAnyFilter(['completed', 'overdue', 'remaining', 'user_created', 'task_assigned'])
-        ) {
+        if (! $this->hasAnyFilter($this->filters())) {
             throw ValidationException::withMessages([
-                'filters' => 'At least one filter must be provided.',
+                'filter' => 'At least one filter must be provided.',
             ]);
         }
     }
 
     /**
-     * Check if any of the specified filter keys are present and filled.
+     * @param  array<string, bool>  $filters
      */
-    protected function hasAnyFilter(array $keys): bool
+    protected function hasAnyFilter(array $filters): bool
     {
-        foreach ($keys as $key) {
-            if ($this->filled($key) && $this->boolean($key)) {
+        foreach ($filters as $enabled) {
+            if ($enabled) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private function normalizeBooleanValue(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $normalized = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+        return $normalized ?? $value;
     }
 }

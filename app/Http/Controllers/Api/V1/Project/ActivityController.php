@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\ProjectActivityIndexRequest;
 use App\Http\Resources\Api\V1\ActivityResource;
 use App\Models\Project;
 use App\Repository\ProjectRepository;
+use App\Services\Api\V1\PaginationService;
+use Illuminate\Http\JsonResponse;
 
 class ActivityController extends ApiController
 {
-    public function index(Project $project, ProjectRepository $repository)
+    public function index(Project $project, ProjectActivityIndexRequest $request, ProjectRepository $repository): JsonResponse
     {
         $activities = $repository->filterActivities(
-            $project->activities
+            $project->activities,
+            $request->filterType(),
         );
 
         if ($activities->isEmpty()) {
@@ -22,6 +26,20 @@ class ActivityController extends ApiController
                 ['message' => 'No related activities found'], 200);
         }
 
-        return ActivityResource::collection($activities)->paginate(10);
+        $page = (int) $request->validated('page', 1);
+        $perPage = $request->perPage();
+
+        $paginatedActivities = new PaginationService(
+            $activities->forPage($page, $perPage)->values(),
+            $activities->count(),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'pageName' => 'page',
+            ],
+        );
+
+        return ActivityResource::collection($paginatedActivities)->response();
     }
 }

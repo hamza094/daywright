@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\NotificationIndexRequest;
 use App\Http\Requests\Api\V1\NotificationStatusUpdateRequest;
 use App\Http\Resources\Api\V1\NotificationResource;
 use App\Services\Api\V1\NotificationService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class NotificationsController extends ApiController
 {
@@ -17,12 +17,13 @@ class NotificationsController extends ApiController
      * Display a listing of the user's notifications.
      */
     public function index(
-        Request $request,
+        NotificationIndexRequest $request,
         NotificationService $notificationService,
     ): JsonResponse {
         $paginator = $notificationService->paginateForUser(
             $this->authenticatedUser(),
-            $request->query('filter'),
+            $request->statusFilter(),
+            $request->perPage(),
         );
 
         return NotificationResource::collection($paginator)->response();

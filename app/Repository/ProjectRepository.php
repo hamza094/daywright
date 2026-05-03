@@ -6,7 +6,6 @@ namespace App\Repository;
 
 use App\Models\Project;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class ProjectRepository
@@ -17,7 +16,7 @@ class ProjectRepository
      * @param  Collection  $activities  The collection of activities to filter.
      * @return Collection The filtered collection of activities.
      */
-    public function filterActivities(Collection $activities): Collection
+    public function filterActivities(Collection $activities, ?string $filterType = null): Collection
     {
         $filters = [
             'specifics' => 'filterActivityByProjectSpecified',
@@ -26,11 +25,8 @@ class ProjectRepository
             'mine' => 'filterActivityByAuthUser',
         ];
 
-        $filter = request()->only(array_keys($filters));
-        $filter = key($filter);
-
-        if ($filter !== 0 && ($filter !== '' && $filter !== '0') && array_key_exists($filter, $filters)) {
-            $method = $filters[$filter];
+        if ($filterType !== null && array_key_exists($filterType, $filters)) {
+            $method = $filters[$filterType];
             $activities = $this->$method($activities);
         }
 

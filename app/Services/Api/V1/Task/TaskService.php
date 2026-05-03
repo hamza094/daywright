@@ -24,7 +24,7 @@ class TaskService
         private readonly PlanLimitService $planLimitService,
     ) {}
 
-    public function getTasksData(Project $project, bool $isArchived): array
+    public function getTasksData(Project $project, bool $isArchived, int $perPage): array
     {
         $query = $this->getTasks($project, $isArchived);
 
@@ -41,7 +41,6 @@ class TaskService
         }
 
         // Active tasks (paginated) - use config value for page size
-        $perPage = (int) config('tasks.limit', 3);
         $paginatedTasks = $query->paginate($perPage);
 
         return [

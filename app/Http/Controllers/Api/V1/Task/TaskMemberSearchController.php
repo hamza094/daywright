@@ -16,6 +16,6 @@ final class TaskMemberSearchController extends ApiController
 {
     public function __invoke(Project $project, Task $task, TaskMemberSearchRequest $request, TaskRepository $repository): AnonymousResourceCollection
     {
-        return TaskMemberResource::collection($repository->searchMembers($request, $project, $task));
+        return TaskMemberResource::collection($repository->searchMembers($request->searchTerm(), $project, $task));
     }
 }

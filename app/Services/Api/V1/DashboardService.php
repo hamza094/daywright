@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\Api\V1;
 
-use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Models\User;
 use App\Repository\DashBoardRepository;
 use Auth;
@@ -17,14 +16,9 @@ class DashboardService
     /**
      * @return Collection<int, \App\Models\Project>|null
      */
-    public function getUserProjects(DashboardProjectRequest $request): ?Collection
+    public function getUserProjects(User $user, array $filters, string $sort = 'latest'): Collection
     {
-        $user = Auth::user();
-        if (! $user instanceof User) {
-            return null;
-        }
-
-        return $this->filterProjects($user, $request);
+        return $this->filterProjects($user, $filters, $sort);
     }
 
     /**
@@ -47,10 +41,8 @@ class DashboardService
     /**
      * @return Collection<int,\App\Models\Project>
      */
-    private function filterProjects(User $user, DashboardProjectRequest $request): Collection
+    private function filterProjects(User $user, array $filters, string $sort): Collection
     {
-        $filters = $this->getFilters($request);
-
         $query = $filters['member']
             ? $user->activeMembers()
             : $user->projects();
@@ -59,20 +51,7 @@ class DashboardService
             ->with(['stage', 'user'])
             ->when($filters['abandoned'], fn ($query) => $query->trashed())
             ->when($filters['search'], fn ($query) => $query->search($filters['search']))
-            ->sortBy($filters['sort'])
+            ->sortBy($sort)
             ->get();
-    }
-
-    /**
-     * @return array<string,mixed>
-     */
-    private function getFilters(DashboardProjectRequest $request): array
-    {
-        return [
-            'search' => $request->validated('search'),
-            'sort' => $request->validated('sort', 'latest'),
-            'member' => $request->validated('member', false),
-            'abandoned' => $request->validated('abandoned', false),
-        ];
     }
 }

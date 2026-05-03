@@ -186,7 +186,9 @@ class InvitationTest extends TestCase
             ->members()
             ->attach($pendingUsers, ['active' => false]);
 
-        $response = $this->getJson($this->project->path().'/invitations?status=pending');
+        $response = $this->getJson($this->project->path().'/invitations?'.http_build_query([
+            'filter' => ['status' => 'pending'],
+        ]));
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -225,10 +227,12 @@ class InvitationTest extends TestCase
     {
         $this->getJson($this->project->path().'/invitations')
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['status']);
+            ->assertJsonValidationErrors(['filter']);
 
-        $this->getJson($this->project->path().'/invitations?status=accepted')
+        $this->getJson($this->project->path().'/invitations?'.http_build_query([
+            'filter' => ['status' => 'accepted'],
+        ]))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['status']);
+            ->assertJsonValidationErrors(['filter.status']);
     }
 }

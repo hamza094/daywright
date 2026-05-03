@@ -26,8 +26,12 @@ class ProjectController extends ApiController
         DashboardProjectRequest $request,
         DashboardService $dashboardService,
     ): JsonResponse {
-        $projects = $dashboardService->getUserProjects($request);
-        $perPage = (int) config('app.project.items_limit');
+        $projects = $dashboardService->getUserProjects(
+            $this->authenticatedUser(),
+            $request->filters(),
+            $request->sort(),
+        );
+        $perPage = $request->perPage();
         $page = (int) $request->validated('page', 1);
 
         $paginatedProjects = new PaginationService(
@@ -45,8 +49,8 @@ class ProjectController extends ApiController
 
         return response()->json([
             'projects' => $projectsPayload,
-            'projectsCount' => $projects?->count() ?? 0,
-            'message' => $projects === null || $projects->isEmpty() ? 'No projects found.' : '',
+            'projectsCount' => $projects->count(),
+            'message' => $projects->isEmpty() ? 'No projects found.' : '',
         ], Response::HTTP_OK);
     }
 

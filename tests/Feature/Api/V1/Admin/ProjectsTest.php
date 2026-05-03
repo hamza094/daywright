@@ -87,7 +87,7 @@ class ProjectsTest extends TestCase
         $alphaProject = $this->createProject(['name' => 'Alpha Project']);
         $this->createProject(['name' => 'Beta Project']);
 
-        $response = $this->getJson(self::PROJECTS_ROUTE.'?search=Alpha')
+        $response = $this->getJson($this->projectsUrl(['search' => 'Alpha']))
             ->assertOk();
 
         $projects = $response->json('projects.data');
@@ -105,12 +105,12 @@ class ProjectsTest extends TestCase
         $trashed->delete();
 
         // Active filter
-        $active = $this->getJson(self::PROJECTS_ROUTE.'?filter=active')->assertOk();
+        $active = $this->getJson($this->projectsUrl(['state' => 'active']))->assertOk();
         $this->assertNotEmpty($active->json('projects.data'));
         $this->assertContains('Filter by Active', $active->json('appliedFilters'));
 
         // Trashed filter
-        $trashedResponse = $this->getJson(self::PROJECTS_ROUTE.'?filter=trashed')->assertOk();
+        $trashedResponse = $this->getJson($this->projectsUrl(['state' => 'trashed']))->assertOk();
         $this->assertNotEmpty($trashedResponse->json('projects.data'));
         $this->assertContains('Filter by Trashed', $trashedResponse->json('appliedFilters'));
     }
@@ -121,7 +121,7 @@ class ProjectsTest extends TestCase
         $this->createProject(['health_score' => 80]);
         $this->createProject(['health_score' => 20]);
 
-        $response = $this->getJson(self::PROJECTS_ROUTE.'?status=hot')
+        $response = $this->getJson($this->projectsUrl(['status' => 'hot']))
             ->assertOk();
 
         $projects = $response->json('projects.data');
@@ -132,17 +132,17 @@ class ProjectsTest extends TestCase
     #[Test]
     public function validates_search_max_length(): void
     {
-        $this->getJson(self::PROJECTS_ROUTE.'?search='.str_repeat('a', 256))
+        $this->getJson($this->projectsUrl(['search' => str_repeat('a', 256)]))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('search');
+            ->assertJsonValidationErrors('filter.search');
     }
 
     #[Test]
     public function validates_invalid_status_filter(): void
     {
-        $this->getJson(self::PROJECTS_ROUTE.'?status=invalid')
+        $this->getJson($this->projectsUrl(['status' => 'invalid']))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('status');
+            ->assertJsonValidationErrors('filter.status');
     }
 
     #[Test]
@@ -153,7 +153,7 @@ class ProjectsTest extends TestCase
         $this->createProject(['stage_id' => $stage->id]);
         $this->createProject();
 
-        $response = $this->getJson(self::PROJECTS_ROUTE."?stage={$stage->id}")
+        $response = $this->getJson($this->projectsUrl(['stage' => $stage->id]))
             ->assertOk();
 
         $appliedFilters = $response->json('appliedFilters');
@@ -178,7 +178,10 @@ class ProjectsTest extends TestCase
         $trashedProject->delete();
 
         // Search by user name + active filter: should NOT return the trashed project
-        $response = $this->getJson(self::PROJECTS_ROUTE.'?search=SearchableUser&filter=active')
+        $response = $this->getJson($this->projectsUrl([
+            'search' => 'SearchableUser',
+            'state' => 'active',
+        ]))
             ->assertOk();
 
         $projects = $response->json('projects.data');
@@ -194,12 +197,12 @@ class ProjectsTest extends TestCase
     {
         Project::factory()->count(15)->create();
 
-        $response = $this->getJson(self::PROJECTS_ROUTE)
+        $response = $this->getJson($this->projectsUrl(params: ['per_page' => 5]))
             ->assertOk();
 
         $projects = $response->json('projects.data');
         $this->assertIsArray($projects);
-        $this->assertCount(10, $projects);
+        $this->assertCount(5, $projects);
     }
 
     // Bulk Delete
@@ -273,6 +276,21 @@ class ProjectsTest extends TestCase
         $user->createTwoFactorAuth();
 
         $user->enableTwoFactorAuth();
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @param  array<string, mixed>  $params
+     */
+    private function projectsUrl(array $filters = [], array $params = []): string
+    {
+        $query = $params;
+
+        if ($filters !== []) {
+            $query['filter'] = $filters;
+        }
+
+        return self::PROJECTS_ROUTE.($query === [] ? '' : '?'.http_build_query($query));
     }
 
     /**

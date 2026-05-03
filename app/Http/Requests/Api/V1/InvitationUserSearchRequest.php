@@ -7,7 +7,7 @@ namespace App\Http\Requests\Api\V1;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
-class TaskMemberSearchRequest extends FormRequest
+class InvitationUserSearchRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -40,5 +40,15 @@ class TaskMemberSearchRequest extends FormRequest
     public function searchTerm(): string
     {
         return (string) $this->validated('search');
+    }
+
+    #[Override]
+    protected function prepareForValidation(): void
+    {
+        if (! $this->has('search') && $this->has('query')) {
+            $this->merge([
+                'search' => $this->input('query'),
+            ]);
+        }
     }
 }

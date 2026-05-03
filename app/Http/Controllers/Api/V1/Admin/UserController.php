@@ -6,11 +6,11 @@ namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Admin\UpdateUserRoleRequest;
+use App\Http\Requests\Api\V1\Admin\UserFilterRequest;
 use App\Http\Resources\Api\V1\Admin\User\AdminUserResource;
 use App\Models\User;
 use App\Services\Admin\AdminAccessService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -18,9 +18,9 @@ class UserController extends Controller
 {
     public function __construct(private readonly AdminAccessService $adminAccessService) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(UserFilterRequest $request): AnonymousResourceCollection
     {
-        $perPage = 7;
+        $search = $request->searchTerm();
 
         $users = User::with([
             'subscriptions',
@@ -29,12 +29,14 @@ class UserController extends Controller
         ])
             ->withCount('projects')
             ->withCount('activeMembers as projects_member_count')
-            ->when($request->search, function ($query) use ($request): void {
-                $query->where('name', 'like', '%'.$request->search.'%')
-                    ->orWhere('username', 'like', '%'.$request->search.'%')
-                    ->orWhere('email', 'like', '%'.$request->search.'%');
+            ->when($search, function ($query) use ($search): void {
+                $query->where(function ($subQuery) use ($search): void {
+                    $subQuery->where('name', 'like', '%'.$search.'%')
+                        ->orWhere('username', 'like', '%'.$search.'%')
+                        ->orWhere('email', 'like', '%'.$search.'%');
+                });
             })
-            ->paginate($perPage);
+            ->paginate($request->perPage());
 
         return AdminUserResource::collection($users);
     }

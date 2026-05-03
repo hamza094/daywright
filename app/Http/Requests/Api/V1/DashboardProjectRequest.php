@@ -25,27 +25,56 @@ class DashboardProjectRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'filter' => ['sometimes', 'array'],
             /**
              * @example frontend
              */
-            'search' => 'nullable|string|max:25',
+            'filter.search' => ['nullable', 'string', 'max:25'],
             /**
              * @example latest
              */
-            'sort' => 'nullable|string|in:latest,oldest,name',
+            'sort' => ['nullable', 'string', 'in:latest,oldest,name'],
             /**
              * @example true
              */
-            'member' => 'nullable|boolean',
+            'filter.member' => ['nullable', 'boolean'],
             /**
              * @example false
              */
-            'abandoned' => 'nullable|boolean',
+            'filter.abandoned' => ['nullable', 'boolean'],
             /**
              * @example 1
              */
-            'page' => 'nullable|integer|min:1',
+            'page' => ['nullable', 'integer', 'min:1'],
+            /**
+             * @example 10
+             */
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
+    }
+
+    /**
+     * @return array{search: ?string, member: bool, abandoned: bool}
+     */
+    public function filters(): array
+    {
+        $validatedFilters = $this->validated('filter', []);
+
+        return [
+            'search' => is_string($validatedFilters['search'] ?? null) ? $validatedFilters['search'] : null,
+            'member' => (bool) ($validatedFilters['member'] ?? false),
+            'abandoned' => (bool) ($validatedFilters['abandoned'] ?? false),
+        ];
+    }
+
+    public function sort(): string
+    {
+        return (string) $this->validated('sort', 'latest');
+    }
+
+    public function perPage(): int
+    {
+        return (int) $this->validated('per_page', (int) config('app.project.items_limit'));
     }
 
     /**
@@ -57,15 +86,32 @@ class DashboardProjectRequest extends FormRequest
         return [
             'sort.in' => 'Sort must be one of: latest, oldest, or name',
             'page.min' => 'Page must be at least 1',
+            'per_page.min' => 'Per page must be at least 1',
+            'per_page.max' => 'Per page may not be greater than 100',
         ];
     }
 
     #[Override]
     protected function prepareForValidation(): void
     {
+        $filters = $this->input('filter', []);
+
+        if (! is_array($filters)) {
+            $filters = [];
+        }
+
+        if (! array_key_exists('search', $filters) && $this->has('search')) {
+            $filters['search'] = $this->input('search');
+        }
+
+        $member = $filters['member'] ?? $this->input('member');
+        $abandoned = $filters['abandoned'] ?? $this->input('abandoned');
+
         $this->merge([
-            'member' => $this->normalizeBooleanValue($this->input('member')),
-            'abandoned' => $this->normalizeBooleanValue($this->input('abandoned')),
+            'filter' => array_merge($filters, [
+                'member' => $this->normalizeBooleanValue($member),
+                'abandoned' => $this->normalizeBooleanValue($abandoned),
+            ]),
         ]);
     }
 

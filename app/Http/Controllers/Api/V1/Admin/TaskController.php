@@ -18,9 +18,7 @@ class TaskController extends ApiController
         TaskRepository $taskRepository,
         TaskFilterRequest $request,
     ): JsonResponse {
-        $perPage = 50;
-
-        $tasks = $taskRepository->getTasksWithFilter($request, $perPage);
+        $tasks = $taskRepository->getTasksWithFilter($request->filters(), $request->perPage());
 
         return TaskResource::collection($tasks)->response();
     }

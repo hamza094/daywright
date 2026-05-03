@@ -97,7 +97,7 @@ class TasksTest extends TestCase
         $this->createTask(['project_id' => $project->id]);
         $this->createTask(); // different project
 
-        $response = $this->getJson(self::TASKS_ROUTE.'?search=Unique Searchable')
+        $response = $this->getJson($this->tasksUrl(['search' => 'Unique Searchable']))
             ->assertOk();
 
         $tasks = $response->json('data');
@@ -112,11 +112,11 @@ class TasksTest extends TestCase
         $trashed->delete();
 
         // Active filter
-        $active = $this->getJson(self::TASKS_ROUTE.'?filter=active')->assertOk();
+        $active = $this->getJson($this->tasksUrl(['state' => 'active']))->assertOk();
         $this->assertNotEmpty($active->json('data'));
 
         // Trashed filter
-        $trashedResponse = $this->getJson(self::TASKS_ROUTE.'?filter=trashed')->assertOk();
+        $trashedResponse = $this->getJson($this->tasksUrl(['state' => 'trashed']))->assertOk();
         $this->assertNotEmpty($trashedResponse->json('data'));
     }
 
@@ -139,23 +139,23 @@ class TasksTest extends TestCase
     {
         Task::factory()->count(55)->create();
 
-        $response = $this->getJson(self::TASKS_ROUTE)
+        $response = $this->getJson($this->tasksUrl(params: ['per_page' => 10]))
             ->assertOk();
 
         $tasks = $response->json('data');
-        $this->assertCount(50, $tasks);
+        $this->assertCount(10, $tasks);
     }
 
     #[Test]
     public function validates_filter_and_search_params(): void
     {
-        $this->getJson(self::TASKS_ROUTE.'?filter=invalid')
+        $this->getJson($this->tasksUrl(['state' => 'invalid']))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('filter');
+            ->assertJsonValidationErrors('filter.state');
 
-        $this->getJson(self::TASKS_ROUTE.'?search='.str_repeat('a', 256))
+        $this->getJson($this->tasksUrl(['search' => str_repeat('a', 256)]))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('search');
+            ->assertJsonValidationErrors('filter.search');
     }
 
     // Bulk Delete
@@ -234,6 +234,21 @@ class TasksTest extends TestCase
         $user->createTwoFactorAuth();
 
         $user->enableTwoFactorAuth();
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @param  array<string, mixed>  $params
+     */
+    private function tasksUrl(array $filters = [], array $params = []): string
+    {
+        $query = $params;
+
+        if ($filters !== []) {
+            $query['filter'] = $filters;
+        }
+
+        return self::TASKS_ROUTE.($query === [] ? '' : '?'.http_build_query($query));
     }
 
     /**

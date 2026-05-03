@@ -26,10 +26,22 @@ class TaskTest extends TestCase
             ->for($this->project)
             ->create();
 
-        $this->getJson($this->project->path().'/tasks?request=archived')
+        $this->getJson($this->project->path().'/tasks?'.http_build_query([
+            'filter' => ['state' => 'archived'],
+        ]))
             ->assertOk()
             ->assertJsonCount(3, 'tasksData')
             ->assertJsonStructure(['message', 'tasksData']);
+    }
+
+    /** @test */
+    public function task_index_validates_invalid_state_filter(): void
+    {
+        $this->getJson($this->project->path().'/tasks?'.http_build_query([
+            'filter' => ['state' => 'invalid'],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter.state');
     }
 
     /** @test */

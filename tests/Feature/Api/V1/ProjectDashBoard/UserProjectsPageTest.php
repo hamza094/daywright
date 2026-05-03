@@ -33,14 +33,14 @@ class UserProjectsPageTest extends TestCase
     /** @test */
     public function it_validates_member_parameter(): void
     {
-        $response = $this->getJson(route('projects.index', ['member' => 'not_a_boolean']));
+        $response = $this->getJson(route('projects.index', ['filter' => ['member' => 'not_a_boolean']]));
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['member'])
+            ->assertJsonValidationErrors(['filter.member'])
             ->assertJson([
                 'message' => 'Validation Error',
                 'errors' => [
-                    'member' => ['The member field must be true or false.'],
+                    'filter.member' => ['The filter.member field must be true or false.'],
                 ],
             ]);
     }
@@ -48,10 +48,10 @@ class UserProjectsPageTest extends TestCase
     /** @test */
     public function it_accepts_string_true_member_parameter(): void
     {
-        $response = $this->getJson(route('projects.index', ['member' => 'true']));
+        $response = $this->getJson(route('projects.index', ['filter' => ['member' => 'true']]));
 
         $response->assertOk()
-            ->assertJsonMissingValidationErrors(['member']);
+            ->assertJsonMissingValidationErrors(['filter.member']);
     }
 
     /** @test */
@@ -76,14 +76,17 @@ class UserProjectsPageTest extends TestCase
 
         $response = $this->getJson(route('projects.index', [
             'sort' => 'latest',
-            'member' => true,
-            'abandoned' => false,
+            'filter' => [
+                'member' => true,
+                'abandoned' => false,
+                'search' => 'Test',
+            ],
             'page' => 1,
-            'search' => 'Test',
+            'per_page' => 10,
         ]));
 
         $response->assertOk()
-            ->assertJsonMissingValidationErrors(['sort', 'member', 'abandoned', 'page', 'search']);
+            ->assertJsonMissingValidationErrors(['sort', 'filter.member', 'filter.abandoned', 'page', 'filter.search', 'per_page']);
     }
 
     /** @test */
@@ -94,7 +97,7 @@ class UserProjectsPageTest extends TestCase
         Project::factory()->create(['name' => 'Backend Project', 'user_id' => $this->user->id]);
         Project::factory()->create(['name' => 'Mobile App', 'user_id' => $this->user->id]);
 
-        $response = $this->getJson(route('projects.index', ['search' => 'Frontend']));
+        $response = $this->getJson(route('projects.index', ['filter' => ['search' => 'Frontend']]));
 
         $response->assertOk();
 
@@ -156,7 +159,14 @@ class UserProjectsPageTest extends TestCase
         $response->assertOk();
 
         $projects = $response->json('projects.data');
-        $this->assertEquals('Alpha Project', $projects[0]['name']);
+        $projectNames = collect($projects)->pluck('name')->all();
+
+        $this->assertContains('Alpha Project', $projectNames);
+        $this->assertContains('Zoo Project', $projectNames);
+        $this->assertLessThan(
+            array_search('Zoo Project', $projectNames, true),
+            array_search('Alpha Project', $projectNames, true),
+        );
     }
 
     /** @test */
@@ -173,7 +183,7 @@ class UserProjectsPageTest extends TestCase
             'active' => 1,
         ]);
 
-        $response = $this->getJson(route('projects.index', ['member' => true]));
+        $response = $this->getJson(route('projects.index', ['filter' => ['member' => true]]));
 
         $response->assertOk();
 
@@ -189,7 +199,7 @@ class UserProjectsPageTest extends TestCase
         // Soft delete the default project
         $this->project->delete();
 
-        $response = $this->getJson(route('projects.index', ['abandoned' => true]));
+        $response = $this->getJson(route('projects.index', ['filter' => ['abandoned' => true]]));
 
         $response->assertOk();
 
@@ -197,5 +207,16 @@ class UserProjectsPageTest extends TestCase
 
         $this->assertCount(1, $projects);
         $this->assertEquals($this->project->name, $projects[0]['name']);
+    }
+
+    /** @test */
+    public function auth_user_can_limit_projects_per_page(): void
+    {
+        Project::factory()->count(5)->create(['user_id' => $this->user->id]);
+
+        $response = $this->getJson(route('projects.index', ['per_page' => 2]))
+            ->assertOk();
+
+        $this->assertCount(2, $response->json('projects.data'));
     }
 }

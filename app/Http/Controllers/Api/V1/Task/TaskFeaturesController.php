@@ -128,7 +128,7 @@ class TaskFeaturesController extends ApiController
      * */
     public function search(Project $project, Task $task, TaskMemberSearchRequest $request, TaskRepository $repository): AnonymousResourceCollection
     {
-        $searchResults = $repository->searchMembers($request, $project, $task);
+        $searchResults = $repository->searchMembers($request->searchTerm(), $project, $task);
 
         return TaskMemberResource::collection($searchResults);
     }

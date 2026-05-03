@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\Enums\NotificationFilter;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
-class ProjectInvitationIndexRequest extends FormRequest
+class NotificationIndexRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -20,27 +21,23 @@ class ProjectInvitationIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'filter' => ['required', 'array'],
-            'filter.status' => ['required', 'in:pending'],
+            'filter' => ['sometimes', 'array'],
+            'filter.status' => ['sometimes', 'in:'.implode(',', array_column(NotificationFilter::cases(), 'value'))],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];
     }
 
-    public function status(): string
+    public function statusFilter(): ?string
     {
-        return (string) $this->validated('filter.status');
+        $status = $this->validated('filter.status');
+
+        return is_string($status) ? $status : null;
     }
 
-    /**
-     * @return array<string, string>
-     */
-    #[Override]
-    public function messages(): array
+    public function perPage(): int
     {
-        return [
-            'filter.required' => 'Please provide an invitation status filter.',
-            'filter.status.required' => 'Please provide an invitation status filter.',
-            'filter.status.in' => 'The invitation status filter must be pending.',
-        ];
+        return (int) $this->validated('per_page', 25);
     }
 
     #[Override]
@@ -48,6 +45,10 @@ class ProjectInvitationIndexRequest extends FormRequest
     {
         $inputFilters = $this->input('filter', []);
         $filters = is_array($inputFilters) ? $inputFilters : [];
+
+        if (is_string($inputFilters) && $inputFilters !== '') {
+            $filters['status'] = $inputFilters;
+        }
 
         if (! array_key_exists('status', $filters) && $this->has('status')) {
             $filters['status'] = $this->input('status');

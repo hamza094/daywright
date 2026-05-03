@@ -24,25 +24,103 @@ class ProjectFilterRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'filter' => ['sometimes', 'array'],
+            'filter.state' => ['sometimes', 'in:active,trashed'],
+            'filter.search' => ['sometimes', 'string', 'max:255'],
+            'filter.members' => ['sometimes', 'nullable', 'boolean'],
+            'filter.status' => ['sometimes', 'required', 'in:'.implode(',', array_column(ProjectHealthStatus::cases(), 'value'))],
+            'filter.tasks' => ['sometimes', 'nullable', 'boolean'],
+            'filter.stage' => ['sometimes', 'required', 'integer', 'min:0', 'max:6'],
+            'filter.from' => ['sometimes', 'required', 'date', 'required_with:filter.to'],
+            'filter.to' => ['sometimes', 'required', 'date', 'required_with:filter.from'],
             'sort' => ['sometimes', 'required', 'in:asc,desc'],
-            'search' => ['sometimes', 'string', 'max:255'],
-            'filter' => ['sometimes', 'in:active,trashed'],
-            'members' => ['sometimes', 'required'],
-            'status' => ['sometimes', 'required', 'in:'.implode(',', array_column(ProjectHealthStatus::cases(), 'value'))],
-            'tasks' => ['sometimes', 'required'],
-            'stage' => ['sometimes', 'required', 'int', 'min:0', 'max:6'],
-            'from' => ['sometimes', 'required', 'date', 'required_with:to'],
-            'to' => ['sometimes', 'required', 'date', 'required_with:from'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];
+    }
+
+    /**
+     * @return array{
+     *     search: ?string,
+     *     state: ?string,
+     *     status: ?string,
+     *     from: ?string,
+     *     to: ?string,
+     *     stage: mixed,
+     *     members: bool,
+     *     tasks: bool,
+     *     sort: ?string
+     * }
+     */
+    public function filters(): array
+    {
+        $validatedFilters = $this->validated('filter', []);
+
+        return [
+            'search' => is_string($validatedFilters['search'] ?? null) ? $validatedFilters['search'] : null,
+            'state' => is_string($validatedFilters['state'] ?? null) ? $validatedFilters['state'] : null,
+            'status' => is_string($validatedFilters['status'] ?? null) ? $validatedFilters['status'] : null,
+            'from' => is_string($validatedFilters['from'] ?? null) ? $validatedFilters['from'] : null,
+            'to' => is_string($validatedFilters['to'] ?? null) ? $validatedFilters['to'] : null,
+            'stage' => $validatedFilters['stage'] ?? null,
+            'members' => (bool) ($validatedFilters['members'] ?? false),
+            'tasks' => (bool) ($validatedFilters['tasks'] ?? false),
+            'sort' => is_string($this->validated('sort')) ? $this->validated('sort') : null,
+        ];
+    }
+
+    public function perPage(): int
+    {
+        return (int) $this->validated('per_page', 10);
     }
 
     #[Override]
     protected function prepareForValidation(): void
     {
-        if ($this->has('status') && is_string($this->status)) {
-            $this->merge([
-                'status' => mb_strtolower($this->status),
-            ]);
+        $inputFilters = $this->input('filter', []);
+        $filters = is_array($inputFilters) ? $inputFilters : [];
+
+        if (is_string($inputFilters) && $inputFilters !== '') {
+            $filters['state'] = $inputFilters;
         }
+
+        foreach (['search', 'state', 'status', 'stage', 'from', 'to'] as $legacyKey) {
+            if (! array_key_exists($legacyKey, $filters) && $this->has($legacyKey)) {
+                $filters[$legacyKey] = $this->input($legacyKey);
+            }
+        }
+
+        $members = $filters['members'] ?? $this->input('members');
+        $tasks = $filters['tasks'] ?? $this->input('tasks');
+
+        if (isset($filters['status']) && is_string($filters['status'])) {
+            $this->merge([
+                'filter' => array_merge($filters, [
+                    'status' => mb_strtolower($filters['status']),
+                    'members' => $this->normalizeBooleanValue($members),
+                    'tasks' => $this->normalizeBooleanValue($tasks),
+                ]),
+            ]);
+
+            return;
+        }
+
+        $this->merge([
+            'filter' => array_merge($filters, [
+                'members' => $this->normalizeBooleanValue($members),
+                'tasks' => $this->normalizeBooleanValue($tasks),
+            ]),
+        ]);
+    }
+
+    private function normalizeBooleanValue(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        $normalized = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+        return $normalized ?? $value;
     }
 }

@@ -14,8 +14,9 @@ final class DashboardTasksController extends ApiController
 {
     public function __invoke(UserTasksRequest $request, UserTasksDataRepository $repository): JsonResponse
     {
-        $tasks = $repository->getTasks($this->authenticatedUser()->id, $request);
-        $appliedFilters = $repository->appliedFilters($request);
+        $filters = $request->filters();
+        $tasks = $repository->getTasks($this->authenticatedUser()->id, $filters);
+        $appliedFilters = $repository->appliedFilters($filters);
 
         return response()->json([
             'data' => UserTasksResource::collection($tasks),

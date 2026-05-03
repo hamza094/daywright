@@ -18,11 +18,10 @@ class ProjectController extends ApiController
         ProjectFilterRequest $request,
         ProjectFiltersRepository $repository,
     ): JsonResponse {
-        $perPage = 10;
         $appliedFilters = [];
-        $filters = $request->validated();
+        $filters = $request->filters();
 
-        $data = $repository->filters($filters, $perPage, $appliedFilters);
+        $data = $repository->filters($filters, $request->perPage(), $appliedFilters);
 
         $projects = $data['projects'];
         $appliedFilters = $data['appliedFilters'];

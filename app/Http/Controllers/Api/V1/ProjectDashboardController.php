@@ -36,10 +36,14 @@ class ProjectDashboardController extends ApiController
      */
     public function userProjects(DashboardProjectRequest $request): JsonResponse
     {
-        $projects = $this->dashboardService->getUserProjects($request);
+        $projects = $this->dashboardService->getUserProjects(
+            $this->authenticatedUser(),
+            $request->filters(),
+            $request->sort(),
+        );
 
         return response()->json([
-            'projects' => ProjectCollectionResource::collection($projects)->paginate(config('app.project.items_limit')),
+            'projects' => ProjectCollectionResource::collection($projects)->paginate($request->perPage()),
             'projectsCount' => $projects->count(),
             'message' => $projects->isEmpty() ? 'No projects found.' : '',
         ]);
@@ -90,8 +94,9 @@ class ProjectDashboardController extends ApiController
 
     public function tasksData(UserTasksDataRepository $repository, UserTasksRequest $request): JsonResponse
     {
-        $tasks = $repository->getTasks(auth()->id(), $request);
-        $appliedFilters = $repository->appliedFilters($request);
+        $filters = $request->filters();
+        $tasks = $repository->getTasks(auth()->id(), $filters);
+        $appliedFilters = $repository->appliedFilters($filters);
 
         return response()->json([
             'data' => UserTasksResource::collection($tasks),

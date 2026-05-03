@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Task;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\TaskIndexRequest;
 use App\Http\Requests\Api\V1\TaskRequest;
 use App\Http\Requests\Api\V1\TaskUpdateRequest;
 use App\Http\Resources\Api\V1\Task\TaskResource;
@@ -13,7 +14,6 @@ use App\Models\Task;
 use App\Services\Api\V1\Task\TaskFeatureService;
 use App\Services\Api\V1\Task\TaskService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -29,15 +29,9 @@ class TaskController extends ApiController
      *
      * @response AnonymousResourceCollection<LengthAwarePaginator<TaskCollectionResource>>
      */
-    public function index(Project $project, Request $request, TaskService $taskService): JsonResponse
+    public function index(Project $project, TaskIndexRequest $request, TaskService $taskService): JsonResponse
     {
-        $validated = $request->validate([
-            'request' => 'nullable|in:archived',
-        ]);
-
-        $isArchived = ($validated['request'] ?? null) === 'archived';
-
-        $tasksData = $taskService->getTasksData($project, $isArchived);
+        $tasksData = $taskService->getTasksData($project, $request->isArchived(), $request->perPage());
 
         return response()->json($tasksData, 200);
     }

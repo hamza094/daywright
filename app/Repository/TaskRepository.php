@@ -6,16 +6,13 @@ namespace App\Repository;
 
 use App\Models\Project;
 use App\Models\Task;
-use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class TaskRepository
 {
-    public function searchMembers(Request $request, Project $project, Task $task): Collection
+    public function searchMembers(string $searchTerm, Project $project, Task $task): Collection
     {
         // Check with load test
-
-        $searchTerm = (string) $request->string('search')->trim();
 
         return $project->activeMembers()
             ->select('users.id', 'name', 'username')

@@ -21,7 +21,7 @@ class ProjectFiltersRepository
     {
         $sort = $this->stringFilter($filters, 'sort');
         $search = $this->stringFilter($filters, 'search');
-        $filter = $this->stringFilter($filters, 'filter');
+        $state = $this->stringFilter($filters, 'state');
         $status = $this->stringFilter($filters, 'status');
         $from = $this->stringFilter($filters, 'from');
         $to = $this->stringFilter($filters, 'to');
@@ -40,11 +40,11 @@ class ProjectFiltersRepository
                 $this->applySearchFilter($query, $search, $appliedFilters);
             })
 
-            ->when($filter === 'active', function ($query) use (&$appliedFilters): void {
+            ->when($state === 'active', function ($query) use (&$appliedFilters): void {
                 $query->whereNull('deleted_at');
                 $appliedFilters[] = 'Filter by Active';
             })
-            ->when($filter === 'trashed', function ($query) use (&$appliedFilters): void {
+            ->when($state === 'trashed', function ($query) use (&$appliedFilters): void {
                 $query->whereNotNull('deleted_at');
                 $appliedFilters[] = 'Filter by Trashed';
 

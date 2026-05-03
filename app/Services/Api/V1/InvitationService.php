@@ -12,7 +12,6 @@ use App\Actions\Project\SendProjectInvitationAction;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class InvitationService
@@ -56,10 +55,8 @@ class InvitationService
     /**
      * @return EloquentCollection<int, User>
      */
-    public function usersSearch(Request $request): Collection
+    public function usersSearch(string $searchTerm): Collection
     {
-        $searchTerm = (string) $request->string('query')->trim();
-
         return User::query()
             ->whereAny(['name', 'email'], 'LIKE', '%'.$searchTerm.'%')
             ->select('uuid', 'name', 'email')

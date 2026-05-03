@@ -207,6 +207,29 @@ class UsersTest extends TestCase
     }
 
     #[Test]
+    public function users_index_can_filter_by_search_and_per_page(): void
+    {
+        $admin = $this->createAdminUser();
+        $this->enableTwoFactorForUser($admin);
+
+        $matchingUser = $this->createUser(['name' => 'Searchable Admin User']);
+        $this->createUser(['name' => 'Other User']);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/v1/admin/users?'.http_build_query([
+            'filter' => ['search' => 'Searchable'],
+            'per_page' => 1,
+        ]))->assertOk();
+
+        $data = $response->json('data');
+
+        $this->assertCount(1, $data);
+        $this->assertSame($matchingUser->uuid, $data[0]['uuid']);
+        $this->assertSame(1, $response->json('meta.per_page'));
+    }
+
+    #[Test]
     public function revoking_admin_access_revokes_tokens_and_rotates_remember_token(): void
     {
         $actor = $this->createAdminUser();

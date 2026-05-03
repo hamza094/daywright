@@ -7,7 +7,7 @@ namespace App\Http\Requests\Api\V1\Admin;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
-class TaskFilterRequest extends FormRequest
+class UserFilterRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -21,29 +21,22 @@ class TaskFilterRequest extends FormRequest
     {
         return [
             'filter' => ['sometimes', 'array'],
-            'filter.state' => ['sometimes', 'in:active,trashed'],
             'filter.search' => ['sometimes', 'string', 'max:255'],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];
     }
 
-    /**
-     * @return array{search: ?string, state: ?string}
-     */
-    public function filters(): array
+    public function searchTerm(): ?string
     {
-        $validatedFilters = $this->validated('filter', []);
+        $search = $this->validated('filter.search');
 
-        return [
-            'search' => is_string($validatedFilters['search'] ?? null) ? $validatedFilters['search'] : null,
-            'state' => is_string($validatedFilters['state'] ?? null) ? $validatedFilters['state'] : null,
-        ];
+        return is_string($search) ? $search : null;
     }
 
     public function perPage(): int
     {
-        return (int) $this->validated('per_page', 50);
+        return (int) $this->validated('per_page', 7);
     }
 
     #[Override]
@@ -52,16 +45,8 @@ class TaskFilterRequest extends FormRequest
         $inputFilters = $this->input('filter', []);
         $filters = is_array($inputFilters) ? $inputFilters : [];
 
-        if (is_string($inputFilters) && $inputFilters !== '') {
-            $filters['state'] = $inputFilters;
-        }
-
         if (! array_key_exists('search', $filters) && $this->has('search')) {
             $filters['search'] = $this->input('search');
-        }
-
-        if (! array_key_exists('state', $filters) && $this->has('state')) {
-            $filters['state'] = $this->input('state');
         }
 
         $this->merge([

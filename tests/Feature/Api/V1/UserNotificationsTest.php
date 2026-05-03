@@ -52,12 +52,22 @@ class UserNotificationsTest extends TestCase
     {
         $user = $this->actingAsInvitedUser();
 
-        $unreadResponse = $this->getJson('/api/v1/notifications?filter='.NotificationFilter::UNREAD->value);
+        $unreadResponse = $this->getJson($this->notificationsUrl(['status' => NotificationFilter::UNREAD->value]));
         $this->assertCount(1, $unreadResponse->json('data'));
 
         $user->notifications()->latest()->first()->markAsRead();
-        $readResponse = $this->getJson('/api/v1/notifications?filter='.NotificationFilter::READ->value);
+        $readResponse = $this->getJson($this->notificationsUrl(['status' => NotificationFilter::READ->value]));
         $this->assertCount(1, $readResponse->json('data'));
+    }
+
+    /** @test */
+    public function notification_index_validates_filter_status(): void
+    {
+        $this->actingAsInvitedUser();
+
+        $this->getJson($this->notificationsUrl(['status' => 'archived']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter.status');
     }
 
     /** @test */
@@ -145,5 +155,13 @@ class UserNotificationsTest extends TestCase
         $this->project
             ->members()
             ->attach($user, ['active' => true]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function notificationsUrl(array $filters = []): string
+    {
+        return '/api/v1/notifications'.($filters === [] ? '' : '?'.http_build_query(['filter' => $filters]));
     }
 }
