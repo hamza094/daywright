@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\BuildPaginatedPayloadAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\NotificationStatusUpdateRequest;
 use App\Http\Resources\Api\V1\NotificationResource;
 use App\Services\Api\V1\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
 class NotificationsController extends ApiController
 {
@@ -20,7 +18,6 @@ class NotificationsController extends ApiController
      */
     public function index(
         Request $request,
-        BuildPaginatedPayloadAction $buildPaginatedPayloadAction,
         NotificationService $notificationService,
     ): JsonResponse {
         $paginator = $notificationService->paginateForUser(
@@ -28,13 +25,7 @@ class NotificationsController extends ApiController
             $request->query('filter'),
         );
 
-        if ($paginator->isEmpty()) {
-            return response()->json(['message' => 'No notifications found'], Response::HTTP_OK);
-        }
-
-        $payload = $buildPaginatedPayloadAction->handle($paginator, NotificationResource::class);
-
-        return response()->json($payload, Response::HTTP_OK);
+        return NotificationResource::collection($paginator)->response();
     }
 
     /**
@@ -44,9 +35,7 @@ class NotificationsController extends ApiController
     {
         $notificationService->markAllAsRead($this->authenticatedUser());
 
-        return response()->json([
-            'message' => 'All users notifications marked as read.',
-        ], Response::HTTP_OK);
+        return $this->respondWithMessage('All users notifications marked as read.');
     }
 
     /**
@@ -56,9 +45,7 @@ class NotificationsController extends ApiController
     {
         $notificationService->deleteForUser($this->authenticatedUser(), $notification);
 
-        return response()->json([
-            'message' => 'Notification deleted successfully.',
-        ], Response::HTTP_OK);
+        return $this->respondWithMessage('Notification deleted successfully.');
     }
 
     /**
@@ -73,6 +60,6 @@ class NotificationsController extends ApiController
 
         $notificationService->updateStatus($this->authenticatedUser(), $notification, $status);
 
-        return response()->json(['message' => 'Notification status updated.'], Response::HTTP_OK);
+        return $this->respondWithMessage('Notification status updated.');
     }
 }

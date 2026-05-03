@@ -66,18 +66,27 @@ class TasksTest extends TestCase
     {
         Task::factory()->count(3)->create();
 
-        $response = $this->getJson(self::TASKS_ROUTE)
-            ->assertOk();
-
-        $this->assertNotEmpty($response->json('data'));
+        $this->getJson(self::TASKS_ROUTE)
+            ->assertOk()
+            ->assertJsonStructure([
+                'data',
+                'meta',
+                'links',
+            ]);
     }
 
     #[Test]
-    public function returns_empty_message_when_no_tasks(): void
+    public function returns_paginated_shape_when_no_tasks(): void
     {
-        $this->getJson(self::TASKS_ROUTE)
+        $response = $this->getJson(self::TASKS_ROUTE)
             ->assertOk()
-            ->assertJsonPath('message', 'Sorry no related tasks found');
+            ->assertJsonStructure([
+                'data',
+                'meta',
+                'links',
+            ]);
+
+        $this->assertSame([], $response->json('data'));
     }
 
     #[Test]

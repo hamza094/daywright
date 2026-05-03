@@ -59,7 +59,7 @@ class CallbackTest extends TestCase
         $response = $this->getJson(route('oauth.zoom.callback').'?code=dummy-code&state=dummy-state');
 
         $response->assertJson([
-            'error' => 'Failed to connect to Zoom account',
+            'message' => 'Failed to connect to Zoom account',
         ]);
         $this->assertUserWasNotUpdated($this->user->fresh());
     }
@@ -73,7 +73,9 @@ class CallbackTest extends TestCase
 
         session()->put('oauth_zoom_code_verifier', 'dummy-code-verifier');
 
-        $this->getJson(route('oauth.zoom.callback').'?state=dummy-state')->assertBadRequest();
+        $this->getJson(route('oauth.zoom.callback').'?state=dummy-state')
+            ->assertBadRequest()
+            ->assertJsonPath('message', 'Missing required fields');
 
         $this->assertUserWasNotUpdated($this->user);
     }

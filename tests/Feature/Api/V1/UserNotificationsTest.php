@@ -20,9 +20,31 @@ class UserNotificationsTest extends TestCase
     {
         $this->actingAsInvitedUser();
 
-        $response = $this->withoutExceptionHandling()->getJson('/api/v1/notifications');
+        $response = $this->withoutExceptionHandling()->getJson('/api/v1/notifications')
+            ->assertOk()
+            ->assertJsonStructure([
+                'data',
+                'meta',
+                'links',
+            ]);
 
         $this->assertCount(1, $response->json('data'));
+    }
+
+    /** @test */
+    public function auth_user_gets_paginated_empty_notifications_shape(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->getJson('/api/v1/notifications')
+            ->assertOk()
+            ->assertJsonStructure([
+                'data',
+                'meta',
+                'links',
+            ]);
+
+        $this->assertSame([], $response->json('data'));
     }
 
     /** @test */

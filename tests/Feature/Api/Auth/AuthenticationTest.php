@@ -6,12 +6,14 @@ namespace Tests\Feature\Api\Auth;
 
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\User;
+use App\Services\Api\V1\Auth\LoginUserService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Override;
+use RuntimeException;
 use Tests\TestCase;
 use Torann\GeoIP\Facades\GeoIP;
 use Torann\GeoIP\Location;
@@ -160,6 +162,23 @@ class AuthenticationTest extends TestCase
     }
 
     /** @test */
+    public function authenticated_session_user_cannot_login_again(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $user = User::where('email', 'johndoe@example.org')->firstOrFail();
+
+        $this->actingAs($user, 'web');
+
+        $this->postJson('/api/v1/session/login', [
+            'email' => 'johndoe@example.org',
+            'password' => self::TEST_PASSWORD,
+        ])
+            ->assertBadRequest()
+            ->assertJsonPath('message', 'Already authenticated.');
+    }
+
+    /** @test */
     public function show_validation_email_error(): void
     {
         $response = $this->postJson(route('auth.login'), [
@@ -215,5 +234,24 @@ class AuthenticationTest extends TestCase
                 'password_confirmation' => 'password',
             ])->assertUnprocessable()
             ->assertJsonValidationErrors(['email']);
+    }
+
+    /** @test */
+    public function registration_failure_returns_standardized_error_message(): void
+    {
+        $this->mock(LoginUserService::class, function ($mock): void {
+            $mock->shouldReceive('dispatchTimezoneIfNeeded')
+                ->once()
+                ->andThrow(new RuntimeException('Registration infrastructure failed'));
+        });
+
+        $this->postJson(route('auth.register'), [
+            'name' => 'Elvis William',
+            'email' => 'failure@example.com',
+            'password' => 'Password4!',
+            'password_confirmation' => 'Password4!',
+        ])
+            ->assertStatus(500)
+            ->assertJsonPath('message', 'User registration failed.');
     }
 }

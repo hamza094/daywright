@@ -33,7 +33,8 @@ class StagesTest extends TestCase
     public function can_create_a_stage(): void
     {
         $this->postJson('/api/v1/admin/stages', ['name' => 'Planning'])
-            ->assertCreated();
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'Planning');
 
         $this->assertDatabaseHas('stages', ['name' => 'Planning']);
     }
@@ -54,7 +55,8 @@ class StagesTest extends TestCase
         $stage = Stage::factory()->create(['name' => 'Planning']);
 
         $this->putJson("/api/v1/admin/stages/{$stage->id}", ['name' => 'Planning'])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Planning');
     }
 
     #[Test]
@@ -96,7 +98,8 @@ class StagesTest extends TestCase
         )->create();
 
         $this->putJson("/api/v1/admin/stages/{$stages->first()->id}", ['name' => 'Renamed Stage'])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Renamed Stage');
     }
 
     #[Test]

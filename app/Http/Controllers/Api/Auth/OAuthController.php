@@ -13,6 +13,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class OAuthController extends ApiController
@@ -26,7 +28,7 @@ class OAuthController extends ApiController
     public function redirect(OAuthProvider $provider): JsonResponse
     {
         if (auth()->check()) {
-            return response()->json(['error' => 'User is already authenticated.'], 400);
+            abort(Response::HTTP_BAD_REQUEST, 'User is already authenticated.');
         }
         /** @var \Laravel\Socialite\Two\AbstractProvider $socialiteDriver */
         $socialiteDriver = Socialite::driver($provider->driver());
@@ -71,9 +73,7 @@ class OAuthController extends ApiController
                 'message' => $e->getMessage(),
             ]);
 
-            return response()->json([
-                'message' => 'Error processing user data.',
-            ], 500);
+            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Error processing user data.', $e);
         }
 
     }

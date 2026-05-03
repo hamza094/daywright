@@ -11,15 +11,12 @@ use App\Http\Resources\Api\V1\Zoom\MeetingResource;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
-use App\Services\Api\V1\ExceptionService;
 use App\Services\Api\V1\MeetingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ZoomMeetingController extends ApiController
 {
-    public function __construct(protected ExceptionService $exceptionService) {}
-
     public function index(Project $project, Request $request, MeetingService $meetingService): JsonResponse
     {
         $this->authorize('access', $project);

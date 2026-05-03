@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Api\V1\Subscription\PlanLimitService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class TokenController extends ApiController
 {
@@ -26,7 +27,7 @@ class TokenController extends ApiController
 
         return response()->json([
             'tokens' => TokenResource::collection($tokens),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**
@@ -53,7 +54,7 @@ class TokenController extends ApiController
             'token' => $token->plainTextToken,
             'token_resource' => new TokenResource($token->accessToken),
             'message' => 'Token created successfully.',
-        ], 201);
+        ], Response::HTTP_CREATED);
     }
 
     /**
@@ -67,21 +68,15 @@ class TokenController extends ApiController
         $currentToken = $user->currentAccessToken();
 
         // @phpstan-ignore-next-line
-        if (! $currentToken) {
-            return response()->json(['message' => 'No current access token found.'], 403);
-        }
+        abort_if(! $currentToken, Response::HTTP_FORBIDDEN, 'No current access token found.');
 
         /** @var \Laravel\Sanctum\PersonalAccessToken $currentToken */
-        if ($currentToken->id === $tokenId) {
-            return response()->json([
-                'message' => 'Cannot delete the current session token via this route.',
-            ], 403);
-        }
+        abort_if($currentToken->id === $tokenId, Response::HTTP_FORBIDDEN, 'Cannot delete the current session token via this route.');
 
         $deleted = $user->tokens()->where('id', $tokenId)->delete();
 
-        return $deleted
-            ? response()->json(['message' => 'Token deleted.'], 200)
-            : response()->json(['message' => 'Token not found.'], 404);
+        abort_if(! $deleted, Response::HTTP_NOT_FOUND, 'Token not found.');
+
+        return $this->respondWithMessage('Token deleted.');
     }
 }

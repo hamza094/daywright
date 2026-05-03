@@ -68,7 +68,7 @@ class ProjectsTest extends TestCase
         $this->getJson(self::PROJECTS_ROUTE)
             ->assertOk()
             ->assertJsonStructure([
-                'projects' => ['data', 'meta'],
+                'projects' => ['data', 'meta', 'links'],
                 'appliedFilters',
             ]);
     }

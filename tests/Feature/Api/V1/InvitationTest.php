@@ -40,11 +40,15 @@ class InvitationTest extends TestCase
         $this->postJson($this->project->path().'/invitations', [
             'email' => $invitedUser->email,
         ])
-            ->assertUnprocessable();
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Validation Error')
+            ->assertJsonPath('errors.invitation.0', 'Project invitation already sent to a user.');
 
         $this->postJson($this->project->path().'/invitations',
             ['email' => $this->project->user->email])
-            ->assertUnprocessable();
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Validation Error')
+            ->assertJsonPath('errors.invitation.0', "Can't send an invitation to the project owner.");
     }
 
     /** @test */
@@ -159,6 +163,18 @@ class InvitationTest extends TestCase
             'project_id' => $this->project->id,
             'user_id' => $memberUser->id,
         ]);
+    }
+
+    /** @test */
+    public function project_owner_cannot_remove_a_user_who_is_not_an_active_member(): void
+    {
+        /** @var User $nonMember */
+        $nonMember = User::factory()->create();
+
+        $this->deleteJson($this->project->path().'/members/'.$nonMember->uuid)
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Validation Error')
+            ->assertJsonPath('errors.user.0', 'This user is not an active member of the project.');
     }
 
     /** @test */

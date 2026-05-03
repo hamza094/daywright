@@ -18,7 +18,6 @@ use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Routing\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -36,8 +35,6 @@ class AppServiceProvider extends ServiceProvider
     #[Override]
     public function register(): void
     {
-        JsonResource::withoutWrapping();
-
         $this->app->bind(
             SendSmsInterface::class,
             SendSmsService::class
@@ -65,7 +62,7 @@ class AppServiceProvider extends ServiceProvider
 
         EnsureFeaturesAreActive::whenInactive(fn (Request $request, array $features): SymfonyResponse => response()->json([
             'message' => 'Feature not available.',
-        ], 403));
+        ], SymfonyResponse::HTTP_FORBIDDEN));
 
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
             $openApi->secure(

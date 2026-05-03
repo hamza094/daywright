@@ -8,6 +8,8 @@ use App\DataTransferObjects\Paddle\UserSubscriptionData;
 use App\Http\Controllers\Controller;
 use App\Interfaces\PaddleApi;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class PaddleController extends Controller
@@ -25,7 +27,7 @@ class PaddleController extends Controller
 
             return response()->json(['data' => $data]);
         } catch (Throwable $exception) {
-            return response()->json(['error' => $exception->getMessage()], 500);
+            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, $exception->getMessage(), $exception);
         }
     }
 }

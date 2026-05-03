@@ -13,8 +13,6 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Api\V1\InvitationService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\Response;
 
 final class ProjectInvitationController extends ApiController
 {
@@ -22,17 +20,13 @@ final class ProjectInvitationController extends ApiController
     {
         $validated = $request->validated();
 
-        try {
-            $user = $invitationService->sendInvitationByEmail($project, $validated['email']);
+        $user = $invitationService->sendInvitationByEmail($project, $validated['email']);
 
-            return response()->json([
-                'message' => "Project invitation sent to {$user->name}",
-                'project' => new ProjectSummaryResource($project),
-                'invited_user' => new InvitedUserResource($user),
-            ]);
-        } catch (ValidationException $exception) {
-            return response()->json(['error' => $exception->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
+        return response()->json([
+            'message' => "Project invitation sent to {$user->name}",
+            'project' => new ProjectSummaryResource($project),
+            'invited_user' => new InvitedUserResource($user),
+        ]);
     }
 
     public function index(ProjectInvitationIndexRequest $request, Project $project, InvitationService $invitationService): JsonResponse

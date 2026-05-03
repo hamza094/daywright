@@ -36,7 +36,9 @@ class StatusesTest extends TestCase
             'label' => 'In Progress',
             'color' => '#FF5733',
         ])
-            ->assertCreated();
+            ->assertCreated()
+            ->assertJsonPath('data.label', 'In Progress')
+            ->assertJsonPath('data.color', '#FF5733');
 
         $this->assertDatabaseHas('statuses', ['label' => 'In Progress']);
     }
@@ -77,7 +79,9 @@ class StatusesTest extends TestCase
             'label' => 'Renamed',
             'color' => '#AABBCC',
         ])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('data.label', 'Renamed')
+            ->assertJsonPath('data.color', '#AABBCC');
 
         $this->assertDatabaseHas('statuses', [
             'id' => $statuses->first()->id,
@@ -96,7 +100,9 @@ class StatusesTest extends TestCase
         $this->putJson("/api/v1/admin/statuses/{$status->id}", [
             'color' => '#FF0000',
         ])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('data.label', 'Active')
+            ->assertJsonPath('data.color', '#FF0000');
 
         $this->assertDatabaseHas('statuses', [
             'id' => $status->id,

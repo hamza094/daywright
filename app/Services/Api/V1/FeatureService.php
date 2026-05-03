@@ -6,13 +6,10 @@ namespace App\Services\Api\V1;
 
 use App\Enums\StageStatus;
 use App\Exports\ProjectsExport;
-use F9Web\ApiResponseHelpers;
 use Illuminate\Support\Facades\DB;
 
 class FeatureService
 {
-    use ApiResponseHelpers;
-
     public function updateStageStatus($project, array $data)
     {
         DB::transaction(function () use ($project, $data): void {

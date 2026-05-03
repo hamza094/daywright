@@ -10,6 +10,8 @@ use App\Http\Controllers\Controller;
 use App\Interfaces\Zoom;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class ZoomAuthController extends Controller
 {
@@ -29,7 +31,7 @@ final class ZoomAuthController extends Controller
     public function callback(Request $request): JsonResponse
     {
         if ($request->string('error')->trim()->exactly('access_denied')) {
-            return response()->json(['error' => 'Zoom account connection denied'], 400);
+            abort(Response::HTTP_BAD_REQUEST, 'Zoom account connection denied');
         }
 
         $hasRequiredFields = $request->filled(['code', 'state'])
@@ -37,7 +39,7 @@ final class ZoomAuthController extends Controller
           && session()->has('oauth_zoom_code_verifier');
 
         if (! $hasRequiredFields) {
-            return response()->json(['error' => 'Missing required fields'], 400);
+            abort(Response::HTTP_BAD_REQUEST, 'Missing required fields');
         }
 
         $callbackDetails = new AuthorizationCallbackDetails(
@@ -55,8 +57,8 @@ final class ZoomAuthController extends Controller
                 refreshToken: $accessDetails->refreshToken,
                 expiresAt: $accessDetails->expiresAt,
             );
-        } catch (ZoomException) {
-            return response()->json(['error' => 'Failed to connect to Zoom account'], 400);
+        } catch (ZoomException $exception) {
+            throw new HttpException(Response::HTTP_BAD_REQUEST, 'Failed to connect to Zoom account', $exception);
         }
 
         return response()->json(['success' => 'Zoom account connected successfully']);

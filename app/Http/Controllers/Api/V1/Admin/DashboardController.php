@@ -15,6 +15,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class DashboardController extends Controller
@@ -30,7 +32,7 @@ class DashboardController extends Controller
 
             return response()->json(['message' => 'Backup process started']);
         } catch (Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, $e->getMessage(), $e);
         }
     }
 
@@ -43,7 +45,7 @@ class DashboardController extends Controller
         } catch (Throwable $e) {
             Log::error('Failed to load admin activities', ['error' => $e->getMessage()]);
 
-            return response()->json(['message' => 'Failed to load activities.'], 500);
+            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Failed to load activities.', $e);
         }
     }
 
@@ -60,7 +62,7 @@ class DashboardController extends Controller
         } catch (Throwable $e) {
             Log::error('Failed to load admin dashboard data', ['error' => $e->getMessage()]);
 
-            return response()->json(['message' => 'Failed to load dashboard data.'], 500);
+            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Failed to load dashboard data.', $e);
         }
     }
 }

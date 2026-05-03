@@ -107,13 +107,10 @@ class ProjectFeatureTest extends TestCase
         $response = $this->getJson($this->project->path())
             ->assertOk();
 
-        $response->assertJson([
-            'id' => $this->project->id,
-            'name' => $this->project->name,
-        ]);
-
-        $response->assertJsonPath('links.self', $this->project->path());
-        $response->assertJsonPath('created_at', $this->project->created_at?->setTimezone('UTC')->toIso8601String());
+        $response->assertJsonPath('data.id', $this->project->id);
+        $response->assertJsonPath('data.name', $this->project->name);
+        $response->assertJsonPath('data.links.self', $this->project->path());
+        $response->assertJsonPath('data.created_at', $this->project->created_at?->setTimezone('UTC')->toIso8601String());
     }
 
     /** @test */
@@ -129,10 +126,10 @@ class ProjectFeatureTest extends TestCase
 
         $response = $this->getJson($this->project->path())
             ->assertOk()
-            ->assertJsonCount(2, 'limits');
+            ->assertJsonCount(2, 'data.limits');
 
-        $this->assertProjectLimitItem($response, 'limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
-        $this->assertProjectLimitItem($response, 'limits', 'members_per_project', 'Members', 'project', 2, 3);
+        $this->assertProjectLimitItem($response, 'data.limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
+        $this->assertProjectLimitItem($response, 'data.limits', 'members_per_project', 'Members', 'project', 2, 3);
     }
 
     /** @test */
@@ -150,7 +147,7 @@ class ProjectFeatureTest extends TestCase
 
         $this->getJson($this->project->path())
             ->assertOk()
-            ->assertJsonMissingPath('limits');
+            ->assertJsonMissingPath('data.limits');
     }
 
     /** @test */

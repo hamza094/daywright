@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\RegisterUserRequest;
 use App\Http\Resources\Api\V1\User\AuthenticatedUserResource;
 use App\Services\Api\V1\Auth\RegisterUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class RegisterController extends ApiController
@@ -46,7 +47,7 @@ class RegisterController extends ApiController
         } catch (Throwable $e) {
             Log::error('User registration failed', ['exception' => $e]);
 
-            return response()->json(['error' => 'User registration failed.'], 500);
+            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'User registration failed.', $e);
         }
     }
 }

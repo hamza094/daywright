@@ -157,4 +157,18 @@ class UserTokenTest extends TestCase
                 'message' => 'Cannot delete the current session token via this route.',
             ]);
     }
+
+    #[Test]
+    public function deleting_a_missing_token_returns_not_found_message(): void
+    {
+        $user = User::first();
+        $tokenResult = $user->createToken('Session Token', ['*']);
+
+        $response = $this
+            ->withToken($tokenResult->plainTextToken)
+            ->deleteJson('/api/v1/api-tokens/999999');
+
+        $response->assertNotFound()
+            ->assertJsonPath('message', 'Token not found.');
+    }
 }

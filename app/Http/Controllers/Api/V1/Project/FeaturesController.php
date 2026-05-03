@@ -11,7 +11,6 @@ use App\Http\Resources\Api\V1\Project\ProjectStageResource;
 use App\Models\Project;
 use App\Services\Api\V1\FeatureService;
 use App\Services\Api\V1\ProjectService;
-use F9Web\ApiResponseHelpers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -19,8 +18,6 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class FeaturesController extends ApiController
 {
-    use ApiResponseHelpers;
-
     /**
      * Service For Project Feature
      * App\Service\FeatureService

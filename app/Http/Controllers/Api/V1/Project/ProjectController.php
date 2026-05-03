@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
-use App\Actions\BuildPaginatedPayloadAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\ProjectStoreRequest;
@@ -26,7 +25,6 @@ class ProjectController extends ApiController
     public function index(
         DashboardProjectRequest $request,
         DashboardService $dashboardService,
-        BuildPaginatedPayloadAction $buildPaginatedPayloadAction,
     ): JsonResponse {
         $projects = $dashboardService->getUserProjects($request);
         $perPage = (int) config('app.project.items_limit');
@@ -43,7 +41,7 @@ class ProjectController extends ApiController
             ],
         );
 
-        $projectsPayload = $buildPaginatedPayloadAction->handle($paginatedProjects, ProjectCollectionResource::class);
+        $projectsPayload = ProjectCollectionResource::collection($paginatedProjects)->response()->getData(true);
 
         return response()->json([
             'projects' => $projectsPayload,
@@ -67,7 +65,7 @@ class ProjectController extends ApiController
         return response()->json([
             'message' => 'Project created successfully.',
             'project' => new ProjectResource($project, $this->projectService->projectLimits($project, $request->user())),
-        ], 201);
+        ], Response::HTTP_CREATED);
     }
 
     /** Retrieve a specific project
@@ -99,7 +97,7 @@ class ProjectController extends ApiController
         if (empty($request->validated())) {
             return response()->json([
                 'error' => "You haven't changed anything.",
-            ], 400);
+            ], Response::HTTP_BAD_REQUEST);
         }
 
         $project->update($request->validated());
@@ -110,7 +108,7 @@ class ProjectController extends ApiController
         return response()->json([
             'message' => 'Project updated successfully.',
             'project' => new ProjectResource($project, $this->projectService->projectLimits($project, $request->user())),
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /*
@@ -123,18 +121,14 @@ class ProjectController extends ApiController
         $this->authorize('manage', $project);
         $project->delete();
 
-        return response()->json([
-            'message' => $project->name.' abandoned successfully',
-        ], 200);
+        return $this->respondWithMessage($project->name.' abandoned successfully');
     }
 
     public function restore(Project $project): JsonResponse
     {
         $project->restore();
 
-        return response()->json([
-            'message' => $project->name.' restored successfully',
-        ], 200);
+        return $this->respondWithMessage($project->name.' restored successfully');
 
     }
 }

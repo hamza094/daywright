@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery as m;
+use RuntimeException;
 use Tests\TestCase;
 
 class OAuthTest extends TestCase
@@ -26,6 +27,18 @@ class OAuthTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure(['redirect_url']);
+    }
+
+    /** @test */
+    public function authenticated_user_cannot_request_o_auth_redirect(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'web');
+
+        $this->getJson('/api/v1/auth/redirect/'.OAuthProvider::GitHub->value)
+            ->assertBadRequest()
+            ->assertJsonPath('message', 'User is already authenticated.');
     }
 
     /** @test */
@@ -116,6 +129,27 @@ class OAuthTest extends TestCase
             'billable_id' => (string) $user->getKey(),
             'billable_type' => $user->getMorphClass(),
         ]);
+    }
+
+    /** @test */
+    public function callback_returns_standardized_message_when_processing_fails(): void
+    {
+        Socialite::shouldReceive('driver')
+            ->once()
+            ->with('github')
+            ->andReturn(m::self());
+
+        Socialite::shouldReceive('stateless')
+            ->once()
+            ->andReturn(m::self());
+
+        Socialite::shouldReceive('user')
+            ->once()
+            ->andThrow(new RuntimeException('OAuth provider failed'));
+
+        $this->getJson(route('oauth.callback', ['provider' => 'github']))
+            ->assertStatus(500)
+            ->assertJsonPath('message', 'Error processing user data.');
     }
 
     protected function mockSocialite($provider, $user = null)

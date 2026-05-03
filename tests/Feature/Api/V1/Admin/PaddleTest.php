@@ -117,8 +117,8 @@ class PaddleTest extends TestCase
 
         $this->getJson(self::SUBSCRIPTIONS_ROUTE)
             ->assertStatus(500)
-            ->assertJsonStructure(['error'])
-            ->assertJsonPath('error', 'Connection timed out');
+            ->assertJsonStructure(['message'])
+            ->assertJsonPath('message', 'Connection timed out');
     }
 
     private function enableTwoFactorForUser(User $user): void
