@@ -58,7 +58,9 @@ class DashboardController extends Controller
 
             $data = $this->dashboardService->fetchDataForMonths($startDate, $endDate);
 
-            return response()->json($data);
+            return response()->json([
+                'data' => $data,
+            ]);
         } catch (Throwable $e) {
             Log::error('Failed to load admin dashboard data', ['error' => $e->getMessage()]);
 

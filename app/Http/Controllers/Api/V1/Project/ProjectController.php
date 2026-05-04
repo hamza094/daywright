@@ -45,13 +45,7 @@ class ProjectController extends ApiController
             ],
         );
 
-        $projectsPayload = ProjectCollectionResource::collection($paginatedProjects)->response()->getData(true);
-
-        return response()->json([
-            'projects' => $projectsPayload,
-            'projectsCount' => $projects->count(),
-            'message' => $projects->isEmpty() ? 'No projects found.' : '',
-        ], Response::HTTP_OK);
+        return ProjectCollectionResource::collection($paginatedProjects)->response();
     }
 
     /**
@@ -66,10 +60,9 @@ class ProjectController extends ApiController
         $project = $this->projectService->createProject($this->authenticatedUser(), $request->validated());
         $project->load(['user', 'stage', 'activeMembers', 'limitedActivities']);
 
-        return response()->json([
-            'message' => 'Project created successfully.',
-            'project' => new ProjectResource($project, $this->projectService->projectLimits($project, $request->user())),
-        ], Response::HTTP_CREATED);
+        return $this->respondCreated(
+            new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()))
+        );
     }
 
     /** Retrieve a specific project
@@ -99,9 +92,7 @@ class ProjectController extends ApiController
         $this->authorize('access', $project);
 
         if (empty($request->validated())) {
-            return response()->json([
-                'error' => "You haven't changed anything.",
-            ], Response::HTTP_BAD_REQUEST);
+            abort(Response::HTTP_BAD_REQUEST, "You haven't changed anything.");
         }
 
         $project->update($request->validated());
@@ -109,10 +100,9 @@ class ProjectController extends ApiController
 
         $this->projectService->sendNotification($project, $this->authenticatedUser());
 
-        return response()->json([
-            'message' => 'Project updated successfully.',
-            'project' => new ProjectResource($project, $this->projectService->projectLimits($project, $request->user())),
-        ], Response::HTTP_OK);
+        return $this->respondUpdated(
+            new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()))
+        );
     }
 
     /*

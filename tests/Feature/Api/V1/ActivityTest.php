@@ -58,7 +58,8 @@ class ActivityTest extends TestCase
         $response = $this->getJson($this->activityUrl(['type' => 'members']))
             ->assertOk();
 
-        $this->assertEquals($response->json(), ['message' => 'No related activities found']);
+        $response->assertJsonCount(0, 'data')
+            ->assertJsonPath('meta.total', 0);
     }
 
     /** @test */

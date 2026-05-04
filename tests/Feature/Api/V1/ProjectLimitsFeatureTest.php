@@ -36,8 +36,7 @@ final class ProjectLimitsFeatureTest extends TestCase
 
         $response = $this->getJson(route('projects.limits', $this->project))
             ->assertOk()
-            ->assertJsonPath('message', 'Project limits retrieved successfully')
-            ->assertJsonCount(2, 'limits');
+            ->assertJsonCount(2, 'data');
 
         $this->assertLimitItem($response, 'active_tasks_per_project', 'Active tasks', 'project', 2, $activeTaskLimit);
         $this->assertLimitItem($response, 'members_per_project', 'Members', 'project', 2, $memberLimit);
@@ -83,7 +82,7 @@ final class ProjectLimitsFeatureTest extends TestCase
         int $expectedMax,
     ): void {
         /** @var array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>|null $limits */
-        $limits = $response->json('limits');
+        $limits = $response->json('data');
 
         $item = collect($limits)->firstWhere('key', $key);
 

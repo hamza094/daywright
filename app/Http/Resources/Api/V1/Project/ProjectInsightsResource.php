@@ -27,11 +27,6 @@ class ProjectInsightsResource extends JsonResource
 
         return [
             /**
-             * @example true
-             * */
-            'success' => true,
-
-            /**
              * @example 4
              * */
             'project_id' => $project->id,
@@ -52,8 +47,6 @@ class ProjectInsightsResource extends JsonResource
              * @example ['health']
              * */
             'sections_requested' => $sections,
-
-            'message' => 'Project insights retrieved successfully',
         ];
     }
 }

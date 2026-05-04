@@ -47,8 +47,6 @@ class ProjectChartTests extends TestCase
 
         $response->assertOk()
             ->assertJsonStructure([
-                'success',
-                'message',
                 'data' => [
                     'active_projects',
                     'trashed_projects',

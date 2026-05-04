@@ -111,7 +111,9 @@ class MessageTest extends TestCase
     {
         $this->getJson($this->project->path().'/messages/scheduled')
             ->assertOk()
-            ->assertExactJson([]);
+            ->assertExactJson([
+                'data' => [],
+            ]);
     }
 
     /** @test */
@@ -121,7 +123,9 @@ class MessageTest extends TestCase
             ->create();
 
         $this->deleteJson($this->project->path().'/messages/'.
-               $message->id);
+               $message->id)
+            ->assertOk()
+            ->assertJsonPath('message', 'Scheduled message deleted successfully.');
 
         $this->assertModelMissing($message);
     }

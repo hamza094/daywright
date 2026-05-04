@@ -31,9 +31,7 @@ class CallbackTest extends TestCase
 
         $response = $this->getJson(route('oauth.zoom.callback').'?code=dummy-code&state=dummy-state');
 
-        $response->assertJson([
-            'success' => 'Zoom account connected successfully',
-        ]);
+        $response->assertJsonPath('message', 'Zoom account connected successfully');
 
         $this->user->refresh();
 

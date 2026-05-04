@@ -26,15 +26,15 @@ class UserInvitationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'invitations' => [
+                'data' => [
                     ['id', 'name', 'status', 'slug', 'invitation_sent_at', 'created_at', 'links' => ['project']],
                 ],
             ]);
 
-        $this->assertEquals($project->id, $response->json('invitations.0.id'));
-        $this->assertEquals($project->path(), $response->json('invitations.0.links.project'));
-        $this->assertEquals($project->created_at?->setTimezone('UTC')->toIso8601String(), $response->json('invitations.0.created_at'));
-        $this->assertEquals($pivot->created_at?->setTimezone('UTC')->toIso8601String(), $response->json('invitations.0.invitation_sent_at'));
+        $this->assertEquals($project->id, $response->json('data.0.id'));
+        $this->assertEquals($project->path(), $response->json('data.0.links.project'));
+        $this->assertEquals($project->created_at?->setTimezone('UTC')->toIso8601String(), $response->json('data.0.created_at'));
+        $this->assertEquals($pivot->created_at?->setTimezone('UTC')->toIso8601String(), $response->json('data.0.invitation_sent_at'));
     }
 
     /** @test */
@@ -44,9 +44,8 @@ class UserInvitationTest extends TestCase
         $response = $this->getJson('/api/v1/me/invitations');
 
         $response->assertStatus(200)
-            ->assertJson([
-                'invitations' => [],
-                'message' => 'No pending invitations found.',
+            ->assertExactJson([
+                'data' => [],
             ]);
     }
 }

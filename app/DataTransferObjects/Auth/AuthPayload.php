@@ -12,8 +12,6 @@ final class AuthPayload
     public function __construct(
         public User $user,
         public ?string $accessToken = null,
-        public string $message = 'User authenticated successfully',
-        public string $status = 'success',
     ) {}
 
     /**
@@ -24,9 +22,7 @@ final class AuthPayload
     public function toArray(): array
     {
         $data = [
-            'message' => $this->message,
-            'user' => new AuthenticatedUserResource($this->user),
-            'status' => $this->status,
+            'user' => (new AuthenticatedUserResource($this->user))->resolve(),
         ];
 
         if ($this->accessToken !== null) {

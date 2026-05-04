@@ -27,7 +27,9 @@ class FeatureFlagsTest extends TestCase
 
         $this->getJson($this->project->path().'/messages/scheduled')
             ->assertOk()
-            ->assertExactJson([]);
+            ->assertExactJson([
+                'data' => [],
+            ]);
     }
 
     #[Test]
@@ -51,9 +53,7 @@ class FeatureFlagsTest extends TestCase
     {
         $this->getJson('/api/v1/users/me')
             ->assertOk()
-            ->assertJson([
-                'features' => [],
-            ]);
+            ->assertJsonPath('data.features', []);
     }
 
     #[Test]
@@ -63,11 +63,7 @@ class FeatureFlagsTest extends TestCase
 
         $this->getJson('/api/v1/users/me')
             ->assertOk()
-            ->assertJson([
-                'features' => [
-                    'project_export' => true,
-                    'project_messaging' => true,
-                ],
-            ]);
+            ->assertJsonPath('data.features.project_export', true)
+            ->assertJsonPath('data.features.project_messaging', true);
     }
 }

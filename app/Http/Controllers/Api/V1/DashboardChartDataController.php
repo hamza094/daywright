@@ -15,10 +15,6 @@ final class DashboardChartDataController extends ApiController
     {
         $data = $dashboardRepository->getProjectStats($request);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Project stats fetched successfully.',
-            'data' => $data,
-        ]);
+        return $this->respondWithData($data);
     }
 }

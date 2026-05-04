@@ -40,10 +40,7 @@ class RegisterController extends ApiController
         try {
             $user = $registerUserService->register($validated);
 
-            return response()->json([
-                'message' => 'User Registered Successfully',
-                'user' => new AuthenticatedUserResource($user),
-            ], 201);
+            return $this->respondCreated(new AuthenticatedUserResource($user));
         } catch (Throwable $e) {
             Log::error('User registration failed', ['exception' => $e]);
 

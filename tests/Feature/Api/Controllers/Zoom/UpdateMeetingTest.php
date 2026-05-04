@@ -30,7 +30,9 @@ class UpdateMeetingTest extends TestCase
         $this->patchJson('/api/v1/projects/'.$this->project->slug.'/meetings/'.$meeting->id, [
             'meeting_id' => $updatedMeetingID,
             'duration' => $updatedDuration,
-        ])->assertStatus(200);
+        ])->assertStatus(200)
+            ->assertJsonPath('data.meeting_id', $updatedMeetingID)
+            ->assertJsonPath('data.duration', $updatedDuration);
 
         $this->assertDatabaseHas('meetings', [
             'duration' => $updatedDuration,

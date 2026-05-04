@@ -72,7 +72,7 @@ class DashboardTest extends TestCase
         $response = $this->getJson(self::ACTIVITIES_ROUTE)
             ->assertOk();
 
-        $this->assertNotEmpty($response->json());
+        $this->assertNotEmpty($response->json('data'));
     }
 
     #[Test]
@@ -84,7 +84,7 @@ class DashboardTest extends TestCase
         $response = $this->getJson(self::ACTIVITIES_ROUTE)
             ->assertOk();
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertLessThanOrEqual(15, count($data));
     }
 
@@ -94,7 +94,7 @@ class DashboardTest extends TestCase
         $response = $this->getJson(self::ACTIVITIES_ROUTE)
             ->assertOk();
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertEmpty($data);
     }
 
@@ -131,7 +131,7 @@ class DashboardTest extends TestCase
         $response = $this->getJson(self::DATA_ROUTE)
             ->assertOk();
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertCount(2, $data);
 
         $firstMonth = $data[0];

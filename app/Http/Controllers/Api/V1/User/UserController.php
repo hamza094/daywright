@@ -27,9 +27,7 @@ class UserController extends ApiController
     {
         $users = User::query()->get();
 
-        return response()->json([
-            'users' => UserSummaryResource::collection($users),
-        ], 200);
+        return UserSummaryResource::collection($users)->response();
     }
 
     /**
@@ -37,13 +35,12 @@ class UserController extends ApiController
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $user?->loadMissing('twoFactorAuth');
+        $user = $this->authenticatedUser();
+        $user->loadMissing('twoFactorAuth');
 
-        return response()->json([
-            'message' => 'Authenticated user data',
-            'user' => $user ? new AuthenticatedUserResource($user) : null,
-            'features' => new FeatureFlagsResource($user),
+        return $this->respondWithData([
+            'user' => (new AuthenticatedUserResource($user))->resolve($request),
+            'features' => (new FeatureFlagsResource($user))->resolve($request),
         ], Response::HTTP_OK);
     }
 
@@ -56,10 +53,7 @@ class UserController extends ApiController
     {
         $user->loadMissing('info');
 
-        return response()->json([
-            'message' => 'User Data',
-            'user' => new UserProfileResource($user),
-        ], 200);
+        return (new UserProfileResource($user))->response();
     }
 
     /**
@@ -75,10 +69,7 @@ class UserController extends ApiController
 
         $updatedUser = $user->fresh(['info']);
 
-        return response()->json([
-            'message' => 'User data updated successfully.',
-            'user' => new UserProfileResource($updatedUser),
-        ], 200);
+        return $this->respondUpdated(new UserProfileResource($updatedUser));
     }
 
     /**
@@ -92,8 +83,6 @@ class UserController extends ApiController
 
         $user->delete(); // Soft delete
 
-        return response()->json([
-            'message' => 'User data deleted successfully.',
-        ], 200);
+        return $this->respondWithMessage('User data deleted successfully.');
     }
 }

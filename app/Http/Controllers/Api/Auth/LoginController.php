@@ -33,7 +33,7 @@ class LoginController extends ApiController
 
         $payload = $this->loginUserService->performApiLogin($user);
 
-        return response()->json($payload->toArray(), 200);
+        return $this->respondWithData($payload->toArray());
     }
 
     /**
@@ -49,6 +49,6 @@ class LoginController extends ApiController
             $currentToken->delete();
         }
 
-        return response()->json(['message' => 'User logout successfully'], 200);
+        return $this->respondWithMessage('User logout successfully');
     }
 }

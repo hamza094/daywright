@@ -17,19 +17,8 @@ class UserInvitationsController extends ApiController
     public function myInvitations(): JsonResponse
     {
         $user = $this->authenticatedUser();
-
-        // Eager load 'user' relation if ProjectInvitaionResource expects it
         $pendingInvitations = $user->inactiveMembers()->with('user')->get();
 
-        if ($pendingInvitations->isEmpty()) {
-            return response()->json([
-                'invitations' => [],
-                'message' => 'No pending invitations found.',
-            ]);
-        }
-
-        return response()->json([
-            'invitations' => ProjectInvitationResource::collection($pendingInvitations),
-        ]);
+        return ProjectInvitationResource::collection($pendingInvitations)->response();
     }
 }

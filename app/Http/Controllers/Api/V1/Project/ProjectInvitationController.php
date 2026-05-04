@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\V1\Project;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\InvitationUsersRequest;
 use App\Http\Requests\Api\V1\ProjectInvitationIndexRequest;
-use App\Http\Resources\Api\V1\Project\ProjectSummaryResource;
+use App\Http\Resources\Api\V1\Project\ProjectInvitationResource;
 use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use App\Models\Project;
 use App\Models\User;
@@ -22,11 +22,12 @@ final class ProjectInvitationController extends ApiController
 
         $user = $invitationService->sendInvitationByEmail($project, $validated['email']);
 
-        return response()->json([
-            'message' => "Project invitation sent to {$user->name}",
-            'project' => new ProjectSummaryResource($project),
-            'invited_user' => new InvitedUserResource($user),
-        ]);
+        $invitation = $user->inactiveMembers()
+            ->with('user')
+            ->whereKey($project->getKey())
+            ->firstOrFail();
+
+        return $this->respondCreated(new ProjectInvitationResource($invitation));
     }
 
     public function index(ProjectInvitationIndexRequest $request, Project $project, InvitationService $invitationService): JsonResponse
@@ -35,17 +36,7 @@ final class ProjectInvitationController extends ApiController
 
         $members = $invitationService->pendingMembers($project);
 
-        if ($members->isEmpty()) {
-            return response()->json([
-                'message' => 'No pending project invitation requests found.',
-                'pending_invitations' => [],
-            ]);
-        }
-
-        return response()->json([
-            'message' => 'List of project pending member requests',
-            'pending_invitations' => InvitedUserResource::collection($members),
-        ]);
+        return InvitedUserResource::collection($members)->response();
     }
 
     public function destroy(Project $project, User $user, InvitationService $invitationService): JsonResponse
@@ -54,8 +45,6 @@ final class ProjectInvitationController extends ApiController
 
         $invitationService->cancelInvitation($project, $user);
 
-        return response()->json([
-            'message' => "You have canceled the invitation for {$user->name} to join the project.",
-        ]);
+        return $this->respondWithMessage("You have canceled the invitation for {$user->name} to join the project.");
     }
 }

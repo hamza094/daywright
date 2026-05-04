@@ -53,20 +53,20 @@ class SubscriptionResourceTest extends TestCase
 
         $response = $this->subscriptionResponse();
 
-        $response->assertJsonPath('subscription.plan', 'free')
-            ->assertJsonPath('subscription.entitled', false)
-            ->assertJsonPath('subscription.subscribed', false)
-            ->assertJsonPath('subscription.billing_plan', null)
-            ->assertJsonPath('subscription.next_payment', null)
-            ->assertJsonPath('subscription.created_at', null)
-            ->assertJsonPath('subscription.receipts', [])
-            ->assertJsonPath('subscription.trial.active', false)
-            ->assertJsonPath('subscription.trial.ends_at', null)
-            ->assertJsonPath('subscription.grace_period.active', false)
-            ->assertJsonPath('subscription.grace_period.ends_at', null)
-            ->assertJsonPath('subscription.available_plans.0.price', 12)
-            ->assertJsonPath('subscription.available_plans.1.price', 100)
-            ->assertJsonCount(3, 'subscription.limits');
+        $response->assertJsonPath('data.plan', 'free')
+            ->assertJsonPath('data.entitled', false)
+            ->assertJsonPath('data.subscribed', false)
+            ->assertJsonPath('data.billing_plan', null)
+            ->assertJsonPath('data.next_payment', null)
+            ->assertJsonPath('data.created_at', null)
+            ->assertJsonPath('data.receipts', [])
+            ->assertJsonPath('data.trial.active', false)
+            ->assertJsonPath('data.trial.ends_at', null)
+            ->assertJsonPath('data.grace_period.active', false)
+            ->assertJsonPath('data.grace_period.ends_at', null)
+            ->assertJsonPath('data.available_plans.0.price', 12)
+            ->assertJsonPath('data.available_plans.1.price', 100)
+            ->assertJsonCount(3, 'data.limits');
 
         $this->assertLimitItem($response, 'projects', 'Projects', 'account', 2, 3);
     }
@@ -80,14 +80,14 @@ class SubscriptionResourceTest extends TestCase
 
         $response = $this->subscriptionResponse();
 
-        $response->assertJsonPath('subscription.plan', 'pro')
-            ->assertJsonPath('subscription.entitled', true)
-            ->assertJsonPath('subscription.subscribed', true)
-            ->assertJsonPath('subscription.billing_plan', 'monthly')
-            ->assertJsonPath('subscription.created_at', $subscription->created_at?->setTimezone('UTC')->toIso8601String())
-            ->assertJsonPath('subscription.trial.active', false)
-            ->assertJsonPath('subscription.grace_period.active', false)
-            ->assertJsonCount(3, 'subscription.limits');
+        $response->assertJsonPath('data.plan', 'pro')
+            ->assertJsonPath('data.entitled', true)
+            ->assertJsonPath('data.subscribed', true)
+            ->assertJsonPath('data.billing_plan', 'monthly')
+            ->assertJsonPath('data.created_at', $subscription->created_at?->setTimezone('UTC')->toIso8601String())
+            ->assertJsonPath('data.trial.active', false)
+            ->assertJsonPath('data.grace_period.active', false)
+            ->assertJsonCount(3, 'data.limits');
 
         $this->assertLimitMaximums($response, [
             'projects' => null,
@@ -105,15 +105,15 @@ class SubscriptionResourceTest extends TestCase
 
         $response = $this->subscriptionResponse();
 
-        $response->assertJsonPath('subscription.plan', 'pro')
-            ->assertJsonPath('subscription.entitled', true)
-            ->assertJsonPath('subscription.subscribed', false)
-            ->assertJsonPath('subscription.billing_plan', 'monthly')
-            ->assertJsonPath('subscription.next_payment', null)
-            ->assertJsonPath('subscription.created_at', null)
-            ->assertJsonPath('subscription.grace_period.active', true)
-            ->assertJsonPath('subscription.grace_period.ends_at', $subscription->ends_at?->setTimezone('UTC')->toIso8601String())
-            ->assertJsonPath('subscription.trial.active', false);
+        $response->assertJsonPath('data.plan', 'pro')
+            ->assertJsonPath('data.entitled', true)
+            ->assertJsonPath('data.subscribed', false)
+            ->assertJsonPath('data.billing_plan', 'monthly')
+            ->assertJsonPath('data.next_payment', null)
+            ->assertJsonPath('data.created_at', null)
+            ->assertJsonPath('data.grace_period.active', true)
+            ->assertJsonPath('data.grace_period.ends_at', $subscription->ends_at?->setTimezone('UTC')->toIso8601String())
+            ->assertJsonPath('data.trial.active', false);
     }
 
     #[Test]
@@ -124,15 +124,15 @@ class SubscriptionResourceTest extends TestCase
 
         $response = $this->subscriptionResponse();
 
-        $response->assertJsonPath('subscription.plan', 'free')
-            ->assertJsonPath('subscription.entitled', false)
-            ->assertJsonPath('subscription.subscribed', false)
-            ->assertJsonPath('subscription.grace_period.active', false)
-            ->assertJsonPath('subscription.trial.active', false)
-            ->assertJsonPath('subscription.billing_plan', null)
-            ->assertJsonPath('subscription.next_payment', null)
-            ->assertJsonPath('subscription.created_at', null)
-            ->assertJsonPath('subscription.receipts', []);
+        $response->assertJsonPath('data.plan', 'free')
+            ->assertJsonPath('data.entitled', false)
+            ->assertJsonPath('data.subscribed', false)
+            ->assertJsonPath('data.grace_period.active', false)
+            ->assertJsonPath('data.trial.active', false)
+            ->assertJsonPath('data.billing_plan', null)
+            ->assertJsonPath('data.next_payment', null)
+            ->assertJsonPath('data.created_at', null)
+            ->assertJsonPath('data.receipts', []);
 
         $this->assertLimitMaximums($response, [
             'projects' => 3,
@@ -150,10 +150,10 @@ class SubscriptionResourceTest extends TestCase
 
         $response = $this->subscriptionResponse();
 
-        $response->assertJsonPath('subscription.plan', 'free')
-            ->assertJsonPath('subscription.subscribed', false)
-            ->assertJsonPath('subscription.receipts.0.id', $receipt->id)
-            ->assertJsonPath('subscription.receipts.0.receipt_url', $receipt->receipt_url);
+        $response->assertJsonPath('data.plan', 'free')
+            ->assertJsonPath('data.subscribed', false)
+            ->assertJsonPath('data.receipts.0.id', $receipt->id)
+            ->assertJsonPath('data.receipts.0.receipt_url', $receipt->receipt_url);
     }
 
     #[Test]
@@ -166,16 +166,16 @@ class SubscriptionResourceTest extends TestCase
 
         $response = $this->subscriptionResponse();
 
-        $response->assertJsonPath('subscription.plan', 'pro')
-            ->assertJsonPath('subscription.entitled', true)
-            ->assertJsonPath('subscription.billing_plan', null)
-            ->assertJsonPath('subscription.next_payment', null)
-            ->assertJsonPath('subscription.created_at', null)
-            ->assertJsonPath('subscription.receipts', [])
-            ->assertJsonPath('subscription.trial.active', true)
-            ->assertJsonPath('subscription.trial.ends_at', $trialEndsAt->setTimezone('UTC')->toIso8601String())
-            ->assertJsonPath('subscription.grace_period.active', false)
-            ->assertJsonCount(3, 'subscription.limits');
+        $response->assertJsonPath('data.plan', 'pro')
+            ->assertJsonPath('data.entitled', true)
+            ->assertJsonPath('data.billing_plan', null)
+            ->assertJsonPath('data.next_payment', null)
+            ->assertJsonPath('data.created_at', null)
+            ->assertJsonPath('data.receipts', [])
+            ->assertJsonPath('data.trial.active', true)
+            ->assertJsonPath('data.trial.ends_at', $trialEndsAt->setTimezone('UTC')->toIso8601String())
+            ->assertJsonPath('data.grace_period.active', false)
+            ->assertJsonCount(3, 'data.limits');
 
         $this->assertLimitItem($response, 'projects', 'Projects', 'account', 0, null);
     }
@@ -203,7 +203,7 @@ class SubscriptionResourceTest extends TestCase
         return $this->getJson(self::SUBSCRIPTIONS_ROUTE)
             ->assertOk()
             ->assertJsonStructure([
-                'subscription' => [
+                'data' => [
                     'plan',
                     'entitled',
                     'subscribed',
@@ -268,7 +268,7 @@ class SubscriptionResourceTest extends TestCase
     private function findLimitItem(TestResponse $response, string $key): ?array
     {
         /** @var array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>|null $limits */
-        $limits = $response->json('subscription.limits');
+        $limits = $response->json('data.limits');
 
         if (! is_array($limits)) {
             return null;

@@ -57,10 +57,10 @@ class UserTest extends TestCase
     {
         $this->getJson(route('user.me'))
             ->assertOk()
-            ->assertJsonPath('user.id', $this->user->id)
-            ->assertJsonPath('user.uuid', $this->user->uuid)
-            ->assertJsonPath('user.is_admin', false)
-            ->assertJsonPath('user.two_factor_enabled', false);
+            ->assertJsonPath('data.user.id', $this->user->id)
+            ->assertJsonPath('data.user.uuid', $this->user->uuid)
+            ->assertJsonPath('data.user.is_admin', false)
+            ->assertJsonPath('data.user.two_factor_enabled', false);
     }
 
     #[Test]
@@ -77,8 +77,8 @@ class UserTest extends TestCase
                 'email' => $this->user->email,
                 'timezone' => $defaultTimezone,
             ])
-            ->assertJsonPath('user.created_at', $this->user->created_at?->setTimezone('UTC')->toIso8601String())
-            ->assertJsonPath('user.updated_at', $this->user->updated_at?->setTimezone('UTC')->toIso8601String());
+            ->assertJsonPath('data.created_at', $this->user->created_at?->setTimezone('UTC')->toIso8601String())
+            ->assertJsonPath('data.updated_at', $this->user->updated_at?->setTimezone('UTC')->toIso8601String());
     }
 
     #[Test]
@@ -96,11 +96,9 @@ class UserTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonFragment([
-                'name' => $newName,
-                'email' => $newEmail,
-                'username' => $newUsername,
-            ]);
+            ->assertJsonPath('data.name', $newName)
+            ->assertJsonPath('data.email', $newEmail)
+            ->assertJsonPath('data.username', $newUsername);
 
         $this->assertDatabaseHas('users', [
             'id' => $this->user->id,
@@ -124,9 +122,7 @@ class UserTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonFragment([
-                'timezone' => 'America/Los_Angeles',
-            ]);
+            ->assertJsonPath('data.timezone', 'America/Los_Angeles');
 
         $this->assertDatabaseHas('users', [
             'id' => $this->user->id,

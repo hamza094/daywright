@@ -12,7 +12,6 @@ use App\Models\Project;
 use App\Repository\Api\V1\ConversationRepository;
 use App\Services\Api\V1\ConversationService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response as HttpResponse;
 
 class ConversationController extends ApiController
 {
@@ -33,19 +32,15 @@ class ConversationController extends ApiController
 
         $conversation = $this->conversationService->storeConversation($request, $project);
 
-        return response()->json([
-            'message' => 'New Conversation added Successfully',
-            'conversation' => new ConversationResource($conversation),
-            'path' => $project->path(),
-        ]);
+        return $this->respondCreated(new ConversationResource($conversation));
     }
 
-    public function destroy(Project $project, Conversation $conversation): HttpResponse
+    public function destroy(Project $project, Conversation $conversation): JsonResponse
     {
         $this->authorize('delete', $conversation);
 
         $this->conversationService->deleteConversation($conversation, $project);
 
-        return response()->noContent();
+        return $this->respondWithMessage('Conversation deleted successfully.');
     }
 }

@@ -10,18 +10,15 @@ use App\Models\Message;
 use App\Models\Project;
 use App\Services\Api\V1\MessageService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response as HttpResponse;
 
 final class ProjectMessageController extends ApiController
 {
     public function store(Project $project, MessageRequest $request, MessageService $messageService): JsonResponse
     {
-        return response()->json([
-            'message' => $messageService->send($project, $request->validated()),
-        ]);
+        return $this->respondWithMessage($messageService->send($project, $request->validated()));
     }
 
-    public function destroy(Project $project, Message $message, MessageService $messageService): HttpResponse
+    public function destroy(Project $project, Message $message, MessageService $messageService): JsonResponse
     {
         if ((int) $message->project_id !== (int) $project->id) {
             abort(404);
@@ -29,6 +26,6 @@ final class ProjectMessageController extends ApiController
 
         $messageService->deleteScheduledMessage($message);
 
-        return response()->noContent();
+        return $this->respondWithMessage('Scheduled message deleted successfully.');
     }
 }

@@ -29,24 +29,18 @@ class VerificationController extends ApiController
     public function verify(Request $request, User $user): JsonResponse
     {
         if (! URL::hasValidSignature($request)) {
-            return response()->json([
-                'status' => trans('verification.invalid'),
-            ], 400);
+            abort(400, trans('verification.invalid'));
         }
 
         if ($user->hasVerifiedEmail()) {
-            return response()->json([
-                'status' => trans('verification.already_verified'),
-            ], 400);
+            abort(400, trans('verification.already_verified'));
         }
 
         $user->markEmailAsVerified();
 
         event(new Verified($user));
 
-        return response()->json([
-            'status' => trans('verification.verified'),
-        ]);
+        return $this->respondWithMessage(trans('verification.verified'));
     }
 
     /**
@@ -70,6 +64,6 @@ class VerificationController extends ApiController
 
         $user->sendEmailVerificationNotification();
 
-        return response()->json(['status' => trans('verification.sent')]);
+        return $this->respondWithMessage(trans('verification.sent'));
     }
 }

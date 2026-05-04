@@ -101,14 +101,18 @@ class TaskFeaturesTest extends TestCase
         $this->patchJson(route('task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
-        ]));
+        ]))
+            ->assertOk()
+            ->assertJsonPath('message', 'Project task archived successfully');
 
         $this->assertSoftDeleted($task);
 
         $this->patchJson(route('task.unarchive', [
             'project' => $this->project->slug,
             'task' => $task->id,
-        ]));
+        ]))
+            ->assertOk()
+            ->assertJsonPath('message', 'Project task restored successfully');
 
         $this->assertNotSoftDeleted($task);
     }

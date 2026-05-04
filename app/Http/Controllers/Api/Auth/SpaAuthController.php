@@ -33,7 +33,7 @@ class SpaAuthController extends ApiController
 
         $payload = $this->loginUserService->performSessionLogin($user, $request);
 
-        return response()->json($payload->toArray(), 200);
+        return $this->respondWithData($payload->toArray());
     }
 
     /**
@@ -50,6 +50,6 @@ class SpaAuthController extends ApiController
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->json(['message' => 'User logout successfully'], 200);
+        return $this->respondWithMessage('User logout successfully');
     }
 }

@@ -14,7 +14,7 @@ final class DashboardKpisController extends ApiController
     {
         $userId = $this->authenticatedUser()->id;
 
-        return response()->json([
+        return $this->respondWithData([
             'kpis' => $dashboardInsightsService->getKPIs($userId),
             'insights' => $dashboardInsightsService->getActionableInsights($userId),
         ]);

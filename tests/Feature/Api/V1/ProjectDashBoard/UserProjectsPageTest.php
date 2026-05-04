@@ -101,7 +101,7 @@ class UserProjectsPageTest extends TestCase
 
         $response->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
 
         // The search should only return "Frontend Project"
         $this->assertCount(1, $projects);
@@ -122,7 +122,7 @@ class UserProjectsPageTest extends TestCase
         $latestProject = $this->project; // Assuming this is the default project created in ProjectSetup
 
         $response = $this->getJson(route('projects.index', ['sort' => 'latest']));
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $this->assertEquals($latestProject->name, $projects[0]['name']);
     }
 
@@ -137,7 +137,7 @@ class UserProjectsPageTest extends TestCase
         // Assuming this is the default project created in ProjectSetup
 
         $response = $this->getJson(route('projects.index', ['sort' => 'oldest']));
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $this->assertEquals('Old Project', $projects[0]['name']);
     }
 
@@ -158,7 +158,7 @@ class UserProjectsPageTest extends TestCase
 
         $response->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $projectNames = collect($projects)->pluck('name')->all();
 
         $this->assertContains('Alpha Project', $projectNames);
@@ -187,7 +187,7 @@ class UserProjectsPageTest extends TestCase
 
         $response->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
 
         $this->assertCount(1, $projects);
         $this->assertEquals($memberProject->name, $projects[0]['name']);
@@ -203,7 +203,7 @@ class UserProjectsPageTest extends TestCase
 
         $response->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
 
         $this->assertCount(1, $projects);
         $this->assertEquals($this->project->name, $projects[0]['name']);
@@ -217,6 +217,6 @@ class UserProjectsPageTest extends TestCase
         $response = $this->getJson(route('projects.index', ['per_page' => 2]))
             ->assertOk();
 
-        $this->assertCount(2, $response->json('projects.data'));
+        $this->assertCount(2, $response->json('data'));
     }
 }

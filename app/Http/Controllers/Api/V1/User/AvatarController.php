@@ -22,11 +22,10 @@ class AvatarController extends ApiController
 
         $service->update($user, $request->file('avatar'));
 
-        return response()->json([
-            'message' => 'Avatar Updated Successfully',
+        return $this->respondWithData([
             'avatar' => $user->avatar_path,
             'path' => $user->path(),
-        ], 200);
+        ]);
     }
 
     /**
@@ -39,15 +38,10 @@ class AvatarController extends ApiController
         $removed = $service->remove($user);
 
         if (! $removed) {
-            return response()->json([
-                'message' => 'User does not have an avatar',
-            ], Response::HTTP_NOT_FOUND);
+            abort(Response::HTTP_NOT_FOUND, 'User does not have an avatar');
         }
 
-        return response()->json([
-            'message' => 'User avatar has been removed',
-            'path' => $user->path(),
-        ], Response::HTTP_OK);
+        return $this->respondWithMessage('User avatar has been removed');
 
     }
 }

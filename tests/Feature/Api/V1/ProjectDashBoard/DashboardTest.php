@@ -24,17 +24,16 @@ class DashboardTest extends TestCase
 
         $response->assertOk()
             ->assertJsonStructure([
-                'projects',
-                'projectsCount',
-                'message',
+                'data',
+                'meta' => ['total'],
             ]);
 
         // Should only return 3 projects (latest)
-        $this->assertCount(3, $response->json('projects'));
-        $this->assertEquals(3, $response->json('projectsCount'));
-        $this->assertNotEmpty($response->json('projects'));
+        $this->assertCount(3, $response->json('data'));
+        $this->assertEquals(3, $response->json('meta.total'));
+        $this->assertNotEmpty($response->json('data'));
 
-        collect($response->json('projects'))->pluck('links.self')->each(function (?string $path): void {
+        collect($response->json('data'))->pluck('links.self')->each(function (?string $path): void {
             $this->assertNotNull($path);
             $this->assertStringStartsWith('/api/v1/projects/', $path);
         });
@@ -50,8 +49,7 @@ class DashboardTest extends TestCase
 
         $response->assertOk();
 
-        $this->assertCount(0, $response->json('projects'));
-        $this->assertEquals(0, $response->json('projectsCount'));
-        $this->assertEquals('No active projects found', $response->json('message'));
+        $this->assertCount(0, $response->json('data'));
+        $this->assertEquals(0, $response->json('meta.total'));
     }
 }

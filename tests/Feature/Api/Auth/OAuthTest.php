@@ -26,7 +26,7 @@ class OAuthTest extends TestCase
         $response = $this->getJson('/api/v1/auth/redirect/'.$provider->value);
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['redirect_url']);
+            ->assertJsonStructure(['data' => ['redirect_url']]);
     }
 
     /** @test */
@@ -71,8 +71,9 @@ class OAuthTest extends TestCase
 
         $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful()
             ->assertJsonStructure([
-                'user' => ['uuid', 'name', 'email'],
-                'message',
+                'data' => [
+                    'user' => ['uuid', 'name', 'email'],
+                ],
             ]);
 
         $user = User::where('email', 'test@example.com')->first();

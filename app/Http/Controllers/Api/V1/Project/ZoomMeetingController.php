@@ -23,21 +23,17 @@ class ZoomMeetingController extends ApiController
 
         $isPrevious = ($request->query('request') === 'previous');
 
-        $meetingsData = $meetingService->getMeetingsData($project, $isPrevious);
+        $meetings = $meetingService->getMeetingsData($project, $isPrevious);
 
-        return response()->json([
-            'success' => true,
-            'message' => $meetingsData['message'],
-            'meetingsData' => $meetingsData['meetingsData'],
-        ], 200);
+        return MeetingResource::collection($meetings)->response();
     }
 
-    public function show(Project $project, Meeting $meeting): JsonResponse
+    public function show(Project $project, Meeting $meeting): MeetingResource
     {
         $this->authorize('access', $project);
         $meeting->load(['user']);
 
-        return response()->json(['success' => true, 'data' => new MeetingResource($meeting)], 200);
+        return new MeetingResource($meeting);
     }
 
     public function store(Zoom $zoom, Project $project, MeetingStoreRequest $request, MeetingService $meetingService): JsonResponse
@@ -51,10 +47,7 @@ class ZoomMeetingController extends ApiController
             $zoom,
         );
 
-        return response()->json([
-            'message' => 'Meeting Created Successfully',
-            'meeting' => new MeetingResource($projectMeeting),
-        ], 201);
+        return $this->respondCreated(new MeetingResource($projectMeeting));
     }
 
     public function update(Zoom $zoom, Project $project, Meeting $meeting, MeetingUpdateRequest $request, MeetingService $meetingService): JsonResponse
@@ -68,10 +61,7 @@ class ZoomMeetingController extends ApiController
             $zoom,
         );
 
-        return response()->json([
-            'message' => 'Meeting Updated Successfully',
-            'meeting' => new MeetingResource($meeting),
-        ], 200);
+        return $this->respondUpdated(new MeetingResource($meeting));
     }
 
     public function destroy(Zoom $zoom, Project $project, Meeting $meeting, MeetingService $meetingService): JsonResponse
@@ -80,8 +70,6 @@ class ZoomMeetingController extends ApiController
 
         $meetingService->deleteProjectMeeting($meeting, $this->authenticatedUser(), $zoom);
 
-        return response()->json([
-            'message' => 'Meeting Deleted Successfully',
-        ], 200);
+        return $this->respondWithMessage('Meeting Deleted Successfully');
     }
 }

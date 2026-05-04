@@ -15,10 +15,12 @@ final class DashboardProjectsController extends ApiController
     {
         $projects = $dashboardService->getDashboardProjects();
 
-        return response()->json([
-            'projects' => ProjectCollectionResource::collection($projects),
-            'projectsCount' => $projects->count(),
-            'message' => $projects->isEmpty() ? 'No active projects found' : '',
-        ]);
+        return ProjectCollectionResource::collection($projects)
+            ->additional([
+                'meta' => [
+                    'total' => $projects->count(),
+                ],
+            ])
+            ->response();
     }
 }

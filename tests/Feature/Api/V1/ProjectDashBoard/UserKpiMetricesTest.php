@@ -20,16 +20,18 @@ class UserKpiMetricesTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
-            'kpis' => [
-                'total_projects' => ['value', 'label', 'status'],
-                'critical_projects' => ['value', 'label', 'status'],
-                'overdue_tasks' => ['value', 'label', 'status'],
-                'completion_rate' => ['value', 'label', 'status'],
+            'data' => [
+                'kpis' => [
+                    'total_projects' => ['value', 'label', 'status'],
+                    'critical_projects' => ['value', 'label', 'status'],
+                    'overdue_tasks' => ['value', 'label', 'status'],
+                    'completion_rate' => ['value', 'label', 'status'],
+                ],
+                'insights',
             ],
-            'insights',
         ]);
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertIsArray($data['kpis']);
         $this->assertIsArray($data['insights']);
     }

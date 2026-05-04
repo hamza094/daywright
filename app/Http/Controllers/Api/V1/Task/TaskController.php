@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\TaskIndexRequest;
 use App\Http\Requests\Api\V1\TaskRequest;
 use App\Http\Requests\Api\V1\TaskUpdateRequest;
+use App\Http\Resources\Api\V1\Task\TaskCollectionResource;
 use App\Http\Resources\Api\V1\Task\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
@@ -33,7 +34,7 @@ class TaskController extends ApiController
     {
         $tasksData = $taskService->getTasksData($project, $request->isArchived(), $request->perPage());
 
-        return response()->json($tasksData, 200);
+        return TaskCollectionResource::collection($tasksData)->response();
     }
 
     /**
@@ -45,10 +46,7 @@ class TaskController extends ApiController
     {
         $task = $taskService->createTask($project, $this->authenticatedUser(), $request->validated());
 
-        return response()->json([
-            'message' => 'Task added successfully.',
-            'task' => new TaskResource($task),
-        ], 201);
+        return $this->respondCreated(new TaskResource($task));
 
     }
 
@@ -73,10 +71,7 @@ class TaskController extends ApiController
     {
         $task = $taskService->updateTask($task, $request->validated());
 
-        return response()->json([
-            'message' => 'Task updated successfully.',
-            'task' => new TaskResource($task),
-        ], 200);
+        return $this->respondUpdated(new TaskResource($task));
     }
 
     public function destroy(Project $project, Task $task, TaskFeatureService $taskFeatureService): JsonResponse
@@ -85,8 +80,6 @@ class TaskController extends ApiController
 
         $taskFeatureService->removeTask($task);
 
-        return response()->json([
-            'message' => 'Task deleted successfully.',
-        ], 200);
+        return $this->respondWithMessage('Task deleted successfully.');
     }
 }

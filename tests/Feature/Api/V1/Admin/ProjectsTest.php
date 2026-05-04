@@ -68,8 +68,9 @@ class ProjectsTest extends TestCase
         $this->getJson(self::PROJECTS_ROUTE)
             ->assertOk()
             ->assertJsonStructure([
-                'projects' => ['data', 'meta', 'links'],
-                'appliedFilters',
+                'data',
+                'meta' => ['applied_filters'],
+                'links',
             ]);
     }
 
@@ -78,7 +79,8 @@ class ProjectsTest extends TestCase
     {
         $this->getJson(self::PROJECTS_ROUTE)
             ->assertOk()
-            ->assertJsonPath('message', 'Sorry no result found');
+            ->assertJsonPath('meta.total', 0)
+            ->assertJsonPath('meta.applied_filters', []);
     }
 
     #[Test]
@@ -90,7 +92,7 @@ class ProjectsTest extends TestCase
         $response = $this->getJson($this->projectsUrl(['search' => 'Alpha']))
             ->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $this->assertIsArray($projects);
         $this->assertCount(1, $projects);
         $this->assertStringContainsString('Alpha', $projects[0]['name']);
@@ -106,13 +108,13 @@ class ProjectsTest extends TestCase
 
         // Active filter
         $active = $this->getJson($this->projectsUrl(['state' => 'active']))->assertOk();
-        $this->assertNotEmpty($active->json('projects.data'));
-        $this->assertContains('Filter by Active', $active->json('appliedFilters'));
+        $this->assertNotEmpty($active->json('data'));
+        $this->assertContains('Filter by Active', $active->json('meta.applied_filters'));
 
         // Trashed filter
         $trashedResponse = $this->getJson($this->projectsUrl(['state' => 'trashed']))->assertOk();
-        $this->assertNotEmpty($trashedResponse->json('projects.data'));
-        $this->assertContains('Filter by Trashed', $trashedResponse->json('appliedFilters'));
+        $this->assertNotEmpty($trashedResponse->json('data'));
+        $this->assertContains('Filter by Trashed', $trashedResponse->json('meta.applied_filters'));
     }
 
     #[Test]
@@ -124,7 +126,7 @@ class ProjectsTest extends TestCase
         $response = $this->getJson($this->projectsUrl(['status' => 'hot']))
             ->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $this->assertIsArray($projects);
         $this->assertCount(1, $projects);
     }
@@ -156,7 +158,7 @@ class ProjectsTest extends TestCase
         $response = $this->getJson($this->projectsUrl(['stage' => $stage->id]))
             ->assertOk();
 
-        $appliedFilters = $response->json('appliedFilters');
+        $appliedFilters = $response->json('meta.applied_filters');
         $this->assertNotEmpty($appliedFilters);
     }
 
@@ -184,7 +186,7 @@ class ProjectsTest extends TestCase
         ]))
             ->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $this->assertIsArray($projects);
 
         $projectIds = collect($projects)->pluck('id')->toArray();
@@ -200,7 +202,7 @@ class ProjectsTest extends TestCase
         $response = $this->getJson($this->projectsUrl(params: ['per_page' => 5]))
             ->assertOk();
 
-        $projects = $response->json('projects.data');
+        $projects = $response->json('data');
         $this->assertIsArray($projects);
         $this->assertCount(5, $projects);
     }

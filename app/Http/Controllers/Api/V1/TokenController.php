@@ -25,9 +25,7 @@ class TokenController extends ApiController
     {
         $tokens = $this->authenticatedUser()->tokens;
 
-        return response()->json([
-            'tokens' => TokenResource::collection($tokens),
-        ], Response::HTTP_OK);
+        return TokenResource::collection($tokens)->response();
     }
 
     /**
@@ -50,10 +48,9 @@ class TokenController extends ApiController
             )
         );
 
-        return response()->json([
+        return $this->respondWithData([
             'token' => $token->plainTextToken,
-            'token_resource' => new TokenResource($token->accessToken),
-            'message' => 'Token created successfully.',
+            'token_resource' => (new TokenResource($token->accessToken))->resolve(),
         ], Response::HTTP_CREATED);
     }
 

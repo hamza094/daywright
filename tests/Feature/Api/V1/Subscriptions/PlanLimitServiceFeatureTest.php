@@ -88,7 +88,7 @@ class PlanLimitServiceFeatureTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('message', 'Project created successfully.');
+            ->assertJsonPath('data.name', 'Fourth Project');
     }
 
     #[Test]
@@ -187,8 +187,7 @@ class PlanLimitServiceFeatureTest extends TestCase
         $response = $this->createTask(['title' => 'Member Task']);
 
         $response->assertCreated()
-            ->assertJsonPath('message', 'Task added successfully.')
-            ->assertJsonPath('task.title', 'Member Task');
+            ->assertJsonPath('data.title', 'Member Task');
 
         $this->assertDatabaseHas('tasks', [
             'project_id' => $this->project->id,

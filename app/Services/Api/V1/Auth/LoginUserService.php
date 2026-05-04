@@ -12,6 +12,7 @@ use App\Services\TwoFactor\TwoFactorStateManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
 
 class LoginUserService
 {
@@ -122,9 +123,11 @@ class LoginUserService
     public function buildTwoFactorRequiredResponse(): JsonResponse
     {
         return response()->json([
-            'message' => 'Two-factor authentication is enabled. Please provide the verification code.',
-            'status' => '2fa_required',
-        ], 200);
+            'data' => [
+                'two_factor_state' => '2fa_required',
+                'message' => 'Two-factor authentication is enabled. Please provide the verification code.',
+            ],
+        ], Response::HTTP_OK);
     }
 
     /**

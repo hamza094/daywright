@@ -30,8 +30,8 @@ class TaskTest extends TestCase
             'filter' => ['state' => 'archived'],
         ]))
             ->assertOk()
-            ->assertJsonCount(3, 'tasksData')
-            ->assertJsonStructure(['message', 'tasksData']);
+            ->assertJsonCount(3, 'data')
+            ->assertJsonStructure(['data']);
     }
 
     /** @test */
@@ -54,19 +54,18 @@ class TaskTest extends TestCase
 
         $response = $this->getJson($this->project->path().'/tasks')
             ->assertOk()
-            ->assertJsonCount(3, 'tasksData')
+            ->assertJsonCount(3, 'data')
             ->assertJsonStructure([
-                'message',
-                'tasksData' => [
-                    'data' => [
-                        '*' => [
-                            'links' => ['self'],
-                        ],
-                    ], 'links', 'meta',
+                'data' => [
+                    '*' => [
+                        'links' => ['self'],
+                    ],
                 ],
+                'links',
+                'meta',
             ]);
 
-        collect($response->json('tasksData.data'))->pluck('links.self')->each(function (?string $path): void {
+        collect($response->json('data'))->pluck('links.self')->each(function (?string $path): void {
             $this->assertNotNull($path);
             $this->assertStringStartsWith($this->project->path().'/tasks/', $path);
         });
@@ -87,11 +86,8 @@ class TaskTest extends TestCase
             'title' => 'My Project Task',
             'status_id' => $this->status->id,
         ])->assertCreated()
-            ->assertJson([
-                'task' => [
-                    'id' => 1,
-                    'title' => 'My Project Task',
-                ]]);
+            ->assertJsonPath('data.id', 1)
+            ->assertJsonPath('data.title', 'My Project Task');
 
         $this->assertDatabaseHas('tasks', ['title' => 'My Project Task']);
     }
@@ -155,12 +151,10 @@ class TaskTest extends TestCase
 
         $this->getJson($task->path())
             ->assertOk()
-            ->assertJson([
-                'id' => $task->id,
-                'title' => $task->title,
-            ])
-            ->assertJsonPath('due_at', $task->due_at?->setTimezone('UTC')->toIso8601String())
-            ->assertJsonPath('created_at', $task->created_at?->setTimezone('UTC')->toIso8601String());
+            ->assertJsonPath('data.id', $task->id)
+            ->assertJsonPath('data.title', $task->title)
+            ->assertJsonPath('data.due_at', $task->due_at?->setTimezone('UTC')->toIso8601String())
+            ->assertJsonPath('data.created_at', $task->created_at?->setTimezone('UTC')->toIso8601String());
     }
 
     /** @test */
@@ -194,7 +188,7 @@ class TaskTest extends TestCase
             'title' => $updatedTitle,
             'description' => $updatedDescription,
             'status_id' => $status2->id,
-        ])->assertJsonPath('task.title', $updatedTitle);
+        ])->assertJsonPath('data.title', $updatedTitle);
 
         $task->refresh();
 

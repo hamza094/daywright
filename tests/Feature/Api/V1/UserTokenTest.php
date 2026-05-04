@@ -45,7 +45,7 @@ class UserTokenTest extends TestCase
         $response->assertJsonFragment(['name' => 'Test Token']);
         $this->assertMatchesRegularExpression(
             '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$/',
-            (string) $response->json('tokens.0.created_at')
+            (string) $response->json('data.0.created_at')
         );
     }
 
@@ -63,8 +63,8 @@ class UserTokenTest extends TestCase
             'name' => 'My API Token',
         ]);
         $response->assertCreated();
-        $response->assertJsonFragment(['message' => 'Token created successfully.'])
-            ->assertJsonPath('token_resource.expires_at', null);
+        $this->assertNotEmpty($response->json('data.token'));
+        $response->assertJsonPath('data.token_resource.expires_at', null);
         $this->assertDatabaseHas('personal_access_tokens', [
             'name' => 'My API Token',
             'tokenable_id' => $user->id,
@@ -95,7 +95,7 @@ class UserTokenTest extends TestCase
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('token_resource.expires_at', $expectedExpiration);
+            ->assertJsonPath('data.token_resource.expires_at', $expectedExpiration);
 
         $token = $user->tokens()->latest('id')->first();
 

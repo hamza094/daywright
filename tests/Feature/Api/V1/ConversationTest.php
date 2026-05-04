@@ -40,7 +40,9 @@ class ConversationTest extends TestCase
         $message = 'random chat conversation';
 
         $this->postJson($this->project->path().'/conversations', ['message' => $message,
-            'user_id' => $this->user->id]);
+            'user_id' => $this->user->id])
+            ->assertCreated()
+            ->assertJsonPath('data.message', $message);
 
         $this->assertDatabaseHas('conversations', [
             'message' => $message]);
@@ -88,7 +90,8 @@ class ConversationTest extends TestCase
         ]);
 
         $this->deleteJson($this->project->path().'/conversations/'.$conversation->id)
-            ->assertNoContent();
+            ->assertOk()
+            ->assertJsonPath('message', 'Conversation deleted successfully.');
 
         $this->assertModelMissing($conversation);
 

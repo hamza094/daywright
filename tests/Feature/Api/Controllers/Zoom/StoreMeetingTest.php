@@ -35,7 +35,7 @@ class StoreMeetingTest extends TestCase
 
         $response = $this->withoutExceptionHandling()->postJson(route('meetings.store', ['project' => $this->project->slug]), $postBody);
 
-        $meetingResponse = $response->json()['meeting'];
+        $meetingResponse = $response->json('data');
 
         $zoomFake->assertMeetingCreated(
             topic: $postBody['topic'],

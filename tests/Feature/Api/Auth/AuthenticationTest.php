@@ -88,8 +88,12 @@ class AuthenticationTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJsonStructure(['user', 'access_token', 'message', 'status'])
-            ->assertJsonFragment(['status' => 'success']);
+            ->assertJsonStructure([
+                'data' => [
+                    'user' => ['uuid', 'name', 'email'],
+                    'access_token',
+                ],
+            ]);
     }
 
     /** @test */
@@ -156,9 +160,12 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticatedAs($user, 'web');
 
         $response->assertOk()
-            ->assertJsonStructure(['user', 'message', 'status'])
-            ->assertJsonMissing(['access_token'])
-            ->assertJsonFragment(['status' => 'success']);
+            ->assertJsonStructure([
+                'data' => [
+                    'user' => ['uuid', 'name', 'email'],
+                ],
+            ])
+            ->assertJsonMissingPath('data.access_token');
     }
 
     /** @test */

@@ -25,7 +25,6 @@ class MeetingTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJson([
-                'success' => true,
                 'data' => [
                     'id' => $meeting->id,
                     'meeting_id' => $meeting->meeting_id,
@@ -50,21 +49,15 @@ class MeetingTest extends TestCase
         // Scheduled meetings (default)
         $response = $this->getJson("/api/v1/projects/{$this->project->slug}/meetings");
         $response->assertStatus(200)
-            ->assertJson([
-                'success' => true,
-                'message' => 'Scheduled meetings',
-            ]);
+            ->assertJsonStructure(['data', 'links', 'meta']);
 
-        $this->assertCount(3, $response->json('meetingsData.data'));
+        $this->assertCount(3, $response->json('data'));
 
         // Previous meetings
         $response = $this->getJson("/api/v1/projects/{$this->project->slug}/meetings?request=previous");
         $response->assertStatus(200)
-            ->assertJson([
-                'success' => true,
-                'message' => 'Previous meetings',
-            ]);
+            ->assertJsonStructure(['data', 'links', 'meta']);
 
-        $this->assertCount(2, $response->json('meetingsData.data'));
+        $this->assertCount(2, $response->json('data'));
     }
 }

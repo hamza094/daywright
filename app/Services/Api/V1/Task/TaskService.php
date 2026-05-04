@@ -7,7 +7,6 @@ namespace App\Services\Api\V1\Task;
 use App\Actions\NotificationAction;
 use App\Actions\Task\ResetTaskNotificationAction;
 use App\Enums\Subscription\PlanLimitType;
-use App\Http\Resources\Api\V1\Task\TaskCollectionResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -15,6 +14,8 @@ use App\Notifications\ProjectTask;
 use App\Services\Api\V1\Subscription\PlanLimitService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class TaskService
@@ -24,31 +25,15 @@ class TaskService
         private readonly PlanLimitService $planLimitService,
     ) {}
 
-    public function getTasksData(Project $project, bool $isArchived, int $perPage): array
+    public function getTasksData(Project $project, bool $isArchived, int $perPage): Collection|LengthAwarePaginator
     {
         $query = $this->getTasks($project, $isArchived);
 
-        // Early return for archived tasks (no pagination)
         if ($isArchived) {
-            $results = $query->get();
-
-            return [
-                'message' => $results->isEmpty()
-                  ? 'Sorry, no tasks found.'
-                  : $this->getMessage(true),
-                'tasksData' => TaskCollectionResource::collection($results),
-            ];
+            return $query->get();
         }
 
-        // Active tasks (paginated) - use config value for page size
-        $paginatedTasks = $query->paginate($perPage);
-
-        return [
-            'message' => $paginatedTasks->isEmpty()
-              ? 'Sorry, no tasks found.'
-              : $this->getMessage(false),
-            'tasksData' => TaskCollectionResource::collection($paginatedTasks)->response()->getData(true),
-        ];
+        return $query->paginate($perPage);
     }
 
     /**
@@ -117,10 +102,5 @@ class TaskService
                 fn (Builder $query) => $query->archived(),
                 fn (Builder $query) => $query->active()
             );
-    }
-
-    private function getMessage(bool $isArchived): string
-    {
-        return 'Project '.($isArchived ? 'Archived' : 'Active').' Tasks';
     }
 }

@@ -53,7 +53,7 @@ class TwoFactorAuthenticationTest extends TestCase
         $response = $this->getJson(route('twofactor.fetch-user'));
 
         $response->assertOk()
-            ->assertJson(['status' => 'disabled']);
+            ->assertJsonPath('data.two_factor_state', 'disabled');
     }
 
     /** @test */
@@ -72,8 +72,10 @@ class TwoFactorAuthenticationTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJson(['status' => 'in_progress'])
-            ->assertJsonStructure(['qr_code', 'uri', 'string', 'status']);
+            ->assertJsonPath('data.two_factor_state', 'in_progress')
+            ->assertJsonStructure([
+                'data' => ['qr_code', 'uri', 'string', 'two_factor_state'],
+            ]);
 
         // Assert 2FA was created in database
         $this->assertDatabaseHas('two_factor_authentications', [
@@ -98,11 +100,8 @@ class TwoFactorAuthenticationTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJson([
-                'status' => 'enabled',
-                'message' => 'success',
-                'recoveryCodes' => ['abc123', 'xyz789'],
-            ]);
+            ->assertJsonPath('data.two_factor_state', 'enabled')
+            ->assertJsonPath('data.recovery_codes', ['abc123', 'xyz789']);
     }
 
     /** @test */
@@ -118,10 +117,7 @@ class TwoFactorAuthenticationTest extends TestCase
         $response = $this->getJson(route('twofactor.recovery-codes'));
 
         $response->assertOk()
-            ->assertJson([
-                'message' => 'success',
-                'recoveryCodes' => ['abc123', 'xyz789'],
-            ]);
+            ->assertJsonPath('data.recovery_codes', ['abc123', 'xyz789']);
     }
 
     /** @test */
@@ -138,7 +134,7 @@ class TwoFactorAuthenticationTest extends TestCase
         $response = $this->deleteJson(route('twofactor.disable'));
 
         $response->assertOk()
-            ->assertJson(['status' => 'disabled']);
+            ->assertJsonPath('data.two_factor_state', 'disabled');
     }
 
     /** @test */
@@ -148,10 +144,8 @@ class TwoFactorAuthenticationTest extends TestCase
 
         [$response] = $this->beginTwoFactorLogin();
 
-        $response->assertJson([
-            'message' => 'Two-factor authentication is enabled. Please provide the verification code.',
-            'status' => '2fa_required',
-        ]);
+        $response->assertJsonPath('data.message', 'Two-factor authentication is enabled. Please provide the verification code.')
+            ->assertJsonPath('data.two_factor_state', '2fa_required');
 
         $encryptedSession = session(self::TWO_FA_SESSION);
         $this->assertIsString($encryptedSession);
@@ -215,8 +209,9 @@ class TwoFactorAuthenticationTest extends TestCase
 
         $response->assertOk()
             ->assertJsonStructure([
-                'user' => ['uuid', 'name', 'email'],
-                'message',
+                'data' => [
+                    'user' => ['uuid', 'name', 'email'],
+                ],
             ]);
 
         $logged = User::where('email', $this->user->email)->first();
@@ -371,7 +366,7 @@ class TwoFactorAuthenticationTest extends TestCase
         $response = $this->postJson('/api/v1/login', $payload);
 
         $response->assertOk()
-            ->assertJson(['status' => '2fa_required']);
+            ->assertJsonPath('data.two_factor_state', '2fa_required');
 
         $sessionKey = $this->twoFactorSessionKey();
         $this->assertTrue(session()->has($sessionKey), '2FA session entry missing');

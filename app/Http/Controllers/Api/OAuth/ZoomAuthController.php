@@ -6,14 +6,14 @@ namespace App\Http\Controllers\Api\OAuth;
 
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\Exceptions\Integrations\Zoom\ZoomException;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Interfaces\Zoom;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
-final class ZoomAuthController extends Controller
+final class ZoomAuthController extends ApiController
 {
     public function redirect(Request $request): JsonResponse
     {
@@ -24,7 +24,7 @@ final class ZoomAuthController extends Controller
 
         session()->put('oauth_zoom_code_verifier', $redirectDetails->codeVerifier);
 
-        return response()->json(['redirectUrl' => $redirectDetails->authorizationUrl]);
+        return $this->respondWithData(['redirect_url' => $redirectDetails->authorizationUrl]);
 
     }
 
@@ -61,7 +61,7 @@ final class ZoomAuthController extends Controller
             throw new HttpException(Response::HTTP_BAD_REQUEST, 'Failed to connect to Zoom account', $exception);
         }
 
-        return response()->json(['success' => 'Zoom account connected successfully']);
+        return $this->respondWithMessage('Zoom account connected successfully');
 
     }
 }

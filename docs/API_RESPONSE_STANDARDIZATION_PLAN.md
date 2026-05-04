@@ -493,3 +493,6 @@ Recommended first slice candidates:
 - `Admin\ProjectController`
 
 These endpoints cover enum-backed filters, simple search/filter pagination, and more complex admin filtering without forcing auth-flow changes on day one.
+
+Note: Always use ApiController responses as the single source of truth when not returning simply model resource
+For Api controolers extend ApiController instead of Controller

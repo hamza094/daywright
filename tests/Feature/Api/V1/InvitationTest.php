@@ -22,10 +22,10 @@ class InvitationTest extends TestCase
 
         $this->postJson($this->project->path().'/invitations', [
             'email' => $invitedUser->email,
-        ])->assertOk()
-            ->assertJson([
-                'message' => "Project invitation sent to {$invitedUser->name}",
-            ]);
+        ])->assertCreated()
+            ->assertJsonPath('data.id', $this->project->id)
+            ->assertJsonPath('data.slug', $this->project->slug)
+            ->assertJsonPath('data.links.project', $this->project->path());
 
         $this->assertTrue($this->project->members->contains($invitedUser));
     }
@@ -59,7 +59,7 @@ class InvitationTest extends TestCase
         $response = $this->postJson($this->project->path().'/invitations',
             ['email' => $user->email]);
 
-        $response->assertStatus(200);
+        $response->assertCreated();
         $response->assertJsonMissingValidationErrors(['email']);
     }
 
@@ -74,10 +74,7 @@ class InvitationTest extends TestCase
 
         $this->postJson($this->project->path().
             '/invitations/accept')
-            ->assertJson([
-                'message' => 'You have accepted Project invitation',
-                'project' => ['id' => $this->project->id],
-            ]);
+            ->assertJsonPath('message', 'You have accepted Project invitation');
 
         $this->assertDatabaseHas('project_members', [
             'project_id' => $this->project->id,
@@ -109,10 +106,7 @@ class InvitationTest extends TestCase
         Sanctum::actingAs($invitedUser);
 
         $this->postJson($this->project->path().'/invitations/reject')
-            ->assertJson([
-                'message' => 'You have rejected the invitation to join the project.',
-                'project' => ['id' => $this->project->id],
-            ]);
+            ->assertJsonPath('message', 'You have rejected the invitation to join the project.');
 
         $this->assertDatabaseMissing('project_members', [
             'project_id' => $this->project->id,
@@ -192,8 +186,7 @@ class InvitationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'message',
-                'pending_invitations' => [
+                'data' => [
                     '*' => [
                         'uuid',
                         'name',
@@ -205,12 +198,9 @@ class InvitationTest extends TestCase
                         ],
                     ],
                 ],
-            ])
-            ->assertJson([
-                'message' => 'List of project pending member requests',
             ]);
 
-        foreach ($response->json('pending_invitations') as $invitation) {
+        foreach ($response->json('data') as $invitation) {
             $this->assertMatchesRegularExpression(
                 '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$/',
                 $invitation['invitation_sent_at']
@@ -218,7 +208,7 @@ class InvitationTest extends TestCase
         }
 
         // Assert the count of pending invitations
-        $this->assertCount(3, $response->json('pending_invitations'));
+        $this->assertCount(3, $response->json('data'));
 
     }
 

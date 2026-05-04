@@ -5,33 +5,25 @@ declare(strict_types=1);
 namespace App\Services\Api\V1;
 
 use App\Enums\Subscription\PlanLimitType;
-use App\Http\Resources\Api\V1\Zoom\MeetingResource;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Api\V1\Subscription\PlanLimitService;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class MeetingService
 {
     public function __construct(private readonly PlanLimitService $planLimitService) {}
 
-    public function getMeetingsData(Project $project, bool $isPrevious): array
+    public function getMeetingsData(Project $project, bool $isPrevious): LengthAwarePaginator
     {
         $meetingsQuery = $project->meetings()->with('user');
 
         $meetingsQuery->when($isPrevious, fn ($query) => $query->previous(), fn ($query) => $query->scheduled());
 
-        $meetings = $meetingsQuery->paginate(3);
-
-        $message = $meetings->isEmpty()
-            ? 'Sorry, no meetings found.'
-            : $this->getMessage($isPrevious);
-
-        $meetingsData = MeetingResource::collection($meetings)->response()->getData(true);
-
-        return ['message' => $message, 'meetingsData' => $meetingsData];
+        return $meetingsQuery->paginate(3);
     }
 
     /**
@@ -78,10 +70,5 @@ class MeetingService
             $meeting->delete();
             $zoom->deleteMeeting($meetingId, $user);
         });
-    }
-
-    private function getMessage(bool $isPrevious): string
-    {
-        return $isPrevious ? 'Previous meetings' : 'Scheduled meetings';
     }
 }

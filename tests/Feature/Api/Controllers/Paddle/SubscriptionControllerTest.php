@@ -43,9 +43,7 @@ class SubscriptionControllerTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJson([
-                'paylink' => 'https://fake-paylink-url.com',
-            ]);
+            ->assertJsonPath('data.paylink', 'https://fake-paylink-url.com');
     }
 
     #[Test]
@@ -60,9 +58,8 @@ class SubscriptionControllerTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJson([
-                'message' => 'Your subscription has been successfully updated to the yearly plan (fake).',
-            ]);
+            ->assertJsonPath('data.plan', 'free')
+            ->assertJsonPath('data.subscribed', false);
     }
 
     #[Test]
@@ -76,9 +73,8 @@ class SubscriptionControllerTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJson([
-                'message' => 'Your subscription has been canceled successfully (fake).',
-            ]);
+            ->assertJsonPath('data.plan', 'free')
+            ->assertJsonPath('data.subscribed', false);
     }
 
     #[Test]

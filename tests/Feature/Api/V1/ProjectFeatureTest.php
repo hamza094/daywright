@@ -50,7 +50,7 @@ class ProjectFeatureTest extends TestCase
 
         $response = $this->postJson(route(self::PROJECTS_ROUTE), $attributes);
 
-        $project = Project::where('slug', '=', $response->json('project.slug'))->firstOrFail();
+        $project = Project::where('slug', '=', $response->json('data.slug'))->firstOrFail();
 
         $this->assertCount(2, $project->tasks);
     }
@@ -171,18 +171,13 @@ class ProjectFeatureTest extends TestCase
 
         $response
             ->assertStatus(200)
-            ->assertJson([
-                'message' => 'Project updated successfully.',
-                'project' => [
-                    'name' => $this->project->name,
-                    'slug' => $this->project->slug,
-                ],
-            ])
-            ->assertJsonPath('project.links.self', $this->project->path())
-            ->assertJsonCount(2, 'project.limits');
+            ->assertJsonPath('data.name', $this->project->name)
+            ->assertJsonPath('data.slug', $this->project->slug)
+            ->assertJsonPath('data.links.self', $this->project->path())
+            ->assertJsonCount(2, 'data.limits');
 
-        $this->assertProjectLimitItem($response, 'project.limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
-        $this->assertProjectLimitItem($response, 'project.limits', 'members_per_project', 'Members', 'project', 2, 3);
+        $this->assertProjectLimitItem($response, 'data.limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
+        $this->assertProjectLimitItem($response, 'data.limits', 'members_per_project', 'Members', 'project', 2, 3);
     }
 
     /** @test */
@@ -198,8 +193,8 @@ class ProjectFeatureTest extends TestCase
             'name' => 'Updated By Member',
         ])
             ->assertOk()
-            ->assertJsonPath('project.name', 'Updated By Member')
-            ->assertJsonMissingPath('project.limits');
+            ->assertJsonPath('data.name', 'Updated By Member')
+            ->assertJsonMissingPath('data.limits');
     }
 
     /** @test */
@@ -218,9 +213,7 @@ class ProjectFeatureTest extends TestCase
             ['invalid_field' => 'Some value'])
             ->assertStatus(400);
 
-        $response->assertJson([
-            'error' => "You haven't changed anything.",
-        ]);
+        $response->assertJsonPath('message', "You haven't changed anything.");
     }
 
     /** @test */

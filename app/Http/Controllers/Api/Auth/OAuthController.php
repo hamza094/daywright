@@ -35,7 +35,7 @@ class OAuthController extends ApiController
 
         $url = $socialiteDriver->stateless()->redirect()->getTargetUrl();
 
-        return response()->json(['redirect_url' => $url]);
+        return $this->respondWithData(['redirect_url' => $url]);
     }
 
     /**
@@ -66,7 +66,7 @@ class OAuthController extends ApiController
 
             $payload = $this->loginUserService->performSessionLogin($user, $request);
 
-            return response()->json($payload->toArray(), 200);
+            return $this->respondWithData($payload->toArray());
         } catch (Throwable $e) {
             Log::error('OAuth callback failed', [
                 'provider' => $provider->value,

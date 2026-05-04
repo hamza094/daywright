@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Webhooks;
 
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Zoom\WebhookRequest;
 use App\Jobs\Webhooks\Zoom\DeleteMeetingWebhook;
 use App\Jobs\Webhooks\Zoom\MeetingEndsWebhook;
@@ -12,7 +12,7 @@ use App\Jobs\Webhooks\Zoom\StartMeetingWebhook;
 use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
 use Illuminate\Http\JsonResponse;
 
-class ZoomWebhookController extends Controller
+class ZoomWebhookController extends ApiController
 {
     public function update(WebhookRequest $request): JsonResponse
     {
@@ -24,7 +24,7 @@ class ZoomWebhookController extends Controller
             'update_data' => collect($object)->except(['id', 'uuid'])->toArray(),
         ]);
 
-        return response()->json(['status' => 'success'], 200);
+        return $this->respondWithMessage('Webhook accepted.');
     }
 
     public function delete(WebhookRequest $request): JsonResponse
@@ -35,7 +35,7 @@ class ZoomWebhookController extends Controller
             'meeting_id' => $object['id'],
         ]);
 
-        return response()->json(['status' => 'success'], 200);
+        return $this->respondWithMessage('Webhook accepted.');
     }
 
     public function start(WebhookRequest $request): JsonResponse
@@ -47,7 +47,7 @@ class ZoomWebhookController extends Controller
             'start_time' => $object['start_time'] ?? null,
         ]);
 
-        return response()->json(['status' => 'success'], 200);
+        return $this->respondWithMessage('Webhook accepted.');
     }
 
     public function ended(WebhookRequest $request): JsonResponse
@@ -60,6 +60,6 @@ class ZoomWebhookController extends Controller
             'end_time' => $object['end_time'] ?? null,
         ]);
 
-        return response()->json(['status' => 'success'], 200);
+        return $this->respondWithMessage('Webhook accepted.');
     }
 }

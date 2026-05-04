@@ -67,19 +67,19 @@ class ProjectInsightsApiTest extends TestCase
         // Assert: Basic response structure
         $response->assertOk()
             ->assertJsonStructure([
-                'success',
-                'project_id',
-                'project_name',
-                'insights' => [
-                    '*' => ['type', 'title', 'message', 'data'],
+                'data' => [
+                    'project_id',
+                    'project_name',
+                    'insights' => [
+                        '*' => ['type', 'title', 'message', 'data'],
+                    ],
+                    'sections_requested',
+                    'generated_at',
                 ],
-                'sections_requested',
-                'generated_at',
-                'message',
             ]);
 
         // Assert: Key business logic
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertEquals($this->project->id, $data['project_id']);
         $this->assertEquals('Test Project', $data['project_name']);
         $this->assertNotEmpty($data['insights']);
@@ -101,18 +101,18 @@ class ProjectInsightsApiTest extends TestCase
         // Assert
         $response->assertOk()
             ->assertJsonStructure([
-                'success',
-                'project_id',
-                'project_name',
-                'insights' => [
-                    '*' => ['type', 'title', 'message', 'data'],
+                'data' => [
+                    'project_id',
+                    'project_name',
+                    'insights' => [
+                        '*' => ['type', 'title', 'message', 'data'],
+                    ],
+                    'sections_requested',
+                    'generated_at',
                 ],
-                'sections_requested',
-                'generated_at',
-                'message',
             ]);
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertEquals(['health', 'task-health'], $data['sections_requested']);
         $this->assertIsArray($data['insights']);
         $this->assertNotEmpty($data['insights']);
@@ -134,18 +134,18 @@ class ProjectInsightsApiTest extends TestCase
         // Assert
         $response->assertOk()
             ->assertJsonStructure([
-                'success',
-                'project_id',
-                'project_name',
-                'insights' => [
-                    '*' => ['type', 'title', 'message', 'data'],
+                'data' => [
+                    'project_id',
+                    'project_name',
+                    'insights' => [
+                        '*' => ['type', 'title', 'message', 'data'],
+                    ],
+                    'sections_requested',
+                    'generated_at',
                 ],
-                'sections_requested',
-                'generated_at',
-                'message',
             ]);
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertEquals(['health'], $data['sections_requested']);
 
         $insights = $data['insights'];
@@ -166,17 +166,17 @@ class ProjectInsightsApiTest extends TestCase
 
         $response->assertOk()
             ->assertJsonStructure([
-                'success',
-                'project_id',
-                'project_name',
-                'insights' => [
-                    '*' => ['type', 'title', 'message', 'data'],
+                'data' => [
+                    'project_id',
+                    'project_name',
+                    'insights' => [
+                        '*' => ['type', 'title', 'message', 'data'],
+                    ],
+                    'sections_requested',
+                    'generated_at',
                 ],
-                'sections_requested',
-                'generated_at',
-                'message',
             ]);
-        $data = $response->json();
+        $data = $response->json('data');
         // Expect normalized unique order as first-seen
         $this->assertEquals(['health', 'task-health'], $data['sections_requested']);
         $this->assertIsArray($data['insights']);
@@ -223,18 +223,18 @@ class ProjectInsightsApiTest extends TestCase
         // Assert: Should still return valid structure
         $response->assertOk()
             ->assertJsonStructure([
-                'success',
-                'project_id',
-                'project_name',
-                'insights' => [
-                    '*' => ['type', 'title', 'message', 'data'],
+                'data' => [
+                    'project_id',
+                    'project_name',
+                    'insights' => [
+                        '*' => ['type', 'title', 'message', 'data'],
+                    ],
+                    'sections_requested',
+                    'generated_at',
                 ],
-                'sections_requested',
-                'generated_at',
-                'message',
             ]);
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertEquals($emptyProject->id, $data['project_id']);
         $this->assertIsArray($data['insights']);
 

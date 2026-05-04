@@ -74,14 +74,16 @@ class UserActivitiesTest extends TestCase
         $response->json();
 
         $response->assertOk()
-            ->assertJsonCount(2) // one user activity from project setup trait
+            ->assertJsonCount(2, 'data') // one user activity from project setup trait
             ->assertJsonStructure([
-                '*' => [
-                    'id',
-                    'description',
-                    'created_at',
-                    'user_id',
-                    'project',
+                'data' => [
+                    '*' => [
+                        'id',
+                        'description',
+                        'created_at',
+                        'user_id',
+                        'project',
+                    ],
                 ],
             ])
             ->assertJsonFragment([
@@ -112,10 +114,10 @@ class UserActivitiesTest extends TestCase
         $response = $this->getJson("api/v1/dashboard/activities?start_date={$start}&end_date={$end}");
 
         $response->assertOk()
-            ->assertJsonCount(2);
+            ->assertJsonCount(2, 'data');
 
         // Verify the project data is included despite being soft deleted
-        $activities = $response->json();
+        $activities = $response->json('data');
         $this->assertArrayHasKey('project', $activities[0]);
         $this->assertEquals($project->id, $activities[0]['project']['id']);
     }
@@ -132,8 +134,10 @@ class UserActivitiesTest extends TestCase
         $response = $this->getJson('api/v1/dashboard/activities?start_date=2025-08-01&end_date=2025-08-10');
 
         $response->assertOk()
-            ->assertJsonCount(0)
-            ->assertJson([]);
+            ->assertJsonCount(0, 'data')
+            ->assertExactJson([
+                'data' => [],
+            ]);
     }
 
     public function test_get_user_activities_is_cached(): void

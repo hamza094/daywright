@@ -21,8 +21,10 @@ class TaskStatusTest extends TestCase
         $this->getJson('/api/v1/task-statuses')
             ->assertOk()
             ->assertJsonStructure([
-                'statuses',
-                'due_notifies',
+                'data' => [
+                    'statuses',
+                    'due_notifies',
+                ],
             ])
             ->assertJsonFragment([
                 'id' => $status->id,

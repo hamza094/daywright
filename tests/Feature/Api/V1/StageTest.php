@@ -70,14 +70,11 @@ class StageTest extends TestCase
 
         $this->project->refresh();
 
-        $response->assertJson([
-            'project' => [
-                'stage' => ['name' => $this->project->stage->name,
-                    'id' => $this->project->stage->id],
-                'stage_updated_at' => $this->project->stage_updated_at
-                    ->setTimezone('UTC')
-                    ->toIso8601String()],
-        ]);
+        $response->assertJsonPath('data.stage.name', $this->project->stage->name)
+            ->assertJsonPath('data.stage.id', $this->project->stage->id)
+            ->assertJsonPath('data.stage_updated_at', $this->project->stage_updated_at
+                ->setTimezone('UTC')
+                ->toIso8601String());
     }
 
     /** @test */
@@ -96,8 +93,6 @@ class StageTest extends TestCase
 
         $this->project->refresh();
 
-        $response->assertJson([
-            'project' => ['postponed_reason' => $this->project->postponed_reason],
-        ]);
+        $response->assertJsonPath('data.postponed_reason', $this->project->postponed_reason);
     }
 }

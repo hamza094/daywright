@@ -21,11 +21,6 @@ class ActivityController extends ApiController
             $request->filterType(),
         );
 
-        if ($activities->isEmpty()) {
-            return response()->json(
-                ['message' => 'No related activities found'], 200);
-        }
-
         $page = (int) $request->validated('page', 1);
         $perPage = $request->perPage();
 
@@ -40,6 +35,9 @@ class ActivityController extends ApiController
             ],
         );
 
-        return ActivityResource::collection($paginatedActivities)->response();
+        $payload = $paginatedActivities->toArray();
+        $payload['data'] = ActivityResource::collection($paginatedActivities->getCollection())->resolve();
+
+        return response()->json($payload);
     }
 }

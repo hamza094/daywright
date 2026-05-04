@@ -9,15 +9,14 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Task\TaskStatusResource;
 use App\Models\TaskStatus;
 use Illuminate\Http\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
 
 class TaskStatusController extends ApiController
 {
     public function __invoke(): JsonResponse
     {
-        return response()->json([
-            'statuses' => TaskStatusResource::collection(TaskStatus::all()),
+        return $this->respondWithData([
+            'statuses' => TaskStatusResource::collection(TaskStatus::all())->resolve(),
             'due_notifies' => TaskDueNotifies::values(),
-        ], Response::HTTP_OK);
+        ]);
     }
 }

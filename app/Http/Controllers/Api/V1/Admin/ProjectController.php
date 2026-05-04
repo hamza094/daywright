@@ -25,21 +25,14 @@ class ProjectController extends ApiController
 
         $projects = $data['projects'];
         $appliedFilters = $data['appliedFilters'];
-        $projectsPayload = ProjectResource::collection($projects)->response()->getData(true);
 
-        if ($projects->isEmpty()) {
-            return response()->json([
-                'message' => 'Sorry no result found',
-                'projects' => $projectsPayload,
-                'appliedFilters' => $appliedFilters,
-            ]);
-
-        }
-
-        return response()->json([
-            'projects' => $projectsPayload,
-            'appliedFilters' => $appliedFilters,
-        ]);
+        return ProjectResource::collection($projects)
+            ->additional([
+                'meta' => [
+                    'applied_filters' => $appliedFilters,
+                ],
+            ])
+            ->response();
     }
 
     public function bulkDelete(

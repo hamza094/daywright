@@ -37,10 +37,7 @@ class FeaturesController extends ApiController
 
         $service->sendNotification($project, $this->authenticatedUser());
 
-        return response()->json([
-            'message' => 'Project Stage Updated Successfully',
-            'project' => new ProjectStageResource($project),
-        ], 200);
+        return $this->respondUpdated(new ProjectStageResource($project));
     }
 
     public function export(Project $project): BinaryFileResponse

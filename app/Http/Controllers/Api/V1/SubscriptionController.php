@@ -26,7 +26,7 @@ class SubscriptionController extends ApiController
     {
         $payLink = $paddle->subscribe($this->authenticatedUser(), (string) $request->string('plan')->trim());
 
-        return response()->json([
+        return $this->respondWithData([
             'paylink' => $payLink,
         ], Response::HTTP_OK);
     }
@@ -42,9 +42,10 @@ class SubscriptionController extends ApiController
     {
         $user = $this->authenticatedUser();
 
-        return response()->json([
-            'subscription' => $this->subscriptionViewService->createFor($user),
-        ], Response::HTTP_OK);
+        return $this->respondWithData(
+            $this->subscriptionViewService->createFor($user),
+            Response::HTTP_OK,
+        );
     }
 
     /**
@@ -57,12 +58,12 @@ class SubscriptionController extends ApiController
     public function swap(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
-        $result = $paddle->swap($user, (string) $request->string('plan')->trim());
+        $paddle->swap($user, (string) $request->string('plan')->trim());
 
-        return response()->json([
-            'message' => $result['message'],
-            'subscription' => $this->subscriptionViewService->createFor($user),
-        ], Response::HTTP_OK);
+        return $this->respondWithData(
+            $this->subscriptionViewService->createFor($user),
+            Response::HTTP_OK,
+        );
     }
 
     /**
@@ -75,11 +76,11 @@ class SubscriptionController extends ApiController
     public function cancel(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
-        $result = $paddle->cancel($user, (string) $request->string('plan')->trim());
+        $paddle->cancel($user, (string) $request->string('plan')->trim());
 
-        return response()->json([
-            'message' => $result['message'],
-            'subscription' => $this->subscriptionViewService->createFor($user),
-        ], Response::HTTP_OK);
+        return $this->respondWithData(
+            $this->subscriptionViewService->createFor($user),
+            Response::HTTP_OK,
+        );
     }
 }

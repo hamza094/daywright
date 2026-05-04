@@ -36,7 +36,7 @@ class VerificationTest extends TestCase
 
         $this->postJson($url)
             ->assertSuccessful()
-            ->assertJsonFragment(['status' => 'verification.verified']);
+            ->assertJsonPath('message', 'verification.verified');
 
         Event::assertDispatched(Verified::class, fn (Verified $e) => $e->user->is($user));
     }
@@ -54,7 +54,7 @@ class VerificationTest extends TestCase
 
         $this->postJson($url)
             ->assertStatus(400)
-            ->assertJsonFragment(['status' => 'verification.already_verified']);
+            ->assertJsonPath('message', 'verification.already_verified');
     }
 
     /** @test */
