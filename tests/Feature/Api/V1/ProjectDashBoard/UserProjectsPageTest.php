@@ -106,7 +106,7 @@ class UserProjectsPageTest extends TestCase
         // The search should only return "Frontend Project"
         $this->assertCount(1, $projects);
         $this->assertEquals('Frontend Project', $projects[0]['name']);
-        $this->assertEquals($frontendProject->path(), $projects[0]['links']['self']);
+        $this->assertEquals($this->apiV1Route('projects.show', ['project' => $frontendProject]), $projects[0]['links']['self']);
         $this->assertEquals($frontendProject->created_at?->setTimezone('UTC')->toIso8601String(), $projects[0]['created_at']);
     }
 

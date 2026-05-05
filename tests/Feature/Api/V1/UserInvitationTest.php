@@ -32,7 +32,7 @@ class UserInvitationTest extends TestCase
             ]);
 
         $this->assertEquals($project->id, $response->json('data.0.id'));
-        $this->assertEquals($project->path(), $response->json('data.0.links.project'));
+        $this->assertEquals($this->apiV1Route('projects.show', ['project' => $project]), $response->json('data.0.links.project'));
         $this->assertEquals($project->created_at?->setTimezone('UTC')->toIso8601String(), $response->json('data.0.created_at'));
         $this->assertEquals($pivot->created_at?->setTimezone('UTC')->toIso8601String(), $response->json('data.0.invitation_sent_at'));
     }

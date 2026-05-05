@@ -19,7 +19,7 @@ class ActivityTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $response = $this->getJson($this->project->path().'/activities')->assertOk();
+        $response = $this->getJson($this->apiV1ProjectRoute('projects.activities', $this->project))->assertOk();
 
         $data = $response->json()['data'];
 
@@ -75,6 +75,8 @@ class ActivityTest extends TestCase
      */
     private function activityUrl(array $filters = []): string
     {
-        return $this->project->path().'/activities'.($filters === [] ? '' : '?'.http_build_query(['filter' => $filters]));
+        return $this->apiV1ProjectRoute('projects.activities', $this->project, query: [
+            'filter' => $filters,
+        ]);
     }
 }

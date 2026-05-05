@@ -48,7 +48,7 @@ class StageTest extends TestCase
     {
         $stages = Stage::all();
 
-        $this->getJson('api/v1/stages')
+        $this->getJson($this->apiV1Route('stages.index'))
             ->assertOk();
 
         $this->assertEquals($stages->count(), 4);
@@ -62,7 +62,7 @@ class StageTest extends TestCase
         $newStageId = 2;
 
         $response = $this->withoutExceptionHandling()
-            ->patchJson($this->project->path().'/stage', [
+            ->patchJson($this->apiV1ProjectRoute('projects.stage.update', $this->project), [
                 'stage' => $newStageId,
             ]);
 
@@ -82,7 +82,7 @@ class StageTest extends TestCase
     {
         $postponed_reason = 'Unable to reach';
 
-        $response = $this->withoutExceptionHandling()->patchJson($this->project->path().'/stage', [
+        $response = $this->withoutExceptionHandling()->patchJson($this->apiV1ProjectRoute('projects.stage.update', $this->project), [
             'stage' => 4,
             'postponed_reason' => $postponed_reason,
         ]);

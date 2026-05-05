@@ -32,7 +32,7 @@ class MessageTest extends TestCase
     /** @test */
     public function operation_on_send_message(): void
     {
-        $this->postJson($this->project->path().'/message', [
+        $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is project message',
             'users' => json_encode([$this->user->id]),
             'subject' => 'this is message subject',
@@ -50,7 +50,7 @@ class MessageTest extends TestCase
     {
         $deliveredAt = Carbon::create(2026, 5, 1, 12, 30, 0, 'Asia/Karachi')->toIso8601String();
 
-        $this->postJson($this->project->path().'/message', [
+        $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is project message',
             'users' => json_encode([$this->user->id]),
             'sms' => true,
@@ -71,7 +71,7 @@ class MessageTest extends TestCase
     /** @test */
     public function message_option_must_be_selected(): void
     {
-        $response = $this->postJson($this->project->path().'/message', [
+        $response = $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is project message',
             'users' => json_encode(['71b88a29', '42892']),
         ]);
@@ -99,8 +99,7 @@ class MessageTest extends TestCase
         Message::factory()->for($this->project)->count(4)
             ->create(['delivered_at' => Carbon::now()->addDay()]);
 
-        $this->getJson($this->project->path().
-         '/messages/scheduled')->assertok();
+        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))->assertok();
 
         $this->assertEquals($this->project->scheduledMessages()
             ->count(), $this->project->messages->count());
@@ -109,7 +108,7 @@ class MessageTest extends TestCase
     /** @test */
     public function get_project_scheduled_messages_returns_empty_array_when_none_exist(): void
     {
-        $this->getJson($this->project->path().'/messages/scheduled')
+        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))
             ->assertOk()
             ->assertExactJson([
                 'data' => [],
@@ -122,8 +121,9 @@ class MessageTest extends TestCase
         $message = Message::factory()->for($this->project)
             ->create();
 
-        $this->deleteJson($this->project->path().'/messages/'.
-               $message->id)
+        $this->deleteJson($this->apiV1ProjectRoute('projects.messages.destroy', $this->project, [
+            'message' => $message,
+        ]))
             ->assertOk()
             ->assertJsonPath('message', 'Scheduled message deleted successfully.');
 

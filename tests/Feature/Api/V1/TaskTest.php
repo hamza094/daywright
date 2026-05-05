@@ -26,7 +26,7 @@ class TaskTest extends TestCase
             ->for($this->project)
             ->create();
 
-        $this->getJson($this->project->path().'/tasks?'.http_build_query([
+        $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project, query: [
             'filter' => ['state' => 'archived'],
         ]))
             ->assertOk()
@@ -37,7 +37,7 @@ class TaskTest extends TestCase
     /** @test */
     public function task_index_validates_invalid_state_filter(): void
     {
-        $this->getJson($this->project->path().'/tasks?'.http_build_query([
+        $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project, query: [
             'filter' => ['state' => 'invalid'],
         ]))
             ->assertUnprocessable()
@@ -52,7 +52,7 @@ class TaskTest extends TestCase
             ->for($this->project)
             ->create();
 
-        $response = $this->getJson($this->project->path().'/tasks')
+        $response = $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project))
             ->assertOk()
             ->assertJsonCount(3, 'data')
             ->assertJsonStructure([
@@ -67,7 +67,7 @@ class TaskTest extends TestCase
 
         collect($response->json('data'))->pluck('links.self')->each(function (?string $path): void {
             $this->assertNotNull($path);
-            $this->assertStringStartsWith($this->project->path().'/tasks/', $path);
+            $this->assertStringStartsWith($this->apiV1ProjectRoute('tasks.index', $this->project).'/', $path);
         });
     }
 
@@ -76,13 +76,13 @@ class TaskTest extends TestCase
     {
         $task = Task::factory()->make(['title' => null, 'project_id' => $this->project->id]);
 
-        $this->postJson($task->path(), $task->toArray())->assertJsonValidationErrors('title');
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), $task->toArray())->assertJsonValidationErrors('title');
     }
 
     /** @test */
     public function allowed_user_can_create_projects_task(): void
     {
-        $this->postJson($this->project->path().'/tasks', [
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), [
             'title' => 'My Project Task',
             'status_id' => $this->status->id,
         ])->assertCreated()
@@ -116,14 +116,14 @@ class TaskTest extends TestCase
             'user_id' => $this->project->user->id,
         ]);
 
-        $this->postJson($this->project->path().'/tasks', [
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), [
             'title' => 'Project Task',
             'status_id' => $this->status->id,
         ])->assertJsonValidationErrors('title');
 
         $project2 = Project::factory()->for($this->user)->create();
 
-        $this->postJson($project2->path().'/tasks',
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $project2),
             ['title' => 'Project Task'])
             ->assertCreated();
     }
@@ -134,7 +134,7 @@ class TaskTest extends TestCase
         Task::factory()->count((int) config('app.project.taskLimit'))
             ->for($this->project)->create();
 
-        $this->postJson($this->project->path().'/tasks',
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project),
             ['title' => 'Project Task'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('tasks');
@@ -149,7 +149,7 @@ class TaskTest extends TestCase
             'due_at' => Carbon::create(2026, 5, 1, 12, 30, 0, 'UTC'),
         ]);
 
-        $this->getJson($task->path())
+        $this->getJson($this->apiV1ProjectTaskRoute('tasks.show', $this->project, $task))
             ->assertOk()
             ->assertJsonPath('data.id', $task->id)
             ->assertJsonPath('data.title', $task->title)
@@ -184,7 +184,7 @@ class TaskTest extends TestCase
 
         $status2 = TaskStatus::factory()->create();
 
-        $this->withoutExceptionHandling()->putJson($task->path(), [
+        $this->withoutExceptionHandling()->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'title' => $updatedTitle,
             'description' => $updatedDescription,
             'status_id' => $status2->id,
@@ -230,7 +230,7 @@ class TaskTest extends TestCase
 
         $task = $this->project->addTask('test task');
 
-        $this->putJson($task->path(), [
+        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'due_at' => $dueAt,
         ])->assertOk();
 
@@ -244,7 +244,7 @@ class TaskTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $this->putJson($task->path(), [
+        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'due_at' => '2024-12-04T15:00:00',
         ])->assertUnprocessable()
             ->assertJsonValidationErrors('due_at');
@@ -278,7 +278,7 @@ class TaskTest extends TestCase
             'notify_sent' => true,
         ]);
 
-        $this->putJson($task->path(), [
+        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'due_at' => now()->addDays(3)->toIso8601String(),
         ])->assertOk();
 
@@ -296,7 +296,7 @@ class TaskTest extends TestCase
             'notify_sent' => true,
         ]);
 
-        $this->putJson($task->path(), [
+        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'notified' => '5 Minutes Before',
             'due_at' => $task->due_at->toIso8601String(),
         ])->assertOk();

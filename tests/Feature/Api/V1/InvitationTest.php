@@ -20,12 +20,12 @@ class InvitationTest extends TestCase
         /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
-        $this->postJson($this->project->path().'/invitations', [
+        $this->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
             'email' => $invitedUser->email,
         ])->assertCreated()
             ->assertJsonPath('data.id', $this->project->id)
             ->assertJsonPath('data.slug', $this->project->slug)
-            ->assertJsonPath('data.links.project', $this->project->path());
+            ->assertJsonPath('data.links.project', $this->apiV1ProjectRoute('projects.show', $this->project));
 
         $this->assertTrue($this->project->members->contains($invitedUser));
     }
@@ -37,14 +37,14 @@ class InvitationTest extends TestCase
         $invitedUser = User::factory()->create();
         $this->project->invite($invitedUser);
 
-        $this->postJson($this->project->path().'/invitations', [
+        $this->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
             'email' => $invitedUser->email,
         ])
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Validation Error')
             ->assertJsonPath('errors.invitation.0', 'Project invitation already sent to a user.');
 
-        $this->postJson($this->project->path().'/invitations',
+        $this->postJson($this->apiV1ProjectRoute('send.invitation', $this->project),
             ['email' => $this->project->user->email])
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Validation Error')
@@ -56,7 +56,7 @@ class InvitationTest extends TestCase
     {
         $user = User::factory()->create(['email' => 'valid@example.com']);
 
-        $response = $this->postJson($this->project->path().'/invitations',
+        $response = $this->postJson($this->apiV1ProjectRoute('send.invitation', $this->project),
             ['email' => $user->email]);
 
         $response->assertCreated();
@@ -72,8 +72,7 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($invitedUser);
 
-        $this->postJson($this->project->path().
-            '/invitations/accept')
+        $this->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
             ->assertJsonPath('message', 'You have accepted Project invitation');
 
         $this->assertDatabaseHas('project_members', [
@@ -90,8 +89,7 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->postJson($this->project->path().
-            '/invitations/accept')
+        $this->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
             ->assertForbidden();
     }
 
@@ -105,7 +103,7 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($invitedUser);
 
-        $this->postJson($this->project->path().'/invitations/reject')
+        $this->postJson($this->apiV1ProjectRoute('reject.invitation', $this->project))
             ->assertJsonPath('message', 'You have rejected the invitation to join the project.');
 
         $this->assertDatabaseMissing('project_members', [
@@ -148,7 +146,7 @@ class InvitationTest extends TestCase
 
         $this->project->members()->attach($memberUser, ['active' => true]);
 
-        $this->deleteJson($this->project->path().'/members/'.$memberUser->uuid)
+        $this->deleteJson($this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $memberUser))
             ->assertJson([
                 'message' => "Member {$memberUser->name} has been removed from the project",
             ]);
@@ -165,7 +163,7 @@ class InvitationTest extends TestCase
         /** @var User $nonMember */
         $nonMember = User::factory()->create();
 
-        $this->deleteJson($this->project->path().'/members/'.$nonMember->uuid)
+        $this->deleteJson($this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $nonMember))
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Validation Error')
             ->assertJsonPath('errors.user.0', 'This user is not an active member of the project.');
@@ -180,7 +178,7 @@ class InvitationTest extends TestCase
             ->members()
             ->attach($pendingUsers, ['active' => false]);
 
-        $response = $this->getJson($this->project->path().'/invitations?'.http_build_query([
+        $response = $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
             'filter' => ['status' => 'pending'],
         ]));
 
@@ -215,11 +213,11 @@ class InvitationTest extends TestCase
     /** @test */
     public function pending_project_invitations_requires_pending_status_filter(): void
     {
-        $this->getJson($this->project->path().'/invitations')
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['filter']);
 
-        $this->getJson($this->project->path().'/invitations?'.http_build_query([
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
             'filter' => ['status' => 'accepted'],
         ]))
             ->assertUnprocessable()

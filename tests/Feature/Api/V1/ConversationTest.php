@@ -23,13 +23,13 @@ class ConversationTest extends TestCase
         $conversation = Conversation::factory()->create(['project_id' => $this->project->id,
         ]);
 
-        $response = $this->withoutExceptionHandling()->getJson($this->project->path().'/conversations');
+        $response = $this->withoutExceptionHandling()->getJson($this->apiV1ProjectRoute('conversations.index', $this->project));
 
         $response->assertJsonFragment([
             'message' => $conversation->message,
         ]);
 
-        $this->assertEquals($this->project->path(), $response->json('data.0.links.project'));
+        $this->assertEquals($this->apiV1ProjectRoute('projects.show', $this->project), $response->json('data.0.links.project'));
     }
 
     /** @test */
@@ -39,7 +39,7 @@ class ConversationTest extends TestCase
 
         $message = 'random chat conversation';
 
-        $this->postJson($this->project->path().'/conversations', ['message' => $message,
+        $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), ['message' => $message,
             'user_id' => $this->user->id])
             ->assertCreated()
             ->assertJsonPath('data.message', $message);
@@ -53,7 +53,7 @@ class ConversationTest extends TestCase
     /** @test */
     public function chat_validation_check(): void
     {
-        $response = $this->postJson($this->project->path().'/conversations', ['message' => null,
+        $response = $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), ['message' => null,
             'user_id' => $this->user->id]);
 
         $response->assertJsonValidationErrors('message');
@@ -66,7 +66,7 @@ class ConversationTest extends TestCase
 
         $file = UploadedFile::fake()->image('file.jpg')->size(700);
 
-        $this->postJson($this->project->path().'/conversations', [
+        $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
             'message' => 'abra ka dabra',
             'file' => $file,
             'user_id' => $this->user->id]);
@@ -89,7 +89,9 @@ class ConversationTest extends TestCase
             'file' => 'photo1.jpg',
         ]);
 
-        $this->deleteJson($this->project->path().'/conversations/'.$conversation->id)
+        $this->deleteJson($this->apiV1ProjectRoute('conversations.destroy', $this->project, [
+            'conversation' => $conversation,
+        ]))
             ->assertOk()
             ->assertJsonPath('message', 'Conversation deleted successfully.');
 

@@ -78,7 +78,7 @@ class UserNotificationsTest extends TestCase
         // Create a read notification
         $this->sendInvitationToUser($this->project, $user);
         $this->addMember($this->project, $user);
-        $this->postJson($this->project->path().'/tasks', ['title' => 'new task added']);
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), ['title' => 'new task added']);
         Sanctum::actingAs($user);
 
         $response = $this->withoutExceptionHandling()->patchJson($this->apiV1Route('notifications.markAllAsRead'));
@@ -131,12 +131,12 @@ class UserNotificationsTest extends TestCase
 
     public function projectUpdate($project, $user): void
     {
-        $this->patchJson($project->path(), ['notes' => 'Project notes updated.']);
+        $this->patchJson($this->apiV1ProjectRoute('projects.update', $project), ['notes' => 'Project notes updated.']);
     }
 
     protected function sendInvitationToUser($project, $user)
     {
-        $this->postJson($this->project->path().'/invitations', [
+        $this->postJson($this->apiV1ProjectRoute('send.invitation', $project), [
             'email' => $user->email,
         ]);
     }

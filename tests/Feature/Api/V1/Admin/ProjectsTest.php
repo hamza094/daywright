@@ -92,7 +92,7 @@ class ProjectsTest extends TestCase
         $this->assertIsArray($projects);
         $this->assertCount(1, $projects);
         $this->assertStringContainsString('Alpha', $projects[0]['name']);
-        $this->assertEquals($alphaProject->path(), $projects[0]['links']['self']);
+        $this->assertEquals($this->apiV1Route('projects.show', ['project' => $alphaProject]), $projects[0]['links']['self']);
     }
 
     #[Test]

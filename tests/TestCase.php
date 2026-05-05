@@ -25,7 +25,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected function apiV1Route(string $name, array $parameters = [], array $query = []): string
     {
-        return $this->routeWithQuery("api.v1.{$name}", $parameters, $query);
+        return $this->apiRoute('v1', $name, $parameters, $query);
     }
 
     /**
@@ -35,6 +35,47 @@ abstract class TestCase extends BaseTestCase
     protected function apiV1AdminRoute(string $name, array $parameters = [], array $query = []): string
     {
         return $this->routeWithQuery("api.v1.admin.{$name}", $parameters, $query);
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     * @param  array<string, mixed>  $query
+     */
+    protected function apiV1ProjectRoute(string $name, mixed $project, array $parameters = [], array $query = []): string
+    {
+        return $this->apiV1Route($name, array_merge(['project' => $project], $parameters), $query);
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    protected function apiV1ProjectTaskRoute(string $name, mixed $project, mixed $task, array $query = []): string
+    {
+        return $this->apiV1Route($name, [
+            'project' => $project,
+            'task' => $task,
+        ], $query);
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     * @param  array<string, mixed>  $query
+     */
+    protected function apiV1ProjectUserRoute(string $name, mixed $project, mixed $user, array $parameters = [], array $query = []): string
+    {
+        return $this->apiV1Route($name, array_merge([
+            'project' => $project,
+            'user' => $user,
+        ], $parameters), $query);
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     * @param  array<string, mixed>  $query
+     */
+    protected function apiRoute(string $version, string $name, array $parameters = [], array $query = []): string
+    {
+        return $this->routeWithQuery("api.{$version}.{$name}", $parameters, $query);
     }
 
     /**

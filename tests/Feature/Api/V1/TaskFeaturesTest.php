@@ -183,7 +183,7 @@ class TaskFeaturesTest extends TestCase
 
         $this->assertSoftDeleted($task);
 
-        $this->deleteJson($task->path())
+        $this->deleteJson($this->apiV1ProjectTaskRoute('tasks.destroy', $this->project, $task))
             ->assertOk()
             ->assertJson([
                 'message' => 'Task deleted successfully.',
@@ -197,7 +197,7 @@ class TaskFeaturesTest extends TestCase
     {
         $task = Task::factory()->for($this->project)->create();
 
-        $this->deleteJson($task->path())
+        $this->deleteJson($this->apiV1ProjectTaskRoute('tasks.destroy', $this->project, $task))
             ->assertForbidden()
             ->assertJson([
                 'message' => 'Task must be trashed to perform this action',

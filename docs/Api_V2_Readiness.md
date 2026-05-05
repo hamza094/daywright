@@ -58,17 +58,17 @@ Prepare the codebase for a clean v2 rollout by keeping versioning at the HTTP co
 
 **Phase 8 Status**
 
-- Planned.
-- Routes are already version-based, but version ownership is still split across `RouteServiceProvider`, `routes/auth.php`, and `routes/web.php` in slightly different ways.
-- The goal is to make V2 registration additive by standardizing how API, admin, auth, session, OAuth, and two-factor route groups are mounted per version.
-- When this phase is complete, adding `api.v2.*` should mean wiring a new route file set, not rewriting the existing route plumbing.
+- Implemented.
+- `RouteServiceProvider` now mounts versioned stateless API routes from `routes/auth/{version}.php`, `routes/api/{version}.php`, and `routes/api/admin/{version}.php`, and mounts web-backed API flows from `routes/web/{version}.php`.
+- V1 session, OAuth, and two-factor route groups were extracted from `routes/web.php` into `routes/web/v1.php`, and V1 API auth routes were extracted into `routes/auth/v1.php`.
+- Adding a new API version is now additive: wire a new versioned route file set and the shared route plumbing picks it up without changing unrelated V1 registration code.
 
 **Phase 9 Status**
 
-- Planned.
-- The final readiness step is to prove coexistence with a thin first V2 slice rather than a big-bang duplication.
-- Duplicate only the contracts that actually change, keep unchanged domains on V1, and add coexistence coverage that proves `api.v1.*` and `api.v2.*` can ship side by side.
-- When this phase is complete, the project will have a repeatable pattern for introducing V2 endpoints without regressing V1 consumers.
+- Implemented with an initial thin slice.
+- A first live V2 contract now exists at `api.v2.users.show`, backed by `App\Http\Controllers\Api\V2\User\UserController` and `App\Http\Resources\Api\V2\User\UserProfileResource`.
+- The V2 user profile contract intentionally diverges from V1 by adding `links.self`, while the existing V1 `users.show` contract remains unchanged.
+- Focused coexistence coverage now proves `api.v1.users.show` and `api.v2.users.show` can be served side by side without regressing the existing V1 contract.
 
 **Steps**
 
@@ -79,16 +79,17 @@ Prepare the codebase for a clean v2 rollout by keeping versioning at the HTTP co
 5. Phase 5. Realign the test suite around versioned contracts. Replace hard-coded /api/v1 strings with route names or small helper constants so v1 and later version is maintainable. Gradually normalize test structure by API version plus domain instead of the current mixed layout across Api/V1, Api/Auth, Api/Controllers, and Services. Completed for route-contract coverage; directory normalization can continue incrementally without reopening the versioning contract work.
 6. Phase 6. Remove the remaining model-owned V1 URL leakage from shared application code. Replace `->path()` usage in actions, jobs, services, notifications, and controller payloads with route keys or small immutable link payload objects. Keep compatibility wrappers only until all shared-layer consumers are removed. Completed for the current shared-layer callers.
 7. Phase 7. Make verification, notification, mail, and webhook links version-aware. Replace direct V1 route references or prebuilt V1 paths with a contract-aware link factory so out-of-band flows can emit V1 or V2 URLs without forking shared domain code. Completed for the current verification and notification/webhook flows.
-8. Phase 8. Normalize route registration for additive multi-version support. Keep routes version-specific at the HTTP edge, but standardize how API, admin, auth, session, OAuth, and two-factor route groups are mounted so `api.v2.*` can be added with new files and groups instead of cross-cutting rewrites.
-9. Phase 9. Prove coexistence with one thin V2 slice. Copy only the contracts that actually change, add targeted coexistence tests for that domain, and keep unchanged surfaces on V1 until requirements justify duplication.
+8. Phase 8. Normalize route registration for additive multi-version support. Keep routes version-specific at the HTTP edge, but standardize how API, admin, auth, session, OAuth, and two-factor route groups are mounted so `api.v2.*` can be added with new files and groups instead of cross-cutting rewrites. Implemented through versioned route-file discovery and shared provider mounting.
+9. Phase 9. Prove coexistence with one thin V2 slice. Copy only the contracts that actually change, add targeted coexistence tests for that domain, and keep unchanged surfaces on V1 until requirements justify duplication. Implemented with the initial `users.show` V2 slice.
 
 **Relevant Files**
 
 - app/Providers/RouteServiceProvider.php
-- routes/api.php
-- routes/auth.php
 - routes/web.php
+- routes/auth/v1.php
+- routes/web/v1.php
 - routes/api/v1.php
+- routes/api/v2.php
 - routes/api/admin/v1.php
 - app/Models/Project.php
 - app/Models/Task.php
@@ -97,6 +98,7 @@ Prepare the codebase for a clean v2 rollout by keeping versioning at the HTTP co
 - app/Http/Resources/Api/V1/Project/ProjectResource.php
 - app/Http/Resources/Api/V1/User/InvitedUserResource.php
 - app/Http/Controllers/Api/V1/User/AvatarController.php
+- app/Http/Controllers/Api/V2/User/UserController.php
 - app/Actions/Project/SendProjectInvitationAction.php
 - app/Actions/Project/AcceptProjectInvitationAction.php
 - app/Actions/Project/SendProjectUpdatedNotificationAction.php
@@ -111,6 +113,8 @@ Prepare the codebase for a clean v2 rollout by keeping versioning at the HTTP co
 - app/Notifications/ProjectUpdated.php
 - app/Notifications/TaskDue.php
 - tests/TestCase.php
+- tests/Feature/Api/RouteVersionRegistrationTest.php
+- tests/Feature/Api/V2/UserShowTest.php
 - tests/Feature/Api/Auth/AuthenticationTest.php
 - tests/Feature/Api/V1/ProjectFeatureTest.php
 - tests/Feature/Api/V1/Admin/UsersTest.php
@@ -137,4 +141,4 @@ Prepare the codebase for a clean v2 rollout by keeping versioning at the HTTP co
 - Recommended starting slice: auth first, because it exposes the current structural issue most clearly.
 - Recommended service strategy: extract shared logic into versionless services before introducing any V2 service namespace.
 - Route URLs and route names should stay version-specific at the HTTP edge; shared services, actions, repositories, jobs, and models should not own versioned URLs.
-- Recommended next slice before concluding readiness: Phase 8, because route registration is the next remaining cross-cutting version boundary that still needs normalization for additive V2 mounting.
+- Recommended next slice before concluding readiness: expand V2 only where the contract genuinely changes next; unchanged domains can remain on V1 until there is a concrete reason to duplicate them.

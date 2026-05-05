@@ -20,7 +20,7 @@ class ApplicationTest extends TestCase
     /** @test */
     public function only_allowed_users_can_access_project_features(): void
     {
-        $this->withoutExceptionHandling()->postJson($this->project->path().'/tasks',
+        $this->withoutExceptionHandling()->postJson($this->apiV1ProjectRoute('tasks.store', $this->project),
             ['title' => 'My Project Task'])->assertCreated();
 
         /** @var User $user */
@@ -30,17 +30,16 @@ class ApplicationTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->postJson($this->project->path().'/invitations/accept')->assertOk();
+        $this->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))->assertOk();
 
-        $this->postJson($this->project->path().'/tasks',
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project),
             ['title' => 'My Project Task Updated'])->assertCreated();
 
         Sanctum::actingAs(User::factory()->create());
 
         $this->expectException(AuthorizationException::class);
 
-        $this->postJson($this->project->path().
-           '/tasks');
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project));
     }
 
     /** @test */
@@ -48,7 +47,7 @@ class ApplicationTest extends TestCase
     {
         $this->user->forceFill(['is_admin' => true])->save();
         Excel::fake();
-        $this->withoutExceptionHandling()->getJson($this->project->path().'/export');
+        $this->withoutExceptionHandling()->getJson($this->apiV1ProjectRoute('projects.export', $this->project));
 
         Excel::assertDownloaded('Project '.$this->project->name.'.xls', fn (ProjectsExport $export) =>
             // Assert that the correct export is downloaded.

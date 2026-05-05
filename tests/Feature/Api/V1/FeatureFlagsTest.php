@@ -16,7 +16,7 @@ class FeatureFlagsTest extends TestCase
     #[Test]
     public function non_admin_user_cannot_access_project_messaging_routes(): void
     {
-        $this->getJson($this->project->path().'/messages/scheduled')
+        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))
             ->assertForbidden();
     }
 
@@ -25,7 +25,7 @@ class FeatureFlagsTest extends TestCase
     {
         $this->user->forceFill(['is_admin' => true])->save();
 
-        $this->getJson($this->project->path().'/messages/scheduled')
+        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))
             ->assertOk()
             ->assertExactJson([
                 'data' => [],
@@ -35,7 +35,7 @@ class FeatureFlagsTest extends TestCase
     #[Test]
     public function non_admin_user_cannot_access_project_export(): void
     {
-        $this->getJson($this->project->path().'/export')
+        $this->getJson($this->apiV1ProjectRoute('projects.export', $this->project))
             ->assertForbidden();
     }
 
@@ -44,7 +44,7 @@ class FeatureFlagsTest extends TestCase
     {
         $this->user->forceFill(['is_admin' => true])->save();
 
-        $this->getJson($this->project->path().'/export')
+        $this->getJson($this->apiV1ProjectRoute('projects.export', $this->project))
             ->assertOk();
     }
 

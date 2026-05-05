@@ -19,11 +19,10 @@ class ProjectTest extends TestCase
      */
 
     /** @test */
-    public function a_project_can_make_a_string_path(): void
+    public function a_project_uses_slug_for_route_binding(): void
     {
         $project = Project::factory()->create();
-        $this->assertEquals(
-            $this->apiV1Route('projects.show', ['project' => $project]), $project->path());
+        $this->assertSame('slug', $project->getRouteKeyName());
     }
 
     /** @test */

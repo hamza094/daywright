@@ -49,7 +49,7 @@ class NotificationsTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->postJson($this->project->path().'/invitations/accept');
+        $this->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project));
 
         Notification::assertSentTo($this->project->user, AcceptInvitation::class, fn (AcceptInvitation $notification): bool => $notification->toArray($this->project->user)['link'] === $expectedLink);
     }
@@ -64,7 +64,7 @@ class NotificationsTest extends TestCase
 
         $this->addMember($this->project, $user);
 
-        $this->patchJson($this->project->path(), ['notes' => 'Project notes updated.']);
+        $this->patchJson($this->apiV1ProjectRoute('projects.update', $this->project), ['notes' => 'Project notes updated.']);
 
         Notification::assertSentTo($user, ProjectUpdated::class, fn (ProjectUpdated $notification): bool => $notification->toArray($user)['link'] === $expectedLink);
         Notification::assertNotSentTo($this->user, ProjectUpdated::class);
@@ -80,7 +80,7 @@ class NotificationsTest extends TestCase
 
         $this->addMember($this->project, $user);
 
-        $this->postJson($this->project->path().'/tasks', ['title' => 'new task added']);
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), ['title' => 'new task added']);
 
         Notification::assertSentTo($user, ProjectTask::class, fn (ProjectTask $notification): bool => $notification->toArray($user)['link'] === $expectedLink);
     }
@@ -97,7 +97,7 @@ class NotificationsTest extends TestCase
         $this->addMember($this->project, $newUser);
 
         $this
-            ->postJson($this->project->path().'/conversations', ['message' => 'random chat conversation with @thanos844',
+            ->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), ['message' => 'random chat conversation with @thanos844',
                 'user_id' => $this->user->id]);
 
         Notification::assertSentTo($newUser, UserMentioned::class, fn (UserMentioned $notification): bool => $notification->toArray($newUser)['link'] === $expectedLink);
@@ -116,14 +116,14 @@ class NotificationsTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->postJson($this->project->path().'/task', ['body' => 'another new task added']);
+        $this->postJson($this->apiV1ProjectRoute('projects.show', $this->project).'/task', ['body' => 'another new task added']);
 
         Notification::assertNotSentTo($user, ProjectTask::class);
     }
 
     protected function sendInvitationToUser($project, $user)
     {
-        $this->postJson($this->project->path().'/invitations', [
+        $this->postJson($this->apiV1ProjectRoute('send.invitation', $project), [
             'email' => $user->email,
         ]);
     }
