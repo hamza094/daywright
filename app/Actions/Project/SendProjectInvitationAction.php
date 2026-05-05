@@ -8,7 +8,7 @@ use App\Enums\Subscription\PlanLimitType;
 use App\Models\Project;
 use App\Models\User;
 use App\Notifications\ProjectInvitation;
-use App\Services\Api\V1\Subscription\PlanLimitService;
+use App\Services\Subscription\PlanLimitService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;

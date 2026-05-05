@@ -30,7 +30,7 @@ class VerificationTest extends TestCase
             $user
         );
 
-        $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), ['user' => $user->uuid]);
+        $url = URL::temporarySignedRoute('api.v1.verification.verify', now()->addMinutes(60), ['user' => $user->uuid]);
 
         Event::fake();
 
@@ -50,7 +50,7 @@ class VerificationTest extends TestCase
             $user
         );
 
-        $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), ['user' => $user->uuid]);
+        $url = URL::temporarySignedRoute('api.v1.verification.verify', now()->addMinutes(60), ['user' => $user->uuid]);
 
         $this->postJson($url)
             ->assertStatus(400)

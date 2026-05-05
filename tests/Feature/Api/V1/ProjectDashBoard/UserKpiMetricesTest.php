@@ -16,7 +16,7 @@ class UserKpiMetricesTest extends TestCase
     /** @test */
     public function it_returns_dashboard_kpis_and_insights_for_authenticated_user(): void
     {
-        $response = $this->getJson(route('dashboard.insights'));
+        $response = $this->getJson(route('api.v1.dashboard.insights'));
 
         $response->assertStatus(200);
         $response->assertJsonStructure([

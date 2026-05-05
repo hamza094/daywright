@@ -10,7 +10,7 @@ use App\Http\Requests\Api\V1\Auth\ConfirmTwoFactorRequest;
 use App\Http\Requests\Api\V1\Auth\DisableTwoFactorRequest;
 use App\Http\Requests\Api\V1\Auth\PrepareTwoFactorRequest;
 use App\Http\Requests\Api\V1\Auth\TwoFactorLoginRequest;
-use App\Services\Api\V1\Auth\LoginUserService;
+use App\Services\Auth\LoginUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

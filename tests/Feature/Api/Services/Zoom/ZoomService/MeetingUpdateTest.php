@@ -7,7 +7,7 @@ namespace Tests\Feature\V1\Services\Zoom\ZoomService;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use App\Http\Integrations\Zoom\Requests\UpdateMeeting;
 use App\Models\User;
-use App\Services\Api\V1\Zoom\ZoomService;
+use App\Services\Zoom\ZoomService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Saloon\Enums\Method;
 use Saloon\Http\Faking\MockResponse;

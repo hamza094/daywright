@@ -11,9 +11,8 @@ use App\Http\Requests\Api\V1\ProjectUpdateRequest;
 use App\Http\Resources\Api\V1\Project\ProjectCollectionResource;
 use App\Http\Resources\Api\V1\Project\ProjectResource;
 use App\Models\Project;
-use App\Services\Api\V1\DashboardService;
-use App\Services\Api\V1\PaginationService;
-use App\Services\Api\V1\ProjectService;
+use App\Services\Dashboard\DashboardService;
+use App\Services\Project\ProjectService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,23 +25,13 @@ class ProjectController extends ApiController
         DashboardProjectRequest $request,
         DashboardService $dashboardService,
     ): JsonResponse {
-        $projects = $dashboardService->getUserProjects(
+        $paginatedProjects = $dashboardService->paginateUserProjects(
             $this->authenticatedUser(),
             $request->filters(),
             $request->sort(),
-        );
-        $perPage = $request->perPage();
-        $page = (int) $request->validated('page', 1);
-
-        $paginatedProjects = new PaginationService(
-            $projects?->forPage($page, $perPage)->values() ?? collect(),
-            $projects?->count() ?? 0,
-            $perPage,
-            $page,
-            [
-                'path' => $request->url(),
-                'pageName' => 'page',
-            ],
+            $request->perPage(),
+            (int) $request->validated('page', 1),
+            $request->url(),
         );
 
         return ProjectCollectionResource::collection($paginatedProjects)->response();
@@ -58,7 +47,6 @@ class ProjectController extends ApiController
     public function store(ProjectStoreRequest $request): JsonResponse
     {
         $project = $this->projectService->createProject($this->authenticatedUser(), $request->validated());
-        $project->load(['user', 'stage', 'activeMembers', 'limitedActivities']);
 
         return $this->respondCreated(
             new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()))
@@ -74,7 +62,7 @@ class ProjectController extends ApiController
     {
         $this->authorize('access', $project);
 
-        $project->load(['user', 'stage', 'meetings', 'activeMembers', 'limitedActivities']);
+        $project = $this->projectService->loadForDetails($project);
 
         return new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()));
     }
@@ -91,14 +79,13 @@ class ProjectController extends ApiController
     {
         $this->authorize('access', $project);
 
-        if (empty($request->validated())) {
+        $validated = $request->validated();
+
+        if ($validated === []) {
             abort(Response::HTTP_BAD_REQUEST, "You haven't changed anything.");
         }
 
-        $project->update($request->validated());
-        $project->load(['user', 'stage', 'activeMembers', 'limitedActivities']);
-
-        $this->projectService->sendNotification($project, $this->authenticatedUser());
+        $project = $this->projectService->updateProject($project, $validated, $this->authenticatedUser());
 
         return $this->respondUpdated(
             new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()))
@@ -113,14 +100,14 @@ class ProjectController extends ApiController
     public function destroy(Project $project): JsonResponse
     {
         $this->authorize('manage', $project);
-        $project->delete();
+        $this->projectService->deleteProject($project);
 
         return $this->respondWithMessage($project->name.' abandoned successfully');
     }
 
     public function restore(Project $project): JsonResponse
     {
-        $project->restore();
+        $this->projectService->restoreProject($project);
 
         return $this->respondWithMessage($project->name.' restored successfully');
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Traits;
 
 use App\Interfaces\Paddle;
-use App\Services\Api\V1\Paddle\SubscriptionServiceFake;
+use App\Services\Paddle\SubscriptionServiceFake;
 
 trait InteractsWithPaddle
 {

@@ -10,7 +10,7 @@ use App\Http\Resources\Api\V1\ConversationResource;
 use App\Models\Conversation;
 use App\Models\Project;
 use App\Repository\Api\V1\ConversationRepository;
-use App\Services\Api\V1\ConversationService;
+use App\Services\Project\ConversationService;
 use Illuminate\Http\JsonResponse;
 
 class ConversationController extends ApiController

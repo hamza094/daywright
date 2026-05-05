@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Traits;
 
 use App\Interfaces\Zoom;
-use App\Services\Api\V1\Zoom\ZoomServiceFake;
+use App\Services\Zoom\ZoomServiceFake;
 
 trait InteractsWithZoom
 {

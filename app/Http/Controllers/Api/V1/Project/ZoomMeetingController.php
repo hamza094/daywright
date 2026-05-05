@@ -11,7 +11,7 @@ use App\Http\Resources\Api\V1\Zoom\MeetingResource;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
-use App\Services\Api\V1\MeetingService;
+use App\Services\Project\MeetingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Task;
 
+use App\Http\Resources\Api\V1\ApiResourceLink;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 use JsonSerializable;
@@ -87,7 +88,7 @@ class TaskResource extends JsonResource
                 fn (): string => $this->updated_at->toIso8601String(),
             ),
             'links' => [
-                'self' => $this->path(),
+                'self' => ApiResourceLink::task($this->resource),
             ],
         ];
     }

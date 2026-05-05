@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Project\ProjectCollectionResource;
-use App\Services\Api\V1\DashboardService;
+use App\Services\Dashboard\DashboardService;
 use Illuminate\Http\JsonResponse;
 
 final class DashboardProjectsController extends ApiController

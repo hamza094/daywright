@@ -50,7 +50,7 @@ class TwoFactorAuthenticationTest extends TestCase
     {
         Sanctum::actingAs($this->user);
 
-        $response = $this->getJson(route('twofactor.fetch-user'));
+        $response = $this->getJson(route('api.v1.twofactor.fetch-user'));
 
         $response->assertOk()
             ->assertJsonPath('data.two_factor_state', 'disabled');
@@ -114,7 +114,7 @@ class TwoFactorAuthenticationTest extends TestCase
 
         Sanctum::actingAs($mockedUser);
 
-        $response = $this->getJson(route('twofactor.recovery-codes'));
+        $response = $this->getJson(route('api.v1.twofactor.recovery-codes'));
 
         $response->assertOk()
             ->assertJsonPath('data.recovery_codes', ['abc123', 'xyz789']);
@@ -131,7 +131,7 @@ class TwoFactorAuthenticationTest extends TestCase
         ]);
 
         // Then disable it
-        $response = $this->deleteJson(route('twofactor.disable'));
+        $response = $this->deleteJson(route('api.v1.twofactor.disable'));
 
         $response->assertOk()
             ->assertJsonPath('data.two_factor_state', 'disabled');
@@ -182,7 +182,7 @@ class TwoFactorAuthenticationTest extends TestCase
 
         $sessionData = session()->all();
 
-        $response = $this->withSession($sessionData)->postJson(route('twofactor.login-confirm'), [
+        $response = $this->withSession($sessionData)->postJson(route('api.v1.twofactor.login-confirm'), [
             'code' => '123456',
         ]);
 
@@ -203,7 +203,7 @@ class TwoFactorAuthenticationTest extends TestCase
         $this->user = $this->user->fresh();
         $code = $this->user->makeTwoFactorCode();
 
-        $response = $this->withSession(session()->all())->postJson(route('twofactor.login-confirm'), [
+        $response = $this->withSession(session()->all())->postJson(route('api.v1.twofactor.login-confirm'), [
             'code' => $code,
         ]);
 
@@ -222,7 +222,7 @@ class TwoFactorAuthenticationTest extends TestCase
     /** @test */
     public function it_fails_two_factor_login_with_missing_session(): void
     {
-        $response = $this->postJson(route('twofactor.login-confirm'), [
+        $response = $this->postJson(route('api.v1.twofactor.login-confirm'), [
             'code' => '123456',
         ]);
 
@@ -243,7 +243,7 @@ class TwoFactorAuthenticationTest extends TestCase
             'expires_at' => now()->subMinutes(1), // Expired 1 minute ago
         ]));
 
-        $response = $this->postJson(route('twofactor.login-confirm'), [
+        $response = $this->postJson(route('api.v1.twofactor.login-confirm'), [
             'code' => '123456',
         ]);
 
@@ -329,7 +329,7 @@ class TwoFactorAuthenticationTest extends TestCase
 
     private function twoFactorRoute(string $name): string
     {
-        return route("twofactor.$name");
+        return route("api.v1.twofactor.$name");
     }
 
     /**

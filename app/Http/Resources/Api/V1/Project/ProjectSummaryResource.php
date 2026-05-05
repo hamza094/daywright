@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Project;
 
+use App\Http\Resources\Api\V1\ApiResourceLink;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
@@ -26,7 +27,7 @@ class ProjectSummaryResource extends JsonResource
             'slug' => $this->slug,
             'name' => $this->name,
             'links' => [
-                'self' => $this->path(),
+                'self' => ApiResourceLink::project($this->resource),
             ],
         ];
     }

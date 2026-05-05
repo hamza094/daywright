@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1;
 
 use App\Enums\FileType;
-use App\Services\Api\V1\FileService;
+use App\Services\FileService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;

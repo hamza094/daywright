@@ -21,18 +21,23 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => view('welcome.home'));
 
 // SPA session auth endpoints (cookie-based via Sanctum stateful)
-Route::prefix('api/v1/session')->group(function (): void {
-    // Login establishes a session; guest-only
-    Route::post('login', [SpaAuthController::class, 'loginSpa'])
-        ->middleware(['guest', 'throttle:auth-login']);
+Route::prefix('api/v1/session')
+    ->name('api.v1.session.')
+    ->group(function (): void {
+        // Login establishes a session; guest-only
+        Route::post('login', [SpaAuthController::class, 'loginSpa'])
+            ->name('login')
+            ->middleware(['guest', 'throttle:auth-login']);
 
-    // Logout destroys the current session; requires authenticated session (use sanctum to treat stateful requests)
-    Route::post('logout', [SpaAuthController::class, 'logoutSpa'])->middleware('auth:sanctum');
-});
+        // Logout destroys the current session; requires authenticated session (use sanctum to treat stateful requests)
+        Route::post('logout', [SpaAuthController::class, 'logoutSpa'])
+            ->name('logout')
+            ->middleware('auth:sanctum');
+    });
 
 // OAuth session-based endpoints (redirect + provider callback)
 Route::prefix('api/v1/auth')
-    ->name('oauth.')
+    ->name('api.v1.oauth.')
     ->middleware('throttle:oauth2-socialite')
     ->group(function (): void {
         Route::get('/redirect/{provider}', [OAuthController::class, 'redirect'])
@@ -46,7 +51,7 @@ Route::prefix('api/v1/auth')
 // session store is available for `login-confirm`. Endpoints that require
 // an authenticated user use `auth:sanctum` to validate stateful requests.
 Route::prefix('api/v1/twofactor')
-    ->name('twofactor.')
+    ->name('api.v1.twofactor.')
     ->group(function (): void {
         // Session-based confirmation (called after initial login sets session)
         Route::post('login-confirm', [TwoFactorController::class, 'twoFactorLogin'])

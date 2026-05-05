@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Admin;
 
+use App\Http\Resources\Api\V1\ApiResourceLink;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
@@ -34,7 +35,7 @@ class ProjectResource extends JsonResource
             'status' => $this->health_status,
             'health_score_calculated_at' => $this->health_score_calculated_at?->toIso8601String(),
             'links' => [
-                'self' => $this->path(),
+                'self' => ApiResourceLink::project($this->resource),
             ],
         ];
     }

@@ -97,7 +97,7 @@ class TaskTest extends TestCase
     {
         $this->project->delete();
 
-        $this->postJson(route('tasks.store', ['project' => $this->project->slug]), [
+        $this->postJson(route('api.v1.tasks.store', ['project' => $this->project->slug]), [
             'title' => 'Blocked Task',
             'status_id' => $this->status->id,
         ])->assertForbidden();
@@ -164,7 +164,7 @@ class TaskTest extends TestCase
 
         $task->delete();
 
-        $this->putJson(route('tasks.update', [
+        $this->putJson(route('api.v1.tasks.update', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), [
@@ -206,7 +206,7 @@ class TaskTest extends TestCase
 
         $this->project->delete();
 
-        $this->putJson(route('tasks.update', [
+        $this->putJson(route('api.v1.tasks.update', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), [
@@ -261,7 +261,7 @@ class TaskTest extends TestCase
             $user,
         );
 
-        $this->patchJson(route('task.archive', [
+        $this->patchJson(route('api.v1.task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]))->assertForbidden();

@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Auth\RegisterUserRequest;
 use App\Http\Resources\Api\V1\User\AuthenticatedUserResource;
-use App\Services\Api\V1\Auth\RegisterUserService;
+use App\Services\Auth\RegisterUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;

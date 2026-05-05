@@ -11,7 +11,7 @@ use App\Http\Resources\Api\V1\Project\ProjectInvitationResource;
 use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use App\Models\Project;
 use App\Models\User;
-use App\Services\Api\V1\InvitationService;
+use App\Services\Project\InvitationService;
 use Illuminate\Http\JsonResponse;
 
 final class ProjectInvitationController extends ApiController

@@ -136,7 +136,7 @@ class RecordActivityTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $this->patchJson(route('task.archive', [
+        $this->patchJson(route('api.v1.task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]));

@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\NotificationIndexRequest;
 use App\Http\Requests\Api\V1\NotificationStatusUpdateRequest;
 use App\Http\Resources\Api\V1\NotificationResource;
-use App\Services\Api\V1\NotificationService;
+use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 
 class NotificationsController extends ApiController

@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\TaskMemberUnassignRequest;
 use App\Models\Project;
 use App\Models\Task;
-use App\Services\Api\V1\Task\TaskFeatureService;
+use App\Services\Task\TaskFeatureService;
 use Illuminate\Http\JsonResponse;
 
 final class UnassignTaskMemberController extends ApiController

@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\Auth;
 
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\User;
-use App\Services\Api\V1\Auth\LoginUserService;
+use App\Services\Auth\LoginUserService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -42,7 +42,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function register_new_user(): void
     {
-        $this->postJson(route('auth.register'),
+        $this->postJson(route('api.v1.auth.register'),
             ['name' => 'Elvis William',
                 'email' => 'mihupocob@mailinator.com',
                 'password' => 'Password4!',
@@ -58,7 +58,7 @@ class AuthenticationTest extends TestCase
         $this->travelTo(Carbon::parse('2026-03-16 09:00:00'));
 
         try {
-            $this->postJson(route('auth.register'), [
+            $this->postJson(route('api.v1.auth.register'), [
                 'name' => 'Trial User',
                 'email' => 'trial-user@example.com',
                 'password' => 'Password4!',
@@ -82,7 +82,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function api_login_returns_user_and_access_token_after_successful_login(): void
     {
-        $response = $this->postJson(route('auth.login'), [
+        $response = $this->postJson(route('api.v1.auth.login'), [
             'email' => 'johndoe@example.org',
             'password' => self::TEST_PASSWORD,
         ]);
@@ -108,7 +108,7 @@ class AuthenticationTest extends TestCase
             ->with('8.8.8.8')
             ->andReturn(new Location(['timezone' => 'Europe/London']));
 
-        $response = $this->postJson(route('auth.login'), [
+        $response = $this->postJson(route('api.v1.auth.login'), [
             'email' => 'johndoe@example.org',
             'password' => self::TEST_PASSWORD,
         ]);
@@ -133,7 +133,7 @@ class AuthenticationTest extends TestCase
             ->with('8.8.4.4')
             ->andReturn(new Location(['timezone' => 'Europe/Paris']));
 
-        $this->postJson(route('auth.register'), [
+        $this->postJson(route('api.v1.auth.register'), [
             'name' => 'Elvis William',
             'email' => 'mihupocob@mailinator.com',
             'password' => 'Password4!',
@@ -188,7 +188,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function show_validation_email_error(): void
     {
-        $response = $this->postJson(route('auth.login'), [
+        $response = $this->postJson(route('api.v1.auth.login'), [
             'email' => 'test@test.com',
             'password' => self::TEST_PASSWORD,
         ]);
@@ -200,7 +200,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function show_validation_password_errors(): void
     {
-        $response = $this->postJson(route('auth.register'),
+        $response = $this->postJson(route('api.v1.auth.register'),
             ['name' => 'Elvis William',
                 'email' => 'mihupocob@mailinator.com',
                 'password' => 'password',
@@ -227,14 +227,14 @@ class AuthenticationTest extends TestCase
             User::first(),
         );
 
-        $response = $this->postJson(route('auth.logout'), []);
+        $response = $this->postJson(route('api.v1.auth.logout'), []);
         $response->assertOk();
     }
 
     /** @test */
     public function registration_with_existing_email_not_allowed(): void
     {
-        $this->postJson(route('auth.register'),
+        $this->postJson(route('api.v1.auth.register'),
             ['name' => 'Elvis William',
                 'email' => 'johndoe@example.org',
                 'password' => 'password',
@@ -252,7 +252,7 @@ class AuthenticationTest extends TestCase
                 ->andThrow(new RuntimeException('Registration infrastructure failed'));
         });
 
-        $this->postJson(route('auth.register'), [
+        $this->postJson(route('api.v1.auth.register'), [
             'name' => 'Elvis William',
             'email' => 'failure@example.com',
             'password' => 'Password4!',

@@ -49,7 +49,7 @@ class AuthServiceProvider extends ServiceProvider
             ->action('Verify Email Address', $url));
 
         VerifyEmail::$createUrlCallback = fn ($notifiable) => URL::temporarySignedRoute(
-            'verification.verify',
+            'api.v1.verification.verify',
             Carbon::now()->addMinutes(60),
             [
                 'user' => $notifiable->uuid,

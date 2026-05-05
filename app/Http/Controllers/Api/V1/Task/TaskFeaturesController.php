@@ -13,7 +13,7 @@ use App\Http\Resources\Api\V1\Task\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Repository\TaskRepository;
-use App\Services\Api\V1\Task\TaskFeatureService;
+use App\Services\Task\TaskFeatureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response as HttpResponse;

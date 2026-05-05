@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\Admin\ActivitiesResource;
 use App\Models\Activity;
-use App\Services\Api\V1\Admin\DashboardService;
+use App\Services\Admin\DashboardService;
 use Carbon\Carbon;
 use Dedoc\Scramble\Attributes\ExcludeRouteFromDocs;
 use Illuminate\Http\JsonResponse;

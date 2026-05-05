@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Models\Project;
-use App\Services\Api\V1\MessageService;
+use App\Services\Project\MessageService;
 use Illuminate\Http\JsonResponse;
 
 final class ScheduledProjectMessagesController extends ApiController

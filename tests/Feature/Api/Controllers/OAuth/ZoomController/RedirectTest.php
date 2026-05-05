@@ -25,7 +25,7 @@ class RedirectTest extends TestCase
             codeVerifier: 'dummy-code-verifier',
         );
 
-        $this->get(route('oauth.zoom.redirect'));
+        $this->get(route('api.v1.oauth.zoom.redirect'));
 
         // Retrieve the cached values from the cache
         $oauthZoomState = session()->get('oauth_zoom_state');

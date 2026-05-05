@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Models\Project;
-use App\Services\Api\V1\ProjectService;
+use App\Services\Project\ProjectService;
 use Illuminate\Http\JsonResponse;
 
 final class ProjectLimitsController extends ApiController

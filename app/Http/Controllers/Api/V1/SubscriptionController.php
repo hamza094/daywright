@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\SubscriptionRequest;
 use App\Interfaces\Paddle;
-use App\Services\Api\V1\Subscription\SubscriptionViewService;
+use App\Services\Subscription\SubscriptionViewService;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 

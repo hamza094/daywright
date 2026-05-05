@@ -11,13 +11,15 @@ use App\Http\Resources\Api\V1\User\AuthenticatedUserResource;
 use App\Http\Resources\Api\V1\User\UserProfileResource;
 use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use App\Models\User;
-use App\Services\Api\V1\UserService;
+use App\Services\User\UserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class UserController extends ApiController
 {
+    public function __construct(private readonly UserService $userService) {}
+
     /**
      * List all users
      *
@@ -25,7 +27,7 @@ class UserController extends ApiController
      */
     public function index(): JsonResponse
     {
-        $users = User::query()->get();
+        $users = $this->userService->allUsers();
 
         return UserSummaryResource::collection($users)->response();
     }
@@ -35,8 +37,7 @@ class UserController extends ApiController
      */
     public function me(Request $request): JsonResponse
     {
-        $user = $this->authenticatedUser();
-        $user->loadMissing('twoFactorAuth');
+        $user = $this->userService->loadAuthenticatedUser($this->authenticatedUser());
 
         return $this->respondWithData([
             'user' => (new AuthenticatedUserResource($user))->resolve($request),
@@ -51,7 +52,7 @@ class UserController extends ApiController
      */
     public function show(User $user): JsonResponse
     {
-        $user->loadMissing('info');
+        $user = $this->userService->loadProfile($user);
 
         return (new UserProfileResource($user))->response();
     }
@@ -61,13 +62,11 @@ class UserController extends ApiController
      *
      * Update the specified user's information. Only the owner can update their data.
      */
-    public function update(UserRequest $request, User $user, UserService $userService): JsonResponse
+    public function update(UserRequest $request, User $user): JsonResponse
     {
         $this->authorize('owner', $user);
 
-        $userService->updateUser($user, $request->validated());
-
-        $updatedUser = $user->fresh(['info']);
+        $updatedUser = $this->userService->updateUser($user, $request->validated());
 
         return $this->respondUpdated(new UserProfileResource($updatedUser));
     }
@@ -81,7 +80,7 @@ class UserController extends ApiController
     {
         $this->authorize('owner', $user);
 
-        $user->delete(); // Soft delete
+        $this->userService->deleteUser($user);
 
         return $this->respondWithMessage('User data deleted successfully.');
     }

@@ -6,7 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Message;
 use App\Models\Project;
-use App\Services\Api\V1\SendSmsService;
+use App\Services\SendSmsService;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

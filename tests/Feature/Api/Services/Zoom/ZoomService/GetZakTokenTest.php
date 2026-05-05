@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\Services\Zoom\ZoomService;
 
 use App\Http\Integrations\Zoom\Requests\GetZakToken;
 use App\Models\User;
-use App\Services\Api\V1\Zoom\ZoomService;
+use App\Services\Zoom\ZoomService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Saloon\Enums\Method;
 use Saloon\Http\Faking\MockResponse;

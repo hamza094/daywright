@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1;
 
 use App\Models\User;
-use App\Services\Api\V1\InvitationService;
+use App\Services\Project\InvitationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Request;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -15,16 +14,12 @@ class SearchableTest extends TestCase
 {
     use ProjectSetup,RefreshDatabase;
 
-    /**
-     * A search feature test example.
-     */
-    public function it_returns_an_empty_collection_when_no_query_is_provided(): void
+    /** @test */
+    public function it_returns_an_empty_collection_when_no_users_match_query(): void
     {
-        $request = new Request;
-
         $service = app(InvitationService::class);
 
-        $result = $service->usersSearch($request);
+        $result = $service->usersSearch('missing-user');
 
         $this->assertTrue($result->isEmpty());
     }
@@ -35,10 +30,9 @@ class SearchableTest extends TestCase
         $user = User::first();
 
         $query = $user->name;
-        $request = new Request(['query' => $query]);
 
         $service = app(InvitationService::class);
-        $result = $service->usersSearch($request);
+        $result = $service->usersSearch($query);
 
         $this->assertCount(1, $result);
     }
@@ -53,16 +47,17 @@ class SearchableTest extends TestCase
         $searchTerm = 'Test';
 
         // Act
-        $response = $this->withoutExceptionHandling()->getJson(route('users.search', [
+        $response = $this->withoutExceptionHandling()->getJson(route('api.v1.users.search', [
             'query' => $searchTerm,
         ]));
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                '*' => ['uuid', 'name', 'email'],
-
+                'data' => [
+                    '*' => ['uuid', 'name', 'email'],
+                ],
             ])
-            ->assertJsonCount(5); // Ensure only the matching users are returned*/
+            ->assertJsonCount(5, 'data');
 
     }
 }

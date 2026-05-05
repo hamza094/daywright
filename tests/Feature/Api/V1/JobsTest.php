@@ -7,7 +7,7 @@ namespace Tests\Feature\Api\V1;
 use App\Jobs\SmsMessage;
 use App\Mail\ProjectMail;
 use App\Models\Message;
-use App\Services\Api\V1\SendSmsService;
+use App\Services\SendSmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Mockery\MockInterface;

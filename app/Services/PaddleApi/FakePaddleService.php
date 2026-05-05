@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Paddle;
+namespace App\Services\PaddleApi;
 
 use App\Collections\Paddle\DataCollection;
 use App\DataTransferObjects\Paddle\UserSubscriptionData;

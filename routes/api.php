@@ -15,8 +15,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-require __DIR__.'/api/v1.php';
+Route::name('api.v1.')->group(function (): void {
+    require __DIR__.'/api/v1.php';
+});
 
-require __DIR__.'/api/admin/v1.php';
+Route::name('api.v1.admin.')->group(__DIR__.'/api/admin/v1.php');
 
 Route::fallback(fn () => response()->json(['message' => 'Not Found.'], 404));

@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\Services\Zoom\ZoomService;
 
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\Http\Integrations\Zoom\Requests\GetAccessTokenRequest;
-use App\Services\Api\V1\Zoom\ZoomService;
+use App\Services\Zoom\ZoomService;
 use PHPUnit\Framework\Attributes\Test;
 use Saloon\Http\Faking\MockResponse;
 use Saloon\Laravel\Facades\Saloon;

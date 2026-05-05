@@ -55,7 +55,7 @@ class ZoomWebhookControllerTest extends TestCase
         $meetingId = $object['id'];
         $updateData = collect($object)->except(['id', 'uuid'])->toArray();
 
-        $this->post(route('webhooks.meetings.update'), $postBody)
+        $this->post(route('api.v1.webhooks.meetings.update'), $postBody)
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
@@ -79,7 +79,7 @@ class ZoomWebhookControllerTest extends TestCase
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
 
-        $this->post(route('webhooks.meetings.delete'), $postBody)
+        $this->post(route('api.v1.webhooks.meetings.delete'), $postBody)
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
@@ -104,7 +104,7 @@ class ZoomWebhookControllerTest extends TestCase
         $meetingId = $object['id'];
         $startTime = $object['start_time'] ?? null;
 
-        $this->post(route('webhooks.meetings.start'), $postBody)
+        $this->post(route('api.v1.webhooks.meetings.start'), $postBody)
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
@@ -130,7 +130,7 @@ class ZoomWebhookControllerTest extends TestCase
         $startTime = $object['start_time'] ?? null;
         $endTime = $object['end_time'] ?? null;
 
-        $this->post(route('webhooks.meetings.ended'), $postBody)
+        $this->post(route('api.v1.webhooks.meetings.ended'), $postBody)
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
@@ -141,7 +141,7 @@ class ZoomWebhookControllerTest extends TestCase
     /** @test */
     public function error_is_returned_if_the_request_was_not_sent_from_zoom(): void
     {
-        $this->post(route('webhooks.meetings.update'), ['invalid_key' => 'invalid_value'])->assertForbidden();
+        $this->post(route('api.v1.webhooks.meetings.update'), ['invalid_key' => 'invalid_value'])->assertForbidden();
 
         Queue::assertNothingPushed();
     }

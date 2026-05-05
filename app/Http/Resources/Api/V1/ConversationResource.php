@@ -38,7 +38,7 @@ class ConversationResource extends JsonResource
             'created_at' => $this->created_at?->toIso8601String(),
 
             'links' => $this->whenLoaded('project', fn () => [
-                'project' => $this->project->path(),
+                'project' => ApiResourceLink::project($this->project),
             ]),
         ];
     }

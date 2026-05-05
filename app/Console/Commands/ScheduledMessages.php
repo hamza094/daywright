@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Message;
-use App\Services\Api\V1\MessageService;
+use App\Services\Project\MessageService;
 use Illuminate\Console\Command;
 
 class ScheduledMessages extends Command

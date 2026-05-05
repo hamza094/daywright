@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Zoom;
 
+use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -44,7 +45,7 @@ class MeetingResource extends JsonResource
             'timezone' => $this->timezone,
             'join_before_host' => $this->join_before_host ? 'Yes' : 'No',
             'links' => $this->whenLoaded('project', fn () => [
-                'self' => $this->project->path().'/meetings/'.$this->id,
+                'self' => ApiResourceLink::meeting($this->resource),
             ]),
         ];
     }

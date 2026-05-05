@@ -11,7 +11,7 @@ use App\Actions\ProjectMetrics\TeamCollaborationMetricAction;
 use App\Actions\ProjectMetrics\UpcomingRiskMetricAction;
 use App\Data\ProjectMetricsDto;
 use App\Models\Project;
-use App\Services\ProjectInsightsPreloader;
+use App\Services\Project\ProjectInsightsPreloader;
 
 class ProjectInsightsRepository
 {

@@ -34,7 +34,7 @@ final class ProjectLimitsFeatureTest extends TestCase
         $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
         $this->project->members()->attach(User::factory()->create(), ['active' => false]);
 
-        $response = $this->getJson(route('projects.limits', $this->project))
+        $response = $this->getJson(route('api.v1.projects.limits', $this->project))
             ->assertOk()
             ->assertJsonCount(2, 'data');
 
@@ -52,7 +52,7 @@ final class ProjectLimitsFeatureTest extends TestCase
 
         Sanctum::actingAs($member);
 
-        $this->getJson(route('projects.limits', $this->project))
+        $this->getJson(route('api.v1.projects.limits', $this->project))
             ->assertForbidden()
             ->assertJson([
                 'message' => 'This action is unauthorized.',

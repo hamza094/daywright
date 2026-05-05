@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\Repository\DashboardInsightsRepository;
-use App\Services\Api\V1\Dashboard\DashboardInsightsService;
+use App\Services\Dashboard\DashboardInsightsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

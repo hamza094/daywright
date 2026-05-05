@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Actions\OAuthAction;
 use App\Enums\OAuthProvider;
 use App\Http\Controllers\Api\ApiController;
-use App\Services\Api\V1\Auth\LoginUserService;
+use App\Services\Auth\LoginUserService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

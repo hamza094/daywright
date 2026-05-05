@@ -9,7 +9,7 @@ use App\Http\Requests\Api\V1\ProjectActivityIndexRequest;
 use App\Http\Resources\Api\V1\ActivityResource;
 use App\Models\Project;
 use App\Repository\ProjectRepository;
-use App\Services\Api\V1\PaginationService;
+use App\Services\PaginationService;
 use Illuminate\Http\JsonResponse;
 
 class ActivityController extends ApiController

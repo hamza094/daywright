@@ -316,7 +316,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createProject(array $payload): TestResponse
     {
-        return $this->postJson(route('projects.store'), $payload);
+        return $this->postJson(route('api.v1.projects.store'), $payload);
     }
 
     /**
@@ -325,7 +325,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createTask(array $payload): TestResponse
     {
-        return $this->postJson(route('tasks.store', $this->project), $payload);
+        return $this->postJson(route('api.v1.tasks.store', $this->project), $payload);
     }
 
     /**
@@ -333,7 +333,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function inviteMember(string $email): TestResponse
     {
-        return $this->postJson(route('send.invitation', $this->project), ['email' => $email]);
+        return $this->postJson(route('api.v1.send.invitation', $this->project), ['email' => $email]);
     }
 
     /**
@@ -341,7 +341,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createMeeting(): TestResponse
     {
-        return $this->postJson(route('meetings.store', $this->project), $this->validMeetingPayload());
+        return $this->postJson(route('api.v1.meetings.store', $this->project), $this->validMeetingPayload());
     }
 
     /**
@@ -349,7 +349,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createApiToken(string $name): TestResponse
     {
-        return $this->postJson(route('api-tokens.store'), ['name' => $name]);
+        return $this->postJson(route('api.v1.api-tokens.store'), ['name' => $name]);
     }
 
     private function createActiveTasks(int $count): void

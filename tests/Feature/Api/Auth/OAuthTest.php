@@ -48,7 +48,7 @@ class OAuthTest extends TestCase
 
         $this->performOAuthCallback();
 
-        $this->get(route('oauth.callback', ['provider' => 'github']));
+        $this->get(route('api.v1.oauth.callback', ['provider' => 'github']));
 
         $this->assertDatabaseHas('users', [
             'name' => $user->name,
@@ -69,7 +69,7 @@ class OAuthTest extends TestCase
     {
         $this->performOAuthCallback();
 
-        $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful()
+        $this->get(route('api.v1.oauth.callback', ['provider' => 'github']))->assertSuccessful()
             ->assertJsonStructure([
                 'data' => [
                     'user' => ['uuid', 'name', 'email'],
@@ -101,7 +101,7 @@ class OAuthTest extends TestCase
         try {
             $this->performOAuthCallback();
 
-            $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful();
+            $this->get(route('api.v1.oauth.callback', ['provider' => 'github']))->assertSuccessful();
 
             $user = User::query()->where('email', 'test@example.com')->firstOrFail();
             /** @var \Laravel\Paddle\Customer|null $customer */
@@ -124,7 +124,7 @@ class OAuthTest extends TestCase
 
         $this->performOAuthCallback();
 
-        $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful();
+        $this->get(route('api.v1.oauth.callback', ['provider' => 'github']))->assertSuccessful();
 
         $this->assertDatabaseMissing('customers', [
             'billable_id' => (string) $user->getKey(),
@@ -148,7 +148,7 @@ class OAuthTest extends TestCase
             ->once()
             ->andThrow(new RuntimeException('OAuth provider failed'));
 
-        $this->getJson(route('oauth.callback', ['provider' => 'github']))
+        $this->getJson(route('api.v1.oauth.callback', ['provider' => 'github']))
             ->assertStatus(500)
             ->assertJsonPath('message', 'Error processing user data.');
     }

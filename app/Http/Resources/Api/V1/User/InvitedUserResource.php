@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\User;
 
+use App\Http\Resources\Api\V1\ApiResourceLink;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
@@ -28,11 +29,11 @@ class InvitedUserResource extends JsonResource
             'email' => $this->email,
             'avatar' => $this->when(! empty($this->avatar_path), fn () => $this->avatar_path),
             'invitation_sent_at' => $this->when(
-                $request->routeIs('project.pending.invitation') && $this->pivot,
+                $request->routeIs('api.v1.project.pending.invitation') && $this->pivot,
                 fn (): string => $this->pivot->created_at->toIso8601String()
             ),
             'links' => [
-                'self' => '/api/v1/users/'.$this->uuid,
+                'self' => ApiResourceLink::user($this->resource),
             ],
         ];
     }

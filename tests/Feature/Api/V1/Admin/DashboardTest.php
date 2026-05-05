@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\V1\Admin;
 
 use App\Models\Project;
 use App\Models\User;
-use App\Services\Api\V1\Admin\DashboardService;
+use App\Services\Admin\DashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Laravel\Sanctum\Sanctum;

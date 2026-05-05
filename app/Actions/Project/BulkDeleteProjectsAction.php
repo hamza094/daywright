@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Project;
 
 use App\Models\Project;
-use App\Services\Api\V1\ProjectService;
+use App\Services\Project\ProjectService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 

@@ -17,9 +17,9 @@ class UserAvatarTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const string USER_AVATAR_ROUTE = 'user.avatar';
+    private const string USER_AVATAR_ROUTE = 'api.v1.user.avatar';
 
-    private const string USER_AVATAR_REMOVE_ROUTE = 'user.avatar.remove';
+    private const string USER_AVATAR_REMOVE_ROUTE = 'api.v1.user.avatar.remove';
 
     #[Override]
     protected function setUp(): void
@@ -42,7 +42,7 @@ class UserAvatarTest extends TestCase
     {
         $user = User::first();
 
-        $this->postJson(route('user.avatar', ['user' => $user->uuid]), ['avatar' => 'not-an-image'])->assertUnprocessable();
+        $this->postJson(route('api.v1.user.avatar', ['user' => $user->uuid]), ['avatar' => 'not-an-image'])->assertUnprocessable();
     }
 
     /** @test */

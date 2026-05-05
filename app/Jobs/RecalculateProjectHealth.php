@@ -7,7 +7,7 @@ namespace App\Jobs;
 use App\Actions\ProjectMetrics\ProjectHealthMetricAction;
 use App\Events\ProjectHealthUpdated;
 use App\Models\Project;
-use App\Services\ProjectInsightsPreloader;
+use App\Services\Project\ProjectInsightsPreloader;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

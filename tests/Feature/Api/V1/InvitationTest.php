@@ -120,14 +120,14 @@ class InvitationTest extends TestCase
         /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
-        $this->deleteJson(route('projects.cancel-invitation',
+        $this->deleteJson(route('api.v1.projects.cancel-invitation',
             ['project' => $this->project, 'user' => $invitedUser,
             ]))
             ->assertForbidden();
 
         $this->project->invite($invitedUser);
 
-        $this->deleteJson(route('projects.cancel-invitation',
+        $this->deleteJson(route('api.v1.projects.cancel-invitation',
             ['project' => $this->project, 'user' => $invitedUser,
             ]))
             ->assertJson([

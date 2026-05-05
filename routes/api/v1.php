@@ -69,9 +69,9 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
     Route::get('/users/me', [UserController::class, 'me'])->name('user.me');
 
-    Route::get('/users/me/zoom-token', [ZoomTokenController::class, 'getUserToken']);
+    Route::get('/users/me/zoom-token', [ZoomTokenController::class, 'getUserToken'])->name('user.zoom-token');
 
-    Route::get('/users/me/zoom-jwt-token', [ZoomTokenController::class, 'getJwtToken']);
+    Route::get('/users/me/zoom-jwt-token', [ZoomTokenController::class, 'getJwtToken'])->name('user.zoom-jwt-token');
 
     Route::controller(TokenController::class)
         ->prefix('api-tokens')
@@ -90,11 +90,11 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
         ->middleware('subscription')
         ->name('dashboard.insights');
     Route::get('dashboard/tasks', DashboardTasksController::class)->name('tasks.data');
-    Route::get('dashboard/activities', DashboardActivitiesController::class);
-    Route::get('dashboard/projects', DashboardProjectsController::class);
+    Route::get('dashboard/activities', DashboardActivitiesController::class)->name('dashboard.activities');
+    Route::get('dashboard/projects', DashboardProjectsController::class)->name('dashboard.projects');
 
     // Return All Stages
-    Route::get('/stages', [StageController::class, 'index']);
+    Route::get('/stages', [StageController::class, 'index'])->name('stages.index');
 
     // Project Api Resource Routes
     Route::apiResource('/projects', ProjectController::class)->except(['show']);
@@ -107,29 +107,29 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
             Route::get('/insights', [ProjectInsightsController::class, 'index'])->name('projects.insights');
 
-            Route::delete('/force', ForceDeleteProjectController::class)->withTrashed()->can('manage', 'project');
-            Route::patch('/restore', [ProjectController::class, 'restore'])->withTrashed()->can('manage', 'project');
+            Route::delete('/force', ForceDeleteProjectController::class)->name('projects.force-delete')->withTrashed()->can('manage', 'project');
+            Route::patch('/restore', [ProjectController::class, 'restore'])->name('projects.restore')->withTrashed()->can('manage', 'project');
 
             Route::middleware(['can:access,project'])->group(function (): void {
 
-                Route::get('/activities', [ActivityController::class, 'index']);
+                Route::get('/activities', [ActivityController::class, 'index'])->name('projects.activities');
 
                 // Project Feature Routes
                 Route::controller(FeaturesController::class)->group(function (): void {
-                    Route::get('export', 'export')->middleware([
+                    Route::get('export', 'export')->name('projects.export')->middleware([
                         'subscription',
                         EnsureFeaturesAreActive::using('project-export'),
                     ]);
-                    Route::patch('stage', 'stage');
+                    Route::patch('stage', 'stage')->name('projects.stage.update');
                 });
 
                 Route::middleware([
                     'subscription',
                     EnsureFeaturesAreActive::using('project-messaging'),
                 ])->group(function (): void {
-                    Route::post('message', [ProjectMessageController::class, 'store']);
-                    Route::get('messages/scheduled', ScheduledProjectMessagesController::class);
-                    Route::delete('messages/{message}', [ProjectMessageController::class, 'destroy']);
+                    Route::post('message', [ProjectMessageController::class, 'store'])->name('projects.messages.store');
+                    Route::get('messages/scheduled', ScheduledProjectMessagesController::class)->name('projects.messages.scheduled');
+                    Route::delete('messages/{message}', [ProjectMessageController::class, 'destroy'])->name('projects.messages.destroy');
                 });
 
                 // Chat Conversation Routes
@@ -176,6 +176,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 ->can('canAcceptInvitation', 'project');
 
             Route::post('invitations/reject', RejectProjectInvitationController::class)
+                ->name('reject.invitation')
                 ->can('canAcceptInvitation', 'project');
 
             Route::delete('invitations/{user}', [ProjectInvitationController::class, 'destroy'])
@@ -183,6 +184,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 ->name('projects.cancel-invitation');
 
             Route::delete('members/{user}', ProjectMemberController::class)
+                ->name('projects.members.destroy')
                 ->withoutScopedBindings()
                 ->can('manage', 'project');
 

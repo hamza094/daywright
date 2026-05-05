@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\Services\Paddle;
 
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Models\User;
-use App\Services\Api\V1\Paddle\SubscriptionService;
+use App\Services\Paddle\SubscriptionService;
 use Mockery;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;

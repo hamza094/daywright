@@ -18,7 +18,7 @@ class UserProjectsPageTest extends TestCase
     /** @test */
     public function it_validates_sort_parameter(): void
     {
-        $response = $this->getJson(route('projects.index', ['sort' => 'invalid_sort']));
+        $response = $this->getJson(route('api.v1.projects.index', ['sort' => 'invalid_sort']));
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['sort'])
@@ -33,7 +33,7 @@ class UserProjectsPageTest extends TestCase
     /** @test */
     public function it_validates_member_parameter(): void
     {
-        $response = $this->getJson(route('projects.index', ['filter' => ['member' => 'not_a_boolean']]));
+        $response = $this->getJson(route('api.v1.projects.index', ['filter' => ['member' => 'not_a_boolean']]));
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['filter.member'])
@@ -48,7 +48,7 @@ class UserProjectsPageTest extends TestCase
     /** @test */
     public function it_accepts_string_true_member_parameter(): void
     {
-        $response = $this->getJson(route('projects.index', ['filter' => ['member' => 'true']]));
+        $response = $this->getJson(route('api.v1.projects.index', ['filter' => ['member' => 'true']]));
 
         $response->assertOk()
             ->assertJsonMissingValidationErrors(['filter.member']);
@@ -57,7 +57,7 @@ class UserProjectsPageTest extends TestCase
     /** @test */
     public function it_validates_page_parameter(): void
     {
-        $response = $this->getJson(route('projects.index', ['page' => 0]));
+        $response = $this->getJson(route('api.v1.projects.index', ['page' => 0]));
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['page'])
@@ -74,7 +74,7 @@ class UserProjectsPageTest extends TestCase
     {
         Project::factory()->create(['name' => 'Test Project', 'user_id' => $this->user->id]);
 
-        $response = $this->getJson(route('projects.index', [
+        $response = $this->getJson(route('api.v1.projects.index', [
             'sort' => 'latest',
             'filter' => [
                 'member' => true,
@@ -97,7 +97,7 @@ class UserProjectsPageTest extends TestCase
         Project::factory()->create(['name' => 'Backend Project', 'user_id' => $this->user->id]);
         Project::factory()->create(['name' => 'Mobile App', 'user_id' => $this->user->id]);
 
-        $response = $this->getJson(route('projects.index', ['filter' => ['search' => 'Frontend']]));
+        $response = $this->getJson(route('api.v1.projects.index', ['filter' => ['search' => 'Frontend']]));
 
         $response->assertOk();
 
@@ -121,7 +121,7 @@ class UserProjectsPageTest extends TestCase
 
         $latestProject = $this->project; // Assuming this is the default project created in ProjectSetup
 
-        $response = $this->getJson(route('projects.index', ['sort' => 'latest']));
+        $response = $this->getJson(route('api.v1.projects.index', ['sort' => 'latest']));
         $projects = $response->json('data');
         $this->assertEquals($latestProject->name, $projects[0]['name']);
     }
@@ -136,7 +136,7 @@ class UserProjectsPageTest extends TestCase
         ]);
         // Assuming this is the default project created in ProjectSetup
 
-        $response = $this->getJson(route('projects.index', ['sort' => 'oldest']));
+        $response = $this->getJson(route('api.v1.projects.index', ['sort' => 'oldest']));
         $projects = $response->json('data');
         $this->assertEquals('Old Project', $projects[0]['name']);
     }
@@ -154,7 +154,7 @@ class UserProjectsPageTest extends TestCase
             'user_id' => $this->user->id,
         ]);
 
-        $response = $this->getJson(route('projects.index', ['sort' => 'name']));
+        $response = $this->getJson(route('api.v1.projects.index', ['sort' => 'name']));
 
         $response->assertOk();
 
@@ -183,7 +183,7 @@ class UserProjectsPageTest extends TestCase
             'active' => 1,
         ]);
 
-        $response = $this->getJson(route('projects.index', ['filter' => ['member' => true]]));
+        $response = $this->getJson(route('api.v1.projects.index', ['filter' => ['member' => true]]));
 
         $response->assertOk();
 
@@ -199,7 +199,7 @@ class UserProjectsPageTest extends TestCase
         // Soft delete the default project
         $this->project->delete();
 
-        $response = $this->getJson(route('projects.index', ['filter' => ['abandoned' => true]]));
+        $response = $this->getJson(route('api.v1.projects.index', ['filter' => ['abandoned' => true]]));
 
         $response->assertOk();
 
@@ -214,7 +214,7 @@ class UserProjectsPageTest extends TestCase
     {
         Project::factory()->count(5)->create(['user_id' => $this->user->id]);
 
-        $response = $this->getJson(route('projects.index', ['per_page' => 2]))
+        $response = $this->getJson(route('api.v1.projects.index', ['per_page' => 2]))
             ->assertOk();
 
         $this->assertCount(2, $response->json('data'));

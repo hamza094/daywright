@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\V1\User;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\UserAvatarStoreRequest;
 use App\Models\User;
-use App\Services\Api\V1\AvatarService;
+use App\Services\User\AvatarService;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 

@@ -9,7 +9,7 @@ use App\Mail\PasswordUpdate;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\UserInfo;
-use App\Services\Api\V1\UserService;
+use App\Services\User\UserService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -55,7 +55,7 @@ class UserTest extends TestCase
     #[Test]
     public function me_endpoint_returns_authenticated_user_contract(): void
     {
-        $this->getJson(route('user.me'))
+        $this->getJson(route('api.v1.user.me'))
             ->assertOk()
             ->assertJsonPath('data.user.id', $this->user->id)
             ->assertJsonPath('data.user.uuid', $this->user->uuid)

@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\MessageRequest;
 use App\Models\Message;
 use App\Models\Project;
-use App\Services\Api\V1\MessageService;
+use App\Services\Project\MessageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Collection;

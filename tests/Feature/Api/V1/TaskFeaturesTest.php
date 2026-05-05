@@ -98,7 +98,7 @@ class TaskFeaturesTest extends TestCase
     {
         $task = Task::factory()->for($this->project)->create();
 
-        $this->patchJson(route('task.archive', [
+        $this->patchJson(route('api.v1.task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]))
@@ -107,7 +107,7 @@ class TaskFeaturesTest extends TestCase
 
         $this->assertSoftDeleted($task);
 
-        $this->patchJson(route('task.unarchive', [
+        $this->patchJson(route('api.v1.task.unarchive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]))
@@ -144,7 +144,7 @@ class TaskFeaturesTest extends TestCase
 
         $this->project->members()->attach($user->id, ['active' => true]);
 
-        $response = $this->withoutExceptionHandling()->getJson(route('task.members.search', [
+        $response = $this->withoutExceptionHandling()->getJson(route('api.v1.task.members.search', [
             'project' => $this->project->slug,
             'task' => $task->id,
             'search' => 'test',
@@ -160,7 +160,7 @@ class TaskFeaturesTest extends TestCase
     {
         $task = Task::factory()->create(['project_id' => $this->project->id]);
 
-        $this->getJson(route('task.members.search', [
+        $this->getJson(route('api.v1.task.members.search', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]))
@@ -173,7 +173,7 @@ class TaskFeaturesTest extends TestCase
     {
         $task = Task::factory()->for($this->project)->create();
 
-        $this->patchJson(route('task.archive', [
+        $this->patchJson(route('api.v1.task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]));
@@ -205,7 +205,7 @@ class TaskFeaturesTest extends TestCase
 
     protected function assignMembersToTask(Task $task, array $members)
     {
-        return $this->patchJson(route('task.assign', [
+        return $this->patchJson(route('api.v1.task.assign', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), ['members' => $members]);
@@ -213,7 +213,7 @@ class TaskFeaturesTest extends TestCase
 
     protected function unassignMemberFromTask(Task $task, int $memberId)
     {
-        return $this->patchJson(route('task.unassign', [
+        return $this->patchJson(route('api.v1.task.unassign', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), ['member' => $memberId]);

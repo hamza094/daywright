@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1\Project;
 
 use App\Http\Resources\Api\V1\ActivityResource;
+use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\StageResource;
 use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -33,6 +34,8 @@ class ProjectResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
+        $requestUser = $request->user();
+
         return [
             /**
              *  @example 1
@@ -97,7 +100,7 @@ class ProjectResource extends JsonResource
 
             'ownerNotAuthorized' => $this->whenLoaded(
                 'user',
-                fn (): bool => auth()->user()?->is($this->user) && ! auth()->user()?->isConnectedToZoom(),
+                fn (): bool => $requestUser?->is($this->user) && ! $requestUser?->isConnectedToZoom(),
             ),
 
             'days_limit' => config('app.project.abandonedLimit'),
@@ -160,7 +163,7 @@ class ProjectResource extends JsonResource
             'activities' => $this->whenLoaded('limitedActivities', fn () => ActivityResource::collection($this->limitedActivities)),
 
             'links' => [
-                'self' => $this->path(),
+                'self' => ApiResourceLink::project($this->resource),
             ],
         ];
     }

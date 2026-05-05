@@ -29,7 +29,7 @@ class CallbackTest extends TestCase
 
         session()->put('oauth_zoom_code_verifier', 'dummy-code-verifier');
 
-        $response = $this->getJson(route('oauth.zoom.callback').'?code=dummy-code&state=dummy-state');
+        $response = $this->getJson(route('api.v1.oauth.zoom.callback').'?code=dummy-code&state=dummy-state');
 
         $response->assertJsonPath('message', 'Zoom account connected successfully');
 
@@ -54,7 +54,7 @@ class CallbackTest extends TestCase
 
         session()->put('oauth_zoom_code_verifier', 'dummy-code-verifier');
 
-        $response = $this->getJson(route('oauth.zoom.callback').'?code=dummy-code&state=dummy-state');
+        $response = $this->getJson(route('api.v1.oauth.zoom.callback').'?code=dummy-code&state=dummy-state');
 
         $response->assertJson([
             'message' => 'Failed to connect to Zoom account',
@@ -71,7 +71,7 @@ class CallbackTest extends TestCase
 
         session()->put('oauth_zoom_code_verifier', 'dummy-code-verifier');
 
-        $this->getJson(route('oauth.zoom.callback').'?state=dummy-state')
+        $this->getJson(route('api.v1.oauth.zoom.callback').'?state=dummy-state')
             ->assertBadRequest()
             ->assertJsonPath('message', 'Missing required fields');
 

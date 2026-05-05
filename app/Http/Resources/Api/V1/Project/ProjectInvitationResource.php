@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Project;
 
+use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -81,7 +82,7 @@ class ProjectInvitationResource extends JsonResource
              * }
              */
             'links' => [
-                'project' => $this->path(),
+                'project' => ApiResourceLink::project($this->resource),
             ],
         ];
     }

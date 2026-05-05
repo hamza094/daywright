@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\Subscription\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
-use App\Models\User;
-use App\Services\Api\V1\Subscription\PlanLimitService;
+use App\Services\Auth\ApiTokenService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,7 +21,7 @@ class TokenController extends ApiController
      */
     public function index(): JsonResponse
     {
-        $tokens = $this->authenticatedUser()->tokens;
+        $tokens = app(ApiTokenService::class)->listForUser($this->authenticatedUser());
 
         return TokenResource::collection($tokens)->response();
     }
@@ -33,20 +31,12 @@ class TokenController extends ApiController
      *
      * This endpoint creates a new personal access token for the authenticated user.
      */
-    public function store(UserTokenRequest $request, PlanLimitService $planLimitService): JsonResponse
+    public function store(UserTokenRequest $request, ApiTokenService $apiTokenService): JsonResponse
     {
         $data = $request->validated();
         $expiresAt = ! empty($data['expires_at']) ? Carbon::parse($data['expires_at']) : null;
 
-        $token = $planLimitService->executeWithinAccountLimit(
-            PlanLimitType::ApiTokens,
-            $this->authenticatedUser(),
-            fn (User $user) => $user->createToken(
-                $data['name'],
-                ['*'],
-                $expiresAt
-            )
-        );
+        $token = $apiTokenService->createForUser($this->authenticatedUser(), $data['name'], $expiresAt);
 
         return $this->respondWithData([
             'token' => $token->plainTextToken,
@@ -61,18 +51,7 @@ class TokenController extends ApiController
      */
     public function destroy(int $tokenId): JsonResponse
     {
-        $user = $this->authenticatedUser();
-        $currentToken = $user->currentAccessToken();
-
-        // @phpstan-ignore-next-line
-        abort_if(! $currentToken, Response::HTTP_FORBIDDEN, 'No current access token found.');
-
-        /** @var \Laravel\Sanctum\PersonalAccessToken $currentToken */
-        abort_if($currentToken->id === $tokenId, Response::HTTP_FORBIDDEN, 'Cannot delete the current session token via this route.');
-
-        $deleted = $user->tokens()->where('id', $tokenId)->delete();
-
-        abort_if(! $deleted, Response::HTTP_NOT_FOUND, 'Token not found.');
+        app(ApiTokenService::class)->deleteForUser($this->authenticatedUser(), $tokenId);
 
         return $this->respondWithMessage('Token deleted.');
     }

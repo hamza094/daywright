@@ -9,7 +9,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\ProjectInsightsRequest;
 use App\Http\Resources\Api\V1\Project\ProjectInsightsResource;
 use App\Models\Project;
-use App\Services\Api\V1\ProjectInsightService;
+use App\Services\Project\ProjectInsightService;
 
 class ProjectInsightsController extends ApiController
 {
