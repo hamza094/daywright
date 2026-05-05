@@ -40,7 +40,7 @@ class UserTokenTest extends TestCase
         );
 
         $user->createToken('Test Token', ['*']);
-        $response = $this->getJson('/api/v1/api-tokens');
+        $response = $this->getJson($this->apiV1Route('api-tokens.index'));
         $response->assertOk();
         $response->assertJsonFragment(['name' => 'Test Token']);
         $this->assertMatchesRegularExpression(
@@ -59,7 +59,7 @@ class UserTokenTest extends TestCase
             ['*'],
         );
 
-        $response = $this->postJson('/api/v1/api-tokens', [
+        $response = $this->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'My API Token',
         ]);
         $response->assertCreated();
@@ -89,7 +89,7 @@ class UserTokenTest extends TestCase
         $expiresAt = '2026-05-20T15:30:00+02:00';
         $expectedExpiration = CarbonImmutable::parse($expiresAt)->setTimezone('UTC')->toIso8601String();
 
-        $response = $this->postJson('/api/v1/api-tokens', [
+        $response = $this->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Expiring API Token',
             'expires_at' => $expiresAt,
         ]);
@@ -113,7 +113,7 @@ class UserTokenTest extends TestCase
             ['*'],
         );
 
-        $this->postJson('/api/v1/api-tokens', [
+        $this->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Legacy Token',
             'expires_at' => '2026-05-20 15:30:00',
         ])
@@ -132,7 +132,7 @@ class UserTokenTest extends TestCase
 
         $token = $user->createToken('Delete Token', ['*']);
         $tokenId = $token->accessToken->id;
-        $response = $this->deleteJson('/api/v1/api-tokens/'.$tokenId);
+        $response = $this->deleteJson($this->apiV1Route('api-tokens.destroy', ['token' => $tokenId]));
         $response->assertOk();
         $response->assertJsonFragment(['message' => 'Token deleted.']);
         $this->assertDatabaseMissing('personal_access_tokens', [
@@ -150,7 +150,7 @@ class UserTokenTest extends TestCase
 
         $response = $this
             ->withToken($plainText)
-            ->deleteJson("/api/v1/api-tokens/{$tokenModel->id}");
+            ->deleteJson($this->apiV1Route('api-tokens.destroy', ['token' => $tokenModel->id]));
 
         $response->assertStatus(403)
             ->assertJsonFragment([
@@ -166,7 +166,7 @@ class UserTokenTest extends TestCase
 
         $response = $this
             ->withToken($tokenResult->plainTextToken)
-            ->deleteJson('/api/v1/api-tokens/999999');
+            ->deleteJson($this->apiV1Route('api-tokens.destroy', ['token' => 999999]));
 
         $response->assertNotFound()
             ->assertJsonPath('message', 'Token not found.');

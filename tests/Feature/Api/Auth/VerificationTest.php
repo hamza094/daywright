@@ -60,6 +60,9 @@ class VerificationTest extends TestCase
     /** @test */
     public function can_resend_verification_notification(): void
     {
+        $now = now()->startOfSecond();
+        $this->travelTo($now);
+
         $user = User::factory()->create(['email_verified_at' => null]);
 
         Sanctum::actingAs(
@@ -68,10 +71,17 @@ class VerificationTest extends TestCase
 
         Notification::fake();
 
-        $this->postJson('/api/v1/email/resend/'.$user->uuid, ['email' => $user->email])
+        $this->postJson($this->apiV1Route('verification.resend', ['user' => $user]), ['email' => $user->email])
             ->assertSuccessful();
 
-        Notification::assertSentTo($user, VerifyEmail::class);
+        $expectedUrl = URL::temporarySignedRoute('api.v1.verification.verify', $now->copy()->addMinutes(60), [
+            'user' => $user->uuid,
+            'hash' => sha1((string) $user->getEmailForVerification()),
+        ]);
+
+        Notification::assertSentTo($user, VerifyEmail::class, fn (VerifyEmail $notification): bool => $notification->toMail($user)->actionUrl === $expectedUrl);
+
+        $this->travelBack();
     }
 
     /** @test */
@@ -85,7 +95,7 @@ class VerificationTest extends TestCase
 
         Notification::fake();
 
-        $this->postJson('/api/v1/email/resend/'.$user->uuid, ['email' => $user->email])
+        $this->postJson($this->apiV1Route('verification.resend', ['user' => $user]), ['email' => $user->email])
             ->assertUnprocessable()
             ->assertJsonFragment([
                 'errors' => [

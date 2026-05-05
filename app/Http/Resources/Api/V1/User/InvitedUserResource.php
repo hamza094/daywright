@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\User;
 
-use App\Http\Resources\Api\V1\ApiResourceLink;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
@@ -33,7 +32,7 @@ class InvitedUserResource extends JsonResource
                 fn (): string => $this->pivot->created_at->toIso8601String()
             ),
             'links' => [
-                'self' => ApiResourceLink::user($this->resource),
+                'self' => route('api.v1.users.show', ['user' => $this->uuid], false),
             ],
         ];
     }

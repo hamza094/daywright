@@ -23,7 +23,7 @@ class TaskAssigned extends Notification implements ShouldBroadcast, ShouldQueue
     public function __construct(
         protected string $taskTitle,
         protected string $projectName,
-        protected string $projectPath,
+        protected string $projectSlug,
         protected array $notifierData
     ) {
         $this->afterCommit();
@@ -47,7 +47,7 @@ class TaskAssigned extends Notification implements ShouldBroadcast, ShouldQueue
             ->line("{$this->notifierData['name']} has assigned you a new task.")
             ->line("Task: \"{$this->taskTitle}\"")
             ->line("Project: {$this->projectName}")
-            ->action('View Project', url($this->projectPath))
+            ->action('View Project', $this->projectUrl())
             ->line('Thank you for using our application!');
     }
 
@@ -83,7 +83,17 @@ class TaskAssigned extends Notification implements ShouldBroadcast, ShouldQueue
         return [
             'message' => 'has assigned you a task: "'.$this->taskTitle.'" This is regarding the project '.$this->projectName,
             'notifier' => $this->notifierData,
-            'link' => $this->projectPath,
+            'link' => $this->projectPath(),
         ];
+    }
+
+    private function projectPath(): string
+    {
+        return NotificationLink::project(projectSlug: $this->projectSlug, absolute: false);
+    }
+
+    private function projectUrl(): string
+    {
+        return NotificationLink::project(projectSlug: $this->projectSlug, absolute: true);
     }
 }

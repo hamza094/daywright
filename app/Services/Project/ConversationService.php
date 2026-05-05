@@ -11,6 +11,7 @@ use App\Http\Requests\Api\V1\ConversationRequest;
 use App\Models\Conversation;
 use App\Models\Project;
 use App\Notifications\UserMentioned;
+use App\Services\FileService;
 use Exception;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -72,7 +73,7 @@ class ConversationService
             Notification::send($mentionedUsers,
                 new UserMentioned(
                     $project->name,
-                    $project->path(),
+                    $project->slug,
                     auth()->user()->getNotifierData())
             );
 

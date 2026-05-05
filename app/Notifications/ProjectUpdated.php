@@ -21,7 +21,7 @@ class ProjectUpdated extends Notification implements ShouldBroadcast, ShouldQueu
      */
     public function __construct(
         protected string $projectName,
-        protected string $projectPath,
+        protected string $projectSlug,
         protected array $notifierData
     ) {}
 
@@ -67,7 +67,12 @@ class ProjectUpdated extends Notification implements ShouldBroadcast, ShouldQueu
         return [
             'message' => 'Updated project '.$this->projectName,
             'notifier' => $this->notifierData,
-            'link' => $this->projectPath,
+            'link' => $this->projectLink(),
         ];
+    }
+
+    private function projectLink(): string
+    {
+        return NotificationLink::project(projectSlug: $this->projectSlug, absolute: false);
     }
 }

@@ -23,7 +23,7 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->getJson('/api/v1/admin/users')
+        $this->getJson($this->apiV1AdminRoute('users.index'))
             ->assertForbidden()
             ->assertJson([
                 'message' => 'This action is unauthorized.',
@@ -39,7 +39,7 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => true,
         ])
             ->assertForbidden();
@@ -55,7 +55,7 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => true,
         ])
             ->assertOk()
@@ -80,7 +80,7 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => true,
         ])
             ->assertUnprocessable()
@@ -97,11 +97,11 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [])
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['is_admin']);
 
-        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => 'maybe',
         ])
             ->assertUnprocessable()
@@ -122,7 +122,7 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => false,
         ])
             ->assertOk()
@@ -151,7 +151,7 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->patchJson("/api/v1/admin/users/{$target->uuid}/role", [
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => false,
         ])
             ->assertUnprocessable()
@@ -166,7 +166,7 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($actor);
 
-        $this->patchJson("/api/v1/admin/users/{$actor->uuid}/role", [
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $actor]), [
             'is_admin' => false,
         ])
             ->assertUnprocessable()
@@ -192,7 +192,7 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $response = $this->getJson('/api/v1/admin/users')->assertOk();
+        $response = $this->getJson($this->apiV1AdminRoute('users.index'))->assertOk();
 
         $payload = $response->json('data');
         $this->assertIsArray($payload);
@@ -217,7 +217,7 @@ class UsersTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $response = $this->getJson('/api/v1/admin/users?'.http_build_query([
+        $response = $this->getJson($this->apiV1AdminRoute('users.index', query: [
             'filter' => ['search' => 'Searchable'],
             'per_page' => 1,
         ]))->assertOk();

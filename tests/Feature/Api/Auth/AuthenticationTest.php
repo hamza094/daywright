@@ -151,7 +151,7 @@ class AuthenticationTest extends TestCase
     {
         $this->withoutMiddleware(VerifyCsrfToken::class);
 
-        $response = $this->withoutExceptionHandling()->postJson('/api/v1/session/login', [
+        $response = $this->withoutExceptionHandling()->postJson($this->apiV1Route('session.login'), [
             'email' => 'johndoe@example.org',
             'password' => self::TEST_PASSWORD,
         ]);
@@ -177,7 +177,7 @@ class AuthenticationTest extends TestCase
 
         $this->actingAs($user, 'web');
 
-        $this->postJson('/api/v1/session/login', [
+        $this->postJson($this->apiV1Route('session.login'), [
             'email' => 'johndoe@example.org',
             'password' => self::TEST_PASSWORD,
         ])

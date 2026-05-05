@@ -26,7 +26,7 @@ class ResetPasswordTest extends TestCase
 
         Notification::fake();
 
-        $this->postJson('/api/v1/forgot-password', ['email' => $user->email]);
+        $this->postJson($this->apiV1Route('password.email'), ['email' => $user->email]);
 
         Notification::assertSentTo($user, ResetPassword::class);
     }
@@ -42,7 +42,7 @@ class ResetPasswordTest extends TestCase
 
         $token = Password::createToken($user);
 
-        $this->postJson('/api/v1/reset-password', [
+        $this->postJson($this->apiV1Route('password.update'), [
             'token' => $token,
             'email' => $user->email,
             'password' => 'Password#333',

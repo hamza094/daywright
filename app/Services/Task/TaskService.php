@@ -88,7 +88,7 @@ class TaskService
         NotificationAction::send(
             new ProjectTask(
                 $project->name,
-                $project->path(),
+                $project->slug,
                 $notifier
             ), $project, $actor);
     }

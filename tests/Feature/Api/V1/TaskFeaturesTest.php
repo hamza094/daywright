@@ -28,6 +28,8 @@ class TaskFeaturesTest extends TestCase
         $task = $this->project->addTask('test task');
 
         $user = User::factory()->create();
+        $expectedLink = $this->apiV1Route('projects.show', ['project' => $this->project]);
+        $expectedUrl = route('api.v1.projects.show', ['project' => $this->project]);
 
         $members = [$user->id];
 
@@ -45,7 +47,8 @@ class TaskFeaturesTest extends TestCase
             'user_id' => $user->id,
         ]);
 
-        Notification::assertSentTo($user, TaskAssigned::class);
+        Notification::assertSentTo($user, TaskAssigned::class, fn (TaskAssigned $notification): bool => $notification->toArray($user)['link'] === $expectedLink
+            && $notification->toMail($user)->actionUrl === $expectedUrl);
         Notification::assertNotSentTo($this->user, TaskAssigned::class);
 
         // Attempt to reassign the same member to the task

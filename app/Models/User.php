@@ -87,11 +87,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         QueuedPasswordResetJob::dispatch($this, $token);
     }
 
-    public function path(): string
-    {
-        return "/api/v1/users/{$this->uuid}";
-    }
-
     /**
      * Get projects created by user.
      *

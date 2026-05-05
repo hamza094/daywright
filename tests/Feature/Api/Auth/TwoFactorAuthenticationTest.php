@@ -363,7 +363,7 @@ class TwoFactorAuthenticationTest extends TestCase
             'password' => $this->testPassword,
         ], $overrides);
 
-        $response = $this->postJson('/api/v1/login', $payload);
+        $response = $this->postJson($this->apiV1Route('auth.login'), $payload);
 
         $response->assertOk()
             ->assertJsonPath('data.two_factor_state', '2fa_required');

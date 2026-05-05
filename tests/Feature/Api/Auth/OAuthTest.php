@@ -23,7 +23,7 @@ class OAuthTest extends TestCase
     {
         $provider = OAuthProvider::GitHub;
 
-        $response = $this->getJson('/api/v1/auth/redirect/'.$provider->value);
+        $response = $this->getJson($this->apiV1Route('oauth.redirect', ['provider' => $provider->value]));
 
         $response->assertStatus(200)
             ->assertJsonStructure(['data' => ['redirect_url']]);
@@ -36,7 +36,7 @@ class OAuthTest extends TestCase
 
         $this->actingAs($user, 'web');
 
-        $this->getJson('/api/v1/auth/redirect/'.OAuthProvider::GitHub->value)
+        $this->getJson($this->apiV1Route('oauth.redirect', ['provider' => OAuthProvider::GitHub->value]))
             ->assertBadRequest()
             ->assertJsonPath('message', 'User is already authenticated.');
     }

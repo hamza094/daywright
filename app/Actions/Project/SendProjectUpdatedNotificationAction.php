@@ -20,7 +20,7 @@ final class SendProjectUpdatedNotificationAction
         NotificationAction::send(
             new ProjectUpdated(
                 $project->name,
-                $project->path(),
+                $project->slug,
                 $actor->getNotifierData()
             ),
             $project,

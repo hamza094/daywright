@@ -30,7 +30,7 @@ final class AssignTaskMembersAction
             Notification::send($usersToNotify, new TaskAssigned(
                 $task->title,
                 $project->name,
-                $project->path(),
+                $project->slug,
                 $actor->getNotifierData()
             ));
         });

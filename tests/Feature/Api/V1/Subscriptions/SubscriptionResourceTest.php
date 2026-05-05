@@ -20,8 +20,6 @@ class SubscriptionResourceTest extends TestCase
 {
     use RefreshDatabase, SubscriptionHelpers;
 
-    private const string SUBSCRIPTIONS_ROUTE = '/api/v1/user/subscriptions';
-
     private User $user;
 
     #[Override]
@@ -200,7 +198,7 @@ class SubscriptionResourceTest extends TestCase
      */
     private function subscriptionResponse(): TestResponse
     {
-        return $this->getJson(self::SUBSCRIPTIONS_ROUTE)
+        return $this->getJson($this->apiV1Route('user.subscription'))
             ->assertOk()
             ->assertJsonStructure([
                 'data' => [

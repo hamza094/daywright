@@ -21,7 +21,7 @@ class MeetingTest extends TestCase
 
         $this->actingAs($this->user);
 
-        $response = $this->getJson("/api/v1/projects/{$this->project->slug}/meetings/{$meeting->id}");
+        $response = $this->getJson($this->apiV1Route('meetings.show', ['project' => $this->project, 'meeting' => $meeting]));
 
         $response->assertStatus(200)
             ->assertJson([
@@ -47,14 +47,14 @@ class MeetingTest extends TestCase
         ]);
 
         // Scheduled meetings (default)
-        $response = $this->getJson("/api/v1/projects/{$this->project->slug}/meetings");
+        $response = $this->getJson($this->apiV1Route('meetings.index', ['project' => $this->project]));
         $response->assertStatus(200)
             ->assertJsonStructure(['data', 'links', 'meta']);
 
         $this->assertCount(3, $response->json('data'));
 
         // Previous meetings
-        $response = $this->getJson("/api/v1/projects/{$this->project->slug}/meetings?request=previous");
+        $response = $this->getJson($this->apiV1Route('meetings.index', ['project' => $this->project], ['request' => 'previous']));
         $response->assertStatus(200)
             ->assertJsonStructure(['data', 'links', 'meta']);
 

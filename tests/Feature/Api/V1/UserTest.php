@@ -39,7 +39,7 @@ class UserTest extends TestCase
     #[Test]
     public function auth_user_see_all_users(): void
     {
-        $response = $this->getJson('/api/v1/users');
+        $response = $this->getJson($this->apiV1Route('users.index'));
 
         $response->assertStatus(200)
             ->assertJsonFragment([
@@ -68,7 +68,7 @@ class UserTest extends TestCase
     {
         $defaultTimezone = config('app.timezone', 'UTC');
 
-        $response = $this->getJson($this->user->path());
+        $response = $this->getJson($this->apiV1Route('users.show', ['user' => $this->user]));
 
         $response->assertStatus(200)
             ->assertJsonFragment([
@@ -87,7 +87,7 @@ class UserTest extends TestCase
     {
         UserInfo::factory()->for($this->user)->create();
 
-        $response = $this->patchJson($this->user->path(), [
+        $response = $this->patchJson($this->apiV1Route('users.update', ['user' => $this->user]), [
             'name' => $newName,
             'email' => $newEmail,
             'username' => $newUsername,
@@ -117,7 +117,7 @@ class UserTest extends TestCase
     {
         UserInfo::factory()->for($this->user)->create();
 
-        $response = $this->patchJson($this->user->path(), [
+        $response = $this->patchJson($this->apiV1Route('users.update', ['user' => $this->user]), [
             'timezone' => 'America/Los_Angeles',
         ]);
 
@@ -160,7 +160,7 @@ class UserTest extends TestCase
     #[Test]
     public function user_can_delete_his_profile(): void
     {
-        $this->deleteJson('api/v1/users/'.$this->user->uuid);
+        $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $this->user]));
 
         $this->assertSoftDeleted($this->user);
 
@@ -171,9 +171,9 @@ class UserTest extends TestCase
     #[Test]
     public function user_can_force_delete_a_trashed_profile(): void
     {
-        $this->deleteJson('api/v1/users/'.$this->user->uuid)->assertOk();
+        $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $this->user]))->assertOk();
 
-        $this->deleteJson('api/v1/users/'.$this->user->uuid.'/force')
+        $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $this->user]))
             ->assertOk()
             ->assertJsonPath('message', 'User data permanently deleted.');
 

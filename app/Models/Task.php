@@ -42,11 +42,6 @@ class Task extends Model
         return new TaskQueryBuilder($query);
     }
 
-    public function path(): string
-    {
-        return "/api/v1/projects/{$this->project->slug}/tasks/{$this->id}";
-    }
-
     /**
      * Get project associated to the task.
      *

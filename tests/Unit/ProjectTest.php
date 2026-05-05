@@ -23,7 +23,7 @@ class ProjectTest extends TestCase
     {
         $project = Project::factory()->create();
         $this->assertEquals(
-            "/api/v1/projects/{$project->slug}", $project->path());
+            $this->apiV1Route('projects.show', ['project' => $project]), $project->path());
     }
 
     /** @test */

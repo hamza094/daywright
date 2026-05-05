@@ -20,7 +20,7 @@ class UserNotificationsTest extends TestCase
     {
         $this->actingAsInvitedUser();
 
-        $response = $this->withoutExceptionHandling()->getJson('/api/v1/notifications')
+        $response = $this->withoutExceptionHandling()->getJson($this->apiV1Route('notifications.index'))
             ->assertOk()
             ->assertJsonStructure([
                 'data',
@@ -36,7 +36,7 @@ class UserNotificationsTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create());
 
-        $response = $this->getJson('/api/v1/notifications')
+        $response = $this->getJson($this->apiV1Route('notifications.index'))
             ->assertOk()
             ->assertJsonStructure([
                 'data',
@@ -81,7 +81,7 @@ class UserNotificationsTest extends TestCase
         $this->postJson($this->project->path().'/tasks', ['title' => 'new task added']);
         Sanctum::actingAs($user);
 
-        $response = $this->withoutExceptionHandling()->patchJson('/api/v1/notifications/read');
+        $response = $this->withoutExceptionHandling()->patchJson($this->apiV1Route('notifications.markAllAsRead'));
 
         $response->assertStatus(200);
         $this->assertCount(0, $user->fresh()->unreadNotifications()->get());
@@ -94,7 +94,7 @@ class UserNotificationsTest extends TestCase
 
         $notification = $user->notifications()->latest()->first();
 
-        $response = $this->deleteJson('/api/v1/notifications/'.$notification->id);
+        $response = $this->deleteJson($this->apiV1Route('notifications.destroy', ['notification' => $notification->id]));
 
         $response->assertStatus(200);
         $response->assertJson(['message' => 'Notification deleted successfully.']);
@@ -109,11 +109,11 @@ class UserNotificationsTest extends TestCase
         $notification = $user->notifications()->latest()->first();
 
         // Update status to read
-        $this->patchJson("/api/v1/notifications/{$notification->id}/status", ['status' => 'read']);
+        $this->patchJson($this->apiV1Route('notifications.updateStatus', ['notification' => $notification->id]), ['status' => 'read']);
         $this->assertNotNull($notification->fresh()->read_at);
 
         // Update status to unread
-        $this->patchJson("/api/v1/notifications/{$notification->id}/status", ['status' => 'unread']);
+        $this->patchJson($this->apiV1Route('notifications.updateStatus', ['notification' => $notification->id]), ['status' => 'unread']);
         $this->assertNull($notification->fresh()->read_at);
     }
 
@@ -124,7 +124,7 @@ class UserNotificationsTest extends TestCase
 
         $notification = $user->notifications()->latest()->first();
 
-        $this->patchJson("/api/v1/notifications/{$notification->id}/status", ['status' => 'archived'])
+        $this->patchJson($this->apiV1Route('notifications.updateStatus', ['notification' => $notification->id]), ['status' => 'archived'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('status');
     }
@@ -162,6 +162,6 @@ class UserNotificationsTest extends TestCase
      */
     private function notificationsUrl(array $filters = []): string
     {
-        return '/api/v1/notifications'.($filters === [] ? '' : '?'.http_build_query(['filter' => $filters]));
+        return $this->apiV1Route('notifications.index', query: $filters === [] ? [] : ['filter' => $filters]);
     }
 }

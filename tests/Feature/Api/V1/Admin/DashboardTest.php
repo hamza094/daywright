@@ -20,12 +20,6 @@ class DashboardTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const string ACTIVITIES_ROUTE = '/api/v1/admin/dashboard/activities';
-
-    private const string DATA_ROUTE = '/api/v1/admin/data';
-
-    private const string BACKUP_ROUTE = '/api/v1/admin/backup/database';
-
     private User $admin;
 
     #[Override]
@@ -47,7 +41,7 @@ class DashboardTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::ACTIVITIES_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('dashboard.activities'))
             ->assertForbidden();
     }
 
@@ -57,7 +51,7 @@ class DashboardTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::DATA_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('dashboard.data'))
             ->assertForbidden();
     }
 
@@ -69,7 +63,7 @@ class DashboardTest extends TestCase
         // Create a project which auto-records activity via RecordActivity trait
         Project::factory()->create();
 
-        $response = $this->getJson(self::ACTIVITIES_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('dashboard.activities'))
             ->assertOk();
 
         $this->assertNotEmpty($response->json('data'));
@@ -81,7 +75,7 @@ class DashboardTest extends TestCase
         // Create more than 15 projects to generate 15+ activities
         Project::factory()->count(20)->create();
 
-        $response = $this->getJson(self::ACTIVITIES_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('dashboard.activities'))
             ->assertOk();
 
         $data = $response->json('data');
@@ -91,7 +85,7 @@ class DashboardTest extends TestCase
     #[Test]
     public function activities_return_empty_when_none_exist(): void
     {
-        $response = $this->getJson(self::ACTIVITIES_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('dashboard.activities'))
             ->assertOk();
 
         $data = $response->json('data');
@@ -128,7 +122,7 @@ class DashboardTest extends TestCase
                 ]);
         });
 
-        $response = $this->getJson(self::DATA_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('dashboard.data'))
             ->assertOk();
 
         $data = $response->json('data');
@@ -152,7 +146,7 @@ class DashboardTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->postJson(self::BACKUP_ROUTE)
+        $this->postJson($this->apiV1AdminRoute('backup.database'))
             ->assertForbidden();
     }
 
@@ -167,7 +161,7 @@ class DashboardTest extends TestCase
             ->once()
             ->with('backup:run');
 
-        $this->postJson(self::BACKUP_ROUTE)
+        $this->postJson($this->apiV1AdminRoute('backup.database'))
             ->assertOk()
             ->assertJsonPath('message', 'Backup process started');
     }
@@ -175,7 +169,7 @@ class DashboardTest extends TestCase
     #[Test]
     public function backup_route_is_not_exposed_via_get(): void
     {
-        $this->getJson(self::BACKUP_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('backup.database'))
             ->assertNotFound()
             ->assertJsonPath('message', 'Not Found.');
     }
@@ -191,7 +185,7 @@ class DashboardTest extends TestCase
                 ->andThrow(new RuntimeException('Database connection lost'));
         });
 
-        $this->getJson(self::DATA_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('dashboard.data'))
             ->assertStatus(500)
             ->assertJsonPath('message', 'Failed to load dashboard data.');
     }

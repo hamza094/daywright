@@ -57,7 +57,7 @@ class UserAvatarTest extends TestCase
         $this->withoutExceptionHandling()->postJson(route(self::USER_AVATAR_ROUTE, ['user' => $user->uuid]), [
             'avatar' => $file,
         ])->assertSuccessful()
-            ->assertJsonPath('data.path', $user->path());
+            ->assertJsonPath('data.path', route('api.v1.users.show', ['user' => $user], false));
 
         $uploadedFile = 'avatars/'.$user->uuid.'_'.$file->hashName();
 

@@ -6,6 +6,7 @@ namespace App\Services\User;
 
 use App\Enums\FileType;
 use App\Models\User;
+use App\Services\FileService;
 use Illuminate\Http\UploadedFile;
 
 final class AvatarService

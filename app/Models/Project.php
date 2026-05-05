@@ -113,11 +113,6 @@ class Project extends Model
         return new ProjectQueryBuilder($query);
     }
 
-    public function path(): string
-    {
-        return "/api/v1/projects/{$this->slug}";
-    }
-
     /**
      * Get user associated to the project.
      *

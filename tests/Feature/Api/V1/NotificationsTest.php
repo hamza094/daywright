@@ -29,10 +29,11 @@ class NotificationsTest extends TestCase
         Notification::fake();
 
         $user = User::factory()->create();
+        $expectedLink = $this->apiV1Route('projects.show', ['project' => $this->project]);
 
         $this->sendInvitationToUser($this->project, $user);
 
-        Notification::assertSentTo($user, ProjectInvitation::class);
+        Notification::assertSentTo($user, ProjectInvitation::class, fn (ProjectInvitation $notification): bool => $notification->toArray($user)['link'] === $expectedLink);
     }
 
     /** @test */
@@ -42,6 +43,7 @@ class NotificationsTest extends TestCase
 
         /** @var User $user */
         $user = User::factory()->create();
+        $expectedLink = $this->apiV1Route('projects.show', ['project' => $this->project]);
 
         $this->project->invite($user);
 
@@ -49,7 +51,7 @@ class NotificationsTest extends TestCase
 
         $this->postJson($this->project->path().'/invitations/accept');
 
-        Notification::assertSentTo($this->project->user, AcceptInvitation::class);
+        Notification::assertSentTo($this->project->user, AcceptInvitation::class, fn (AcceptInvitation $notification): bool => $notification->toArray($this->project->user)['link'] === $expectedLink);
     }
 
     /** @test */
@@ -58,12 +60,13 @@ class NotificationsTest extends TestCase
         Notification::fake();
 
         $user = User::factory()->create();
+        $expectedLink = $this->apiV1Route('projects.show', ['project' => $this->project]);
 
         $this->addMember($this->project, $user);
 
         $this->patchJson($this->project->path(), ['notes' => 'Project notes updated.']);
 
-        Notification::assertSentTo($user, ProjectUpdated::class);
+        Notification::assertSentTo($user, ProjectUpdated::class, fn (ProjectUpdated $notification): bool => $notification->toArray($user)['link'] === $expectedLink);
         Notification::assertNotSentTo($this->user, ProjectUpdated::class);
     }
 
@@ -73,12 +76,13 @@ class NotificationsTest extends TestCase
         Notification::fake();
 
         $user = User::factory()->create();
+        $expectedLink = $this->apiV1Route('projects.show', ['project' => $this->project]);
 
         $this->addMember($this->project, $user);
 
         $this->postJson($this->project->path().'/tasks', ['title' => 'new task added']);
 
-        Notification::assertSentTo($user, ProjectTask::class);
+        Notification::assertSentTo($user, ProjectTask::class, fn (ProjectTask $notification): bool => $notification->toArray($user)['link'] === $expectedLink);
     }
 
     /** @test */
@@ -88,6 +92,7 @@ class NotificationsTest extends TestCase
 
         $newUser = User::factory(['username' => 'thanos844'])
             ->create();
+        $expectedLink = $this->apiV1Route('projects.show', ['project' => $this->project]);
 
         $this->addMember($this->project, $newUser);
 
@@ -95,7 +100,7 @@ class NotificationsTest extends TestCase
             ->postJson($this->project->path().'/conversations', ['message' => 'random chat conversation with @thanos844',
                 'user_id' => $this->user->id]);
 
-        Notification::assertSentTo($newUser, UserMentioned::class);
+        Notification::assertSentTo($newUser, UserMentioned::class, fn (UserMentioned $notification): bool => $notification->toArray($newUser)['link'] === $expectedLink);
 
         Notification::assertCount(1);
     }

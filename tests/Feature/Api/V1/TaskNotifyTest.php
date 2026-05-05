@@ -33,12 +33,15 @@ class TaskNotifyTest extends TestCase
         ]);
 
         $task->assignee()->attach($user);
+        $expectedLink = $this->apiV1Route('projects.show', ['project' => $task->project]);
+        $expectedUrl = route('api.v1.projects.show', ['project' => $task->project]);
 
         $this->artisan('tasks:notify')
             ->expectsOutput('Task notifications sent successfully.')
             ->assertSuccessful();
 
-        Notification::assertSentTo($user, TaskDue::class);
+        Notification::assertSentTo($user, TaskDue::class, fn (TaskDue $notification): bool => $notification->toArray($user)['link'] === $expectedLink
+            && $notification->toMail($user)->actionUrl === $expectedUrl);
 
         $this->assertEquals($task->fresh()->notify_sent, 1);
     }

@@ -20,7 +20,7 @@ final class AcceptProjectInvitationAction
 
             $project->user->notify(new AcceptInvitation(
                 $project->name,
-                $project->path(),
+                $project->slug,
                 $user->getNotifierData()
             ));
         });

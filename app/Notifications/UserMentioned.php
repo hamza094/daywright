@@ -21,7 +21,7 @@ class UserMentioned extends Notification implements ShouldBroadcast, ShouldQueue
      */
     public function __construct(
         protected string $projectName,
-        protected string $projectPath,
+        protected string $projectSlug,
         protected array $notifierData
     ) {}
 
@@ -63,7 +63,12 @@ class UserMentioned extends Notification implements ShouldBroadcast, ShouldQueue
         return [
             'message' => 'mentioned you in '.$this->projectName.' '.'group chat',
             'notifier' => $this->notifierData,
-            'link' => $this->projectPath,
+            'link' => $this->projectLink(),
         ];
+    }
+
+    private function projectLink(): string
+    {
+        return NotificationLink::project(projectSlug: $this->projectSlug, absolute: false);
     }
 }

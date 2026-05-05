@@ -19,7 +19,7 @@ class ProjectInvitation extends Notification implements ShouldBroadcast, ShouldQ
      */
     public function __construct(
         protected string $projectName,
-        protected string $projectPath,
+        protected string $projectSlug,
         protected array $notifierData
     ) {}
 
@@ -63,7 +63,12 @@ class ProjectInvitation extends Notification implements ShouldBroadcast, ShouldQ
         return [
             'message' => 'Sent you a project '.$this->projectName.' invitation',
             'notifier' => $this->notifierData,
-            'link' => $this->projectPath,
+            'link' => $this->projectLink(),
         ];
+    }
+
+    private function projectLink(): string
+    {
+        return NotificationLink::project(projectSlug: $this->projectSlug, absolute: false);
     }
 }

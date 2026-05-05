@@ -20,8 +20,6 @@ class PaddleTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const string SUBSCRIPTIONS_ROUTE = '/api/v1/admin/subscriptions/list';
-
     private User $admin;
 
     #[Override]
@@ -50,7 +48,7 @@ class PaddleTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::SUBSCRIPTIONS_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('subscriptions.list'))
             ->assertForbidden();
     }
 
@@ -84,7 +82,7 @@ class PaddleTest extends TestCase
                 ]));
         });
 
-        $response = $this->getJson(self::SUBSCRIPTIONS_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('subscriptions.list'))
             ->assertOk()
             ->assertJsonStructure([
                 'data' => [[
@@ -115,7 +113,7 @@ class PaddleTest extends TestCase
                 ->andThrow(new RuntimeException('Connection timed out'));
         });
 
-        $this->getJson(self::SUBSCRIPTIONS_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('subscriptions.list'))
             ->assertStatus(500)
             ->assertJsonStructure(['message'])
             ->assertJsonPath('message', 'Connection timed out');

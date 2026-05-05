@@ -43,7 +43,7 @@ class ProjectChartTests extends TestCase
             'active' => 1,
         ]);
 
-        $response = $this->getJson('/api/v1/dashboard/chart-data');
+        $response = $this->getJson($this->apiV1Route('dashboard.chart-data'));
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -91,19 +91,22 @@ class ProjectChartTests extends TestCase
 
         // Act & Assert
         // 1. Current year filter
-        $currentYearResponse = $this->getJson("/api/v1/dashboard/chart-data?year={$currentYear}");
+        $currentYearResponse = $this->getJson($this->apiV1Route('dashboard.chart-data', query: ['year' => $currentYear]));
         $this->assertEquals(1, $currentYearResponse->json('data.active_projects'));
 
         // 2. Previous year filter
-        $previousYearResponse = $this->getJson("/api/v1/dashboard/chart-data?year={$previousYear}");
+        $previousYearResponse = $this->getJson($this->apiV1Route('dashboard.chart-data', query: ['year' => $previousYear]));
         $this->assertEquals(1, $previousYearResponse->json('data.active_projects'));
 
         // 3. Current year and month filter
-        $monthFilterResponse = $this->getJson("/api/v1/dashboard/chart-data?year={$currentYear}&month={$currentMonth}");
+        $monthFilterResponse = $this->getJson($this->apiV1Route('dashboard.chart-data', query: [
+            'year' => $currentYear,
+            'month' => $currentMonth,
+        ]));
         $this->assertEquals(1, $monthFilterResponse->json('data.active_projects'));
 
         // 4. No filters
-        $noFilterResponse = $this->getJson('/api/v1/dashboard/chart-data');
+        $noFilterResponse = $this->getJson($this->apiV1Route('dashboard.chart-data'));
         $this->assertEquals(2, $noFilterResponse->json('data.active_projects'));
 
         // Assert all responses were successful

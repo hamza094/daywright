@@ -20,7 +20,7 @@ class DashboardTest extends TestCase
         // Create 5 projects for the user
         Project::factory()->count(5)->for($this->user)->create();
 
-        $response = $this->getJson('/api/v1/dashboard/projects');
+        $response = $this->getJson($this->apiV1Route('dashboard.projects'));
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -35,7 +35,7 @@ class DashboardTest extends TestCase
 
         collect($response->json('data'))->pluck('links.self')->each(function (?string $path): void {
             $this->assertNotNull($path);
-            $this->assertStringStartsWith('/api/v1/projects/', $path);
+            $this->assertStringStartsWith($this->apiV1Route('projects.index').'/', $path);
         });
     }
 
@@ -45,7 +45,7 @@ class DashboardTest extends TestCase
         // Delete the default project from ProjectSetup trait
         $this->project->delete();
 
-        $response = $this->getJson('/api/v1/dashboard/projects');
+        $response = $this->getJson($this->apiV1Route('dashboard.projects'));
 
         $response->assertOk();
 

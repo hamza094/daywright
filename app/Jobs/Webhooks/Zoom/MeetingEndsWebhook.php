@@ -92,7 +92,6 @@ class MeetingEndsWebhook implements ShouldQueue
         $notificationData = [
             'project_name' => $project->name,
             'project_slug' => $project->slug,
-            'project_path' => $project->path(),
             'meeting_topic' => $meeting->topic,
             'meeting_timezone' => $meeting->timezone,
             'start_time' => $this->start_time,

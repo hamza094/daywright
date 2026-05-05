@@ -17,10 +17,6 @@ class ProjectsTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const string PROJECTS_ROUTE = '/api/v1/admin/projects';
-
-    private const string BULK_DELETE_ROUTE = '/api/v1/admin/projects/bulk-delete';
-
     private User $admin;
 
     #[Override]
@@ -41,7 +37,7 @@ class ProjectsTest extends TestCase
         $user = $this->createUser();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::PROJECTS_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('projects.index'))
             ->assertForbidden();
     }
 
@@ -54,7 +50,7 @@ class ProjectsTest extends TestCase
         /** @var Project $project */
         $project = $this->createProject();
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, ['project_ids' => [$project->id]])
+        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [$project->id]])
             ->assertForbidden();
     }
 
@@ -65,7 +61,7 @@ class ProjectsTest extends TestCase
     {
         Project::factory()->count(3)->create();
 
-        $this->getJson(self::PROJECTS_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('projects.index'))
             ->assertOk()
             ->assertJsonStructure([
                 'data',
@@ -77,7 +73,7 @@ class ProjectsTest extends TestCase
     #[Test]
     public function returns_empty_message_when_no_projects(): void
     {
-        $this->getJson(self::PROJECTS_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('projects.index'))
             ->assertOk()
             ->assertJsonPath('meta.total', 0)
             ->assertJsonPath('meta.applied_filters', []);
@@ -217,7 +213,7 @@ class ProjectsTest extends TestCase
         $projects->each(fn (Project $project): bool => $project->delete());
         $ids = $projects->pluck('id')->toArray();
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, ['project_ids' => $ids])
+        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => $ids])
             ->assertOk()
             ->assertJsonPath('message', 'Projects deleted Successfully');
 
@@ -233,7 +229,7 @@ class ProjectsTest extends TestCase
         $project = $this->createProject();
         $project->delete();
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, ['project_ids' => [$project->id]])
+        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [$project->id]])
             ->assertOk();
 
         $this->assertDatabaseMissing('projects', ['id' => $project->id]);
@@ -245,7 +241,7 @@ class ProjectsTest extends TestCase
         /** @var Project $activeProject */
         $activeProject = $this->createProject();
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, ['project_ids' => [$activeProject->id]])
+        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [$activeProject->id]])
             ->assertOk()
             ->assertJsonPath('message', 'Projects deleted Successfully');
 
@@ -255,18 +251,18 @@ class ProjectsTest extends TestCase
     #[Test]
     public function bulk_delete_validates_project_ids(): void
     {
-        $this->deleteJson(self::BULK_DELETE_ROUTE, [])
+        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), [])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('project_ids');
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, ['project_ids' => [99999]])
+        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [99999]])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('project_ids.0');
 
         /** @var Project $project */
         $project = $this->createProject();
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, [
+        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), [
             'project_ids' => [$project->id, $project->id],
         ])
             ->assertUnprocessable()
@@ -292,7 +288,7 @@ class ProjectsTest extends TestCase
             $query['filter'] = $filters;
         }
 
-        return self::PROJECTS_ROUTE.($query === [] ? '' : '?'.http_build_query($query));
+        return $this->apiV1AdminRoute('projects.index', query: $query);
     }
 
     /**

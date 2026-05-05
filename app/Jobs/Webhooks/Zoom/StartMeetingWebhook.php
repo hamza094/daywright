@@ -93,7 +93,6 @@ class StartMeetingWebhook implements ShouldQueue
         $notificationData = [
             'project_name' => $project->name,
             'project_slug' => $project->slug,
-            'project_path' => $project->path(),
             'meeting_topic' => $meeting->topic,
             'meeting_timezone' => $meeting->timezone,
             'meeting_join_url' => $meeting->join_url,

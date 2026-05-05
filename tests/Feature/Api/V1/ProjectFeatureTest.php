@@ -68,7 +68,7 @@ class ProjectFeatureTest extends TestCase
     /** @test */
     public function tasks_validated_on_creating_a_new_project(): void
     {
-        $response = $this->postJson('/api/v1/projects', [
+        $response = $this->postJson($this->apiV1Route('projects.store'), [
             'name' => 'project name',
             'about' => 'about this project',
             'stage_id' => 1,
@@ -96,7 +96,7 @@ class ProjectFeatureTest extends TestCase
             ['title' => 'Task 4'], // exceeds the limit
         ];
 
-        $response = $this->postJson('api/v1/projects', $attributes);
+        $response = $this->postJson($this->apiV1Route('projects.store'), $attributes);
 
         $response->assertJsonValidationErrors('tasks');
     }
@@ -104,12 +104,12 @@ class ProjectFeatureTest extends TestCase
     /** @test */
     public function auth_user_can_get_project_resource(): void
     {
-        $response = $this->getJson($this->project->path())
+        $response = $this->getJson($this->apiV1Route('projects.show', ['project' => $this->project]))
             ->assertOk();
 
         $response->assertJsonPath('data.id', $this->project->id);
         $response->assertJsonPath('data.name', $this->project->name);
-        $response->assertJsonPath('data.links.self', $this->project->path());
+        $response->assertJsonPath('data.links.self', $this->apiV1Route('projects.show', ['project' => $this->project]));
         $response->assertJsonPath('data.created_at', $this->project->created_at?->setTimezone('UTC')->toIso8601String());
     }
 
@@ -124,7 +124,7 @@ class ProjectFeatureTest extends TestCase
         $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
         $this->project->members()->attach(User::factory()->create(), ['active' => false]);
 
-        $response = $this->getJson($this->project->path())
+        $response = $this->getJson($this->apiV1Route('projects.show', ['project' => $this->project]))
             ->assertOk()
             ->assertJsonCount(2, 'data.limits');
 
@@ -145,7 +145,7 @@ class ProjectFeatureTest extends TestCase
 
         Sanctum::actingAs($member);
 
-        $this->getJson($this->project->path())
+        $this->getJson($this->apiV1Route('projects.show', ['project' => $this->project]))
             ->assertOk()
             ->assertJsonMissingPath('data.limits');
     }
@@ -161,7 +161,7 @@ class ProjectFeatureTest extends TestCase
         ]);
         $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
 
-        $response = $this->patchJson($this->project->path(),
+        $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]),
             ['name' => $name, 'notes' => $notes]);
 
         $this->assertDatabaseHas('projects', ['id' => $this->project->id,
@@ -173,7 +173,7 @@ class ProjectFeatureTest extends TestCase
             ->assertStatus(200)
             ->assertJsonPath('data.name', $this->project->name)
             ->assertJsonPath('data.slug', $this->project->slug)
-            ->assertJsonPath('data.links.self', $this->project->path())
+            ->assertJsonPath('data.links.self', $this->apiV1Route('projects.show', ['project' => $this->project]))
             ->assertJsonCount(2, 'data.limits');
 
         $this->assertProjectLimitItem($response, 'data.limits', 'active_tasks_per_project', 'Active tasks', 'project', 2, 10);
@@ -189,7 +189,7 @@ class ProjectFeatureTest extends TestCase
 
         Sanctum::actingAs($member);
 
-        $this->patchJson($this->project->path(), [
+        $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]), [
             'name' => 'Updated By Member',
         ])
             ->assertOk()
@@ -200,7 +200,7 @@ class ProjectFeatureTest extends TestCase
     /** @test */
     public function updated_project_requires_a_name(): void
     {
-        $response = $this->patchJson($this->project->path(),
+        $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]),
             ['name' => null])->assertUnprocessable();
 
         $response->assertJsonMissingValidationErrors('project.name');
@@ -209,7 +209,7 @@ class ProjectFeatureTest extends TestCase
     /** @test */
     public function it_does_not_update_with_invalid_fields(): void
     {
-        $response = $this->patchJson($this->project->path(),
+        $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]),
             ['invalid_field' => 'Some value'])
             ->assertStatus(400);
 
@@ -221,7 +221,7 @@ class ProjectFeatureTest extends TestCase
     {
         $project = Project::factory()->create(['name' => 'Xepra Tech']);
 
-        $response = $this->patchJson($project->path(),
+        $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $project]),
             [
                 'name' => $project->name,
             ])->assertStatus(422);
@@ -236,7 +236,7 @@ class ProjectFeatureTest extends TestCase
     {
         $this->assertCount(1, $this->user->projects()->get());
 
-        $this->deleteJson($this->project->path());
+        $this->deleteJson($this->apiV1Route('projects.destroy', ['project' => $this->project]));
 
         $this->assertCount(0, $this->user->projects()->get());
 
@@ -248,7 +248,7 @@ class ProjectFeatureTest extends TestCase
     {
         $this->project->delete();
 
-        $this->getJson("/api/v1/projects/{$this->project->slug}/activities")
+        $this->getJson($this->apiV1Route('projects.activities', ['project' => $this->project]))
             ->assertForbidden()
             ->assertJson([
                 'message' => 'Sorry, project is not active. Restore it to perform this activity.',
@@ -260,7 +260,7 @@ class ProjectFeatureTest extends TestCase
     {
         $this->project->touch('deleted_at');
 
-        $this->patchJson($this->project->path().'/restore')->assertOk();
+        $this->patchJson($this->apiV1Route('projects.restore', ['project' => $this->project]))->assertOk();
 
         $this->project->refresh();
 
@@ -272,7 +272,7 @@ class ProjectFeatureTest extends TestCase
     /** @test */
     public function active_project_cannot_be_deleted_permanently(): void
     {
-        $response = $this->deleteJson($this->project->path().'/force');
+        $response = $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]));
 
         $response->assertForbidden()->assertJson([
             'message' => 'Only abandoned projects can be deleted permanently.',
@@ -288,7 +288,7 @@ class ProjectFeatureTest extends TestCase
     {
         $this->project->delete();
 
-        $this->deleteJson($this->project->path().'/force')->assertOk();
+        $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))->assertOk();
 
         $this->assertModelMissing($this->project);
     }
@@ -312,7 +312,7 @@ class ProjectFeatureTest extends TestCase
 
         $this->project->delete();
 
-        $this->deleteJson($this->project->path().'/force')->assertOk();
+        $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))->assertOk();
 
         Queue::assertPushed(
             CancelZoomMeetingsJob::class,
@@ -335,7 +335,7 @@ class ProjectFeatureTest extends TestCase
 
         $this->project->delete();
 
-        $this->deleteJson($this->project->path().'/force')->assertOk();
+        $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))->assertOk();
 
         Queue::assertNotPushed(CancelZoomMeetingsJob::class);
     }

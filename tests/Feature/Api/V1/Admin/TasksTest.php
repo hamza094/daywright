@@ -17,10 +17,6 @@ class TasksTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const string TASKS_ROUTE = '/api/v1/admin/tasks';
-
-    private const string BULK_DELETE_ROUTE = '/api/v1/admin/tasks/bulk-delete';
-
     private User $admin;
 
     #[Override]
@@ -42,7 +38,7 @@ class TasksTest extends TestCase
         $user = $this->createUser();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::TASKS_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('tasks.index'))
             ->assertForbidden();
     }
 
@@ -55,7 +51,7 @@ class TasksTest extends TestCase
         /** @var Task $task */
         $task = $this->createTask();
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, ['task_ids' => [$task->id]])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => [$task->id]])
             ->assertForbidden();
     }
 
@@ -66,7 +62,7 @@ class TasksTest extends TestCase
     {
         Task::factory()->count(3)->create();
 
-        $this->getJson(self::TASKS_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('tasks.index'))
             ->assertOk()
             ->assertJsonStructure([
                 'data',
@@ -78,7 +74,7 @@ class TasksTest extends TestCase
     #[Test]
     public function returns_paginated_shape_when_no_tasks(): void
     {
-        $response = $this->getJson(self::TASKS_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('tasks.index'))
             ->assertOk()
             ->assertJsonStructure([
                 'data',
@@ -125,7 +121,7 @@ class TasksTest extends TestCase
     {
         Task::factory()->create();
 
-        $response = $this->getJson(self::TASKS_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('tasks.index'))
             ->assertOk();
 
         $firstTask = $response->json('data.0');
@@ -172,7 +168,7 @@ class TasksTest extends TestCase
             'subject_id' => $ids[0],
         ]);
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, ['task_ids' => $ids])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => $ids])
             ->assertOk()
             ->assertJsonPath('message', 'Tasks deleted Successfully');
 
@@ -199,7 +195,7 @@ class TasksTest extends TestCase
             'user_id' => $assignee->id,
         ]);
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, ['task_ids' => [$task->id]])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => [$task->id]])
             ->assertOk();
 
         $this->assertDatabaseMissing('task_user', [
@@ -211,18 +207,18 @@ class TasksTest extends TestCase
     #[Test]
     public function bulk_delete_validates_task_ids(): void
     {
-        $this->deleteJson(self::BULK_DELETE_ROUTE, [])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), [])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('task_ids');
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, ['task_ids' => [99999]])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => [99999]])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('task_ids.0');
 
         /** @var Task $task */
         $task = $this->createTask();
 
-        $this->deleteJson(self::BULK_DELETE_ROUTE, [
+        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), [
             'task_ids' => [$task->id, $task->id],
         ])
             ->assertUnprocessable()
@@ -248,7 +244,7 @@ class TasksTest extends TestCase
             $query['filter'] = $filters;
         }
 
-        return self::TASKS_ROUTE.($query === [] ? '' : '?'.http_build_query($query));
+        return $this->apiV1AdminRoute('tasks.index', query: $query);
     }
 
     /**

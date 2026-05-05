@@ -67,7 +67,7 @@ final readonly class SendProjectInvitationAction
 
         $user->notify(new ProjectInvitation(
             $project->name,
-            $project->path(),
+            $project->slug,
             $project->user->getNotifierData()
         ));
     }

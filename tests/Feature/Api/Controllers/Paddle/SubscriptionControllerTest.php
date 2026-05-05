@@ -38,7 +38,7 @@ class SubscriptionControllerTest extends TestCase
     public function it_creates_a_paylink_for_subscription(): void
     {
         $plan = 'monthly';
-        $response = $this->postJson('/api/v1/subscriptions', [
+        $response = $this->postJson($this->apiV1Route('subscriptions.store'), [
             'plan' => $plan,
         ]);
 
@@ -53,7 +53,7 @@ class SubscriptionControllerTest extends TestCase
 
         $plan = 'yearly';
 
-        $response = $this->patchJson('/api/v1/subscriptions', [
+        $response = $this->patchJson($this->apiV1Route('subscription.swap'), [
             'plan' => $plan,
         ]);
 
@@ -68,7 +68,7 @@ class SubscriptionControllerTest extends TestCase
         $this->withoutMiddleware(CheckSubscription::class);
 
         $plan = 'yearly';
-        $response = $this->deleteJson('/api/v1/subscriptions', [
+        $response = $this->deleteJson($this->apiV1Route('subscription.cancel'), [
             'plan' => $plan,
         ]);
 
@@ -81,7 +81,7 @@ class SubscriptionControllerTest extends TestCase
     public function it_denies_access_for_non_subscribed_users(): void
     {
         $plan = 'monthly';
-        $response = $this->patchJson('/api/v1/subscriptions', [
+        $response = $this->patchJson($this->apiV1Route('subscription.swap'), [
             'plan' => $plan,
         ]);
 
@@ -97,7 +97,7 @@ class SubscriptionControllerTest extends TestCase
     public function it_fails_validation_for_invalid_plan(): void
     {
         $invalidPlan = 'weekly';
-        $response = $this->postJson('/api/v1/subscriptions', [
+        $response = $this->postJson($this->apiV1Route('subscriptions.store'), [
             'plan' => $invalidPlan,
         ]);
 

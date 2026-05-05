@@ -62,7 +62,7 @@ class ProjectInsightsApiTest extends TestCase
 
         // Act: Make API request
         $response = $this
-            ->getJson("/api/v1/projects/{$this->project->slug}/insights");
+            ->getJson($this->apiV1Route('projects.insights', ['project' => $this->project]));
 
         // Assert: Basic response structure
         $response->assertOk()
@@ -96,7 +96,9 @@ class ProjectInsightsApiTest extends TestCase
 
         // Act: Request only health and task-health sections
         $response = $this
-            ->getJson("/api/v1/projects/{$this->project->slug}/insights?sections[]=health&sections[]=task-health");
+            ->getJson($this->apiV1Route('projects.insights', ['project' => $this->project], [
+                'sections' => ['health', 'task-health'],
+            ]));
 
         // Assert
         $response->assertOk()
@@ -129,7 +131,9 @@ class ProjectInsightsApiTest extends TestCase
 
         // Act: Request health section via query parameter instead of URL path
         $response = $this
-            ->getJson("/api/v1/projects/{$this->project->slug}/insights?sections[]=health");
+            ->getJson($this->apiV1Route('projects.insights', ['project' => $this->project], [
+                'sections' => ['health'],
+            ]));
 
         // Assert
         $response->assertOk()
@@ -160,9 +164,9 @@ class ProjectInsightsApiTest extends TestCase
         Sanctum::actingAs($this->user);
 
         // sections with whitespace, duplicates, empty strings
-        $response = $this->getJson(
-            "/api/v1/projects/{$this->project->slug}/insights?sections[]=%20health%20&sections[]=&sections[]=task-health&sections[]=health"
-        );
+        $response = $this->getJson($this->apiV1Route('projects.insights', ['project' => $this->project], [
+            'sections' => [' health ', '', 'task-health', 'health'],
+        ]));
 
         $response->assertOk()
             ->assertJsonStructure([
@@ -189,7 +193,7 @@ class ProjectInsightsApiTest extends TestCase
     public function requires_authentication(): void
     {
         // No actingAs here
-        $this->getJson("/api/v1/projects/{$this->project->slug}/insights")
+        $this->getJson($this->apiV1Route('projects.insights', ['project' => $this->project]))
             ->assertStatus(401);
     }
 
@@ -200,7 +204,9 @@ class ProjectInsightsApiTest extends TestCase
         Sanctum::actingAs($this->user);
 
         $response = $this
-            ->getJson("/api/v1/projects/{$this->project->slug}/insights?sections[]=invalid_section");
+            ->getJson($this->apiV1Route('projects.insights', ['project' => $this->project], [
+                'sections' => ['invalid_section'],
+            ]));
 
         // Assert: Validation error
         $response->assertStatus(422)
@@ -218,7 +224,7 @@ class ProjectInsightsApiTest extends TestCase
 
         // Act
         $response = $this
-            ->getJson("/api/v1/projects/{$emptyProject->slug}/insights");
+            ->getJson($this->apiV1Route('projects.insights', ['project' => $emptyProject]));
 
         // Assert: Should still return valid structure
         $response->assertOk()

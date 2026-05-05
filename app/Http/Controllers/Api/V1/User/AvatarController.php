@@ -24,7 +24,7 @@ class AvatarController extends ApiController
 
         return $this->respondWithData([
             'avatar' => $user->avatar_path,
-            'path' => $user->path(),
+            'path' => route('api.v1.users.show', ['user' => $user], false),
         ]);
     }
 

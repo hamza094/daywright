@@ -32,7 +32,7 @@ class StatusesTest extends TestCase
     #[Test]
     public function can_create_a_status(): void
     {
-        $this->postJson('/api/v1/admin/statuses', [
+        $this->postJson($this->apiV1AdminRoute('statuses.store'), [
             'label' => 'In Progress',
             'color' => '#FF5733',
         ])
@@ -55,7 +55,7 @@ class StatusesTest extends TestCase
             ['label' => 'Status 6', 'color' => '#000006'],
         )->create();
 
-        $this->postJson('/api/v1/admin/statuses', [
+        $this->postJson($this->apiV1AdminRoute('statuses.store'), [
             'label' => 'Overflow',
             'color' => '#FFFFFF',
         ])
@@ -75,7 +75,7 @@ class StatusesTest extends TestCase
             ['label' => 'Status 6', 'color' => '#000006'],
         )->create();
 
-        $this->putJson("/api/v1/admin/statuses/{$statuses->first()->id}", [
+        $this->putJson($this->apiV1AdminRoute('statuses.update', ['status' => $statuses->first()]), [
             'label' => 'Renamed',
             'color' => '#AABBCC',
         ])
@@ -97,7 +97,7 @@ class StatusesTest extends TestCase
             'color' => '#000000',
         ]);
 
-        $this->putJson("/api/v1/admin/statuses/{$status->id}", [
+        $this->putJson($this->apiV1AdminRoute('statuses.update', ['status' => $status]), [
             'color' => '#FF0000',
         ])
             ->assertOk()
@@ -118,7 +118,7 @@ class StatusesTest extends TestCase
             'color' => '#000000',
         ]);
 
-        $this->deleteJson("/api/v1/admin/statuses/{$status->id}")
+        $this->deleteJson($this->apiV1AdminRoute('statuses.destroy', ['status' => $status]))
             ->assertOk()
             ->assertJsonPath('message', 'Status deleted successfully');
 

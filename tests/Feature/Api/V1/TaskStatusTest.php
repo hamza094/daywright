@@ -18,7 +18,7 @@ class TaskStatusTest extends TestCase
     {
         $status = TaskStatus::factory()->create();
 
-        $this->getJson('/api/v1/task-statuses')
+        $this->getJson($this->apiV1Route('task.status'))
             ->assertOk()
             ->assertJsonStructure([
                 'data' => [

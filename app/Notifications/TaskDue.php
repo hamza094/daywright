@@ -27,7 +27,7 @@ class TaskDue extends Notification implements ShouldBroadcast, ShouldQueue
         protected string $notifiedOption,
         protected array $notifierData,
         protected string $projectName,
-        protected string $projectPath
+        protected string $projectSlug
     ) {}
 
     /**
@@ -59,7 +59,7 @@ class TaskDue extends Notification implements ShouldBroadcast, ShouldQueue
         return [
             'message' => $this->notificationMessage(),
             'notifier' => $this->notifierData,
-            'link' => $this->projectPath,
+            'link' => $this->projectPath(),
         ];
     }
 
@@ -77,7 +77,12 @@ class TaskDue extends Notification implements ShouldBroadcast, ShouldQueue
 
     private function taskUrl(): string
     {
-        return url('/projects/'.$this->projectPath);
+        return NotificationLink::project(projectSlug: $this->projectSlug, absolute: true);
+    }
+
+    private function projectPath(): string
+    {
+        return NotificationLink::project(projectSlug: $this->projectSlug, absolute: false);
     }
 
     private function notificationMessage(): string

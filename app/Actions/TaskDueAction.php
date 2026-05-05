@@ -44,7 +44,7 @@ class TaskDueAction
                         $task->notified,
                         $task->owner->getNotifierData(),
                         $project->name,
-                        $project->path()
+                        $project->slug
                     ));
             }
         });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Zoom;
 
+use App\Notifications\NotificationLink;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -42,7 +43,7 @@ class MeetingEnded extends Notification implements ShouldBroadcast
             ->subject('Meeting Ended: '.$this->data['meeting_topic'])
             ->markdown('mail.meeting.ended', [
                 'projectName' => $this->data['project_name'],
-                'projectLink' => $this->data['project_slug'],
+                'projectLink' => $this->projectUrl(),
                 'meetingTopic' => $this->data['meeting_topic'],
                 'userName' => $this->data['notifier']['name'],
                 'startTime' => $this->formattedStartTime(),
@@ -56,7 +57,7 @@ class MeetingEnded extends Notification implements ShouldBroadcast
         return new BroadcastMessage([
             'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' ended at '.$this->formattedEndTime().' '.$this->data['meeting_timezone'],
             'notifier' => $this->data['notifier'],
-            'link' => $this->data['project_path'],
+            'link' => $this->projectPath(),
         ]);
     }
 
@@ -70,8 +71,18 @@ class MeetingEnded extends Notification implements ShouldBroadcast
         return [
             'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' ended at '.$this->formattedEndTime().' '.$this->data['meeting_timezone'],
             'notifier' => $this->data['notifier'],
-            'link' => $this->data['project_path'],
+            'link' => $this->projectPath(),
         ];
+    }
+
+    private function projectPath(): string
+    {
+        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: false);
+    }
+
+    private function projectUrl(): string
+    {
+        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: true);
     }
 
     private function formattedStartTime(): string

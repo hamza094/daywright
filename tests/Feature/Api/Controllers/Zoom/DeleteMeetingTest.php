@@ -24,7 +24,7 @@ class DeleteMeetingTest extends TestCase
             ->for($this->project)
             ->create(['user_id' => $this->user->id]);
 
-        $this->deleteJson('/api/v1/projects/'.$this->project->slug.'/meetings/'.$meeting->id);
+        $this->deleteJson($this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]));
 
         $this->assertModelMissing($meeting);
     }
@@ -42,7 +42,7 @@ class DeleteMeetingTest extends TestCase
             new ZoomException('Test error message')
         );
 
-        $response = $this->deleteJson('/api/v1/projects/'.$this->project->slug.'/meetings/'.$meeting->id);
+        $response = $this->deleteJson($this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]));
 
         $response->assertStatus(400);
 
