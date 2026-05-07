@@ -38,7 +38,7 @@ class SubscriptionControllerTest extends TestCase
     public function it_creates_a_paylink_for_subscription(): void
     {
         $plan = 'monthly';
-        $response = $this->postJson($this->apiV1Route('subscriptions.store'), [
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('subscriptions.store'), [
             'plan' => $plan,
         ]);
 
@@ -53,7 +53,7 @@ class SubscriptionControllerTest extends TestCase
 
         $plan = 'yearly';
 
-        $response = $this->patchJson($this->apiV1Route('subscription.swap'), [
+        $response = $this->withHeaders($this->idempotencyHeaders())->patchJson($this->apiV1Route('subscription.swap'), [
             'plan' => $plan,
         ]);
 
@@ -81,7 +81,7 @@ class SubscriptionControllerTest extends TestCase
     public function it_denies_access_for_non_subscribed_users(): void
     {
         $plan = 'monthly';
-        $response = $this->patchJson($this->apiV1Route('subscription.swap'), [
+        $response = $this->withHeaders($this->idempotencyHeaders())->patchJson($this->apiV1Route('subscription.swap'), [
             'plan' => $plan,
         ]);
 
@@ -97,7 +97,7 @@ class SubscriptionControllerTest extends TestCase
     public function it_fails_validation_for_invalid_plan(): void
     {
         $invalidPlan = 'weekly';
-        $response = $this->postJson($this->apiV1Route('subscriptions.store'), [
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('subscriptions.store'), [
             'plan' => $invalidPlan,
         ]);
 

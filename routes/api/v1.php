@@ -1,8 +1,11 @@
 <?php
 
 declare(strict_types=1);
-
-use App\Http\Controllers\Api\OAuth\ZoomAuthController;
+/*
+|--------------------------------------------------------------------------
+| API V1 Routes
+|--------------------------------------------------------------------------
+*/
 use App\Http\Controllers\Api\V1\DashboardActivitiesController;
 use App\Http\Controllers\Api\V1\DashboardChartDataController;
 use App\Http\Controllers\Api\V1\DashboardKpisController;
@@ -43,6 +46,8 @@ use App\Http\Controllers\Api\V1\Zoom\ZoomTokenController;
 use App\Http\Middleware\VerifyZoomWebhook;
 use Illuminate\Support\Facades\Route;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
+use WendellAdriel\Idempotency\Enums\IdempotencyScope;
+use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
 /*
 |--------------------------------------------------------------------------
@@ -51,7 +56,7 @@ use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 
 // Zoom Webhooks
 Route::controller(ZoomWebhookController::class)
-    ->middleware(VerifyZoomWebhook::class)
+    ->middleware([VerifyZoomWebhook::class, Idempotent::using(scope: IdempotencyScope::Global)])
     ->prefix('webhooks/zoom/meetings')
     ->as('webhooks.meetings.')
     ->group(function (): void {
@@ -69,6 +74,8 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
     Route::get('/users/me', [UserController::class, 'me'])->name('user.me');
 
+    $userScopedIdempotent = Idempotent::using(scope: IdempotencyScope::User);
+
     Route::get('/users/me/zoom-token', [ZoomTokenController::class, 'getUserToken'])->name('user.zoom-token');
 
     Route::get('/users/me/zoom-jwt-token', [ZoomTokenController::class, 'getJwtToken'])->name('user.zoom-jwt-token');
@@ -78,7 +85,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
         ->name('api-tokens.')
         ->group(function (): void {
             Route::get('/', 'index')->name('index');
-            Route::post('/', 'store')->name('store');
+            Route::post('/', 'store')->middleware(Idempotent::using(scope: IdempotencyScope::User))->name('store');
             Route::delete('/{token}', 'destroy')->name('destroy');
         });
 
@@ -127,7 +134,9 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                     'subscription',
                     EnsureFeaturesAreActive::using('project-messaging'),
                 ])->group(function (): void {
-                    Route::post('message', [ProjectMessageController::class, 'store'])->name('projects.messages.store');
+                    Route::post('message', [ProjectMessageController::class, 'store'])
+                        ->middleware(Idempotent::using(scope: IdempotencyScope::User))
+                        ->name('projects.messages.store');
                     Route::get('messages/scheduled', ScheduledProjectMessagesController::class)->name('projects.messages.scheduled');
                     Route::delete('messages/{message}', [ProjectMessageController::class, 'destroy'])->name('projects.messages.destroy');
                 });
@@ -147,9 +156,11 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 ->group(function (): void {
                     Route::middleware(['can:manage,task'])->group(function (): void {
                         Route::patch('assign', AssignTaskMembersController::class)
+                            ->middleware(Idempotent::using(scope: IdempotencyScope::User))
                             ->name('assign');
 
                         Route::patch('unassign', UnassignTaskMemberController::class)
+                            ->middleware(Idempotent::using(scope: IdempotencyScope::User))
                             ->name('unassign');
                     });
 
@@ -168,14 +179,16 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
             Route::post('invitations', [ProjectInvitationController::class, 'store'])
                 ->name('send.invitation')
-                ->middleware('throttle:invite-actions')
+                ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'throttle:invite-actions'])
                 ->can('manage', 'project');
 
             Route::post('invitations/accept', AcceptProjectInvitationController::class)
+                ->middleware(Idempotent::using(scope: IdempotencyScope::User))
                 ->name('accept.invitation')
                 ->can('canAcceptInvitation', 'project');
 
             Route::post('invitations/reject', RejectProjectInvitationController::class)
+                ->middleware(Idempotent::using(scope: IdempotencyScope::User))
                 ->name('reject.invitation')
                 ->can('canAcceptInvitation', 'project');
 
@@ -192,7 +205,8 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 ->can('manage', 'project')
                 ->name('project.pending.invitation');
 
-            Route::apiResource('/meetings', ZoomMeetingController::class);
+            Route::apiResource('/meetings', ZoomMeetingController::class)
+                ->middlewareFor(['store', 'update'], Idempotent::using(scope: IdempotencyScope::User));
 
         });
     });
@@ -222,15 +236,17 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
         });
 
     Route::post('subscriptions', [SubscriptionController::class, 'subscribe'])
+        ->middleware(Idempotent::using(scope: IdempotencyScope::User))
         ->name('subscriptions.store');
 
-    Route::middleware(['subscription'])->group(function (): void {
+    Route::middleware(['subscription', Idempotent::using(scope: IdempotencyScope::User)])->group(function (): void {
         Route::patch('subscriptions', [SubscriptionController::class, 'swap'])
             ->name('subscription.swap');
-
-        Route::delete('subscriptions', [SubscriptionController::class, 'cancel'])
-            ->name('subscription.cancel');
     });
+
+    Route::delete('subscriptions', [SubscriptionController::class, 'cancel'])
+        ->middleware('subscription')
+        ->name('subscription.cancel');
 
     Route::controller(SubscriptionController::class)
         ->prefix('user')

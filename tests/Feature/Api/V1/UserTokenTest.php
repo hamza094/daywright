@@ -59,7 +59,7 @@ class UserTokenTest extends TestCase
             ['*'],
         );
 
-        $response = $this->postJson($this->apiV1Route('api-tokens.store'), [
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'My API Token',
         ]);
         $response->assertCreated();
@@ -89,7 +89,7 @@ class UserTokenTest extends TestCase
         $expiresAt = '2026-05-20T15:30:00+02:00';
         $expectedExpiration = CarbonImmutable::parse($expiresAt)->setTimezone('UTC')->toIso8601String();
 
-        $response = $this->postJson($this->apiV1Route('api-tokens.store'), [
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Expiring API Token',
             'expires_at' => $expiresAt,
         ]);
@@ -113,7 +113,7 @@ class UserTokenTest extends TestCase
             ['*'],
         );
 
-        $this->postJson($this->apiV1Route('api-tokens.store'), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Legacy Token',
             'expires_at' => '2026-05-20 15:30:00',
         ])

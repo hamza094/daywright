@@ -148,6 +148,7 @@
 import { mapMutations, mapActions } from 'vuex';
 import SubscriptionCheck from '../../SubscriptionChecker.vue';
 import { debounce } from 'lodash';
+import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 
 export default {
   components: { SubscriptionCheck },
@@ -203,9 +204,15 @@ export default {
   },
 
   created() {
+    this.inviteUserRequest = createIdempotentRequest();
+
     if (this.ownerLogin) {
       this.loadPendingRequests();
     }
+  },
+
+  beforeDestroy() {
+    this.inviteUserRequest?.reset();
   },
 
   methods: {
@@ -264,14 +271,12 @@ export default {
     },
 
     inviteUser(userEmail) {
-      axios
-        .post(
-          '/projects/' + this.slug + '/invitations',
-          {
-            email: userEmail,
-          },
-          { useProgress: true },
-        )
+      const payload = {
+        email: userEmail,
+      };
+
+      this.inviteUserRequest
+        .post('/projects/' + this.slug + '/invitations', payload, { useProgress: true })
         .then((response) => {
           this.query = '';
           this.results = [];

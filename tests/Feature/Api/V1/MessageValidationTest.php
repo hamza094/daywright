@@ -33,7 +33,7 @@ class MessageValidationTest extends TestCase
     {
         $users = json_encode(User::factory(2)->create());
 
-        $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), ['message' => null, 'users' => $users])
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), ['message' => null, 'users' => $users])
             ->assertUnprocessable()
             ->assertJsonMissingValidationErrors('data.message');
     }
@@ -43,7 +43,7 @@ class MessageValidationTest extends TestCase
     {
         $users = json_encode(User::factory(2)->create());
 
-        $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project),
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project),
             ['message' => 'this is my post', 'users' => $users, 'mail' => null, 'sms' => null])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('option');
@@ -54,7 +54,7 @@ class MessageValidationTest extends TestCase
     {
         $users = json_encode(User::factory(2)->create());
 
-        $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is my post',
             'users' => $users,
             'sms' => true,
@@ -68,7 +68,7 @@ class MessageValidationTest extends TestCase
     {
         $users = json_encode(User::factory(2)->create());
 
-        $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is my post',
             'users' => $users,
             'sms' => true,

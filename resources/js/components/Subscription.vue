@@ -203,6 +203,7 @@
 import { mapState, mapMutations, mapGetters } from 'vuex';
 import alertNotice from '../mixins/alertNotice';
 import usageLimitHelpers from '../mixins/usageLimitHelpers';
+import { createIdempotentRequest } from '../services/IdempotencyRequestService';
 import { toastInfo, toastSuccess } from '../utils/toast';
 import { formatInUserTimezone } from '../utils/dateTime';
 
@@ -305,7 +306,14 @@ export default {
 
   // Lifecycle hook: fetch subscription info on mount
   mounted() {
+    this.subscribeRequest = createIdempotentRequest();
+    this.swapSubscriptionRequest = createIdempotentRequest();
     this.fetchSubscription();
+  },
+
+  beforeDestroy() {
+    this.subscribeRequest?.reset();
+    this.swapSubscriptionRequest?.reset();
   },
 
   // Methods
@@ -342,7 +350,8 @@ export default {
       }
       this.isOpeningIframe = true;
       try {
-        const response = await axios.post('/subscriptions', { plan });
+        const payload = { plan };
+        const response = await this.subscribeRequest.post('/subscriptions', payload);
         this.iframeSrc = response.data.paylink;
         this.isIframeOpen = true;
       } catch (error) {
@@ -358,7 +367,8 @@ export default {
       if (result.value) {
         this.$Progress.start();
         try {
-          const response = await axios.patch('/subscriptions', { plan });
+          const payload = { plan };
+          const response = await this.swapSubscriptionRequest.patch('/subscriptions', payload);
           this.setSubscription(response.data.subscription);
           toastSuccess(response.data.message);
           // Wait 5 seconds, then refresh subscription data once

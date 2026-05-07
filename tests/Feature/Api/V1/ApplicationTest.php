@@ -30,7 +30,7 @@ class ApplicationTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))->assertOk();
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))->assertOk();
 
         $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project),
             ['title' => 'My Project Task Updated'])->assertCreated();

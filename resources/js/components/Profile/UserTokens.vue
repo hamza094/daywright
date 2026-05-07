@@ -2,7 +2,7 @@
   <div class="card mt-4">
     <div class="card-header d-flex justify-content-between align-items-center">
       <span><i class="fa-solid fa-key"></i> API Tokens</span>
-      <button class="btn btn-sm btn-success" @click="showCreate = !showCreate">
+      <button class="btn btn-sm btn-success" @click="toggleCreateForm">
         <i class="fa-solid fa-plus"></i> New Token
       </button>
     </div>
@@ -32,7 +32,7 @@
             </div>
             <div class="form-group col-md-4 d-flex align-items-end">
               <button type="submit" class="btn btn-primary mr-2">Create</button>
-              <button type="button" class="btn btn-link text-danger" @click="showCreate = false">Cancel</button>
+              <button type="button" class="btn btn-link text-danger" @click="resetCreateTokenForm">Cancel</button>
             </div>
           </div>
         </form>
@@ -113,6 +113,8 @@
 </template>
 
 <script>
+import { createIdempotentRequest } from '../../services/IdempotencyRequestService';
+
 export default {
   name: 'UserTokens',
   data() {
@@ -142,8 +144,14 @@ export default {
     },
   },
   mounted() {
+    this.createTokenRequest = createIdempotentRequest();
     this.loadTokens();
   },
+
+  beforeDestroy() {
+    this.createTokenRequest?.reset();
+  },
+
   methods: {
     toggleShowToken(tokenId) {
       this.$set(this.showTokenMap, tokenId, !this.showTokenMap[tokenId]);
@@ -168,6 +176,19 @@ export default {
           this.loading = false;
         });
     },
+    toggleCreateForm() {
+      this.showCreate = !this.showCreate;
+
+      if (!this.showCreate) {
+        this.resetCreateTokenForm();
+      }
+    },
+    resetCreateTokenForm() {
+      this.showCreate = false;
+      this.form.name = '';
+      this.form.expires_in = null;
+      this.createTokenRequest.reset();
+    },
     createToken() {
       if (!this.form.name) return;
       this.$Progress.start();
@@ -177,15 +198,14 @@ export default {
         expires.setDate(expires.getDate() + Number(this.form.expires_in));
         payload.expires_at = expires.toISOString();
       }
-      axios
+      this.createTokenRequest
         .post('/api-tokens', payload)
         .then((res) => {
           this.$vToastify.success(res.data.message || 'Token created.');
           this.newToken = res.data.token;
           this.newTokenId = res.data.token_resource.id;
           this.showTokenMap = { [this.newTokenId]: false };
-          this.form.name = '';
-          this.form.expires_in = null;
+          this.resetCreateTokenForm();
           this.loadTokens();
         })
         .catch((err) => {

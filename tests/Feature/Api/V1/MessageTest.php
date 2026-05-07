@@ -32,7 +32,7 @@ class MessageTest extends TestCase
     /** @test */
     public function operation_on_send_message(): void
     {
-        $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is project message',
             'users' => json_encode([$this->user->id]),
             'subject' => 'this is message subject',
@@ -50,7 +50,7 @@ class MessageTest extends TestCase
     {
         $deliveredAt = Carbon::create(2026, 5, 1, 12, 30, 0, 'Asia/Karachi')->toIso8601String();
 
-        $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is project message',
             'users' => json_encode([$this->user->id]),
             'sms' => true,
@@ -71,7 +71,7 @@ class MessageTest extends TestCase
     /** @test */
     public function message_option_must_be_selected(): void
     {
-        $response = $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is project message',
             'users' => json_encode(['71b88a29', '42892']),
         ]);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Str;
 use Override;
 use Saloon\Config;
 
@@ -76,6 +77,16 @@ abstract class TestCase extends BaseTestCase
     protected function apiRoute(string $version, string $name, array $parameters = [], array $query = []): string
     {
         return $this->routeWithQuery("api.{$version}.{$name}", $parameters, $query);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function idempotencyHeaders(?string $key = null): array
+    {
+        return [
+            'Idempotency-Key' => $key ?? (string) Str::uuid(),
+        ];
     }
 
     /**

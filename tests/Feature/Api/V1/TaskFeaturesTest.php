@@ -208,7 +208,7 @@ class TaskFeaturesTest extends TestCase
 
     protected function assignMembersToTask(Task $task, array $members)
     {
-        return $this->patchJson(route('api.v1.task.assign', [
+        return $this->withHeaders($this->idempotencyHeaders())->patchJson(route('api.v1.task.assign', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), ['members' => $members]);
@@ -216,7 +216,7 @@ class TaskFeaturesTest extends TestCase
 
     protected function unassignMemberFromTask(Task $task, int $memberId)
     {
-        return $this->patchJson(route('api.v1.task.unassign', [
+        return $this->withHeaders($this->idempotencyHeaders())->patchJson(route('api.v1.task.unassign', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), ['member' => $memberId]);

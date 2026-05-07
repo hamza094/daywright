@@ -162,6 +162,7 @@ import { mapMutations, mapActions, mapState } from 'vuex';
 import TopPanel from './Modal/TopArea.vue';
 import TaskDescription from './Modal/TaskDescription.vue';
 import TaskMembers from './Modal/TaskMembers.vue';
+import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 import { modalClose } from '../../../mixins/modalClose';
 import { getDisplayTimezone } from '../../../utils/dateTime';
 
@@ -209,6 +210,8 @@ export default {
     },
   },
   created() {
+    this.unassignMemberRequest = createIdempotentRequest();
+
     window.addEventListener('beforeunload', this.handleBeforeUnload);
 
     this.$bus.on('close-members-popup', () => {
@@ -217,6 +220,7 @@ export default {
   },
 
   beforeDestroy() {
+    this.unassignMemberRequest?.reset();
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
   },
 
@@ -269,14 +273,8 @@ export default {
       this.setErrors([]);
     },
     unassignMember(taskId, memberId) {
-      axios
-        .patch(
-          url(this.slug, taskId) + '/unassign',
-          {
-            member: memberId,
-          },
-          { useProgress: true },
-        )
+      this.unassignMemberRequest
+        .patch(url(this.slug, taskId) + '/unassign', { member: memberId }, { useProgress: true })
         .then((response) => {
           this.unassignTaskMember(response.data.member.id);
           this.$vToastify.success(response.data.message);

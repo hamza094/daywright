@@ -333,7 +333,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function inviteMember(string $email): TestResponse
     {
-        return $this->postJson(route('api.v1.send.invitation', $this->project), ['email' => $email]);
+        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.send.invitation', $this->project), ['email' => $email]);
     }
 
     /**
@@ -341,7 +341,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createMeeting(): TestResponse
     {
-        return $this->postJson(route('api.v1.meetings.store', $this->project), $this->validMeetingPayload());
+        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', $this->project), $this->validMeetingPayload());
     }
 
     /**
@@ -349,7 +349,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createApiToken(string $name): TestResponse
     {
-        return $this->postJson(route('api.v1.api-tokens.store'), ['name' => $name]);
+        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.api-tokens.store'), ['name' => $name]);
     }
 
     private function createActiveTasks(int $count): void

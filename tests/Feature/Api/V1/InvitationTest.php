@@ -20,7 +20,7 @@ class InvitationTest extends TestCase
         /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
-        $this->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
             'email' => $invitedUser->email,
         ])->assertCreated()
             ->assertJsonPath('data.id', $this->project->id)
@@ -37,14 +37,14 @@ class InvitationTest extends TestCase
         $invitedUser = User::factory()->create();
         $this->project->invite($invitedUser);
 
-        $this->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
             'email' => $invitedUser->email,
         ])
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Validation Error')
             ->assertJsonPath('errors.invitation.0', 'Project invitation already sent to a user.');
 
-        $this->postJson($this->apiV1ProjectRoute('send.invitation', $this->project),
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project),
             ['email' => $this->project->user->email])
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Validation Error')
@@ -56,7 +56,7 @@ class InvitationTest extends TestCase
     {
         $user = User::factory()->create(['email' => 'valid@example.com']);
 
-        $response = $this->postJson($this->apiV1ProjectRoute('send.invitation', $this->project),
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project),
             ['email' => $user->email]);
 
         $response->assertCreated();
@@ -72,7 +72,7 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($invitedUser);
 
-        $this->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
             ->assertJsonPath('message', 'You have accepted Project invitation');
 
         $this->assertDatabaseHas('project_members', [
@@ -89,7 +89,7 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
             ->assertForbidden();
     }
 
@@ -103,7 +103,7 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($invitedUser);
 
-        $this->postJson($this->apiV1ProjectRoute('reject.invitation', $this->project))
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('reject.invitation', $this->project))
             ->assertJsonPath('message', 'You have rejected the invitation to join the project.');
 
         $this->assertDatabaseMissing('project_members', [

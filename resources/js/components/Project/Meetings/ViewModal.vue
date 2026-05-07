@@ -192,6 +192,7 @@
 <script>
 import { mapMutations } from 'vuex';
 import MeetingDetail from './MeetingDetail.vue';
+import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 import { shouldShowStartButton, shouldShowJoinButton } from '../../../utils/meetingUtils';
 import { getDisplayTimezone, toUtcIsoString } from '../../../utils/dateTime';
 
@@ -234,10 +235,12 @@ export default {
   },
 
   created() {
+    this.updateMeetingRequest = createIdempotentRequest();
     this.$bus.$on('view-meeting-modal', this.getMeeting);
   },
 
   beforeDestroy() {
+    this.updateMeetingRequest?.reset();
     this.$bus.$off('view-meeting-modal', this.getMeeting);
   },
 
@@ -263,7 +266,7 @@ export default {
     updateMeeting(id) {
       this.initializeUpdateMeeting();
       const filteredForm = this.filterForm();
-      axios
+      this.updateMeetingRequest
         .patch(`/projects/${this.projectSlug}/meetings/${id}`, filteredForm)
         .then((response) => {
           this.meeting = response.data.meeting;
@@ -321,6 +324,7 @@ export default {
 
     meetingEditClose() {
       this.isEditing = false;
+      this.updateMeetingRequest.reset();
       this.form = {};
       this.errors = {};
       this.form.agenda = this.meeting.agenda;
@@ -328,6 +332,7 @@ export default {
 
     meetingModalClose() {
       this.$modal.hide('ViewMeeting');
+      this.updateMeetingRequest.reset();
       this.meeting = {};
     },
 

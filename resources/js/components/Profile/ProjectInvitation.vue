@@ -83,6 +83,8 @@
 </template>
 
 <script>
+import { createIdempotentRequest } from '../../services/IdempotencyRequestService';
+
 export default {
   data() {
     return {
@@ -92,8 +94,16 @@ export default {
     };
   },
   created() {
+    this.acceptInvitationRequest = createIdempotentRequest();
+    this.rejectInvitationRequest = createIdempotentRequest();
     this.fetchInvitations();
   },
+
+  beforeDestroy() {
+    this.acceptInvitationRequest?.reset();
+    this.rejectInvitationRequest?.reset();
+  },
+
   methods: {
     ownerAvatar(owner) {
       const avatar = owner && owner.avatar ? owner.avatar : '';
@@ -119,7 +129,7 @@ export default {
     async becomeMember(slug) {
       this.$Progress.start();
       try {
-        const { data } = await axios.post(`/projects/${slug}/invitations/accept`);
+        const { data } = await this.acceptInvitationRequest.post(`/projects/${slug}/invitations/accept`);
         this.$Progress.finish();
         this.$vToastify.success(data.message);
 
@@ -132,7 +142,7 @@ export default {
     async rejectInvitation(slug) {
       this.$Progress.start();
       try {
-        const { data } = await axios.post(`/projects/${slug}/invitations/reject`);
+        const { data } = await this.rejectInvitationRequest.post(`/projects/${slug}/invitations/reject`);
         this.$Progress.finish();
         this.$vToastify.info(data.message);
 

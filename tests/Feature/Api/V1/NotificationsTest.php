@@ -49,7 +49,7 @@ class NotificationsTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project));
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project));
 
         Notification::assertSentTo($this->project->user, AcceptInvitation::class, fn (AcceptInvitation $notification): bool => $notification->toArray($this->project->user)['link'] === $expectedLink);
     }
@@ -123,7 +123,7 @@ class NotificationsTest extends TestCase
 
     protected function sendInvitationToUser($project, $user)
     {
-        $this->postJson($this->apiV1ProjectRoute('send.invitation', $project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $project), [
             'email' => $user->email,
         ]);
     }

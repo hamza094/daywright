@@ -104,6 +104,7 @@
 <script>
 import { mapMutations } from 'vuex';
 import FormGroup from './../FormGroup.vue';
+import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 import { getDisplayTimezone, toUtcIsoString } from '../../../utils/dateTime';
 
 export default {
@@ -136,10 +137,12 @@ export default {
   },
 
   mounted() {
+    this.createMeetingRequest = createIdempotentRequest();
     this.$bus.on('open-meeting-modal', this.openMeetingModal);
   },
 
   destroyed() {
+    this.createMeetingRequest?.reset();
     this.$bus.off('open-meeting-modal', this.openMeetingModal);
   },
 
@@ -149,8 +152,12 @@ export default {
     createMeeting() {
       this.initializeMeetingCreation();
 
-      axios
-        .post(`/projects/${this.projectSlug}/meetings`, this.form)
+      const payload = {
+        ...this.form,
+      };
+
+      this.createMeetingRequest
+        .post(`/projects/${this.projectSlug}/meetings`, payload)
         .then((response) => {
           this.$bus.emit('get-results');
           this.$vToastify.success(response.data.message);
@@ -188,6 +195,7 @@ export default {
 
     modalClose() {
       this.$modal.hide('MeetingModal');
+      this.createMeetingRequest.reset();
       this.errors = {};
       this.form = Object.assign({}, this.$options.data().form);
     },

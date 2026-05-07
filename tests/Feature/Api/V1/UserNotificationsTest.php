@@ -136,7 +136,7 @@ class UserNotificationsTest extends TestCase
 
     protected function sendInvitationToUser($project, $user)
     {
-        $this->postJson($this->apiV1ProjectRoute('send.invitation', $project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $project), [
             'email' => $user->email,
         ]);
     }

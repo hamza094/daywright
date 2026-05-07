@@ -154,7 +154,7 @@ class RecordActivityTest extends TestCase
         /** @var User $user */
         $user = User::factory()->create();
 
-        $this->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
             'email' => $user->email,
         ]);
 
@@ -176,7 +176,7 @@ class RecordActivityTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project));
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project));
 
         /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
@@ -205,7 +205,7 @@ class RecordActivityTest extends TestCase
     {
         $this->user->forceFill(['is_admin' => true])->save();
 
-        $this->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is project message',
             'users' => json_encode([User::first()->id]),
             'subject' => 'this is message subject',

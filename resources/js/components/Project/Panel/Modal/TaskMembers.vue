@@ -41,6 +41,7 @@
 
 <script type="text/javascript">
 import { mapMutations, mapState } from 'vuex';
+import { createIdempotentRequest } from '../../../../services/IdempotencyRequestService';
 import { url } from '../../../../utils/TaskUtils';
 import { debounce } from 'lodash';
 
@@ -70,12 +71,20 @@ export default {
     }, 500),
   },
   created() {
+    this.assignMembersRequest = createIdempotentRequest();
+
     this.$bus.on('toggleMember', () => {
       this.taskMembers = [];
       this.setErrors([]);
       this.form.search = '';
+      this.assignMembersRequest.reset();
     });
   },
+
+  beforeDestroy() {
+    this.assignMembersRequest?.reset();
+  },
+
   methods: {
     ...mapMutations('SingleTask', ['setErrors', 'updateTaskMembers']),
 
@@ -112,16 +121,10 @@ export default {
         return this.$vToastify.info('no member is selected to assign task');
       }
 
-      const memberIds = this.taskMembers.map((member) => member.id);
+      const memberIds = this.taskMembers.map((member) => member.id).sort((left, right) => left - right);
 
-      axios
-        .patch(
-          url(this.slug, taskId) + '/assign',
-          {
-            members: memberIds,
-          },
-          { useProgress: true },
-        )
+      this.assignMembersRequest
+        .patch(url(this.slug, taskId) + '/assign', { members: memberIds }, { useProgress: true })
         .then((response) => {
           this.assignSuccessfull(response);
         })

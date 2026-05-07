@@ -150,6 +150,7 @@
 <script>
 import ScheduleMessages from './Schedule.vue';
 import SubscriptionCheck from '../../SubscriptionChecker.vue';
+import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 import {
   combineDateAndTimeToUtcIso,
   formatInUserTimezone,
@@ -189,17 +190,27 @@ export default {
       return getDisplayTimezone();
     },
   },
+  created() {
+    this.sendMessageRequest = createIdempotentRequest();
+  },
+
+  beforeDestroy() {
+    this.sendMessageRequest?.reset();
+  },
+
   methods: {
     sendMessage() {
-      axios
-        .post('/projects/' + this.slug + '/message', {
-          mail: this.form.mail,
-          sms: this.form.sms,
-          subject: this.form.subject,
-          message: this.form.message,
-          users: JSON.stringify(this.form.users),
-          delivered_at: this.form.delivered_at,
-        })
+      const payload = {
+        mail: this.form.mail,
+        sms: this.form.sms,
+        subject: this.form.subject,
+        message: this.form.message,
+        users: JSON.stringify(this.form.users),
+        delivered_at: this.form.delivered_at,
+      };
+
+      this.sendMessageRequest
+        .post('/projects/' + this.slug + '/message', payload)
         .then(() => {
           this.$vToastify.success(
             this.form.delivered_at ? 'Message Scheduled Successfully' : 'Message Sent Successfully',
@@ -258,6 +269,7 @@ export default {
 
     modalClose() {
       this.$modal.hide('project-message');
+      this.sendMessageRequest.reset();
       this.errors = '';
       this.form = {
         delivered_at: '',

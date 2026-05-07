@@ -33,7 +33,7 @@ class StoreMeetingTest extends TestCase
             'timezone' => 'UTC',
         ];
 
-        $response = $this->withoutExceptionHandling()->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
+        $response = $this->withoutExceptionHandling()->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
 
         $meetingResponse = $response->json('data');
 
@@ -63,7 +63,7 @@ class StoreMeetingTest extends TestCase
             new ZoomException('Test error message')
         );
 
-        $response = $this->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
 
         $zoomFake->assertNoMeetingsCreated();
 
@@ -83,7 +83,7 @@ class StoreMeetingTest extends TestCase
             'timezone' => 'invalid/timezone',
         ];
 
-        $response = $this->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
 
         $response->assertStatus(422);
 
@@ -101,7 +101,7 @@ class StoreMeetingTest extends TestCase
     /** @test */
     public function start_time_must_be_iso_8601_with_timezone_offset(): void
     {
-        $response = $this->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), [
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), [
             'topic' => 'test-repo',
             'agenda' => 'test-description',
             'duration' => 30,

@@ -27,7 +27,7 @@ class UpdateMeetingTest extends TestCase
         $updatedMeetingID = 18976;
         $updatedDuration = 15;
 
-        $this->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
+        $this->withHeaders($this->idempotencyHeaders())->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
             'meeting_id' => $updatedMeetingID,
             'duration' => $updatedDuration,
         ])->assertStatus(200)
@@ -55,7 +55,7 @@ class UpdateMeetingTest extends TestCase
             new ZoomException('Test error message')
         );
 
-        $this->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
+        $this->withHeaders($this->idempotencyHeaders())->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
             'meeting_id' => $updatedMeetingID,
             'duration' => $updatedDuration,
         ])->assertStatus(400);
@@ -73,7 +73,7 @@ class UpdateMeetingTest extends TestCase
             ->for($this->project)
             ->create(['user_id' => $this->user->id]);
 
-        $this->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
+        $this->withHeaders($this->idempotencyHeaders())->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
             'meeting_id' => 'not-an-integer',
         ])->assertStatus(422)
             ->assertJsonValidationErrors(['meeting_id']);
@@ -86,7 +86,7 @@ class UpdateMeetingTest extends TestCase
             ->for($this->project)
             ->create(['user_id' => $this->user->id]);
 
-        $this->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
+        $this->withHeaders($this->idempotencyHeaders())->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
             'meeting_id' => 18976,
             'start_time' => '2024-05-18T18:00:07',
         ])->assertStatus(422)
