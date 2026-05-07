@@ -12,6 +12,12 @@ use function Safe\json_encode;
 
 class VerifyZoomWebhook
 {
+    private const string REQUEST_ID_HEADER = 'x-zm-request-id';
+
+    private const string SIGNATURE_HEADER = 'x-zm-signature';
+
+    private const string TIMESTAMP_HEADER = 'x-zm-request-timestamp';
+
     /**
      * Handle an incoming request.
      *
@@ -20,23 +26,42 @@ class VerifyZoomWebhook
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $providedSignature = $request->header('x-zm-signature');
+        $zoomRequestId = $this->getZoomRequestId($request);
 
-        $zoomTimestamp = $request->header('x-zm-request-timestamp');
+        $providedSignature = $request->header(self::SIGNATURE_HEADER);
+
+        $zoomTimestamp = $request->header(self::TIMESTAMP_HEADER);
 
         if (! $this->isRequestValid($providedSignature, $zoomTimestamp, $request)) {
 
             abort(Response::HTTP_FORBIDDEN, 'The webhook signature was invalid.');
         }
 
+        $request->headers->set((string) config('idempotency.header'), $zoomRequestId);
+
         return $next($request);
     }
 
     public function isRequestValid(?string $providedSignature, ?string $timestamp, Request $request): bool
     {
+        if ($providedSignature === null || $providedSignature === '') {
+            return false;
+        }
+
         return ! $this->isTimestampInvalid($timestamp)
         &&
         $this->isSignatureValid($providedSignature, $timestamp, $request);
+    }
+
+    private function getZoomRequestId(Request $request): string
+    {
+        $zoomRequestId = $request->header(self::REQUEST_ID_HEADER);
+
+        if (! is_string($zoomRequestId) || trim($zoomRequestId) === '') {
+            abort(Response::HTTP_BAD_REQUEST, 'Missing required Zoom webhook header: x-zm-request-id.');
+        }
+
+        return $zoomRequestId;
     }
 
     private function isTimestampInvalid(?string $timestamp): bool
@@ -48,8 +73,12 @@ class VerifyZoomWebhook
         return abs(time() - (int) $timestamp) > 300;
     }
 
-    private function isSignatureValid(string $providedSignature, string $timestamp, Request $request): bool
+    private function isSignatureValid(string $providedSignature, ?string $timestamp, Request $request): bool
     {
+        if ($timestamp === null || $timestamp === '') {
+            return false;
+        }
+
         $generatedSignature = $this->generateSignature($timestamp, $request);
 
         return hash_equals($providedSignature, $generatedSignature);

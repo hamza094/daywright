@@ -4,7 +4,7 @@
 
 2. Phase 1. Implemented. `routes/api/v1.php` now applies user-scoped idempotency middleware to subscription create and swap, API token create, meeting create and update, invitation send and accept and reject, project message send, and task assign and unassign. Subscription cancel remains `DELETE /subscriptions` and is intentionally kept out of package-based idempotency because this package version only enforces POST, PUT, and PATCH.
 
-3. Phase 2. Finish the Zoom webhook boundary. Keep the global-scope middleware on routes/api/v1.php, but add a real stable key source through VerifyZoomWebhook.php or a durable processed-events table. Then make the Zoom jobs atomic in StartMeetingWebhook.php, MeetingEndsWebhook.php, UpdateMeetingWebhook.php, and DeleteMeetingWebhook.php.
+3. Phase 2. Implemented. Zoom webhooks now map Zoom's `x-zm-request-id` header to the configured idempotency header inside VerifyZoomWebhook.php after signature verification, so the global-scope middleware can deduplicate provider retries at the HTTP boundary. The queued Zoom jobs also now share an atomic per-meeting lock in StartMeetingWebhook.php, MeetingEndsWebhook.php, UpdateMeetingWebhook.php, and DeleteMeetingWebhook.php so concurrent deliveries cannot mutate or notify the same meeting at the same time.
 
 4. Phase 3. Add database guarantees for duplicate-prone relationships and external identities. Introduce composite unique constraints in create_project_members_table.php, create_task_user_table.php, and create_message_user_table.php, plus durable meeting uniqueness in create_meetings_table.php.
 

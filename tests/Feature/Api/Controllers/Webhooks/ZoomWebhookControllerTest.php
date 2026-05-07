@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Queue;
 use Override;
 use Tests\TestCase;
 
+use function Safe\json_encode;
+
 class ZoomWebhookControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
@@ -24,6 +26,8 @@ class ZoomWebhookControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        config(['services.zoom.webhook_secret' => 'secret']);
 
         $this->travelTo(Carbon::parse('2024-06-24 11:49:48'));
 
@@ -39,8 +43,6 @@ class ZoomWebhookControllerTest extends TestCase
     /** @test */
     public function meeting_can_be_updated_via_webhook(): void
     {
-        $this->withoutMiddleware([\App\Http\Middleware\VerifyZoomWebhook::class]);
-
         Meeting::factory()->create([
             'meeting_id' => 813,
             'topic' => 'shining in the sky',
@@ -55,7 +57,7 @@ class ZoomWebhookControllerTest extends TestCase
         $meetingId = $object['id'];
         $updateData = collect($object)->except(['id', 'uuid'])->toArray();
 
-        $this->post(route('api.v1.webhooks.meetings.update'), $postBody)
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, $this->zoomWebhookHeaders($postBody, 'zoom-update-813'))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
@@ -65,8 +67,6 @@ class ZoomWebhookControllerTest extends TestCase
     /** @test */
     public function meeting_can_be_deleted(): void
     {
-        $this->withoutMiddleware([\App\Http\Middleware\VerifyZoomWebhook::class]);
-
         Meeting::factory()->create([
             'meeting_id' => 813,
         ]);
@@ -79,7 +79,7 @@ class ZoomWebhookControllerTest extends TestCase
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
 
-        $this->post(route('api.v1.webhooks.meetings.delete'), $postBody)
+        $this->postJson(route('api.v1.webhooks.meetings.delete'), $postBody, $this->zoomWebhookHeaders($postBody, 'zoom-delete-813'))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
@@ -89,8 +89,6 @@ class ZoomWebhookControllerTest extends TestCase
     /** @test */
     public function zoom_meeting_can_be_started(): void
     {
-        $this->withoutMiddleware([\App\Http\Middleware\VerifyZoomWebhook::class]);
-
         Meeting::factory()->create([
             'meeting_id' => 813,
         ]);
@@ -104,7 +102,7 @@ class ZoomWebhookControllerTest extends TestCase
         $meetingId = $object['id'];
         $startTime = $object['start_time'] ?? null;
 
-        $this->post(route('api.v1.webhooks.meetings.start'), $postBody)
+        $this->postJson(route('api.v1.webhooks.meetings.start'), $postBody, $this->zoomWebhookHeaders($postBody, 'zoom-start-813'))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
@@ -114,8 +112,6 @@ class ZoomWebhookControllerTest extends TestCase
     /** @test */
     public function zoom_meeting_can_be_ended(): void
     {
-        $this->withoutMiddleware([\App\Http\Middleware\VerifyZoomWebhook::class]);
-
         Meeting::factory()->create([
             'meeting_id' => 813,
         ]);
@@ -130,7 +126,7 @@ class ZoomWebhookControllerTest extends TestCase
         $startTime = $object['start_time'] ?? null;
         $endTime = $object['end_time'] ?? null;
 
-        $this->post(route('api.v1.webhooks.meetings.ended'), $postBody)
+        $this->postJson(route('api.v1.webhooks.meetings.ended'), $postBody, $this->zoomWebhookHeaders($postBody, 'zoom-ended-813'))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
@@ -141,8 +137,35 @@ class ZoomWebhookControllerTest extends TestCase
     /** @test */
     public function error_is_returned_if_the_request_was_not_sent_from_zoom(): void
     {
-        $this->post(route('api.v1.webhooks.meetings.update'), ['invalid_key' => 'invalid_value'])->assertForbidden();
+        $this->postJson(route('api.v1.webhooks.meetings.update'), ['invalid_key' => 'invalid_value'])
+            ->assertStatus(400)
+            ->assertSeeText('Missing required Zoom webhook header: x-zm-request-id.');
 
         Queue::assertNothingPushed();
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, string>
+     */
+    private function zoomWebhookHeaders(array $payload, string $requestId): array
+    {
+        $timestamp = (string) time();
+
+        return [
+            'x-zm-request-timestamp' => $timestamp,
+            'x-zm-signature' => $this->buildSignature($timestamp, $payload),
+            'x-zm-request-id' => $requestId,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function buildSignature(string $timestamp, array $payload): string
+    {
+        $message = 'v0:'.$timestamp.':'.json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
     }
 }

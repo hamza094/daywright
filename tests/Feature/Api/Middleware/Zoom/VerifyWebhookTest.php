@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Middleware\Zoom;
 
+use App\Http\Middleware\VerifyZoomWebhook;
+use Illuminate\Http\Request;
 use Override;
 use Route;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
+use WendellAdriel\Idempotency\Enums\IdempotencyScope;
+use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
 use function Safe\json_encode;
 
 class VerifyWebhookTest extends TestCase
 {
     private const string WEBHOOK_TEST_PATH = '/_test/webhook';
+
+    private const string IDEMPOTENT_WEBHOOK_TEST_PATH = '/_test/idempotent-webhook';
 
     public $payload;
 
@@ -29,6 +35,14 @@ class VerifyWebhookTest extends TestCase
         config(['services.zoom.webhook_secret' => 'secret']);
 
         Route::middleware('zoom.webhook')->any(self::WEBHOOK_TEST_PATH, fn (): string => 'OK');
+
+        Route::middleware([
+            VerifyZoomWebhook::class,
+            Idempotent::using(scope: IdempotencyScope::Global),
+        ])->any(
+            self::IDEMPOTENT_WEBHOOK_TEST_PATH,
+            fn (Request $request): string => (string) $request->header((string) config('idempotency.header')),
+        );
 
         $this->payload = [
             'event' => 'meeting.started',
@@ -52,6 +66,7 @@ class VerifyWebhookTest extends TestCase
             $this->post(self::WEBHOOK_TEST_PATH, $this->payload, [
                 'x-zm-request-timestamp' => $this->timestamp,
                 'x-zm-signature' => 'invalid-signature',
+                'x-zm-request-id' => 'zoom-request-invalid-signature',
             ]);
         } catch (HttpException $e) {
             $this->assertEquals(Response::HTTP_FORBIDDEN, $e->getStatusCode());
@@ -74,6 +89,7 @@ class VerifyWebhookTest extends TestCase
         $response = $this->postJson(self::WEBHOOK_TEST_PATH, $this->payload, [
             'x-zm-request-timestamp' => $timestamp,
             'x-zm-signature' => $signature,
+            'x-zm-request-id' => 'zoom-request-123',
         ]);
 
         $this->assertEquals('OK', $response->getContent());
@@ -91,6 +107,7 @@ class VerifyWebhookTest extends TestCase
             $response = $this->postJson(self::WEBHOOK_TEST_PATH, $this->payload, [
                 'x-zm-request-timestamp' => $oldTimestamp,
                 'x-zm-signature' => $signature,
+                'x-zm-request-id' => 'zoom-request-old-timestamp',
             ]);
         } catch (HttpException $e) {
             $this->assertEquals(Response::HTTP_FORBIDDEN, $e->getStatusCode());
@@ -100,6 +117,45 @@ class VerifyWebhookTest extends TestCase
         }
 
         $this->fail('The timestamp should have failed verification.');
+    }
+
+    /** @test */
+    public function it_maps_the_zoom_request_id_to_the_idempotency_header(): void
+    {
+        $timestamp = (string) time();
+        $zoomRequestId = '6009d653_d487_445d_8406_42b654974899';
+
+        $signature = $this->buildSignature($timestamp, $this->payload);
+
+        $response = $this->postJson(self::IDEMPOTENT_WEBHOOK_TEST_PATH, $this->payload, [
+            'x-zm-request-timestamp' => $timestamp,
+            'x-zm-signature' => $signature,
+            'x-zm-request-id' => $zoomRequestId,
+        ]);
+
+        $response->assertOk();
+        $this->assertSame($zoomRequestId, $response->getContent());
+    }
+
+    /** @test */
+    public function it_requires_the_zoom_request_id_header(): void
+    {
+        $timestamp = (string) time();
+        $signature = $this->buildSignature($timestamp, $this->payload);
+
+        try {
+            $this->postJson(self::WEBHOOK_TEST_PATH, $this->payload, [
+                'x-zm-request-timestamp' => $timestamp,
+                'x-zm-signature' => $signature,
+            ]);
+        } catch (HttpException $e) {
+            $this->assertEquals(Response::HTTP_BAD_REQUEST, $e->getStatusCode());
+            $this->assertEquals('Missing required Zoom webhook header: x-zm-request-id.', $e->getMessage());
+
+            return;
+        }
+
+        $this->fail('Expected the Zoom request id to be required.');
     }
 
     protected function buildSignature(string $timestamp, $payload): string
