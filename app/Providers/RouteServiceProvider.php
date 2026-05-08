@@ -144,7 +144,7 @@ class RouteServiceProvider extends ServiceProvider
                 $this->groupIfRouteFileExists($apiRoutes, "api.{$version}.");
                 $this->groupIfRouteFileExists($adminRoutes, "api.{$version}.admin.");
 
-                Route::fallback(fn () => response()->json(['message' => 'Not Found.'], 404));
+                Route::fallback(fn () => abort(404));
             });
     }
 

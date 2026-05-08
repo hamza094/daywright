@@ -7,6 +7,7 @@ namespace App\Exceptions;
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\UnauthorizedException;
 use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Paddle\SubscriptionException;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Exceptions\Subscription\SubscriptionRequiredException;
 use App\Models\Project;
@@ -132,6 +133,15 @@ class Handler extends ExceptionHandler
             }
         });
 
+        $this->renderable(function (SubscriptionException $e, $request) {
+            if ($this->isApiRequest($request)) {
+                return $this->apiErrorResponse(
+                    $e->getMessage(),
+                    Response::HTTP_CONFLICT,
+                );
+            }
+        });
+
         $this->renderable(function (AuthenticationException $e, $request) {
             if ($this->isApiRequest($request)) {
                 return $this->apiErrorResponse(
@@ -150,6 +160,15 @@ class Handler extends ExceptionHandler
             }
         });
 
+        $this->renderable(function (MethodNotAllowedHttpException $e, $request) {
+            if ($this->isApiRequest($request)) {
+                return $this->apiErrorResponse(
+                    'The HTTP method used for the request is not allowed.',
+                    Response::HTTP_METHOD_NOT_ALLOWED,
+                );
+            }
+        });
+
         $this->renderable(function (HttpException $e, $request) {
             if ($this->isApiRequest($request)) {
                 $message = $e->getMessage() !== ''
@@ -157,15 +176,6 @@ class Handler extends ExceptionHandler
                     : $this->defaultApiMessageForStatus($e->getStatusCode());
 
                 return $this->apiErrorResponse($message, $e->getStatusCode());
-            }
-        });
-
-        $this->renderable(function (MethodNotAllowedHttpException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    'The HTTP method used for the request is not allowed.',
-                    Response::HTTP_METHOD_NOT_ALLOWED,
-                );
             }
         });
 
@@ -188,15 +198,6 @@ class Handler extends ExceptionHandler
             }
         });
 
-        $this->renderable(function (ZoomException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    $e->getMessage() !== '' ? $e->getMessage() : 'Zoom error',
-                    Response::HTTP_BAD_REQUEST,
-                );
-            }
-        });
-
         $this->renderable(function (NotFoundException $e, $request) {
             if ($this->isApiRequest($request)) {
                 return $this->apiErrorResponse(
@@ -211,6 +212,15 @@ class Handler extends ExceptionHandler
                 return $this->apiErrorResponse(
                     $e->getMessage() !== '' ? $e->getMessage() : 'Unauthorized',
                     Response::HTTP_FORBIDDEN,
+                );
+            }
+        });
+
+        $this->renderable(function (ZoomException $e, $request) {
+            if ($this->isApiRequest($request)) {
+                return $this->apiErrorResponse(
+                    $e->getMessage() !== '' ? $e->getMessage() : 'Zoom error',
+                    Response::HTTP_BAD_REQUEST,
                 );
             }
         });

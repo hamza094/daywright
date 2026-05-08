@@ -26,6 +26,7 @@ use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 use Opcodes\LogViewer\Facades\LogViewer;
 use Override;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -60,9 +61,9 @@ class AppServiceProvider extends ServiceProvider
         Feature::define('project-export', fn (User $user): bool => $user->isAdmin());
         Feature::define('project-messaging', fn (User $user): bool => $user->isAdmin());
 
-        EnsureFeaturesAreActive::whenInactive(fn (Request $request, array $features): SymfonyResponse => response()->json([
-            'message' => 'Feature not available.',
-        ], SymfonyResponse::HTTP_FORBIDDEN));
+        EnsureFeaturesAreActive::whenInactive(function (Request $request, array $features): SymfonyResponse {
+            throw new HttpException(SymfonyResponse::HTTP_FORBIDDEN, 'Feature not available.');
+        });
 
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
             $openApi->secure(

@@ -171,7 +171,7 @@ class DashboardTest extends TestCase
     {
         $this->getJson($this->apiV1AdminRoute('backup.database'))
             ->assertNotFound()
-            ->assertJsonPath('message', 'Not Found.');
+            ->assertJsonPath('message', 'Sorry Record not found.');
     }
 
     // Error Handling

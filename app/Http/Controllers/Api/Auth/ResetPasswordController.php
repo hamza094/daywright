@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ResetPasswordController extends ApiController
 {
@@ -87,8 +89,6 @@ class ResetPasswordController extends ApiController
             'user_id' => optional(User::whereEmail($request->input('email'))->select('uuid')->first())->uuid,
         ]);
 
-        return response()->json([
-            'message' => 'Unable to reset password with the provided information.',
-        ], 400);
+        throw new HttpException(HttpResponse::HTTP_BAD_REQUEST, 'Unable to reset password with the provided information.');
     }
 }

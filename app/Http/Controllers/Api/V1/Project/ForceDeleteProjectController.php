@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\ApiController;
 use App\Models\Project;
 use App\Services\Project\ProjectService;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class ForceDeleteProjectController extends ApiController
 {
@@ -16,9 +18,7 @@ final class ForceDeleteProjectController extends ApiController
         $deleted = $projectService->forceDeleteIfAbandoned($project);
 
         if (! $deleted) {
-            return response()->json([
-                'message' => 'Only abandoned projects can be deleted permanently.',
-            ], 403);
+            throw new HttpException(HttpResponse::HTTP_FORBIDDEN, 'Only abandoned projects can be deleted permanently.');
         }
 
         return response()->json([
