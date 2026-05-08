@@ -152,9 +152,13 @@ class UserNotificationsTest extends TestCase
 
     protected function addMember($project, $user)
     {
+        // Use syncWithoutDetaching to avoid duplicate pivot inserts when an invitation
+        // already created a project_members row (invite uses syncWithoutDetaching).
         $this->project
             ->members()
-            ->attach($user, ['active' => true]);
+            ->syncWithoutDetaching([
+                $user->id => ['active' => true],
+            ]);
     }
 
     /**

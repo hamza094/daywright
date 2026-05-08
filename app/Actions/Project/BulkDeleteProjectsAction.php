@@ -7,7 +7,6 @@ namespace App\Actions\Project;
 use App\Models\Project;
 use App\Services\Project\ProjectService;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\DB;
 
 final readonly class BulkDeleteProjectsAction
 {
@@ -24,14 +23,12 @@ final readonly class BulkDeleteProjectsAction
             return;
         }
 
-        DB::transaction(function () use ($projectIds): void {
-            Project::withTrashed()
-                ->whereIn('id', $projectIds)
-                ->chunkById(100, function (Collection $projects): void {
-                    $projects->each(function (Project $project): void {
-                        $this->projectService->forceDeleteIfAbandoned($project);
-                    });
-                }, column: 'id');
-        });
+        Project::withTrashed()
+            ->whereIn('id', $projectIds)
+            ->chunkById(100, function (Collection $projects): void {
+                $projects->each(function (Project $project): void {
+                    $this->projectService->forceDeleteIfAbandoned($project);
+                });
+            }, column: 'id');
     }
 }

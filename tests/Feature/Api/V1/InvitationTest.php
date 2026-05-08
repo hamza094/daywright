@@ -158,12 +158,37 @@ class InvitationTest extends TestCase
     }
 
     /** @test */
-    public function project_owner_cannot_remove_a_user_who_is_not_an_active_member(): void
+    public function project_owner_can_repeat_member_removal_without_error(): void
     {
-        /** @var User $nonMember */
-        $nonMember = User::factory()->create();
+        /** @var User $memberUser */
+        $memberUser = User::factory()->create();
 
-        $this->deleteJson($this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $nonMember))
+        $this->project->members()->attach($memberUser, ['active' => true]);
+
+        $route = $this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $memberUser);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => "Member {$memberUser->name} has been removed from the project",
+            ]);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => "Member {$memberUser->name} has been removed from the project",
+            ]);
+    }
+
+    /** @test */
+    public function project_owner_cannot_remove_a_pending_invitation_from_members_endpoint(): void
+    {
+        /** @var User $pendingUser */
+        $pendingUser = User::factory()->create();
+
+        $this->project->invite($pendingUser);
+
+        $this->deleteJson($this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $pendingUser))
             ->assertUnprocessable()
             ->assertJsonPath('message', 'Validation Error')
             ->assertJsonPath('errors.user.0', 'This user is not an active member of the project.');

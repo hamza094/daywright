@@ -80,6 +80,7 @@ class ZoomConnector extends Connector
             ->setClientId($clientId)
             ->setClientSecret($clientSecret)
             ->setRedirectUri($redirect)
+            ->setAllowBaseUrlOverride()
             ->setAuthorizeEndpoint('https://zoom.us/oauth/authorize')
             ->setTokenEndpoint('https://zoom.us/oauth/token')
             ->setDefaultScopes(['user:read:zak',

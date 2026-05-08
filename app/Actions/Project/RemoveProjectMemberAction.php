@@ -11,17 +11,37 @@ use Illuminate\Validation\ValidationException;
 
 final class RemoveProjectMemberAction
 {
+    private const int TRANSACTION_RETRY_ATTEMPTS = 5;
+
     public function execute(Project $project, User $user): void
     {
-        if (! $project->activeMembers()->where('user_id', $user->id)->exists()) {
-            throw ValidationException::withMessages([
-                'user' => 'This user is not an active member of the project.',
-            ]);
-        }
-
         DB::transaction(function () use ($project, $user): void {
-            $project->members()->detach($user);
-            $project->recordActivity('member_removed', [$user->id]);
-        });
+            $lockedProject = $this->lockProject($project);
+            $membership = $lockedProject->members()->whereKey($user->getKey())->first();
+
+            if ($membership === null) {
+                return;
+            }
+
+            if (! (bool) $membership->pivot->active) {
+                throw ValidationException::withMessages([
+                    'user' => 'This user is not an active member of the project.',
+                ]);
+            }
+
+            $lockedProject->members()->detach($user->getKey());
+            $lockedProject->recordActivity('member_removed', [$user->id]);
+        }, attempts: self::TRANSACTION_RETRY_ATTEMPTS);
+    }
+
+    private function lockProject(Project $project): Project
+    {
+        /** @var Project $lockedProject */
+        $lockedProject = Project::query()
+            ->whereKey($project->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return $lockedProject;
     }
 }

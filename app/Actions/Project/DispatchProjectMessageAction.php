@@ -10,28 +10,121 @@ use App\Models\Message;
 use App\Models\Project;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class DispatchProjectMessageAction
 {
-    public function execute(Project $project, Message $message): void
+    private const int TRANSACTION_RETRY_ATTEMPTS = 5;
+
+    public function execute(Project $project, Message $message): bool
     {
-        $jobClass = $message->type === 'mail' ? MailMessage::class : SmsMessage::class;
+        $claim = DB::transaction(function () use ($message, $project): ?array {
+            $lockedMessage = $this->lockMessage($message);
 
-        $jobs = $message->users
-            ->map(fn ($user): MailMessage|SmsMessage => new $jobClass($project, $message, $user));
+            if (! $this->canDispatch($lockedMessage)) {
+                return null;
+            }
 
-        $batch = Bus::batch($jobs)
+            $claimToken = $this->claimToken();
+
+            $lockedMessage->update([
+                'batch_id' => $claimToken,
+            ]);
+
+            DB::afterCommit(function () use ($project, $lockedMessage, $claimToken): void {
+                $this->dispatchClaimedMessage($project, (int) $lockedMessage->getKey(), $claimToken);
+            });
+
+            return [
+                'message_id' => (int) $lockedMessage->getKey(),
+                'claim_token' => $claimToken,
+            ];
+        }, attempts: self::TRANSACTION_RETRY_ATTEMPTS);
+
+        return $claim !== null;
+    }
+
+    private function dispatchClaimedMessage(Project $project, int $messageId, string $claimToken): void
+    {
+        $claimedMessage = $this->findClaimedMessage($messageId, $claimToken);
+
+        if ($claimedMessage === null) {
+            return;
+        }
+
+        try {
+            $batch = $this->dispatchBatch($project, $claimedMessage);
+
+            $this->markBatchStarted($messageId, $claimToken, $batch->id);
+        } catch (Throwable $throwable) {
+            $this->releaseClaim($messageId, $claimToken);
+
+            throw $throwable;
+        }
+    }
+
+    private function dispatchBatch(Project $project, Message $message): Batch
+    {
+        $jobs = $message->type === 'mail'
+            ? $message->users->map(fn ($user): MailMessage => new MailMessage($project, $message, $user))
+            : collect([new SmsMessage($project, $message)]);
+
+        return Bus::batch($jobs)
             ->allowFailures()
             ->then(function () use ($message): void {
-                $message->delivered = true;
-                $message->save();
+                Message::query()
+                    ->whereKey($message->getKey())
+                    ->update(['delivered' => true]);
             })
             ->catch(function (Batch $batch, Throwable $throwable): void {})
             ->dispatch();
+    }
 
-        $message->update([
-            'batch_id' => $batch->id,
-        ]);
+    private function canDispatch(Message $message): bool
+    {
+        return ! $message->delivered && $message->batch_id === null;
+    }
+
+    private function claimToken(): string
+    {
+        return 'claim:'.Str::uuid()->toString();
+    }
+
+    private function markBatchStarted(int $messageId, string $claimToken, string $batchId): void
+    {
+        Message::query()
+            ->whereKey($messageId)
+            ->where('batch_id', $claimToken)
+            ->update(['batch_id' => $batchId]);
+    }
+
+    private function releaseClaim(int $messageId, string $claimToken): void
+    {
+        Message::query()
+            ->whereKey($messageId)
+            ->where('batch_id', $claimToken)
+            ->update(['batch_id' => null]);
+    }
+
+    private function findClaimedMessage(int $messageId, string $claimToken): ?Message
+    {
+        return Message::query()
+            ->with('users')
+            ->whereKey($messageId)
+            ->where('batch_id', $claimToken)
+            ->first();
+    }
+
+    private function lockMessage(Message $message): Message
+    {
+        /** @var Message $lockedMessage */
+        $lockedMessage = Message::query()
+            ->whereKey($message->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return $lockedMessage;
     }
 }

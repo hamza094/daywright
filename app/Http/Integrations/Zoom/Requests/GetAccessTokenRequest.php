@@ -17,6 +17,8 @@ class GetAccessTokenRequest extends Request implements HasBody
     use AcceptsJson;
     use HasFormBody;
 
+    public ?bool $allowBaseUrlOverride = true;
+
     /**
      * The HTTP method of the request
      */

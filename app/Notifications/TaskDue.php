@@ -28,7 +28,9 @@ class TaskDue extends Notification implements ShouldBroadcast, ShouldQueue
         protected array $notifierData,
         protected string $projectName,
         protected string $projectSlug
-    ) {}
+    ) {
+        $this->afterCommit();
+    }
 
     /**
      * Get the notification's delivery channels.

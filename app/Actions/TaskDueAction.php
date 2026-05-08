@@ -11,42 +11,76 @@ use Illuminate\Support\Facades\DB;
 
 class TaskDueAction
 {
-    public function shouldNotify(Task $task): bool
+    private const int TRANSACTION_RETRY_ATTEMPTS = 5;
+
+    public function sendNotification(Task $task): bool
     {
-        $minutes = TaskDueNotifies::getPeriodInMinutes($task->notified);
+        $taskForNotification = DB::transaction(function () use ($task): ?Task {
+            $lockedTask = $this->lockTask($task);
+            $lockedTask->loadMissing(['assignee', 'project', 'owner']);
 
-        if ($minutes !== null) {
-            $notificationTime = $task->due_at->subMinutes($minutes);
+            if (! $this->canNotify($lockedTask)) {
+                return null;
+            }
 
-            return now() >= $notificationTime;
+            $lockedTask->notify_sent = true;
+            $lockedTask->saveQuietly();
+
+            return $lockedTask;
+        }, attempts: self::TRANSACTION_RETRY_ATTEMPTS);
+
+        if ($taskForNotification === null) {
+            return false;
         }
 
-        return false;
+        $project = $taskForNotification->project;
+
+        if ($project === null) {
+            return false;
+        }
+
+        foreach ($taskForNotification->assignee as $user) {
+            $user->notify(
+                new TaskDue(
+                    $taskForNotification->due_at,
+                    $taskForNotification->title,
+                    $taskForNotification->notified,
+                    $taskForNotification->owner->getNotifierData(),
+                    $project->name,
+                    $project->slug
+                ));
+        }
+
+        return true;
     }
 
-    public function sendNotification(Task $task): void
+    private function canNotify(Task $task): bool
     {
         $project = $task->project;
 
-        if ($project === null) {
-            return;
+        if ($project === null || $project->trashed() || $task->notify_sent) {
+            return false;
         }
 
-        DB::transaction(function () use ($task, $project): void {
-            $task->notify_sent = true;
-            $task->saveQuietly();
+        $minutes = TaskDueNotifies::getPeriodInMinutes($task->notified);
 
-            foreach ($task->assignee as $user) {
-                $user->notify(
-                    new TaskDue(
-                        $task->due_at,
-                        $task->title,
-                        $task->notified,
-                        $task->owner->getNotifierData(),
-                        $project->name,
-                        $project->slug
-                    ));
-            }
-        });
+        if ($minutes === null || $task->due_at === null) {
+            return false;
+        }
+
+        $notificationTime = $task->due_at->copy()->subMinutes($minutes);
+
+        return now()->greaterThanOrEqualTo($notificationTime);
+    }
+
+    private function lockTask(Task $task): Task
+    {
+        /** @var Task $lockedTask */
+        $lockedTask = Task::query()
+            ->whereKey($task->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return $lockedTask;
     }
 }

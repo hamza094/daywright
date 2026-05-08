@@ -18,6 +18,9 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         Config::preventStrayRequests();
+        // Ensure tests that generate Zoom JWTs have a sufficiently long secret
+        \Illuminate\Support\Facades\Config::set('services.zoom.client_id', 'fake-key');
+        \Illuminate\Support\Facades\Config::set('services.zoom.client_secret', str_repeat('a', 64));
     }
 
     /**

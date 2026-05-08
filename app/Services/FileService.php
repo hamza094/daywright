@@ -51,14 +51,23 @@ class FileService
     public function deleteFile(User $user): void
     {
         DB::transaction(function () use ($user): void {
-            $avatarUrl = $user->avatar_path ?? $user->avatar;
+            $lockedUser = $this->lockUser($user);
+            $avatarUrl = $lockedUser->avatar_path ?? $lockedUser->avatar;
             $filePath = $this->extractStoragePath($avatarUrl);
 
-            if ($filePath !== null) {
-                $this->disk()->delete($filePath);
+            $lockedUser->update(['avatar_path' => null]);
+
+            if ($filePath === null) {
+                return;
             }
 
-            $user->update(['avatar_path' => null]);
+            DB::afterCommit(function () use ($filePath): void {
+                try {
+                    $this->disk()->delete($filePath);
+                } catch (Exception $exception) {
+                    report($exception);
+                }
+            });
         });
     }
 
@@ -106,6 +115,17 @@ class FileService
     private function disk(): FilesystemAdapter
     {
         return Storage::disk('s3');
+    }
+
+    private function lockUser(User $user): User
+    {
+        /** @var User $lockedUser */
+        $lockedUser = User::query()
+            ->whereKey($user->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return $lockedUser;
     }
 
     private function extractStoragePath(?string $url): ?string

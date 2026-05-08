@@ -6,17 +6,17 @@
 
 3. Phase 2. Implemented. Zoom webhooks now map Zoom's `x-zm-request-id` header to the configured idempotency header inside VerifyZoomWebhook.php after signature verification, so the global-scope middleware can deduplicate provider retries at the HTTP boundary. The queued Zoom jobs also now share an atomic per-meeting lock in StartMeetingWebhook.php, MeetingEndsWebhook.php, UpdateMeetingWebhook.php, and DeleteMeetingWebhook.php so concurrent deliveries cannot mutate or notify the same meeting at the same time.
 
-4. Phase 3. Add database guarantees for duplicate-prone relationships and external identities. Introduce composite unique constraints in create_project_members_table.php, create_task_user_table.php, and create_message_user_table.php, plus durable meeting uniqueness in create_meetings_table.php.
+4. Phase 3. Implemented. A dedicated migration now removes legacy duplicate rows where needed and adds durable unique constraints for project membership pairs, task assignee pairs, message recipient pairs, and Zoom `meeting_id` values. This gives the database a hard guarantee for the duplicate-prone relationships that the application already treats as unique.
 
-5. Phase 4. Fix the critical race-prone business actions that middleware alone cannot solve. Prioritize billing in SubscriptionService.php, meeting orchestration in MeetingService.php, task assignment in AssignTaskMembersAction.php, and membership transitions in SendProjectInvitationAction.php, AcceptProjectInvitationAction.php, and RemoveProjectMemberAction.php.
+5. Phase 4. Implemented. Billing mutations in `SubscriptionService.php` now serialize on the owning user row, meeting create and update and delete flows in `MeetingService.php` now run under the guarded write they depend on, task assignment in `AssignTaskMembersAction.php` now only attaches and notifies newly assigned users, and invitation acceptance and member removal now lock the owning project row so repeated or concurrent transitions cannot duplicate side effects.
 
-6. Phase 5. Shorten transactions and move side effects out of lock windows. Refactor remote calls, notifications, queue dispatch, and file operations in MeetingService.php, FileService.php, BulkDeleteTasksAction.php, and BulkDeleteProjectsAction.php to use after-commit or smaller transactions.
+6. Phase 5. Implemented. Meeting writes now use short Redis-backed operation locks plus short database transactions so Zoom calls no longer hold row locks open, avatar deletion clears the database state first and deletes S3 objects after commit, task bulk delete now commits per chunk instead of across the full batch, and bulk project deletion no longer wraps queued Zoom cancellation dispatches inside a long outer transaction.
 
-7. Phase 6. Fix background claim patterns that can still double-send without any client retry key. Rework scheduled message dispatch in ScheduledMessages.php, MessageService.php, CreateProjectMessageAction.php, and DispatchProjectMessageAction.php, plus due-task notifications in TaskNotify.php and TaskDueAction.php.
+7. Phase 6. Implemented. Scheduled message dispatch now claims each due message under a row lock before batching any jobs, stores the claim in `batch_id`, and only dispatches the batch after commit so overlapping scheduler runs cannot enqueue the same message twice. Due-task notifications now use one locked claim path that marks `notify_sent` exactly once before queued notifications are dispatched, removing the old check-then-send race from `tasks:notify`.
 
-8. Phase 7. Lock the contract with focused tests. Add route-level idempotency tests for first execution, replay, mismatched payload, and in-flight duplicate, then add domain tests proving no duplicate rows or duplicate side effects under repeated commands for subscriptions, meetings, invitations, tasks, messages, tokens, and webhooks.
+8. Phase 7. Lock the contract with focused tests. Keep this route-level suite concentrated on the package contract and the highest-risk production paths: token mismatch and in-flight duplicate handling, subscription create replay, meeting create replay, and Zoom webhook replay. Invitations, task assignment, and project messaging already have focused feature or action coverage for duplicate side effects, so extra route-replay cases can stay out of this file for now.
 
-9. Phase 8. Defer lower-risk coverage until the production-critical paths are stable. Secondary UI mutations can be added later instead of broadening scope before the high-risk financial and integration routes are proven safe.
+9. Phase 8. Defer lower-risk coverage until the production-critical paths are stable. Secondary UI mutations such as invitation send, task assign, and project message send can be widened later instead of broadening this contract suite before the high-risk financial and integration routes are proven safe.
 
 **Key Files**
 
@@ -24,6 +24,7 @@
 - config/idempotency.php
 - routes/api/v1.php
 - app/Http/Middleware/VerifyZoomWebhook.php
+- database/migrations/2026_05_07_114216_add_phase_three_uniqueness_guarantees.php
 - app/Services/Subscription/PlanLimitService.php
 - app/Services/Auth/ApiTokenService.php
 - app/Services/Paddle/SubscriptionService.php
@@ -33,6 +34,7 @@
 - app/Services/Project/MessageService.php
 - app/Console/Commands/ScheduledMessages.php
 - app/Console/Commands/TaskNotify.php
+- tests/Feature/Database/PhaseThreeUniquenessTest.php
 
 **Verification**
 

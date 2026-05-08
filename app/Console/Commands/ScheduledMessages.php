@@ -39,11 +39,18 @@ class ScheduledMessages extends Command
      */
     public function handle(MessageService $service): void
     {
-        $messages = Message::messageScheduled()->with('project', 'users')->get();
+        Message::messageScheduled()
+            ->with('project')
+            ->chunkById(50, function ($messages) use ($service): void {
+                foreach ($messages as $message) {
+                    $project = $message->project;
 
-        foreach ($messages as $message) {
-            $project = $message->project;
-            $service->sendNow($project, $message);
-        }
+                    if ($project === null) {
+                        continue;
+                    }
+
+                    $service->sendNow($project, $message);
+                }
+            });
     }
 }

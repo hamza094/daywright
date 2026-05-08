@@ -22,7 +22,7 @@ final readonly class ForceDeleteAbandonedProjectAction
         $meetings = $this->cancelProjectZoomMeetingsAction->execute($project);
 
         if ($meetings !== []) {
-            CancelZoomMeetingsJob::dispatch($meetings);
+            CancelZoomMeetingsJob::dispatch($meetings)->afterCommit();
         }
 
         $project->forceDelete();

@@ -63,6 +63,21 @@ class SubscriptionServiceTest extends TestCase
     }
 
     #[Test]
+    public function it_treats_repeat_cancel_as_a_safe_no_op(): void
+    {
+        /** @var User&Mockery\MockInterface $user */
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('isBillingSubscribed')->andReturn(false);
+
+        $service = new SubscriptionService;
+
+        $this->assertSame(
+            ['message' => 'Your subscription has been canceled successfully.'],
+            $service->cancel($user, 'yearly')
+        );
+    }
+
+    #[Test]
     public function it_throws_exception_for_swapping_without_a_valid_subscription(): void
     {
         /** @var User&Mockery\MockInterface $user */

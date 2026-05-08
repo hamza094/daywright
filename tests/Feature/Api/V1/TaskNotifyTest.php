@@ -73,6 +73,30 @@ class TaskNotifyTest extends TestCase
         $this->assertEquals(0, (int) $task->fresh()->notify_sent);
     }
 
+    /** @test */
+    public function task_notify_command_is_safe_to_repeat(): void
+    {
+        Notification::fake();
+
+        $status = $this->createTaskStatus();
+
+        $user = $this->createUser();
+
+        $task = $this->createTask([
+            'notified' => '1 Day Before',
+            'due_at' => now()->addDay(),
+            'status_id' => $status->id,
+        ]);
+
+        $task->assignee()->attach($user);
+
+        $this->artisan('tasks:notify')->assertSuccessful();
+        $this->artisan('tasks:notify')->assertSuccessful();
+
+        Notification::assertSentToTimes($user, TaskDue::class, 1);
+        $this->assertEquals(1, (int) $task->fresh()->notify_sent);
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */

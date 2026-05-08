@@ -6,6 +6,7 @@ declare(strict_types=1);
 | API V1 Routes
 |--------------------------------------------------------------------------
 */
+use App\Http\Controllers\Api\OAuth\ZoomAuthController;
 use App\Http\Controllers\Api\V1\DashboardActivitiesController;
 use App\Http\Controllers\Api\V1\DashboardChartDataController;
 use App\Http\Controllers\Api\V1\DashboardKpisController;

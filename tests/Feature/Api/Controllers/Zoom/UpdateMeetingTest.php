@@ -24,19 +24,19 @@ class UpdateMeetingTest extends TestCase
             ->for($this->project)
             ->create(['user_id' => $this->user->id]);
 
-        $updatedMeetingID = 18976;
+        $persistedMeetingId = $meeting->meeting_id;
         $updatedDuration = 15;
 
         $this->withHeaders($this->idempotencyHeaders())->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
-            'meeting_id' => $updatedMeetingID,
+            'meeting_id' => 18976,
             'duration' => $updatedDuration,
         ])->assertStatus(200)
-            ->assertJsonPath('data.meeting_id', $updatedMeetingID)
+            ->assertJsonPath('data.meeting_id', $persistedMeetingId)
             ->assertJsonPath('data.duration', $updatedDuration);
 
         $this->assertDatabaseHas('meetings', [
             'duration' => $updatedDuration,
-            'meeting_id' => $updatedMeetingID,
+            'meeting_id' => $persistedMeetingId,
         ]);
 
     }

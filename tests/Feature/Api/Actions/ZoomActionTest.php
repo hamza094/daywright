@@ -26,7 +26,8 @@ class ZoomActionTest extends TestCase
 
         Config::set('services.zoom.client_id', 'fake-key');
 
-        Config::set('services.zoom.client_secret', 'fake-secret');
+        // Use a sufficiently long secret to satisfy JWT library minimum key length checks
+        Config::set('services.zoom.client_secret', str_repeat('a', 64));
 
         $this->sdkKey = config('services.zoom.client_id');
 

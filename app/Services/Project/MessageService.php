@@ -63,9 +63,9 @@ class MessageService
         $message->delete();
     }
 
-    public function sendNow(Project $project, Message $message): void
+    public function sendNow(Project $project, Message $message): bool
     {
-        $this->dispatchProjectMessageAction->execute($project, $message);
+        return $this->dispatchProjectMessageAction->execute($project, $message);
     }
 
     /**

@@ -46,6 +46,7 @@ class Message extends Model
     {
         $query
             ->where('delivered', false)
+            ->whereNull('batch_id')
             ->whereNotNull('delivered_at')
             ->whereDate('delivered_at', '<=', Carbon::now());
     }

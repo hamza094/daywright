@@ -20,14 +20,12 @@ final class CreateProjectMessageAction
             'project_id' => $project->id,
             'type' => $type,
             'message' => (string) ($payload['message'] ?? ''),
+            'subject' => $type === 'mail'
+                ? (isset($payload['subject']) ? (string) $payload['subject'] : null)
+                : null,
         ]);
 
-        if ($message->type === 'mail') {
-            $message->subject = isset($payload['subject']) ? (string) $payload['subject'] : null;
-            $message->save();
-        }
-
-        $message->users()->attach($users);
+        $message->users()->syncWithoutDetaching($users->all());
 
         return $message;
     }

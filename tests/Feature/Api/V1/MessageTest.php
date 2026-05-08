@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1;
 
 use App\Models\Message;
+use App\Services\Project\MessageService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Override;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
@@ -82,15 +84,45 @@ class MessageTest extends TestCase
     /** @test */
     public function check_schedule_command_working(): void
     {
-        Message::factory()->for($this->project)
+        Bus::fake();
+
+        $messages = Message::factory()->for($this->project)
             ->count(3)
             ->create(['delivered_at' => Carbon::yesterday()]);
+
+        $messages->each(function (Message $message): void {
+            $message->users()->attach($this->user->id);
+        });
 
         $this->assertCount(3, Message::messageScheduled()->get());
 
         $this->artisan('schedule:message')->assertok();
 
+        Bus::assertBatchCount(3);
         $this->assertCount(0, $this->project->scheduledMessages());
+    }
+
+    /** @test */
+    public function scheduled_message_dispatch_is_claimed_once_when_repeated(): void
+    {
+        Bus::fake();
+
+        $message = Message::factory()
+            ->for($this->project)
+            ->create([
+                'type' => 'mail',
+                'delivered_at' => Carbon::yesterday(),
+            ]);
+
+        $message->users()->attach($this->user->id);
+
+        $service = app(MessageService::class);
+
+        $service->sendNow($this->project, $message);
+        $service->sendNow($this->project, $message->fresh());
+
+        Bus::assertBatchCount(1);
+        $this->assertNotNull($message->fresh()->batch_id);
     }
 
     /** @test */

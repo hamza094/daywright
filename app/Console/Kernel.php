@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console;
 
+use App\Models\Message;
 use App\Models\Task;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -29,8 +30,11 @@ class Kernel extends ConsoleKernel
     #[Override]
     protected function schedule(Schedule $schedule)
     {
-        /*$schedule->command('schedule:message')
-            ->when(fn () => Message::messageScheduled()->exists())->withoutOverlapping();*/
+        $schedule->command('schedule:message')
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->everyMinute()
+            ->when(fn (): bool => Message::messageScheduled()->exists());
 
         $schedule->command('tasks:notify')
             ->withoutOverlapping()

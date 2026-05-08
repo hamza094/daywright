@@ -50,9 +50,7 @@ class TaskNotify extends Command
     {
         foreach ($tasks as $task) {
             try {
-                if ($this->taskDueAction->shouldNotify($task)) {
-                    $this->taskDueAction->sendNotification($task);
-                }
+                $this->taskDueAction->sendNotification($task);
             } catch (Exception $e) {
                 Log::error('Failed to process task notification', [
                     'task_id' => $task->id,
