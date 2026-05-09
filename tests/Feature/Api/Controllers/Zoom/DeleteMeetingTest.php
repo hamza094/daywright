@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Controllers\Zoom;
 
-use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Models\Meeting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -39,7 +39,7 @@ class DeleteMeetingTest extends TestCase
         $meetingId = $meeting->id;
 
         $this->fakeZoom()->shouldFailWithException(
-            new ZoomException('Test error message')
+            new ZoomUserErrorException('Test error message')
         );
 
         $response = $this->deleteJson($this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]));

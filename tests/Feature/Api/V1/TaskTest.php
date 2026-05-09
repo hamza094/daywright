@@ -100,7 +100,9 @@ class TaskTest extends TestCase
         $this->postJson(route('api.v1.tasks.store', ['project' => $this->project->slug]), [
             'title' => 'Blocked Task',
             'status_id' => $this->status->id,
-        ])->assertForbidden();
+        ])->assertConflict()
+            ->assertJsonPath('message', 'Project is archived. Restore it before performing this action.')
+            ->assertJsonPath('code', 'project_archived');
 
         $this->assertDatabaseMissing('tasks', [
             'project_id' => $this->project->id,
@@ -169,9 +171,9 @@ class TaskTest extends TestCase
             'task' => $task->id,
         ]), [
             'title' => 'Updated title',
-        ])->assertForbidden()->assertJson([
-            'message' => 'Sorry, task is not active. Restore it to perform this activity.',
-        ]);
+        ])->assertConflict()
+            ->assertJsonPath('message', 'Task is archived. Restore it before performing this action.')
+            ->assertJsonPath('code', 'task_archived');
     }
 
     /** @test */
@@ -211,7 +213,9 @@ class TaskTest extends TestCase
             'task' => $task->id,
         ]), [
             'title' => 'Task title updated',
-        ])->assertForbidden();
+        ])->assertConflict()
+            ->assertJsonPath('message', 'Project is archived. Restore it before performing this action.')
+            ->assertJsonPath('code', 'project_archived');
 
         $this->assertDatabaseHas('tasks', [
             'id' => $task->id,

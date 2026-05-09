@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ProjectHealthStatus;
+use App\Exceptions\ArchivedResourceException;
 use App\QueryBuilder\ProjectQueryBuilder;
 use App\Traits\RecordActivity;
 use Carbon\Carbon;
@@ -102,6 +103,40 @@ class Project extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    #[Override]
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        $project = parent::resolveRouteBinding($value, $field);
+
+        if ($project !== null) {
+            return $project;
+        }
+
+        if ($this->resolveSoftDeletableRouteBinding($value, $field)?->trashed()) {
+            throw ArchivedResourceException::project();
+        }
+
+        return null;
+    }
+
+    #[Override]
+    public function resolveChildRouteBinding($childType, $value, $field): ?Model
+    {
+        $childModel = parent::resolveChildRouteBinding($childType, $value, $field);
+
+        if ($childModel !== null || $childType !== 'task') {
+            return $childModel;
+        }
+
+        $trashedChildModel = parent::resolveSoftDeletableChildRouteBinding($childType, $value, $field);
+
+        if ($trashedChildModel instanceof Task && $trashedChildModel->trashed()) {
+            throw ArchivedResourceException::task();
+        }
+
+        return null;
     }
 
     /**

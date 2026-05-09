@@ -249,10 +249,9 @@ class ProjectFeatureTest extends TestCase
         $this->project->delete();
 
         $this->getJson($this->apiV1Route('projects.activities', ['project' => $this->project]))
-            ->assertForbidden()
-            ->assertJson([
-                'message' => 'Sorry, project is not active. Restore it to perform this activity.',
-            ]);
+            ->assertConflict()
+            ->assertJsonPath('message', 'Project is archived. Restore it before performing this action.')
+            ->assertJsonPath('code', 'project_archived');
     }
 
     /** @test */
@@ -274,9 +273,9 @@ class ProjectFeatureTest extends TestCase
     {
         $response = $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]));
 
-        $response->assertForbidden()->assertJson([
-            'message' => 'Only abandoned projects can be deleted permanently.',
-        ]);
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'Only abandoned projects can be deleted permanently.')
+            ->assertJsonPath('code', 'forbidden');
 
         $this->assertDatabaseHas('projects', [
             'id' => $this->project->id,

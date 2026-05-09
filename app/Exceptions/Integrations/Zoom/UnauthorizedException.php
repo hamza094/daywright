@@ -4,7 +4,22 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Integrations\Zoom;
 
-class UnauthorizedException extends ZoomException
+use Symfony\Component\HttpFoundation\Response;
+
+class UnauthorizedException extends ZoomUserErrorException
 {
-    //
+    public function status(): int
+    {
+        return Response::HTTP_FORBIDDEN;
+    }
+
+    public function errorCode(): string
+    {
+        return 'zoom_forbidden';
+    }
+
+    protected function defaultMessage(): string
+    {
+        return 'Zoom access is forbidden.';
+    }
 }

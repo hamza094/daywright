@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Controllers\Zoom;
 
-use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -60,7 +60,7 @@ class StoreMeetingTest extends TestCase
         ];
 
         $zoomFake = $this->fakeZoom()->shouldFailWithException(
-            new ZoomException('Test error message')
+            new ZoomUserErrorException('Test error message')
         );
 
         $response = $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);

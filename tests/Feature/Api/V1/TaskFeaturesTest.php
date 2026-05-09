@@ -68,7 +68,10 @@ class TaskFeaturesTest extends TestCase
 
         $this->project->delete();
 
-        $this->assignMembersToTask($task, [$user->id])->assertForbidden();
+        $this->assignMembersToTask($task, [$user->id])
+            ->assertConflict()
+            ->assertJsonPath('message', 'Project is archived. Restore it before performing this action.')
+            ->assertJsonPath('code', 'project_archived');
 
         $this->assertDatabaseMissing('task_user', [
             'task_id' => $task->id,

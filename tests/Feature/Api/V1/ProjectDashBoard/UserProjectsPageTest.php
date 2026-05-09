@@ -23,7 +23,8 @@ class UserProjectsPageTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['sort'])
             ->assertJson([
-                'message' => 'Validation Error',
+                'message' => 'Validation failed.',
+                'code' => 'validation_error',
                 'errors' => [
                     'sort' => ['Sort must be one of: latest, oldest, or name'],
                 ],
@@ -38,7 +39,8 @@ class UserProjectsPageTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['filter.member'])
             ->assertJson([
-                'message' => 'Validation Error',
+                'message' => 'Validation failed.',
+                'code' => 'validation_error',
                 'errors' => [
                     'filter.member' => ['The filter.member field must be true or false.'],
                 ],
@@ -62,7 +64,8 @@ class UserProjectsPageTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['page'])
             ->assertJson([
-                'message' => 'Validation Error',
+                'message' => 'Validation failed.',
+                'code' => 'validation_error',
                 'errors' => [
                     'page' => ['Page must be at least 1'],
                 ],

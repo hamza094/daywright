@@ -285,17 +285,20 @@ class PlanLimitServiceFeatureTest extends TestCase
         $response->assertStatus(403)
             ->assertJson([
                 'message' => $expectedMessage,
-                'error_type' => 'plan_limit_exceeded',
-                'reason' => $reason,
-                'limit_type' => $limitType,
-                'limit_label' => $this->expectedLimitLabel($limitType),
-                'current_usage' => $currentUsage,
-                'max_allowed' => $maxAllowed,
-                'limit_scope' => $expectedLimitScope,
-                'can_upgrade' => $expectedCanUpgrade,
-                'upgrade_required' => true,
+                'code' => 'plan_limit_exceeded',
+                'errors' => [],
+                'meta' => [
+                    'reason' => $reason,
+                    'limit_type' => $limitType,
+                    'limit_label' => $this->expectedLimitLabel($limitType),
+                    'current_usage' => $currentUsage,
+                    'max_allowed' => $maxAllowed,
+                    'limit_scope' => $expectedLimitScope,
+                    'can_upgrade' => $expectedCanUpgrade,
+                    'upgrade_required' => true,
+                ],
             ])
-            ->assertJsonMissingPath('limit_owner_id');
+            ->assertJsonMissingPath('meta.limit_owner_id');
     }
 
     private function expectedLimitLabel(string $limitType): string

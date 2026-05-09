@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Controllers\Zoom;
 
-use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Models\Meeting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -52,7 +52,7 @@ class UpdateMeetingTest extends TestCase
         $updatedDuration = 15;
 
         $this->fakeZoom()->shouldFailWithException(
-            new ZoomException('Test error message')
+            new ZoomUserErrorException('Test error message')
         );
 
         $this->withHeaders($this->idempotencyHeaders())->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [

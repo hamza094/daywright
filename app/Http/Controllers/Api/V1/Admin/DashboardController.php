@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\Admin\ActivitiesResource;
 use App\Models\Activity;
@@ -16,7 +17,6 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class DashboardController extends Controller
@@ -32,7 +32,7 @@ class DashboardController extends Controller
 
             return response()->json(['message' => 'Backup process started']);
         } catch (Throwable $e) {
-            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, $e->getMessage(), $e);
+            throw new ExternalServiceUnavailableException('Backup process could not be started.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
     }
 
@@ -45,7 +45,7 @@ class DashboardController extends Controller
         } catch (Throwable $e) {
             Log::error('Failed to load admin activities', ['error' => $e->getMessage()]);
 
-            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Failed to load activities.', $e);
+            throw new ExternalServiceUnavailableException('Failed to load activities.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
     }
 
@@ -64,7 +64,7 @@ class DashboardController extends Controller
         } catch (Throwable $e) {
             Log::error('Failed to load admin dashboard data', ['error' => $e->getMessage()]);
 
-            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Failed to load dashboard data.', $e);
+            throw new ExternalServiceUnavailableException('Failed to load dashboard data.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
     }
 }

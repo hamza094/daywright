@@ -171,7 +171,8 @@ class DashboardTest extends TestCase
     {
         $this->getJson($this->apiV1AdminRoute('backup.database'))
             ->assertNotFound()
-            ->assertJsonPath('message', 'Sorry Record not found.');
+            ->assertJsonPath('message', 'Resource not found.')
+            ->assertJsonPath('code', 'not_found');
     }
 
     // Error Handling
@@ -187,7 +188,8 @@ class DashboardTest extends TestCase
 
         $this->getJson($this->apiV1AdminRoute('dashboard.data'))
             ->assertStatus(500)
-            ->assertJsonPath('message', 'Failed to load dashboard data.');
+            ->assertJsonPath('message', 'Failed to load dashboard data.')
+            ->assertJsonPath('code', 'internal_server_error');
     }
 
     private function enableTwoFactorForUser(User $user): void

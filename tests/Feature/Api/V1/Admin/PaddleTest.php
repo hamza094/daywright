@@ -115,8 +115,9 @@ class PaddleTest extends TestCase
 
         $this->getJson($this->apiV1AdminRoute('subscriptions.list'))
             ->assertStatus(500)
-            ->assertJsonStructure(['message'])
-            ->assertJsonPath('message', 'Connection timed out');
+            ->assertJsonStructure(['message', 'code', 'errors', 'meta'])
+            ->assertJsonPath('message', 'An unexpected server error occurred.')
+            ->assertJsonPath('code', 'internal_server_error');
     }
 
     private function enableTwoFactorForUser(User $user): void

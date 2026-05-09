@@ -116,6 +116,13 @@ return [
             'path' => storage_path('logs/zoom.log'),
             'level' => 'warning',
         ],
+
+        'exception_metrics' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/exception-metrics.log'),
+            'level' => 'info',
+            'days' => 14,
+        ],
     ],
 
 ];

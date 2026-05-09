@@ -8,7 +8,7 @@ use App\DataTransferObjects\Zoom\AccessTokenDetails;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
-use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Http\Integrations\Zoom\Requests\CreateMeeting;
 use App\Http\Integrations\Zoom\Requests\DeleteMeeting;
 use App\Http\Integrations\Zoom\Requests\GetAccessTokenRequest;
@@ -87,7 +87,7 @@ final class ZoomService implements Zoom
     public function createMeeting(array $validated, User $user): Meeting
     {
         if (! $user->isConnectedToZoom()) {
-            throw new ZoomException(self::USER_NOT_CONNECTED);
+            throw new ZoomUserErrorException(self::USER_NOT_CONNECTED);
         }
 
         return $this->connectorForUser($user)
@@ -102,7 +102,7 @@ final class ZoomService implements Zoom
     public function updateMeeting(array $validated, User $user): SaloonResponse
     {
         if (! $user->isConnectedToZoom()) {
-            throw new ZoomException(self::USER_NOT_CONNECTED);
+            throw new ZoomUserErrorException(self::USER_NOT_CONNECTED);
         }
 
         return $this->connectorForUser($user)
@@ -114,7 +114,7 @@ final class ZoomService implements Zoom
     public function deleteMeeting(int $meetingId, User $user): SaloonResponse
     {
         if (! $user->isConnectedToZoom()) {
-            throw new ZoomException(self::USER_NOT_CONNECTED);
+            throw new ZoomUserErrorException(self::USER_NOT_CONNECTED);
         }
 
         return $this->connectorForUser($user)
@@ -126,7 +126,7 @@ final class ZoomService implements Zoom
     public function getZakToken(User $user): string
     {
         if (! $user->isConnectedToZoom()) {
-            throw new ZoomException(self::USER_NOT_CONNECTED);
+            throw new ZoomUserErrorException(self::USER_NOT_CONNECTED);
         }
 
         $response = $this->connectorForUser($user)

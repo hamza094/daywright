@@ -6,7 +6,8 @@ namespace App\Http\Integrations\Zoom;
 
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\UnauthorizedException;
-use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
+use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Http\Integrations\Zoom\Requests\GetAccessTokenRequest;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use Override;
@@ -16,6 +17,7 @@ use Saloon\Http\Request;
 use Saloon\Http\Response;
 use Saloon\Traits\OAuth2\AuthorizationCodeGrant;
 use Saloon\Traits\Plugins\AcceptsJson;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Throwable;
 
 class ZoomConnector extends Connector
@@ -36,20 +38,29 @@ class ZoomConnector extends Connector
     public function getRequestException(
         Response $response, ?Throwable $senderException
     ): ?Throwable {
-        return match ($response->status()) {
-            403 => new UnauthorizedException(
-                message: $response->body(),
-                code: $response->status(),
+        $status = $response->status();
+        $message = $response->body();
+
+        return match (true) {
+            $status === HttpResponse::HTTP_FORBIDDEN => new UnauthorizedException(
+                message: $message,
+                code: $status,
                 previous: $senderException,
             ),
-            404 => new NotFoundException(
-                message: $response->body(),
-                code: $response->status(),
+            $status === HttpResponse::HTTP_NOT_FOUND => new NotFoundException(
+                message: $message,
+                code: $status,
                 previous: $senderException,
             ),
-            default => new ZoomException(
-                message: $response->body(),
-                code: $response->status(),
+            $status === HttpResponse::HTTP_TOO_MANY_REQUESTS,
+            $status >= HttpResponse::HTTP_INTERNAL_SERVER_ERROR => new ZoomExternalFailureException(
+                message: $message,
+                code: $status,
+                previous: $senderException,
+            ),
+            default => new ZoomUserErrorException(
+                message: $message,
+                code: $status,
                 previous: $senderException,
             ),
         };
@@ -73,7 +84,7 @@ class ZoomConnector extends Connector
         }
 
         if ($clientId === '' || $clientId === '0' || ($clientSecret === '' || $clientSecret === '0')) {
-            throw new ZoomException('Zoom OAuth client credentials are not configured.');
+            throw new ZoomExternalFailureException('Zoom OAuth client credentials are not configured.');
         }
 
         return OAuthConfig::make()

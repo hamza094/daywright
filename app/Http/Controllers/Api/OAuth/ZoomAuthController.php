@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\OAuth;
 
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
-use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Http\Controllers\Api\ApiController;
 use App\Interfaces\Zoom;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class ZoomAuthController extends ApiController
 {
@@ -49,17 +47,13 @@ final class ZoomAuthController extends ApiController
             codeVerifier: session()->pull('oauth_zoom_code_verifier'),
         );
 
-        try {
-            $accessDetails = app(Zoom::class)->authorize($callbackDetails);
+        $accessDetails = app(Zoom::class)->authorize($callbackDetails);
 
-            auth()->user()->updateZoomOAuthDetails(
-                accessToken: $accessDetails->accessToken,
-                refreshToken: $accessDetails->refreshToken,
-                expiresAt: $accessDetails->expiresAt,
-            );
-        } catch (ZoomException $exception) {
-            throw new HttpException(Response::HTTP_BAD_REQUEST, 'Failed to connect to Zoom account', $exception);
-        }
+        auth()->user()->updateZoomOAuthDetails(
+            accessToken: $accessDetails->accessToken,
+            refreshToken: $accessDetails->refreshToken,
+            expiresAt: $accessDetails->expiresAt,
+        );
 
         return $this->respondWithMessage('Zoom account connected successfully');
 

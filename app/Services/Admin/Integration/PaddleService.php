@@ -7,19 +7,25 @@ namespace App\Services\Admin\Integration;
 use App\Collections\Paddle\DataCollection;
 use App\DataTransferObjects\Paddle\Data;
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
+use App\Exceptions\Paddle\PaddleRequestException;
 use App\Http\Integrations\Paddle\PaddleConnector;
 use App\Http\Integrations\Paddle\Requests\SubscriptionUsersList;
 use App\Interfaces\PaddleApi;
 use Override;
+use Throwable;
 
 final class PaddleService implements PaddleApi
 {
     #[Override]
     public function subscriptionUsersList(UserSubscriptionData $listData): DataCollection
     {
-        $subscriptionsData = $this->connector()
-            ->send(new SubscriptionUsersList($listData))
-            ->collect();
+        try {
+            $subscriptionsData = $this->connector()
+                ->send(new SubscriptionUsersList($listData))
+                ->collect();
+        } catch (Throwable $exception) {
+            throw new PaddleRequestException(previous: $exception);
+        }
 
         $subscriptions = collect($subscriptionsData['response']);
 

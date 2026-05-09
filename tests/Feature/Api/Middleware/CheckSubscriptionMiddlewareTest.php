@@ -98,8 +98,11 @@ class CheckSubscriptionMiddlewareTest extends TestCase
     {
         return [
             'message' => 'Access denied. An active subscription is required to perform this action.',
-            'error_type' => 'subscription_required',
-            'upgrade_required' => true,
+            'code' => 'subscription_required',
+            'errors' => [],
+            'meta' => [
+                'upgrade_required' => true,
+            ],
         ];
     }
 

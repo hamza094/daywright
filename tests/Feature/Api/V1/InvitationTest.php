@@ -41,13 +41,15 @@ class InvitationTest extends TestCase
             'email' => $invitedUser->email,
         ])
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'Validation Error')
+            ->assertJsonPath('message', 'Validation failed.')
+            ->assertJsonPath('code', 'validation_error')
             ->assertJsonPath('errors.invitation.0', 'Project invitation already sent to a user.');
 
         $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project),
             ['email' => $this->project->user->email])
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'Validation Error')
+            ->assertJsonPath('message', 'Validation failed.')
+            ->assertJsonPath('code', 'validation_error')
             ->assertJsonPath('errors.invitation.0', "Can't send an invitation to the project owner.");
     }
 
@@ -190,7 +192,8 @@ class InvitationTest extends TestCase
 
         $this->deleteJson($this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $pendingUser))
             ->assertUnprocessable()
-            ->assertJsonPath('message', 'Validation Error')
+            ->assertJsonPath('message', 'Validation failed.')
+            ->assertJsonPath('code', 'validation_error')
             ->assertJsonPath('errors.user.0', 'This user is not an active member of the project.');
     }
 

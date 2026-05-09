@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Actions\OAuthAction;
 use App\Enums\OAuthProvider;
+use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Http\Controllers\Api\ApiController;
 use App\Services\Auth\LoginUserService;
 use Illuminate\Auth\Events\Registered;
@@ -14,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 class OAuthController extends ApiController
@@ -73,7 +73,7 @@ class OAuthController extends ApiController
                 'message' => $e->getMessage(),
             ]);
 
-            throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'Error processing user data.', $e);
+            throw new ExternalServiceUnavailableException('Error processing user data.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
 
     }

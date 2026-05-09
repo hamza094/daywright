@@ -4,23 +4,19 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
-use App\Exceptions\Integrations\Zoom\NotFoundException;
-use App\Exceptions\Integrations\Zoom\UnauthorizedException;
-use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Exceptions\Subscription\SubscriptionRequiredException;
-use App\Models\Project;
-use App\Models\Task;
+use App\Exceptions\Support\ApiErrorFormatter;
 use Aws\S3\Exception\S3Exception;
-use Exception;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
-use Laravel\Paddle\Exceptions\PaddleException as LaravelPaddleException;
 use Override;
 use Saloon\RateLimitPlugin\Exceptions\RateLimitReachedException;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,13 +29,22 @@ class Handler extends ExceptionHandler
 {
     private const string API_PREFIX = 'api/*';
 
+    private const string EXCEPTION_METRICS_CHANNEL = 'exception_metrics';
+
+    private const string EXCEPTION_METRIC_EVENT = 'api_exception_metric';
+
     /**
      * A list of the exception types that are not reported.
      *
      * @var array
      */
     protected $dontReport = [
-
+        ValidationException::class,
+        AuthenticationException::class,
+        AuthorizationException::class,
+        ModelNotFoundException::class,
+        NotFoundHttpException::class,
+        MethodNotAllowedHttpException::class,
     ];
 
     /**
@@ -52,16 +57,16 @@ class Handler extends ExceptionHandler
         'password_confirmation',
     ];
 
-    /**
-     * Report or log an exception.
-     *
-     *
-     * @throws Exception
-     */
     #[Override]
-    public function report(Throwable $exception): void
+    public function report(Throwable $e): void
     {
-        parent::report($exception);
+        if ($this->shouldRecordExceptionMetric($e)) {
+            $this->recordExceptionMetric($e);
+
+            return;
+        }
+
+        parent::report($e);
     }
 
     /**
@@ -70,212 +75,115 @@ class Handler extends ExceptionHandler
     #[Override]
     public function register(): void
     {
-        $this->reportable(function (Throwable $e): void {});
+        $this->renderable(function (ApiException $e, Request $request) {
+            return ApiErrorFormatter::response(
+                $e->publicMessage(),
+                $e->status(),
+                $e->errorCode(),
+                $e->errors(),
+                $e->meta($request),
+            );
+        });
 
         $this->renderable(function (NotFoundHttpException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                if ($this->trashedProjectRequested($request)) {
-                    return $this->apiErrorResponse(
-                        'Sorry, project is not active. Restore it to perform this activity.',
-                        Response::HTTP_FORBIDDEN,
-                    );
-                }
-
-                if ($this->trashedTaskRequested($request)) {
-                    return $this->apiErrorResponse(
-                        'Sorry, task is not active. Restore it to perform this activity.',
-                        Response::HTTP_FORBIDDEN,
-                    );
-                }
-
-                if ($e->getMessage() !== '' && $e->getMessage() !== 'Not Found') {
-                    return $this->apiErrorResponse($e->getMessage(), Response::HTTP_NOT_FOUND);
-                }
-
-                return $this->apiErrorResponse('Sorry Record not found.', Response::HTTP_NOT_FOUND);
-            }
-        });
-
-        $this->renderable(function (PlanLimitExceededException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                $authenticatedUser = $request->user();
-                $canUpgrade = $e->limitScope() === PlanLimitExceededException::SCOPE_ACCOUNT
-                    || (int) ($authenticatedUser?->getKey() ?? 0) === $e->limitOwnerId();
-
-                return $this->apiErrorResponse(
-                    $e->getMessage(),
-                    Response::HTTP_FORBIDDEN,
-                    additionalData: [
-                        'error_type' => 'plan_limit_exceeded',
-                        'reason' => $e->reason(),
-                        'limit_type' => $e->limitType(),
-                        'limit_label' => $e->limitLabel(),
-                        'current_usage' => $e->currentUsage(),
-                        'max_allowed' => $e->maxAllowed(),
-                        'limit_scope' => $e->limitScope(),
-                        'can_upgrade' => $canUpgrade,
-                        'upgrade_required' => true,
-                    ],
-                );
-            }
-        });
-
-        $this->renderable(function (SubscriptionRequiredException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    $e->getMessage(),
-                    Response::HTTP_FORBIDDEN,
-                    additionalData: [
-                        'error_type' => $e->errorType(),
-                        'upgrade_required' => $e->upgradeRequired(),
-                    ],
-                );
-            }
-        });
-
-        $this->renderable(function (SubscriptionException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    $e->getMessage(),
-                    Response::HTTP_CONFLICT,
-                );
-            }
+            return ApiErrorFormatter::response(
+                ApiErrorFormatter::publicMessage($e->getMessage(), 'Resource not found.'),
+                Response::HTTP_NOT_FOUND,
+                'not_found',
+            );
         });
 
         $this->renderable(function (AuthenticationException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    $e->getMessage() !== '' ? $e->getMessage() : 'Unauthenticated.',
-                    Response::HTTP_UNAUTHORIZED,
-                );
-            }
+            return ApiErrorFormatter::response(
+                'Authentication is required.',
+                Response::HTTP_UNAUTHORIZED,
+                'unauthenticated',
+            );
         });
 
         $this->renderable(function (AuthorizationException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    $e->getMessage() !== '' ? $e->getMessage() : 'This action is unauthorized.',
-                    Response::HTTP_FORBIDDEN,
-                );
-            }
+            return ApiErrorFormatter::response(
+                ApiErrorFormatter::publicMessage($e->getMessage(), 'You are not authorized to perform this action.'),
+                Response::HTTP_FORBIDDEN,
+                'forbidden',
+            );
         });
 
         $this->renderable(function (MethodNotAllowedHttpException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    'The HTTP method used for the request is not allowed.',
-                    Response::HTTP_METHOD_NOT_ALLOWED,
-                );
-            }
+            return ApiErrorFormatter::response(
+                'Method not allowed.',
+                Response::HTTP_METHOD_NOT_ALLOWED,
+                'method_not_allowed',
+            );
         });
 
         $this->renderable(function (HttpException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                $message = $e->getMessage() !== ''
-                    ? $e->getMessage()
-                    : $this->defaultApiMessageForStatus($e->getStatusCode());
+            $status = $e->getStatusCode();
+            $defaultMessage = ApiErrorFormatter::defaultMessageForStatus($status);
+            $message = $e->getMessage() !== ''
+                ? ApiErrorFormatter::publicMessage($e->getMessage(), $defaultMessage)
+                : $defaultMessage;
 
-                return $this->apiErrorResponse($message, $e->getStatusCode());
+            if ($status >= Response::HTTP_INTERNAL_SERVER_ERROR) {
+                $message = $defaultMessage;
             }
+
+            return ApiErrorFormatter::response(
+                $message,
+                $status,
+                ApiErrorFormatter::defaultCodeForStatus($status),
+            );
         });
 
         $this->renderable(function (ValidationException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    'Validation Error',
-                    Response::HTTP_UNPROCESSABLE_ENTITY,
-                    $e->errors(),
-                );
-            }
-        });
-
-        $this->renderable(function (LaravelPaddleException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    'A payment error occurred: '.$e->getMessage(),
-                    Response::HTTP_UNPROCESSABLE_ENTITY,
-                );
-            }
-        });
-
-        $this->renderable(function (NotFoundException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    $e->getMessage() !== '' ? $e->getMessage() : 'Resource not found',
-                    Response::HTTP_NOT_FOUND,
-                );
-            }
-        });
-
-        $this->renderable(function (UnauthorizedException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    $e->getMessage() !== '' ? $e->getMessage() : 'Unauthorized',
-                    Response::HTTP_FORBIDDEN,
-                );
-            }
-        });
-
-        $this->renderable(function (ZoomException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    $e->getMessage() !== '' ? $e->getMessage() : 'Zoom error',
-                    Response::HTTP_BAD_REQUEST,
-                );
-            }
+            return ApiErrorFormatter::response(
+                'Validation failed.',
+                Response::HTTP_UNPROCESSABLE_ENTITY,
+                'validation_error',
+                $e->errors(),
+            );
         });
 
         $this->renderable(function (RateLimitReachedException $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    'Rate limit exceeded. Please try again in '.$e->getLimit()->getRemainingSeconds().' seconds.',
-                    Response::HTTP_TOO_MANY_REQUESTS,
-                );
-            }
+            return ApiErrorFormatter::response(
+                'Too many requests. Please try again later.',
+                Response::HTTP_TOO_MANY_REQUESTS,
+                'rate_limited',
+                meta: [
+                    'retry_after_seconds' => $e->getLimit()->getRemainingSeconds(),
+                ],
+            );
         });
 
         $this->renderable(function (S3Exception $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    'S3 Error: '.$e->getMessage(),
-                    Response::HTTP_INTERNAL_SERVER_ERROR,
-                );
-            }
+            return ApiErrorFormatter::response(
+                'Storage request could not be completed.',
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+                'storage_error',
+                meta: [
+                    'provider' => 's3',
+                ],
+            );
         });
 
         $this->renderable(function (Throwable $e, $request) {
-            if ($this->isApiRequest($request)) {
-                return $this->apiErrorResponse(
-                    'An unexpected error occurred.',
-                    Response::HTTP_INTERNAL_SERVER_ERROR,
-                );
-            }
+            return ApiErrorFormatter::response(
+                'An unexpected server error occurred.',
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+                'internal_server_error',
+            );
         });
 
     }
 
-    /**
-     * @param  array<string, mixed>  $additionalData
-     * @param  array<string, array<int, string>>  $errors
-     */
-    private function apiErrorResponse(
-        string $message,
-        int $status,
-        array $errors = [],
-        array $additionalData = [],
-    ): JsonResponse {
-        $payload = ['message' => $message];
-
-        if ($errors !== []) {
-            $payload['errors'] = $errors;
+    #[Override]
+    protected function renderViaCallbacks($request, Throwable $e)
+    {
+        if (! $request instanceof Request || ! $this->isApiRequest($request)) {
+            return null;
         }
 
-        return response()->json(array_merge($payload, $additionalData), $status);
-    }
-
-    private function defaultApiMessageForStatus(int $status): string
-    {
-        return Response::$statusTexts[$status] ?? 'An unexpected error occurred.';
+        return parent::renderViaCallbacks($request, $e);
     }
 
     private function isApiRequest(Request $request): bool
@@ -283,41 +191,32 @@ class Handler extends ExceptionHandler
         return $request->is(self::API_PREFIX);
     }
 
-    private function trashedProjectRequested(Request $request): bool
+    private function shouldRecordExceptionMetric(Throwable $e): bool
     {
-        $projectRouteParameter = $request->route('project');
-
-        if ($projectRouteParameter instanceof Project) {
-            return $projectRouteParameter->trashed();
-        }
-
-        if (! is_string($projectRouteParameter) || $projectRouteParameter === '') {
-            return false;
-        }
-
-        $routeKeyName = (new Project)->getRouteKeyName();
-
-        return Project::onlyTrashed()
-            ->where($routeKeyName, $projectRouteParameter)
-            ->exists();
+        return $e instanceof ArchivedResourceException
+            || $e instanceof SubscriptionRequiredException
+            || $e instanceof PlanLimitExceededException
+            || $e instanceof SubscriptionException
+            || $e instanceof ZoomUserErrorException;
     }
 
-    private function trashedTaskRequested(Request $request): bool
+    private function recordExceptionMetric(ApiException $e): void
     {
-        $taskRouteParameter = $request->route('task');
+        $context = [
+            'exception' => $e::class,
+            'code' => $e->errorCode(),
+            'status' => $e->status(),
+            'message' => $e->publicMessage(),
+        ];
 
-        if ($taskRouteParameter instanceof Task) {
-            return $taskRouteParameter->trashed();
+        $request = request();
+
+        if ($request instanceof Request) {
+            $context['path'] = $request->path();
+            $context['method'] = $request->method();
+            $context['meta'] = $e->meta($request);
         }
 
-        if (! is_string($taskRouteParameter) || $taskRouteParameter === '') {
-            return false;
-        }
-
-        $routeKeyName = (new Task)->getRouteKeyName();
-
-        return Task::onlyTrashed()
-            ->where($routeKeyName, $taskRouteParameter)
-            ->exists();
+        Log::channel(self::EXCEPTION_METRICS_CHANNEL)->info(self::EXCEPTION_METRIC_EVENT, $context);
     }
 }
