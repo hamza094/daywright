@@ -19,7 +19,7 @@ class MessageController extends ApiController
     {
         $responseMessage = $messageService->send($project, $request->validated());
 
-        return response()->json(['message' => $responseMessage], 200);
+        return $this->respondWithMessage($responseMessage);
     }
 
     public function scheduled(Project $project, MessageService $messageService): Collection
@@ -31,6 +31,6 @@ class MessageController extends ApiController
     {
         $messageService->deleteScheduledMessage($message);
 
-        return response()->noContent();
+        return $this->respondNoContent();
     }
 }

@@ -15,9 +15,7 @@ use App\Models\Task;
 use App\Repository\TaskRepository;
 use App\Services\Task\TaskFeatureService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response as HttpResponse;
-use Symfony\Component\HttpFoundation\Response;
 
 class TaskFeaturesController extends ApiController
 {
@@ -37,10 +35,10 @@ class TaskFeaturesController extends ApiController
 
         $service->assignMembers($task, $members, $project, $this->authenticatedUser());
 
-        return response()->json([
+        return $this->respondWithData([
             'message' => 'Task assigned successfully.',
             'taskMembers' => TaskMemberResource::collection($task->assignee),
-        ], 200);
+        ]);
     }
 
     /** Unassign Member from Project Task
@@ -59,10 +57,10 @@ class TaskFeaturesController extends ApiController
 
         $user = $service->unassignMember($task, $memberId);
 
-        return response()->json([
+        return $this->respondWithData([
             'message' => 'Task member unassigned.',
             'member' => new TaskMemberResource($user),
-        ], 200);
+        ]);
     }
 
     /**
@@ -84,10 +82,10 @@ class TaskFeaturesController extends ApiController
         $service->archiveTask($task);
         $task->loadMissing('project:id,slug');
 
-        return response()->json([
+        return $this->respondWithData([
             'message' => 'Project task archived successfully',
             'task' => new TaskResource($task),
-        ], Response::HTTP_OK);
+        ]);
     }
 
     /**
@@ -109,10 +107,10 @@ class TaskFeaturesController extends ApiController
         $service->unarchiveTask($task);
         $task->loadMissing('project:id,slug');
 
-        return response()->json([
+        return $this->respondWithData([
             'message' => 'Project task restored successfully',
             'task' => new TaskResource($task),
-        ], Response::HTTP_OK);
+        ]);
     }
 
     /** Search Members
@@ -149,6 +147,6 @@ class TaskFeaturesController extends ApiController
     {
         $service->removeTask($task);
 
-        return response()->noContent();
+        return $this->respondNoContent();
     }
 }

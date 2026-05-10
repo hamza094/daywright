@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Admin\ActivitiesResource;
 use App\Models\Activity;
 use App\Services\Admin\DashboardService;
@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
-class DashboardController extends Controller
+class DashboardController extends ApiController
 {
     public function __construct(protected DashboardService $dashboardService) {}
 
@@ -30,7 +30,7 @@ class DashboardController extends Controller
             Artisan::call('backup:clean');
             Artisan::call('backup:run');
 
-            return response()->json(['message' => 'Backup process started']);
+            return $this->respondWithMessage('Backup process started');
         } catch (Throwable $e) {
             throw new ExternalServiceUnavailableException('Backup process could not be started.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
@@ -41,7 +41,7 @@ class DashboardController extends Controller
         try {
             $activities = Activity::with('user', 'subject', 'project')->latest()->limit(15)->get();
 
-            return ActivitiesResource::collection($activities);
+            return $this->respondWithData(ActivitiesResource::collection($activities));
         } catch (Throwable $e) {
             Log::error('Failed to load admin activities', ['error' => $e->getMessage()]);
 
@@ -58,9 +58,7 @@ class DashboardController extends Controller
 
             $data = $this->dashboardService->fetchDataForMonths($startDate, $endDate);
 
-            return response()->json([
-                'data' => $data,
-            ]);
+            return $this->respondWithData($data);
         } catch (Throwable $e) {
             Log::error('Failed to load admin dashboard data', ['error' => $e->getMessage()]);
 

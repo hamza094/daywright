@@ -17,8 +17,6 @@ final class ForceDeleteUserController extends ApiController
         $trashedUser = User::withTrashed()->findOrFail($user->id);
         $trashedUser->forceDelete();
 
-        return response()->json([
-            'message' => 'User data permanently deleted.',
-        ], 200);
+        return $this->respondWithMessage('User data permanently deleted.');
     }
 }

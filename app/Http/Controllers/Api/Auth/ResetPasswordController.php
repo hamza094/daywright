@@ -49,9 +49,7 @@ class ResetPasswordController extends ApiController
             ]);
         }
 
-        return response()->json([
-            'message' => 'If your email exists in our system, you will receive a password reset link shortly.',
-        ], 200);
+        return $this->respondWithMessage('If your email exists in our system, you will receive a password reset link shortly.');
     }
 
     /**
@@ -79,9 +77,7 @@ class ResetPasswordController extends ApiController
         );
 
         if ($status === Password::PASSWORD_RESET) {
-            return response()->json([
-                'message' => 'Password reset successfully.',
-            ], 200);
+            return $this->respondWithMessage('Password reset successfully.');
         }
 
         Log::warning('Password reset attempt failed', [

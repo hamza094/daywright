@@ -21,9 +21,7 @@ class ConversationController extends ApiController
     {
         $this->authorize('access', $project);
 
-        return response()->json([
-            'data' => $repository->getProjectConversations($project),
-        ]);
+        return $this->respondWithData($repository->getProjectConversations($project));
     }
 
     public function store(Project $project, ConversationRequest $request): JsonResponse

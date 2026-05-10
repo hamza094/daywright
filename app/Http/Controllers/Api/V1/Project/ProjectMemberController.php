@@ -9,7 +9,6 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Project\InvitationService;
 use Illuminate\Http\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
 
 final class ProjectMemberController extends ApiController
 {
@@ -17,8 +16,6 @@ final class ProjectMemberController extends ApiController
     {
         $invitationService->removeMember($user, $project);
 
-        return response()->json([
-            'message' => "Member {$user->name} has been removed from the project",
-        ], Response::HTTP_OK);
+        return $this->respondWithMessage("Member {$user->name} has been removed from the project");
     }
 }

@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Admin\Integration;
 
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Interfaces\PaddleApi;
 use Illuminate\Http\JsonResponse;
 
-class PaddleController extends Controller
+class PaddleController extends ApiController
 {
     public function subscribedUsers(PaddleApi $paddle): JsonResponse
     {
@@ -21,6 +21,6 @@ class PaddleController extends Controller
             )
         );
 
-        return response()->json(['data' => $data]);
+        return $this->respondWithData($data);
     }
 }
