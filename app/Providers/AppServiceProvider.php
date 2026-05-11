@@ -69,6 +69,17 @@ class AppServiceProvider extends ServiceProvider
             $openApi->secure(
                 SecurityScheme::http('bearer')
             );
+
+            $applicationUrl = rtrim(url('/'), '/');
+
+            foreach ($openApi->servers as $server) {
+                if (! str_starts_with($server->url, $applicationUrl)) {
+                    continue;
+                }
+
+                $relativeUrl = Str::after($server->url, $applicationUrl);
+                $server->url = $relativeUrl === '' ? '/' : $relativeUrl;
+            }
         });
 
         Scramble::routes(function (Route $route): bool {
@@ -84,8 +95,15 @@ class AppServiceProvider extends ServiceProvider
                 'api/v1/projects/{project}/messages',
             ];
 
+            // Exclude Router::fallback() generated routes (they use the
+            // `{fallbackPlaceholder}` parameter) — these are not real API
+            // endpoints and should not appear in API documentation.
+            if ($route->isFallback) {
+                return false;
+            }
+
             return Str::startsWith($route->uri, 'api/v1') &&
-               ! Str::startsWith($route->uri, $excludedPrefixes);
+                ! Str::startsWith($route->uri, $excludedPrefixes);
 
         });
 

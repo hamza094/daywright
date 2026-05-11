@@ -47,7 +47,7 @@ import { VueSpinners } from '@saeris/vue-spinners';
 Vue.use(VueSpinners);
 
 window.momenttz = momenttz;
-window.moment = moment;
+window.moment = momenttz;
 
 import router from './router.js';
 import store from './store';

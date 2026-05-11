@@ -18,4 +18,5 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => view('welcome.home'));
 
 // SPA Routes
-Route::get('{path}', HomeController::class)->where('path', '^(?!api(?:/|$)).*');
+// Exclude API and docs paths so package routes (like Scramble) can be registered.
+Route::get('{path}', HomeController::class)->where('path', '^(?!(?:api|docs)(?:/|$)).*');
