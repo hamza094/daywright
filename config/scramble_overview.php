@@ -17,7 +17,7 @@ DayWright exposes a versioned JSON API for authentication, users, projects, task
 
 - Relative base path: `/api/v1`
 - Default local base URL in this environment: `http://daywright.test/api/v1`
-- An `/api/v2` namespace is registered in the application, but it does not currently expose published endpoints.
+
 
 ## Authentication
 
@@ -251,7 +251,6 @@ Rate-limited responses return `429 Too Many Requests`. Integration-specific rate
 
 - The API is path-versioned.
 - Current published routes are mounted under `/api/v1`.
-- `/api/v2` is registered but currently empty.
  
 
 ## Authorization

@@ -41,6 +41,6 @@ class ScrambleDocsTest extends TestCase
         $this->assertStringContainsString('x-zm-request-id', $description);
         $this->assertStringContainsString('## Caching', $description);
         $this->assertStringContainsString('## Status Codes', $description);
-        $this->assertStringContainsString('/api/v2', $description);
+        $this->assertStringNotContainsString('/api/v2', $description);
     }
 }
