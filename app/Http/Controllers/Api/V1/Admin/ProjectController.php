@@ -43,6 +43,6 @@ class ProjectController extends ApiController
 
         $bulkDeleteProjectsAction->handle($projectIds);
 
-        return $this->respondWithMessage('Projects deleted Successfully');
+        return $this->respondWithMessage('Projects deleted successfully.');
     }
 }

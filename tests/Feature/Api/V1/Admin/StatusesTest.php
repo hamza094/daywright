@@ -120,7 +120,7 @@ class StatusesTest extends TestCase
 
         $this->deleteJson($this->apiV1AdminRoute('statuses.destroy', ['status' => $status]))
             ->assertOk()
-            ->assertJsonPath('message', 'Status deleted successfully');
+            ->assertJsonPath('message', 'Status deleted successfully.');
 
         $this->assertDatabaseMissing('statuses', ['id' => $status->id]);
     }

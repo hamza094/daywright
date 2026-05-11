@@ -29,6 +29,6 @@ class TaskController extends ApiController
 
         $bulkDeleteTasksAction->handle($taskIds);
 
-        return $this->respondWithMessage('Tasks deleted Successfully');
+        return $this->respondWithMessage('Tasks deleted successfully.');
     }
 }

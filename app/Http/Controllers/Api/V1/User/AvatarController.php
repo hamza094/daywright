@@ -41,7 +41,7 @@ class AvatarController extends ApiController
             abort(Response::HTTP_NOT_FOUND, 'User does not have an avatar');
         }
 
-        return $this->respondWithMessage('User avatar has been removed');
+        return $this->respondWithMessage('User avatar removed successfully.');
 
     }
 }

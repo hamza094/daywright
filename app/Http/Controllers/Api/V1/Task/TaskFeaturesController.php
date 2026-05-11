@@ -15,7 +15,6 @@ use App\Models\Task;
 use App\Repository\TaskRepository;
 use App\Services\Task\TaskFeatureService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response as HttpResponse;
 
 class TaskFeaturesController extends ApiController
 {
@@ -143,10 +142,10 @@ class TaskFeaturesController extends ApiController
      * - Deletes all associated activities of the task.
      * - Permanently removes the task from the database (force delete).
      */
-    public function remove(Project $project, Task $task, TaskFeatureService $service): HttpResponse
+    public function remove(Project $project, Task $task, TaskFeatureService $service): JsonResponse
     {
         $service->removeTask($task);
 
-        return $this->respondNoContent();
+        return $this->respondWithMessage('Task deleted successfully.');
     }
 }

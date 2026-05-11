@@ -24,7 +24,9 @@ class DeleteMeetingTest extends TestCase
             ->for($this->project)
             ->create(['user_id' => $this->user->id]);
 
-        $this->deleteJson($this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]));
+        $this->deleteJson($this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]))
+            ->assertOk()
+            ->assertJsonPath('message', 'Meeting deleted successfully.');
 
         $this->assertModelMissing($meeting);
     }

@@ -109,7 +109,7 @@ class StagesTest extends TestCase
 
         $this->deleteJson($this->apiV1AdminRoute('stages.destroy', ['stage' => $stage]))
             ->assertOk()
-            ->assertJsonPath('message', 'Stage deleted successfully');
+            ->assertJsonPath('message', 'Stage deleted successfully.');
 
         $this->assertDatabaseMissing('stages', ['id' => $stage->id]);
     }

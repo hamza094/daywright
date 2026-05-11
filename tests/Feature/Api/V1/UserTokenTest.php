@@ -134,7 +134,7 @@ class UserTokenTest extends TestCase
         $tokenId = $token->accessToken->id;
         $response = $this->deleteJson($this->apiV1Route('api-tokens.destroy', ['token' => $tokenId]));
         $response->assertOk();
-        $response->assertJsonFragment(['message' => 'Token deleted.']);
+        $response->assertJsonFragment(['message' => 'Token deleted successfully.']);
         $this->assertDatabaseMissing('personal_access_tokens', [
             'id' => $tokenId,
         ]);

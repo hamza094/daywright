@@ -41,6 +41,6 @@ class StatusController extends ApiController
     {
         $this->statusService->delete($status);
 
-        return $this->respondWithMessage('Status deleted successfully');
+        return $this->respondWithMessage('Status deleted successfully.');
     }
 }

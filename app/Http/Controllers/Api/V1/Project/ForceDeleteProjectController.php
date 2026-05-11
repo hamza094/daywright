@@ -21,6 +21,6 @@ final class ForceDeleteProjectController extends ApiController
             throw new HttpException(HttpResponse::HTTP_FORBIDDEN, 'Only abandoned projects can be deleted permanently.');
         }
 
-        return $this->respondWithMessage('Project deleted successfully');
+        return $this->respondWithMessage('Project deleted successfully.');
     }
 }

@@ -215,7 +215,7 @@ class ProjectsTest extends TestCase
 
         $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => $ids])
             ->assertOk()
-            ->assertJsonPath('message', 'Projects deleted Successfully');
+            ->assertJsonPath('message', 'Projects deleted successfully.');
 
         foreach ($ids as $id) {
             $this->assertDatabaseMissing('projects', ['id' => $id]);
@@ -243,7 +243,7 @@ class ProjectsTest extends TestCase
 
         $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [$activeProject->id]])
             ->assertOk()
-            ->assertJsonPath('message', 'Projects deleted Successfully');
+            ->assertJsonPath('message', 'Projects deleted successfully.');
 
         $this->assertDatabaseHas('projects', ['id' => $activeProject->id]);
     }

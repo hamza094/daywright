@@ -70,6 +70,6 @@ class ZoomMeetingController extends ApiController
 
         $meetingService->deleteProjectMeeting($meeting, $this->authenticatedUser(), $zoom);
 
-        return $this->respondWithMessage('Meeting Deleted Successfully');
+        return $this->respondWithMessage('Meeting deleted successfully.');
     }
 }

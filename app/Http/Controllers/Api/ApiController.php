@@ -44,11 +44,6 @@ class ApiController extends Controller
         ], $status);
     }
 
-    protected function respondNoContent(): Response
-    {
-        return response()->noContent();
-    }
-
     protected function authenticatedUser(): User
     {
         $user = auth()->user();

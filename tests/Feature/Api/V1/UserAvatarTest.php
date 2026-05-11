@@ -81,7 +81,7 @@ class UserAvatarTest extends TestCase
 
         $response
             ->assertJson([
-                'message' => 'User avatar has been removed',
+                'message' => 'User avatar removed successfully.',
             ])->assertStatus(200);
 
         $this->assertNull($user->fresh()->avatar_path);

@@ -170,7 +170,7 @@ class TasksTest extends TestCase
 
         $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => $ids])
             ->assertOk()
-            ->assertJsonPath('message', 'Tasks deleted Successfully');
+            ->assertJsonPath('message', 'Tasks deleted successfully.');
 
         foreach ($ids as $id) {
             $this->assertDatabaseMissing('tasks', ['id' => $id]);

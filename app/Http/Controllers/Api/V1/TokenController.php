@@ -53,6 +53,6 @@ class TokenController extends ApiController
     {
         app(ApiTokenService::class)->deleteForUser($this->authenticatedUser(), $tokenId);
 
-        return $this->respondWithMessage('Token deleted.');
+        return $this->respondWithMessage('Token deleted successfully.');
     }
 }

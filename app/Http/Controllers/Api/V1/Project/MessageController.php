@@ -10,7 +10,6 @@ use App\Models\Message;
 use App\Models\Project;
 use App\Services\Project\MessageService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Collection;
 
 class MessageController extends ApiController
@@ -27,10 +26,10 @@ class MessageController extends ApiController
         return $messageService->scheduledMessages($project);
     }
 
-    public function destroy(Project $project, Message $message, MessageService $messageService): HttpResponse
+    public function destroy(Project $project, Message $message, MessageService $messageService): JsonResponse
     {
         $messageService->deleteScheduledMessage($message);
 
-        return $this->respondNoContent();
+        return $this->respondWithMessage('Scheduled message deleted successfully.');
     }
 }

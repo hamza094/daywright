@@ -30,8 +30,11 @@ return [
 
         /*
          * Description rendered on the home page of the API documentation (`/docs/api`).
+         *
+         * For maintainability this content is loaded from a separate config file:
+         * `config/scramble_overview.php`.
          */
-        'description' => 'DayWright Api Documentation',
+        'description' => require __DIR__.'/scramble_overview.php',
     ],
 
     /*

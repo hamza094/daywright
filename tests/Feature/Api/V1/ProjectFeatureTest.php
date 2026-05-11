@@ -287,7 +287,9 @@ class ProjectFeatureTest extends TestCase
     {
         $this->project->delete();
 
-        $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))->assertOk();
+        $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))
+            ->assertOk()
+            ->assertJsonPath('message', 'Project deleted successfully.');
 
         $this->assertModelMissing($this->project);
     }

@@ -41,6 +41,6 @@ class StageController extends ApiController
     {
         $this->stageService->delete($stage);
 
-        return $this->respondWithMessage('Stage deleted successfully');
+        return $this->respondWithMessage('Stage deleted successfully.');
     }
 }
