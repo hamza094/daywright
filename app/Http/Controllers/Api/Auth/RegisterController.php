@@ -32,6 +32,7 @@ class RegisterController extends ApiController
      * Register User
      *
      * Registers a new user and returns the user API resource.
+     * This endpoint does not create a session or issue an access token.
      */
     public function register(RegisterUserRequest $request, RegisterUserService $registerUserService): JsonResponse
     {

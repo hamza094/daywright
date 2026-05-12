@@ -32,10 +32,12 @@ DayWright supports two authentication modes.
 Authorization: Bearer YOUR_TOKEN
 ```
 
-- `POST /login` returns a bearer token for token-based API clients.
+- `POST /login` returns a bearer token for token-based API clients when the account does not require two-factor authentication.
 - `GET /api-tokens`, `POST /api-tokens`, and `DELETE /api-tokens/{token}` let authenticated users manage additional personal access tokens.
 - Login-issued tokens are created with a one-month expiration.
 - User-created API tokens may include an optional `expires_at` value in ISO 8601 format, up to 180 days in the future.
+- Accounts with two-factor authentication enabled must use the session login flow. Token login does not expose a public 2FA continuation step.
+- `POST /register` creates a user account and returns the user resource. It does not create a session or issue an access token.
 
 Example login response:
 
@@ -57,13 +59,19 @@ Example login response:
 }
 ```
 
-If two-factor authentication is enabled for the account, login may return a 2FA state instead of a token:
+Example register response:
 
 ```json
 {
     "data": {
-        "two_factor_state": "2fa_required",
-        "message": "Two-factor authentication is enabled. Please provide the verification code."
+        "id": 1,
+        "uuid": "9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412",
+        "name": "Berry",
+        "username": "berry",
+        "email": "berry@example.com",
+        "timezone": "UTC",
+        "two_factor_enabled": false,
+        "verified": false
     }
 }
 ```
@@ -74,7 +82,20 @@ If two-factor authentication is enabled for the account, login may return a 2FA 
 - These routes are mounted under the same versioned API prefix and use `web` middleware rather than the standard `api` middleware group.
 - Session-oriented routes include `/session/*`, `/twofactor/*`, and interactive OAuth flows under `/auth/*`.
 - Browser clients should send session cookies and satisfy CSRF requirements for these endpoints.
+- Two-factor authentication is completed only through this session-backed flow.
+- `POST /session/login` may return a 2FA challenge state for accounts with two-factor authentication enabled, and the client completes sign-in with `POST /twofactor/login-confirm`.
 - Third-party and server-to-server clients should prefer bearer tokens.
+
+Example session login response for a two-factor-enabled account:
+
+```json
+{
+    "data": {
+        "two_factor_state": "2fa_required",
+        "message": "Two-factor authentication is enabled. Please provide the verification code."
+    }
+}
+```
 
 ### Integration-specific tokens
 

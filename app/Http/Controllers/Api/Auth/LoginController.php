@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Auth\LoginUserRequest;
 use App\Services\Auth\LoginUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class LoginController extends ApiController
 {
@@ -20,6 +21,8 @@ class LoginController extends ApiController
      *
      * This method authenticates the user using provided credentials
      * and returns a personal access token upon successful login.
+     * Accounts with two-factor authentication enabled must use the
+     * session login flow instead of this endpoint.
      */
     public function login(LoginUserRequest $request): JsonResponse
     {
@@ -27,8 +30,13 @@ class LoginController extends ApiController
 
         $user = $result->user;
 
-        if (($response = $this->loginUserService->twoFactorStateResponse($result)) instanceof JsonResponse) {
-            return $response;
+        if ($result->twoFactor) {
+            $this->loginUserService->forgetTwoFactorState();
+
+            abort(
+                Response::HTTP_FORBIDDEN,
+                'API token login is not available for accounts with two-factor authentication enabled. Use the session login flow.',
+            );
         }
 
         $payload = $this->loginUserService->performApiLogin($user);

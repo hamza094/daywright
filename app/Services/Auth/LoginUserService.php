@@ -60,6 +60,11 @@ class LoginUserService
         return true;
     }
 
+    public function forgetTwoFactorState(): void
+    {
+        $this->twoFactorStateManager->forgetStateFromSession();
+    }
+
     /**
      * Return the standardized two-factor response when required.
      */

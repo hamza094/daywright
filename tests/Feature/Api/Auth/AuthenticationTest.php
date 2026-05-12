@@ -47,7 +47,9 @@ class AuthenticationTest extends TestCase
                 'email' => 'mihupocob@mailinator.com',
                 'password' => 'Password4!',
                 'password_confirmation' => 'Password4!',
-            ])->assertCreated();
+            ])
+            ->assertCreated()
+            ->assertJsonMissingPath('data.access_token');
 
         $this->assertDatabaseHas('users', ['email' => 'mihupocob@mailinator.com']);
     }
@@ -94,6 +96,25 @@ class AuthenticationTest extends TestCase
                     'access_token',
                 ],
             ]);
+    }
+
+    /** @test */
+    public function api_token_login_rejects_accounts_with_two_factor_enabled(): void
+    {
+        $user = User::where('email', 'johndoe@example.org')->firstOrFail();
+        $user->createTwoFactorAuth();
+        $user->enableTwoFactorAuth();
+
+        $response = $this->postJson(route('api.v1.auth.login'), [
+            'email' => 'johndoe@example.org',
+            'password' => self::TEST_PASSWORD,
+        ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'API token login is not available for accounts with two-factor authentication enabled. Use the session login flow.')
+            ->assertJsonPath('code', 'forbidden');
+
+        $this->assertFalse(session()->has((string) config('two-factor.login_state.session_key', '2fa_login')));
     }
 
     /** @test */

@@ -20,6 +20,8 @@ class SpaAuthController extends ApiController
      * SPA session login (cookie-based via Sanctum stateful).
      *
      * Establishes a session for first-party SPA clients.
+     * When two-factor authentication is enabled, this flow returns the
+     * challenge state and is completed through the two-factor endpoints.
      */
     public function loginSpa(LoginUserRequest $request): JsonResponse
     {

@@ -33,6 +33,9 @@ class ScrambleDocsTest extends TestCase
         $this->assertStringContainsString('# DayWright API Overview', $description);
         $this->assertStringContainsString('## Authentication', $description);
         $this->assertStringContainsString('Laravel Sanctum personal access tokens', $description);
+        $this->assertStringContainsString('Token login does not expose a public 2FA continuation step.', $description);
+        $this->assertStringContainsString('does not create a session or issue an access token', $description);
+        $this->assertStringContainsString('POST /twofactor/login-confirm', $description);
         $this->assertStringContainsString('## Pagination', $description);
         $this->assertStringContainsString('## Rate Limiting', $description);
         $this->assertStringContainsString('## Idempotency', $description);

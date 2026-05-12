@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Auth;
 
+use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -138,7 +139,7 @@ class TwoFactorAuthenticationTest extends TestCase
     }
 
     /** @test */
-    public function it_shows_2fa_required_message_during_login_when_enabled(): void
+    public function it_shows_2fa_required_message_during_session_login_when_enabled(): void
     {
         $this->enableTwoFactorState();
 
@@ -351,7 +352,7 @@ class TwoFactorAuthenticationTest extends TestCase
     }
 
     /**
-     * Start the login flow for a 2FA-enabled user and return the response and state details.
+     * Start the session login flow for a 2FA-enabled user and return the response and state details.
      *
      * @param  array<string,mixed>  $overrides
      * @return array{0:TestResponse<\Symfony\Component\HttpFoundation\Response>,1:string,2:string,3:array<string,mixed>}
@@ -363,7 +364,9 @@ class TwoFactorAuthenticationTest extends TestCase
             'password' => $this->testPassword,
         ], $overrides);
 
-        $response = $this->postJson($this->apiV1Route('auth.login'), $payload);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $response = $this->postJson($this->apiV1Route('session.login'), $payload);
 
         $response->assertOk()
             ->assertJsonPath('data.two_factor_state', '2fa_required');
