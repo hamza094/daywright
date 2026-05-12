@@ -21,6 +21,14 @@ class ActivityTest extends TestCase
 
         $response = $this->getJson($this->apiV1ProjectRoute('projects.activities', $this->project))->assertOk();
 
+        $response->assertJsonStructure([
+            'data' => [
+                ['description', 'time', 'subject', 'user'],
+            ],
+            'meta' => ['current_page', 'last_page', 'path', 'per_page', 'total'],
+            'links' => ['first', 'last', 'prev', 'next'],
+        ]);
+
         $data = $response->json()['data'];
 
         $this->assertCount(2, $data);
@@ -59,7 +67,9 @@ class ActivityTest extends TestCase
             ->assertOk();
 
         $response->assertJsonCount(0, 'data')
-            ->assertJsonPath('meta.total', 0);
+            ->assertJsonPath('meta.total', 0)
+            ->assertJsonPath('links.prev', null)
+            ->assertJsonPath('links.next', null);
     }
 
     /** @test */

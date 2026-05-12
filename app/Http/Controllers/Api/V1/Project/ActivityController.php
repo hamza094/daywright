@@ -35,9 +35,9 @@ class ActivityController extends ApiController
             ],
         );
 
-        $payload = $paginatedActivities->toArray();
-        $payload['data'] = ActivityResource::collection($paginatedActivities->getCollection())->resolve();
-
-        return response()->json($payload);
+        return $this->respondWithPaginatedData(
+            ActivityResource::collection($paginatedActivities->getCollection()),
+            $paginatedActivities,
+        );
     }
 }

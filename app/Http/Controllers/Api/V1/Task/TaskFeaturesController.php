@@ -15,6 +15,7 @@ use App\Models\Task;
 use App\Repository\TaskRepository;
 use App\Services\Task\TaskFeatureService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TaskFeaturesController extends ApiController
 {
@@ -35,8 +36,7 @@ class TaskFeaturesController extends ApiController
         $service->assignMembers($task, $members, $project, $this->authenticatedUser());
 
         return $this->respondWithData([
-            'message' => 'Task assigned successfully.',
-            'taskMembers' => TaskMemberResource::collection($task->assignee),
+            'task_members' => TaskMemberResource::collection($task->assignee),
         ]);
     }
 
@@ -57,7 +57,6 @@ class TaskFeaturesController extends ApiController
         $user = $service->unassignMember($task, $memberId);
 
         return $this->respondWithData([
-            'message' => 'Task member unassigned.',
             'member' => new TaskMemberResource($user),
         ]);
     }
@@ -82,7 +81,6 @@ class TaskFeaturesController extends ApiController
         $task->loadMissing('project:id,slug');
 
         return $this->respondWithData([
-            'message' => 'Project task archived successfully',
             'task' => new TaskResource($task),
         ]);
     }
@@ -107,7 +105,6 @@ class TaskFeaturesController extends ApiController
         $task->loadMissing('project:id,slug');
 
         return $this->respondWithData([
-            'message' => 'Project task restored successfully',
             'task' => new TaskResource($task),
         ]);
     }

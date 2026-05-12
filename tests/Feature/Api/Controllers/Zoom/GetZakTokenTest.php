@@ -22,7 +22,7 @@ class GetZakTokenTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'zak_token',
+                'data' => ['zak_token'],
             ]);
     }
 
@@ -36,7 +36,7 @@ class GetZakTokenTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'jwt_token',
+                'data' => ['jwt_token'],
             ]);
     }
 }

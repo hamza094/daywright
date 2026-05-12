@@ -13,6 +13,7 @@ use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Pagination\LengthAwarePaginator;
 use JsonSerializable;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -20,11 +21,13 @@ class ApiController extends Controller
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
-    protected function respondWithData(array|Arrayable|JsonSerializable $data, int $status = Response::HTTP_OK): JsonResponse
-    {
-        return response()->json([
-            'data' => $this->normalizeResponseData($data),
-        ], $status);
+    protected function respondWithData(
+        array|Arrayable|JsonSerializable $data,
+        int $status = Response::HTTP_OK,
+        array $meta = [],
+        array $links = [],
+    ): JsonResponse {
+        return $this->respondWithPayload($data, $status, $meta, $links);
     }
 
     protected function respondCreated(array|Arrayable|JsonSerializable $data): JsonResponse
@@ -35,6 +38,21 @@ class ApiController extends Controller
     protected function respondUpdated(array|Arrayable|JsonSerializable $data): JsonResponse
     {
         return $this->respondWithData($data);
+    }
+
+    protected function respondWithPaginatedData(
+        array|Arrayable|JsonSerializable $data,
+        LengthAwarePaginator $paginator,
+        int $status = Response::HTTP_OK,
+    ): JsonResponse {
+        $pagination = $paginator->toArray();
+
+        return $this->respondWithPayload(
+            $data,
+            $status,
+            $pagination['meta'] ?? [],
+            $pagination['links'] ?? [],
+        );
     }
 
     protected function respondWithMessage(string $message, int $status = Response::HTTP_OK): JsonResponse
@@ -70,5 +88,26 @@ class ApiController extends Controller
         }
 
         return $data;
+    }
+
+    private function respondWithPayload(
+        array|Arrayable|JsonSerializable $data,
+        int $status,
+        array $meta = [],
+        array $links = [],
+    ): JsonResponse {
+        $payload = [
+            'data' => $this->normalizeResponseData($data),
+        ];
+
+        if ($meta !== []) {
+            $payload['meta'] = $meta;
+        }
+
+        if ($links !== []) {
+            $payload['links'] = $links;
+        }
+
+        return response()->json($payload, $status);
     }
 }

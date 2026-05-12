@@ -131,7 +131,14 @@ class MessageTest extends TestCase
         Message::factory()->for($this->project)->count(4)
             ->create(['delivered_at' => Carbon::now()->addDay()]);
 
-        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))->assertok();
+        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))
+            ->assertOk()
+            ->assertJsonCount(4, 'data')
+            ->assertJsonStructure([
+                'data' => [
+                    ['id', 'type', 'subject', 'message', 'delivered_at', 'created_at', 'users'],
+                ],
+            ]);
 
         $this->assertEquals($this->project->scheduledMessages()
             ->count(), $this->project->messages->count());

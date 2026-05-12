@@ -18,12 +18,12 @@ final class DashboardTasksController extends ApiController
         $tasks = $repository->getTasks($this->authenticatedUser()->id, $filters);
         $appliedFilters = $repository->appliedFilters($filters);
 
-        return response()->json([
-            'data' => UserTasksResource::collection($tasks),
-            'meta' => [
+        return $this->respondWithData(
+            UserTasksResource::collection($tasks),
+            meta: [
                 'applied_filters' => $appliedFilters,
                 'total' => $tasks->count(),
             ],
-        ]);
+        );
     }
 }

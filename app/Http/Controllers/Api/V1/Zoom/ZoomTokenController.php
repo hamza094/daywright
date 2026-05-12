@@ -19,7 +19,7 @@ class ZoomTokenController extends ApiController
     {
         $token = $zoom->getZakToken($this->authenticatedUser());
 
-        return response()->json(['zak_token' => $token], Response::HTTP_OK);
+        return $this->respondWithData(['zak_token' => $token], Response::HTTP_OK);
     }
 
     public function getJwtToken(JwtTokenRequest $request, ZoomAction $action): JsonResponse
@@ -30,6 +30,6 @@ class ZoomTokenController extends ApiController
 
         $token = $action->handle($meetingId, $role);
 
-        return response()->json(['jwt_token' => $token], Response::HTTP_OK);
+        return $this->respondWithData(['jwt_token' => $token], Response::HTTP_OK);
     }
 }

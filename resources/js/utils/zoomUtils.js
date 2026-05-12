@@ -4,7 +4,7 @@ import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
 export async function getToken(url, errorMessage, toastify) {
   try {
     const response = await axios.get(url);
-    return response.data;
+    return response.data && response.data.data ? response.data.data : response.data;
   } catch (error) {
     toastify.error(errorMessage);
     throw error;
