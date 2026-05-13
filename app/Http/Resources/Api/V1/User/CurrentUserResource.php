@@ -6,10 +6,12 @@ namespace App\Http\Resources\Api\V1\User;
 
 use App\Http\Resources\Api\V1\FeatureFlagsResource;
 use App\Models\User;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
+#[SchemaName('CurrentUser')]
 class CurrentUserResource extends JsonResource
 {
     public function __construct(private readonly User $user)
@@ -26,7 +28,13 @@ class CurrentUserResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            /**
+             * Fully authenticated user payload for the current account.
+             */
             'user' => new AuthenticatedUserResource($this->user),
+            /**
+             * Client-visible feature flags for the authenticated user.
+             */
             'features' => new FeatureFlagsResource($this->user),
         ];
     }

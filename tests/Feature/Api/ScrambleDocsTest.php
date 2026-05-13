@@ -167,4 +167,71 @@ class ScrambleDocsTest extends TestCase
         $this->assertArrayHasKey('PublicTask', $schemas);
         $this->assertArrayHasKey('PublicStage', $schemas);
     }
+
+    public function test_docs_json_documents_auth_request_bodies_and_current_user_payload_for_phase_two(): void
+    {
+        Gate::define('viewApiDocs', static fn (mixed $user = null): bool => true);
+
+        $response = $this->getJson('/docs/api.json');
+
+        $response->assertOk();
+
+        $paths = $response->json('paths');
+        $schemas = $response->json('components.schemas');
+
+        $this->assertSame(
+            '#/components/schemas/LoginRequestData',
+            $paths['/v1/login']['post']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
+        );
+
+        $this->assertSame(
+            '#/components/schemas/ForgotPasswordRequestData',
+            $paths['/v1/forgot-password']['post']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
+        );
+
+        $this->assertSame(
+            '#/components/schemas/ResetPasswordRequestData',
+            $paths['/v1/reset-password']['post']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
+        );
+
+        $this->assertSame(
+            '#/components/schemas/TwoFactorLoginRequestData',
+            $paths['/v1/twofactor/login-confirm']['post']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
+        );
+
+        $currentUserDataOptions = $paths['/v1/users/me']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
+
+        $this->assertContains(
+            '#/components/schemas/CurrentUser',
+            array_column($currentUserDataOptions, '$ref'),
+        );
+
+        $this->assertArrayHasKey('AuthenticatedToken', $schemas);
+        $this->assertArrayHasKey('CurrentUser', $schemas);
+        $this->assertArrayHasKey('TwoFactorChallenge', $schemas);
+    }
+
+    public function test_docs_json_documents_multi_shape_auth_success_responses_for_phase_two(): void
+    {
+        Gate::define('viewApiDocs', static fn (mixed $user = null): bool => true);
+
+        $response = $this->getJson('/docs/api.json');
+
+        $response->assertOk();
+
+        $paths = $response->json('paths');
+
+        $sessionLoginSuccessOptions = $paths['/v1/session/login']['post']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
+        $oauthCallbackSuccessOptions = $paths['/v1/auth/callback/{provider}']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
+
+        $this->assertSame([
+            '#/components/schemas/AuthenticatedSession',
+            '#/components/schemas/TwoFactorChallenge',
+        ], array_column($sessionLoginSuccessOptions, '$ref'));
+
+        $this->assertSame([
+            '#/components/schemas/AuthenticatedSession',
+            '#/components/schemas/TwoFactorChallenge',
+        ], array_column($oauthCallbackSuccessOptions, '$ref'));
+    }
 }

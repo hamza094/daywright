@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Auth;
 
 use App\Models\User;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Exception;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Cache;
@@ -16,6 +17,7 @@ use Illuminate\Validation\Validator;
  * Handles validation for 2FA code submission during login process.
  * Validates session data, user credentials, and 2FA code.
  */
+#[SchemaName('TwoFactorLoginRequestData')]
 class TwoFactorLoginRequest extends FormRequest
 {
     private const string SESSION_ERROR_MESSAGE = 'Your session verification window expired. Please log in again.';
@@ -41,6 +43,11 @@ class TwoFactorLoginRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Six-digit authenticator code for the pending login challenge.
+             *
+             * @example 123456
+             */
             'code' => [
                 'required',
                 'digits:6',

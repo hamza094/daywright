@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Auth\LoginUserRequest;
 use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
+use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -24,6 +25,11 @@ class SpaAuthController extends ApiController
      * When two-factor authentication is enabled, this flow returns the
      * challenge state and is completed through the two-factor endpoints.
      */
+    #[ScrambleResponse(
+        status: 200,
+        description: 'Session created successfully or a two-factor challenge is required.',
+        type: 'array{data: AuthenticatedSessionResource|\App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource}',
+    )]
     public function loginSpa(LoginUserRequest $request): JsonResponse
     {
         $result = $this->loginUserService->startLoginFlow($request->email);

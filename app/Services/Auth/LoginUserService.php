@@ -7,6 +7,7 @@ namespace App\Services\Auth;
 use App\DataTransferObjects\Auth\AuthPayload;
 use App\DataTransferObjects\Auth\LoginResult;
 use App\Events\UserLogin;
+use App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource;
 use App\Models\User;
 use App\Services\TwoFactor\TwoFactorStateManager;
 use Illuminate\Http\JsonResponse;
@@ -126,12 +127,7 @@ class LoginUserService
      */
     public function buildTwoFactorRequiredResponse(): JsonResponse
     {
-        return response()->json([
-            'data' => [
-                'two_factor_state' => '2fa_required',
-                'message' => 'Two-factor authentication is enabled. Please provide the verification code.',
-            ],
-        ], Response::HTTP_OK);
+        return (new TwoFactorChallengeResource)->response()->setStatusCode(Response::HTTP_OK);
     }
 
     /**

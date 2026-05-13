@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -11,6 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * Validates user password and ensures 2FA is not already enabled.
  */
+#[SchemaName('PrepareTwoFactorRequestData')]
 class PrepareTwoFactorRequest extends FormRequest
 {
     /**
@@ -29,6 +31,11 @@ class PrepareTwoFactorRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Current account password used to confirm the 2FA setup action.
+             *
+             * @example Berry@04
+             */
             'password' => [
                 'required',
                 'current_password:sanctum',

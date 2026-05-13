@@ -4,29 +4,53 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 
+#[SchemaName('ResetPasswordRequestData')]
 class ResetPasswordRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
-     *
-     * @return bool
      */
-    public function authorize()
+    public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array
+     * @return array<string, mixed>
      */
-    public function rules()
+    public function rules(): array
     {
         return [
-            //
+            /**
+             * Password reset token received by email.
+             *
+             * @example 7d2b5c35b1d148f7bba65a19f93ab4fc
+             */
+            'token' => 'required|string',
+            /**
+             * Email address tied to the password reset request.
+             *
+             * @example berry@example.com
+             */
+            'email' => 'required|email',
+            /**
+             * New account password.
+             * Passwords require letters, mixed case, numbers, and symbols.
+             *
+             * @example Berry@04
+             */
+            'password' => RegisterUserRequest::passwordRules(),
+            /**
+             * Confirmation matching the new password.
+             *
+             * @example Berry@04
+             */
+            'password_confirmation' => 'required_with:password|string',
         ];
     }
 }

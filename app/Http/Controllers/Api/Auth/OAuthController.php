@@ -10,6 +10,7 @@ use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
+use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -45,6 +46,11 @@ class OAuthController extends ApiController
      *
      * API endpoint for creating or updating user and enabling login through OAuth provider callback.
      */
+    #[ScrambleResponse(
+        status: 200,
+        description: 'Session created successfully or a two-factor challenge is required.',
+        type: 'array{data: AuthenticatedSessionResource|\App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource}',
+    )]
     public function callback(OAuthProvider $provider, OAuthAction $action, Request $request): JsonResponse
     {
         try {

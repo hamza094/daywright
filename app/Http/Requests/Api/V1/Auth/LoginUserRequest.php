@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Auth;
 
 use App\Models\User;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Hash;
 
+#[SchemaName('LoginRequestData')]
 class LoginUserRequest extends FormRequest
 {
     /**
@@ -25,7 +27,17 @@ class LoginUserRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Email address used to identify the account.
+             *
+             * @example berry@example.com
+             */
             'email' => 'required|email',
+            /**
+             * Plain-text account password.
+             *
+             * @example Berry@04
+             */
             'password' => 'required|string',
         ];
     }
