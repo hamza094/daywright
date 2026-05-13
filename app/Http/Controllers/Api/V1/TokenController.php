@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
+use App\Http\Resources\Api\V1\TokenStoreResource;
 use App\Services\Auth\ApiTokenService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -38,10 +39,10 @@ class TokenController extends ApiController
 
         $token = $apiTokenService->createForUser($this->authenticatedUser(), $data['name'], $expiresAt);
 
-        return $this->respondWithData([
-            'token' => $token->plainTextToken,
-            'token_resource' => (new TokenResource($token->accessToken))->resolve(),
-        ], Response::HTTP_CREATED);
+        return $this->respondWithData(
+            new TokenStoreResource($token->plainTextToken, $token->accessToken),
+            Response::HTTP_CREATED,
+        );
     }
 
     /**
@@ -49,9 +50,9 @@ class TokenController extends ApiController
      *
      * This endpoint deletes a personal access token by ID for the authenticated user. Cannot delete the current session token via this route.
      */
-    public function destroy(int $tokenId): JsonResponse
+    public function destroy(int $token): JsonResponse
     {
-        app(ApiTokenService::class)->deleteForUser($this->authenticatedUser(), $tokenId);
+        app(ApiTokenService::class)->deleteForUser($this->authenticatedUser(), $token);
 
         return $this->respondWithMessage('Token deleted successfully.');
     }

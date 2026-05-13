@@ -8,6 +8,7 @@ use App\Http\Resources\Api\V1\ActivityResource;
 use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\StageResource;
 use App\Http\Resources\Api\V1\User\InvitedUserResource;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
@@ -15,6 +16,7 @@ use Override;
 /**
  * @mixin \App\Models\Project
  */
+#[SchemaName('PublicProject')]
 class ProjectResource extends JsonResource
 {
     /**

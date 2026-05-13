@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Auth\LoginUserRequest;
+use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,7 @@ class SpaAuthController extends ApiController
 
         $payload = $this->loginUserService->performSessionLogin($user, $request);
 
-        return $this->respondWithData($payload->toArray());
+        return $this->respondWithData(new AuthenticatedSessionResource($payload->user));
     }
 
     /**

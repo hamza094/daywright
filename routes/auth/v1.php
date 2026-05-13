@@ -24,9 +24,6 @@ Route::middleware('guest:api')->group(function (): void {
     Route::post('reset-password', [ResetPasswordController::class, 'resetPassword'])
         ->name('password.update')
         ->middleware('throttle:password-reset');
-
-    Route::get('password/reset/{token}', [VerificationController::class, 'resetForm'])
-        ->name('password.reset');
 });
 
 Route::middleware(['auth:sanctum'])->group(function (): void {

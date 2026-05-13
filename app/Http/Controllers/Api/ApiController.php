@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Pagination\LengthAwarePaginator;
 use JsonSerializable;
@@ -44,14 +45,37 @@ class ApiController extends Controller
         array|Arrayable|JsonSerializable $data,
         LengthAwarePaginator $paginator,
         int $status = Response::HTTP_OK,
+        array $meta = [],
     ): JsonResponse {
-        $pagination = $paginator->toArray();
+        // If the caller already built a resource collection from a paginator,
+        // prefer Laravel's native response which handles `data/meta/links`.
+        if ($data instanceof AnonymousResourceCollection && $data->resource instanceof LengthAwarePaginator) {
+            if ($meta !== []) {
+                $data->additional(['meta' => $meta]);
+            }
+
+            return $data->response()->setStatusCode($status);
+        }
 
         return $this->respondWithPayload(
             $data,
             $status,
-            $pagination['meta'] ?? [],
-            $pagination['links'] ?? [],
+            array_merge([
+                'current_page' => $paginator->currentPage(),
+                'from' => $paginator->firstItem(),
+                'last_page' => $paginator->lastPage(),
+                'links' => $paginator->linkCollection()->toArray(),
+                'path' => $paginator->path(),
+                'per_page' => $paginator->perPage(),
+                'to' => $paginator->lastItem(),
+                'total' => $paginator->total(),
+            ], $meta),
+            [
+                'first' => $paginator->url(1),
+                'last' => $paginator->url($paginator->lastPage()),
+                'prev' => $paginator->previousPageUrl(),
+                'next' => $paginator->nextPageUrl(),
+            ],
         );
     }
 

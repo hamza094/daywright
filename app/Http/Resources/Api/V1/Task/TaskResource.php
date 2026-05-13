@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1\Task;
 
 use App\Http\Resources\Api\V1\ApiResourceLink;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 use JsonSerializable;
@@ -13,6 +14,7 @@ use Override;
 /**
  * @mixin \App\Models\Task
  */
+#[SchemaName('PublicTask')]
 class TaskResource extends JsonResource
 {
     /**

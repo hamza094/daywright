@@ -8,6 +8,7 @@ use App\Actions\OAuthAction;
 use App\Enums\OAuthProvider;
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
@@ -66,7 +67,7 @@ class OAuthController extends ApiController
 
             $payload = $this->loginUserService->performSessionLogin($user, $request);
 
-            return $this->respondWithData($payload->toArray());
+            return $this->respondWithData(new AuthenticatedSessionResource($payload->user));
         } catch (Throwable $e) {
             Log::error('OAuth callback failed', [
                 'provider' => $provider->value,

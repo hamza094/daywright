@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\Auth\ConfirmTwoFactorRequest;
 use App\Http\Requests\Api\V1\Auth\DisableTwoFactorRequest;
 use App\Http\Requests\Api\V1\Auth\PrepareTwoFactorRequest;
 use App\Http\Requests\Api\V1\Auth\TwoFactorLoginRequest;
+use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -82,6 +83,7 @@ class TwoFactorController extends ApiController
     }
 
     /**
+     * @unauthenticated
      * Complete 2FA login with verification code
      */
     public function twoFactorLogin(TwoFactorLoginRequest $request): JsonResponse
@@ -92,7 +94,7 @@ class TwoFactorController extends ApiController
 
         $payload = $this->loginUserService->performSessionLogin($user, $request);
 
-        return $this->respondWithData($payload->toArray());
+        return $this->respondWithData(new AuthenticatedSessionResource($payload->user));
 
     }
 

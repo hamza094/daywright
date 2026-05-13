@@ -14,8 +14,18 @@ use App\Services\Paddle\SubscriptionService;
 use App\Services\SendSmsService;
 use App\Services\Zoom\ZoomService;
 use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\Components;
 use Dedoc\Scramble\Support\Generator\OpenApi;
+use Dedoc\Scramble\Support\Generator\Operation;
+use Dedoc\Scramble\Support\Generator\Reference;
+use Dedoc\Scramble\Support\Generator\Response;
+use Dedoc\Scramble\Support\Generator\Schema;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Dedoc\Scramble\Support\Generator\Tag;
+use Dedoc\Scramble\Support\Generator\Types\ArrayType;
+use Dedoc\Scramble\Support\Generator\Types\ObjectType;
+use Dedoc\Scramble\Support\Generator\Types\StringType;
+use Dedoc\Scramble\Support\RouteInfo;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -65,10 +75,15 @@ class AppServiceProvider extends ServiceProvider
             throw new HttpException(SymfonyResponse::HTTP_FORBIDDEN, 'Feature not available.');
         });
 
+        Scramble::resolveTagsUsing(static fn (RouteInfo $routeInfo): array => [self::resolvePublicApiTag($routeInfo)]);
+
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
             $openApi->secure(
                 SecurityScheme::http('bearer')
             );
+
+            self::applyPublicApiTagMetadata($openApi);
+            self::applySharedPublicApiErrorResponses($openApi);
 
             $applicationUrl = rtrim(url('/'), '/');
 
@@ -86,13 +101,14 @@ class AppServiceProvider extends ServiceProvider
             $excludedPrefixes = [
                 'api/v1/admin',
                 'api/v1/webhooks',
+                'api/v1/password/reset',
                 'api/v1/oauth/zoom',
                 'api/v1/users/me/zoom-token',
                 'api/v1/users/me/zoom-jwt-token',
-                'api/v1/users/search',
                 'api/v1/projects/{project}/export',
                 'api/v1/projects/{project}/message',
                 'api/v1/projects/{project}/messages',
+                'api/v1/projects/{project}/meetings',
             ];
 
             // Exclude Router::fallback() generated routes (they use the
@@ -116,5 +132,251 @@ class AppServiceProvider extends ServiceProvider
                 'ressie03@example.net',
             ]);
         });*/
+    }
+
+    private static function resolvePublicApiTag(RouteInfo $routeInfo): string
+    {
+        $uri = $routeInfo->route->uri;
+
+        return match (true) {
+            Str::startsWith($uri, [
+                'api/v1/register',
+                'api/v1/login',
+                'api/v1/logout',
+                'api/v1/forgot-password',
+                'api/v1/reset-password',
+                'api/v1/email/',
+                'api/v1/session/',
+                'api/v1/auth/',
+                'api/v1/twofactor/',
+            ]) => 'Authentication',
+            Str::startsWith($uri, 'api/v1/api-tokens') => 'API Tokens',
+            Str::startsWith($uri, ['api/v1/subscriptions', 'api/v1/user/subscriptions']) => 'Subscription',
+            Str::startsWith($uri, 'api/v1/dashboard/') => 'Dashboard',
+            Str::startsWith($uri, 'api/v1/notifications') => 'Notifications',
+            $uri === 'api/v1/stages' => 'Stages',
+            Str::contains($uri, '/conversations') => 'Conversations',
+            Str::contains($uri, '/tasks') || $uri === 'api/v1/task-statuses' => 'Tasks',
+            Str::contains($uri, '/invitations') || Str::contains($uri, '/members/') || $uri === 'api/v1/me/invitations' => 'Invitations',
+            Str::startsWith($uri, 'api/v1/users') => 'Users',
+            Str::startsWith($uri, 'api/v1/projects') => 'Projects',
+            default => 'Public API',
+        };
+    }
+
+    /**
+     * @return array<string, array{description: string, weight: int}>
+     */
+    private static function publicApiTagDefinitions(): array
+    {
+        return [
+            'Authentication' => [
+                'description' => 'Token, session, OAuth, password reset, email verification, and two-factor authentication endpoints.',
+                'weight' => 10,
+            ],
+            'Users' => [
+                'description' => 'Current-user, profile, avatar, and public user account management endpoints.',
+                'weight' => 20,
+            ],
+            'Invitations' => [
+                'description' => 'Personal and project invitation management endpoints.',
+                'weight' => 30,
+            ],
+            'API Tokens' => [
+                'description' => 'Personal access token management endpoints for bearer-token clients.',
+                'weight' => 40,
+            ],
+            'Subscription' => [
+                'description' => 'Subscription checkout, plan swap, cancellation, and subscription status endpoints.',
+                'weight' => 50,
+            ],
+            'Dashboard' => [
+                'description' => 'Released dashboard read models for charts, insights, tasks, activities, and projects.',
+                'weight' => 60,
+            ],
+            'Notifications' => [
+                'description' => 'Notification listing, bulk-read, status update, and deletion endpoints.',
+                'weight' => 70,
+            ],
+            'Projects' => [
+                'description' => 'Released public project CRUD, insights, limits, and activity endpoints.',
+                'weight' => 80,
+            ],
+            'Stages' => [
+                'description' => 'Shared project stage listing endpoints.',
+                'weight' => 90,
+            ],
+            'Tasks' => [
+                'description' => 'Released task CRUD, assignment, archive, restore, and task status endpoints.',
+                'weight' => 100,
+            ],
+            'Conversations' => [
+                'description' => 'Released project conversation list, create, attachment upload, and delete endpoints.',
+                'weight' => 110,
+            ],
+        ];
+    }
+
+    private static function applyPublicApiTagMetadata(OpenApi $openApi): void
+    {
+        $usedTags = collect($openApi->paths)
+            ->flatMap(static fn ($path): array => array_values($path->operations))
+            ->flatMap(static fn (Operation $operation): array => $operation->tags)
+            ->unique()
+            ->values();
+
+        $openApi->tags = collect(self::publicApiTagDefinitions())
+            ->filter(static fn (array $metadata, string $tag): bool => $usedTags->contains($tag))
+            ->map(static function (array $metadata, string $tag): Tag {
+                $tagDefinition = new Tag($tag, $metadata['description']);
+                $tagDefinition->setAttribute('weight', $metadata['weight']);
+
+                return $tagDefinition;
+            })
+            ->sortBy(static fn (Tag $tag): int => (int) $tag->getAttribute('weight', PHP_INT_MAX))
+            ->values()
+            ->all();
+    }
+
+    private static function applySharedPublicApiErrorResponses(OpenApi $openApi): void
+    {
+        self::registerSharedPublicApiErrorResponses($openApi->components);
+
+        foreach ($openApi->paths as $path) {
+            foreach ($path->operations as $operation) {
+                $operation->responses = array_values(array_map(
+                    static function ($response) use ($openApi) {
+                        $resolvedResponse = $response instanceof Reference ? $response->resolve() : $response;
+                        $responseCode = is_numeric($resolvedResponse->code) ? (int) $resolvedResponse->code : null;
+                        $responseName = $responseCode ? self::publicApiErrorResponseName($responseCode) : null;
+
+                        if ($responseName === null) {
+                            return $response;
+                        }
+
+                        return new Reference('responses', $responseName, $openApi->components);
+                    },
+                    $operation->responses ?? [],
+                ));
+
+                self::ensureSharedPublicApiErrorResponse($operation, $openApi->components, 500);
+            }
+        }
+    }
+
+    private static function registerSharedPublicApiErrorResponses(Components $components): void
+    {
+        if (! $components->hasSchema('PublicApiErrorEnvelope')) {
+            $components->addSchema('PublicApiErrorEnvelope', self::makePublicApiErrorEnvelopeSchema());
+        }
+
+        if (! $components->hasSchema('PublicApiValidationErrorEnvelope')) {
+            $components->addSchema('PublicApiValidationErrorEnvelope', self::makePublicApiValidationErrorEnvelopeSchema());
+        }
+
+        self::registerSharedPublicApiErrorResponse($components, 'PublicBadRequestError', 400, 'Bad request', 'PublicApiErrorEnvelope');
+        self::registerSharedPublicApiErrorResponse($components, 'PublicUnauthenticatedError', 401, 'Unauthenticated', 'PublicApiErrorEnvelope');
+        self::registerSharedPublicApiErrorResponse($components, 'PublicForbiddenError', 403, 'Forbidden', 'PublicApiErrorEnvelope');
+        self::registerSharedPublicApiErrorResponse($components, 'PublicNotFoundError', 404, 'Not found', 'PublicApiErrorEnvelope');
+        self::registerSharedPublicApiErrorResponse($components, 'PublicMethodNotAllowedError', 405, 'Method not allowed', 'PublicApiErrorEnvelope');
+        self::registerSharedPublicApiErrorResponse($components, 'PublicConflictError', 409, 'Conflict', 'PublicApiErrorEnvelope');
+        self::registerSharedPublicApiErrorResponse($components, 'PublicValidationError', 422, 'Validation error', 'PublicApiValidationErrorEnvelope');
+        self::registerSharedPublicApiErrorResponse($components, 'PublicRateLimitError', 429, 'Too many requests', 'PublicApiErrorEnvelope');
+        self::registerSharedPublicApiErrorResponse($components, 'PublicInternalServerError', 500, 'Internal server error', 'PublicApiErrorEnvelope');
+        self::registerSharedPublicApiErrorResponse($components, 'PublicServiceUnavailableError', 503, 'Service unavailable', 'PublicApiErrorEnvelope');
+    }
+
+    private static function registerSharedPublicApiErrorResponse(Components $components, string $name, int $status, string $description, string $schemaName): void
+    {
+        if (array_key_exists($name, $components->responses)) {
+            return;
+        }
+
+        $components->responses[$name] = Response::make($status)
+            ->setDescription($description)
+            ->setContent('application/json', new Reference('schemas', $schemaName, $components));
+    }
+
+    private static function ensureSharedPublicApiErrorResponse(Operation $operation, Components $components, int $status): void
+    {
+        if (self::operationHasResponseCode($operation, $status)) {
+            return;
+        }
+
+        $responseName = self::publicApiErrorResponseName($status);
+
+        if ($responseName === null) {
+            return;
+        }
+
+        $operation->responses ??= [];
+        $operation->responses[] = new Reference('responses', $responseName, $components);
+    }
+
+    private static function operationHasResponseCode(Operation $operation, int $status): bool
+    {
+        return collect($operation->responses ?? [])->contains(static function ($response) use ($status): bool {
+            $resolvedResponse = $response instanceof Reference ? $response->resolve() : $response;
+
+            return is_numeric($resolvedResponse->code) && (int) $resolvedResponse->code === $status;
+        });
+    }
+
+    private static function publicApiErrorResponseName(int $status): ?string
+    {
+        return match ($status) {
+            400 => 'PublicBadRequestError',
+            401 => 'PublicUnauthenticatedError',
+            403 => 'PublicForbiddenError',
+            404 => 'PublicNotFoundError',
+            405 => 'PublicMethodNotAllowedError',
+            409 => 'PublicConflictError',
+            422 => 'PublicValidationError',
+            429 => 'PublicRateLimitError',
+            500 => 'PublicInternalServerError',
+            503 => 'PublicServiceUnavailableError',
+            default => null,
+        };
+    }
+
+    private static function makePublicApiErrorEnvelopeSchema(): Schema
+    {
+        $validationErrors = (new ObjectType)
+            ->setDescription('Field-level validation details when available.')
+            ->additionalProperties((new ArrayType)->setItems(new StringType));
+
+        $meta = (new ObjectType)
+            ->setDescription('Structured error context when available.');
+
+        return Schema::fromType(
+            (new ObjectType)
+                ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example('Resource not found.'))
+                ->addProperty('code', (new StringType)->setDescription('Stable machine-readable error code.')->example('not_found'))
+                ->addProperty('errors', $validationErrors)
+                ->addProperty('meta', $meta)
+                ->setRequired(['message', 'code', 'errors', 'meta'])
+        );
+    }
+
+    private static function makePublicApiValidationErrorEnvelopeSchema(): Schema
+    {
+        $validationErrors = (new ObjectType)
+            ->setDescription('Field-level validation details keyed by input name.')
+            ->additionalProperties((new ArrayType)->setItems(new StringType))
+            ->example([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
+
+        $meta = (new ObjectType)
+            ->setDescription('Structured error context when available.');
+
+        return Schema::fromType(
+            (new ObjectType)
+                ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example('Validation failed.'))
+                ->addProperty('code', (new StringType)->setDescription('Stable machine-readable error code.')->example('validation_error'))
+                ->addProperty('errors', $validationErrors)
+                ->addProperty('meta', $meta)
+                ->setRequired(['message', 'code', 'errors', 'meta'])
+        );
     }
 }
