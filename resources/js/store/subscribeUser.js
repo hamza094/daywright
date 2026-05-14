@@ -36,7 +36,7 @@ const getters = {
 const actions = {
   userSubscription({ commit }) {
     return axios
-      .get('/user/subscriptions', {})
+      .get('/users/me/subscription', {})
       .then((response) => {
         commit('setSubscription', response.data.subscription);
         commit('setErrors', {});

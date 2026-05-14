@@ -166,17 +166,17 @@ Use these route groups as the implementation baseline for public docs work.
 - `POST /api/v1/users/{user}/avatar`
 - `DELETE /api/v1/users/{user}/avatar`
 - `GET /api/v1/users/search`
-- `GET /api/v1/me/invitations`
+- `GET /api/v1/users/me/invitations`
 
 ### Tokens and subscription
 
 - `GET /api/v1/api-tokens`
 - `POST /api/v1/api-tokens`
 - `DELETE /api/v1/api-tokens/{token}`
-- `POST /api/v1/subscriptions`
-- `PATCH /api/v1/subscriptions`
-- `DELETE /api/v1/subscriptions`
-- `GET /api/v1/user/subscriptions`
+- `GET /api/v1/users/me/subscription`
+- `POST /api/v1/users/me/subscription`
+- `PATCH /api/v1/users/me/subscription`
+- `DELETE /api/v1/users/me/subscription`
 
 ### Dashboard and notifications
 

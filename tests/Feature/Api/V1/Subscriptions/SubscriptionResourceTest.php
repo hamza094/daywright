@@ -198,7 +198,7 @@ class SubscriptionResourceTest extends TestCase
      */
     private function subscriptionResponse(): TestResponse
     {
-        return $this->getJson($this->apiV1Route('user.subscription'))
+        return $this->getJson($this->apiV1Route('users.me.subscription.show'))
             ->assertOk()
             ->assertJsonStructure([
                 'data' => [

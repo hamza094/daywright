@@ -21,7 +21,7 @@ class SubscriptionController extends ApiController
      *
      * Creates the checkout URL for the selected subscription plan.
      *
-     * @operationId subscribe
+     * @operationId createSubscription
      *
      * @tags Subscription
      */
@@ -30,7 +30,7 @@ class SubscriptionController extends ApiController
         description: 'Subscription checkout URL returned for the selected plan.',
         type: 'array{data: array{paylink: string}}',
     )]
-    public function subscribe(Paddle $paddle, SubscriptionRequest $request): JsonResponse
+    public function store(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $payLink = $paddle->subscribe($this->authenticatedUser(), (string) $request->string('plan')->trim());
 
@@ -44,11 +44,11 @@ class SubscriptionController extends ApiController
      *
      * Returns the current subscription snapshot for the authenticated user.
      *
-     * @operationId getSubscription
+     * @operationId showSubscription
      *
      * @tags Subscription
      */
-    public function subscriptions(): JsonResponse
+    public function show(): JsonResponse
     {
         $user = $this->authenticatedUser();
 
@@ -63,11 +63,11 @@ class SubscriptionController extends ApiController
      *
      * Changes the authenticated user's subscription to a different supported plan.
      *
-     * @operationId swapSubscription
+     * @operationId updateSubscription
      *
      * @tags Subscription
      */
-    public function swap(Paddle $paddle, SubscriptionRequest $request): JsonResponse
+    public function update(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
         $paddle->swap($user, (string) $request->string('plan')->trim());
@@ -87,7 +87,7 @@ class SubscriptionController extends ApiController
      *
      * @tags Subscription
      */
-    public function cancel(Paddle $paddle, SubscriptionRequest $request): JsonResponse
+    public function destroy(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
         $paddle->cancel($user, (string) $request->string('plan')->trim());

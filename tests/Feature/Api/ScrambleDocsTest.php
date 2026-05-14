@@ -298,9 +298,9 @@ class ScrambleDocsTest extends TestCase
         $schemas = $response->json('components.schemas');
 
         $tokenCollectionItemRef = $paths['/v1/api-tokens']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null;
-        $subscriptionDataOptions = $paths['/v1/user/subscriptions']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
-        $subscriptionSwapDataOptions = $paths['/v1/subscriptions']['patch']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
-        $subscriptionCancelDataOptions = $paths['/v1/subscriptions']['delete']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
+        $subscriptionDataOptions = $paths['/v1/users/me/subscription']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
+        $subscriptionSwapDataOptions = $paths['/v1/users/me/subscription']['patch']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
+        $subscriptionCancelDataOptions = $paths['/v1/users/me/subscription']['delete']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
 
         $this->assertSame(
             '#/components/schemas/ApiTokenStoreRequestData',
@@ -311,12 +311,12 @@ class ScrambleDocsTest extends TestCase
 
         $this->assertSame(
             '#/components/schemas/SubscriptionPlanRequestData',
-            $paths['/v1/subscriptions']['post']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
+            $paths['/v1/users/me/subscription']['post']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
         );
 
         $this->assertSame(
             '#/components/schemas/SubscriptionPlanRequestData',
-            $paths['/v1/subscriptions']['patch']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
+            $paths['/v1/users/me/subscription']['patch']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
         );
 
         $this->assertContains(
@@ -334,13 +334,13 @@ class ScrambleDocsTest extends TestCase
             array_column($subscriptionCancelDataOptions, '$ref'),
         );
 
-        $subscriptionCheckoutShape = $paths['/v1/subscriptions']['post']['responses']['200']['content']['application/json']['schema']['properties']['data']['properties'] ?? [];
+        $subscriptionCheckoutShape = $paths['/v1/users/me/subscription']['post']['responses']['200']['content']['application/json']['schema']['properties']['data']['properties'] ?? [];
 
         $this->assertSame('string', $subscriptionCheckoutShape['paylink']['type'] ?? null);
 
         $this->assertSame(
             'monthly',
-            $paths['/v1/subscriptions']['delete']['parameters']['0']['example'] ?? null,
+            $paths['/v1/users/me/subscription']['delete']['parameters']['0']['example'] ?? null,
         );
 
         $this->assertArrayHasKey('PersonalAccessToken', $schemas);
@@ -364,7 +364,7 @@ class ScrambleDocsTest extends TestCase
         $userShowDataRef = $paths['/v1/users/{user}']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['$ref'] ?? null;
         $userUpdateDataOptions = $paths['/v1/users/{user}']['put']['responses']['200']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
         $avatarShape = $paths['/v1/users/{user}/avatar']['post']['responses']['200']['content']['application/json']['schema']['properties']['data']['properties'] ?? [];
-        $invitationItemRef = $paths['/v1/me/invitations']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null;
+        $invitationItemRef = $paths['/v1/users/me/invitations']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null;
 
         $this->assertSame(
             '#/components/schemas/UserUpdateRequestData',
@@ -482,7 +482,7 @@ class ScrambleDocsTest extends TestCase
         $conversationStoreDataOptions = $paths['/v1/projects/{project}/conversations']['post']['responses']['201']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
         $invitationIndexParameters = $paths['/v1/projects/{project}/invitations']['get']['parameters'] ?? [];
         $invitationStoreDataOptions = $paths['/v1/projects/{project}/invitations']['post']['responses']['201']['content']['application/json']['schema']['properties']['data']['anyOf'] ?? [];
-        $taskSearchParameters = $paths['/v1/projects/{project}/tasks/{task}/member/search']['get']['parameters'] ?? [];
+        $taskSearchParameters = $paths['/v1/projects/{project}/tasks/{task}/members/search']['get']['parameters'] ?? [];
         $publicProjectSchema = $schemas['PublicProject']['properties'] ?? [];
         $projectLimitSchema = $schemas['ProjectUsageLimit']['properties'] ?? [];
 
@@ -565,7 +565,7 @@ class ScrambleDocsTest extends TestCase
         $this->assertContains('search', array_column($taskSearchParameters, 'name'));
         $this->assertSame(
             '#/components/schemas/TaskMember',
-            $paths['/v1/projects/{project}/tasks/{task}/member/search']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null,
+            $paths['/v1/projects/{project}/tasks/{task}/members/search']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null,
         );
 
         $this->assertArrayHasKey('ProjectListItem', $schemas);

@@ -2,7 +2,7 @@
 
 1. Phase 0. Implemented. Idempotency now relies on the app default cache store, production is expected to run with `CACHE_DRIVER=redis`, the package contract remains explicit in `config/idempotency.php`, and PHPUnit isolates idempotent flows with the testing cache driver.
 
-2. Phase 1. Implemented. `routes/api/v1.php` now applies user-scoped idempotency middleware to subscription create and swap, API token create, meeting create and update, invitation send and accept and reject, project message send, and task assign and unassign. Subscription cancel remains `DELETE /subscriptions` and is intentionally kept out of package-based idempotency because this package version only enforces POST, PUT, and PATCH.
+2. Phase 1. Implemented. `routes/api/v1.php` now applies user-scoped idempotency middleware to current-user subscription create and update, API token create, meeting create and update, invitation send and accept and reject, project message send, and task assign and unassign. Subscription cancel remains `DELETE /users/me/subscription` and is intentionally kept out of package-based idempotency because this package version only enforces POST, PUT, and PATCH.
 
 3. Phase 2. Implemented. Zoom webhooks now map Zoom's `x-zm-request-id` header to the configured idempotency header inside VerifyZoomWebhook.php after signature verification, so the global-scope middleware can deduplicate provider retries at the HTTP boundary. The queued Zoom jobs also now share an atomic per-meeting lock in StartMeetingWebhook.php, MeetingEndsWebhook.php, UpdateMeetingWebhook.php, and DeleteMeetingWebhook.php so concurrent deliveries cannot mutate or notify the same meeting at the same time.
 

@@ -107,17 +107,4 @@ class ProjectController extends ApiController
 
         return $this->respondWithMessage($project->name.' abandoned successfully');
     }
-
-    /**
-     * Restore a soft-deleted project.
-     *
-     * Re-activates a previously abandoned project.
-     */
-    public function restore(Project $project): JsonResponse
-    {
-        $this->projectService->restoreProject($project);
-
-        return $this->respondWithMessage($project->name.' restored successfully');
-
-    }
 }

@@ -115,7 +115,7 @@ export default {
     async fetchInvitations() {
       this.loading = true;
       try {
-        const { data } = await axios.get('/me/invitations');
+        const { data } = await axios.get('/users/me/invitations');
         this.invitations = data.invitations || [];
         if (data.message) {
           this.serverMessage = data.message;

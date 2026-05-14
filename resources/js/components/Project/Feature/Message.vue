@@ -210,7 +210,7 @@ export default {
       };
 
       this.sendMessageRequest
-        .post('/projects/' + this.slug + '/message', payload)
+        .post('/projects/' + this.slug + '/messages', payload)
         .then(() => {
           this.$vToastify.success(
             this.form.delivered_at ? 'Message Scheduled Successfully' : 'Message Sent Successfully',

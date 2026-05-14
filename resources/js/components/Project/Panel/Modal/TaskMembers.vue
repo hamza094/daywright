@@ -90,7 +90,7 @@ export default {
 
     performSearch(searchTerm) {
       axios
-        .get(`/projects/${this.slug}/tasks/${this.taskId}/member/search`, {
+        .get(`/projects/${this.slug}/tasks/${this.taskId}/members/search`, {
           params: { search: searchTerm },
         })
         .then((response) => {

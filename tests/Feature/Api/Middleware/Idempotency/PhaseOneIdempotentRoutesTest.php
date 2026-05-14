@@ -23,8 +23,8 @@ class PhaseOneIdempotentRoutesTest extends TestCase
 
         foreach ([
             'api.v1.api-tokens.store',
-            'api.v1.subscriptions.store',
-            'api.v1.subscription.swap',
+            'api.v1.users.me.subscription.store',
+            'api.v1.users.me.subscription.update',
             'api.v1.projects.messages.store',
             'api.v1.send.invitation',
             'api.v1.accept.invitation',
@@ -48,7 +48,7 @@ class PhaseOneIdempotentRoutesTest extends TestCase
     #[Test]
     public function subscription_cancel_remains_a_delete_route_without_idempotency_middleware(): void
     {
-        $route = app('router')->getRoutes()->getByName('api.v1.subscription.cancel');
+        $route = app('router')->getRoutes()->getByName('api.v1.users.me.subscription.destroy');
 
         $this->assertNotNull($route);
         $this->assertContains('DELETE', $route->methods());

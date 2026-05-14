@@ -331,7 +331,7 @@ export default {
     // Fetch the user's subscription info from the API
     async fetchSubscription() {
       try {
-        const response = await axios.get('/user/subscriptions');
+        const response = await axios.get('/users/me/subscription');
         this.setSubscription(response.data.subscription);
       } catch (error) {
         this.showError(error);
@@ -351,7 +351,7 @@ export default {
       this.isOpeningIframe = true;
       try {
         const payload = { plan };
-        const response = await this.subscribeRequest.post('/subscriptions', payload);
+        const response = await this.subscribeRequest.post('/users/me/subscription', payload);
         this.iframeSrc = response.data.paylink;
         this.isIframeOpen = true;
       } catch (error) {
@@ -368,7 +368,7 @@ export default {
         this.$Progress.start();
         try {
           const payload = { plan };
-          const response = await this.swapSubscriptionRequest.patch('/subscriptions', payload);
+          const response = await this.swapSubscriptionRequest.patch('/users/me/subscription', payload);
           this.setSubscription(response.data.subscription);
           toastSuccess(response.data.message);
           // Wait 5 seconds, then refresh subscription data once
@@ -395,7 +395,7 @@ export default {
       if (result.value) {
         this.$Progress.start();
         try {
-          const response = await axios.delete('/subscriptions', { data: { plan } });
+          const response = await axios.delete('/users/me/subscription', { data: { plan } });
           this.setSubscription(response.data.subscription);
           toastInfo(response.data.message);
         } catch (error) {

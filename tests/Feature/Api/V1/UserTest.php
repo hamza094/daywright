@@ -55,7 +55,7 @@ class UserTest extends TestCase
     #[Test]
     public function me_endpoint_returns_authenticated_user_contract(): void
     {
-        $this->getJson(route('api.v1.user.me'))
+        $this->getJson(route('api.v1.users.me.show'))
             ->assertOk()
             ->assertJsonPath('data.user.id', $this->user->id)
             ->assertJsonPath('data.user.uuid', $this->user->uuid)

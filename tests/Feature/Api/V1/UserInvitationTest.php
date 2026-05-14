@@ -22,7 +22,7 @@ class UserInvitationTest extends TestCase
         $project->members()->attach($this->user->id, ['active' => false, 'created_at' => now(), 'updated_at' => now()]);
         $pivot = $project->members()->whereKey($this->user->id)->firstOrFail()->pivot;
 
-        $response = $this->getJson($this->apiV1Route('user.invitations'));
+        $response = $this->getJson($this->apiV1Route('users.me.invitations.index'));
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -41,7 +41,7 @@ class UserInvitationTest extends TestCase
     public function it_returns_empty_array_and_message_if_no_pending_invitations(): void
     {
 
-        $response = $this->getJson($this->apiV1Route('user.invitations'));
+        $response = $this->getJson($this->apiV1Route('users.me.invitations.index'));
 
         $response->assertStatus(200)
             ->assertExactJson([
