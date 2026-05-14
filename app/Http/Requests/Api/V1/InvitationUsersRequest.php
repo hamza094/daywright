@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+#[SchemaName('ProjectInvitationStoreRequestData')]
 class InvitationUsersRequest extends FormRequest
 {
     /**
@@ -26,7 +28,8 @@ class InvitationUsersRequest extends FormRequest
     {
         return [
             /**
-             * - Email must be present in database
+             * Email address of the existing user to invite to the project.
+             * The email must already belong to a registered user.
              *
              * @example maximillia.koelpin@example.com
              */

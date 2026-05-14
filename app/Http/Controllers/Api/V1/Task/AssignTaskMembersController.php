@@ -13,6 +13,11 @@ use Illuminate\Http\JsonResponse;
 
 final class AssignTaskMembersController extends ApiController
 {
+    /**
+     * Assign members to a task.
+     *
+     * Assigns one or more project members to the specified task.
+     */
     public function __invoke(Project $project, Task $task, TaskMembersRequest $request, TaskFeatureService $service): JsonResponse
     {
         $members = $request->validated('members');

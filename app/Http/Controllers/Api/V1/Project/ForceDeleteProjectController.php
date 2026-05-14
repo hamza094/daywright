@@ -13,6 +13,11 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class ForceDeleteProjectController extends ApiController
 {
+    /**
+     * Permanently delete an abandoned project.
+     *
+     * Removes a soft-deleted project when it is eligible for force deletion.
+     */
     public function __invoke(Project $project, ProjectService $projectService): JsonResponse
     {
         $deleted = $projectService->forceDeleteIfAbandoned($project);

@@ -12,6 +12,11 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 final class InvitationUserSearchController extends ApiController
 {
+    /**
+     * Search users for invitation flows.
+     *
+     * Returns public user search results that can be used when inviting collaborators.
+     */
     public function __invoke(InvitationUserSearchRequest $request, InvitationService $invitationService): AnonymousResourceCollection
     {
         return TaskMemberResource::collection($invitationService->usersSearch($request->searchTerm()));

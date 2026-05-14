@@ -16,7 +16,7 @@ DayWright exposes a versioned JSON API for authentication, users, projects, task
 ## Base URL
 
 - Relative base path: `/api/v1`
-- Default local base URL in this environment: `http://daywright.test/api/v1`
+- Example requests and links below use relative API paths so the published docs stay environment-agnostic.
 
 
 ## Authentication
@@ -223,10 +223,10 @@ When an endpoint is paginated, the response uses Laravel's standard top-level `d
 {
     "data": [],
     "links": {
-        "first": "http://daywright.test/api/v1/projects?page=1",
-        "last": "http://daywright.test/api/v1/projects?page=5",
+        "first": "/api/v1/projects?page=1",
+        "last": "/api/v1/projects?page=5",
         "prev": null,
-        "next": "http://daywright.test/api/v1/projects?page=2"
+        "next": "/api/v1/projects?page=2"
     },
     "meta": {
         "current_page": 1,

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
 /**
  * @mixin \Laravel\Sanctum\PersonalAccessToken
  */
+#[SchemaName('PersonalAccessToken')]
 class TokenResource extends JsonResource
 {
     /**

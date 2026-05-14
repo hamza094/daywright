@@ -274,16 +274,127 @@ class AppServiceProvider extends ServiceProvider
             $components->addSchema('PublicApiValidationErrorEnvelope', self::makePublicApiValidationErrorEnvelopeSchema());
         }
 
-        self::registerSharedPublicApiErrorResponse($components, 'PublicBadRequestError', 400, 'Bad request', 'PublicApiErrorEnvelope');
-        self::registerSharedPublicApiErrorResponse($components, 'PublicUnauthenticatedError', 401, 'Unauthenticated', 'PublicApiErrorEnvelope');
-        self::registerSharedPublicApiErrorResponse($components, 'PublicForbiddenError', 403, 'Forbidden', 'PublicApiErrorEnvelope');
-        self::registerSharedPublicApiErrorResponse($components, 'PublicNotFoundError', 404, 'Not found', 'PublicApiErrorEnvelope');
-        self::registerSharedPublicApiErrorResponse($components, 'PublicMethodNotAllowedError', 405, 'Method not allowed', 'PublicApiErrorEnvelope');
-        self::registerSharedPublicApiErrorResponse($components, 'PublicConflictError', 409, 'Conflict', 'PublicApiErrorEnvelope');
-        self::registerSharedPublicApiErrorResponse($components, 'PublicValidationError', 422, 'Validation error', 'PublicApiValidationErrorEnvelope');
-        self::registerSharedPublicApiErrorResponse($components, 'PublicRateLimitError', 429, 'Too many requests', 'PublicApiErrorEnvelope');
-        self::registerSharedPublicApiErrorResponse($components, 'PublicInternalServerError', 500, 'Internal server error', 'PublicApiErrorEnvelope');
-        self::registerSharedPublicApiErrorResponse($components, 'PublicServiceUnavailableError', 503, 'Service unavailable', 'PublicApiErrorEnvelope');
+        foreach (self::publicApiErrorResponseDefinitions() as $definition) {
+            if (! $components->hasSchema($definition['schema'])) {
+                $components->addSchema(
+                    $definition['schema'],
+                    $definition['status'] === SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY
+                        ? self::makePublicApiValidationErrorEnvelopeSchema()
+                        : self::makePublicApiErrorEnvelopeSchema(
+                            messageExample: $definition['message'],
+                            codeExample: $definition['code'],
+                            metaExample: $definition['meta'],
+                        )
+                );
+            }
+
+            self::registerSharedPublicApiErrorResponse(
+                $components,
+                $definition['response'],
+                $definition['status'],
+                $definition['description'],
+                $definition['schema'],
+            );
+        }
+    }
+
+    /**
+     * @return array<int, array{response: string, schema: string, status: int, description: string, message: string, code: string, meta: array<string, mixed>}>
+     */
+    private static function publicApiErrorResponseDefinitions(): array
+    {
+        return [
+            [
+                'response' => 'PublicBadRequestError',
+                'schema' => 'PublicBadRequestErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_BAD_REQUEST,
+                'description' => 'Bad request',
+                'message' => 'The request could not be processed.',
+                'code' => 'bad_request',
+                'meta' => [],
+            ],
+            [
+                'response' => 'PublicUnauthenticatedError',
+                'schema' => 'PublicUnauthenticatedErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_UNAUTHORIZED,
+                'description' => 'Unauthenticated',
+                'message' => 'Authentication is required.',
+                'code' => 'unauthenticated',
+                'meta' => [],
+            ],
+            [
+                'response' => 'PublicForbiddenError',
+                'schema' => 'PublicForbiddenErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_FORBIDDEN,
+                'description' => 'Forbidden',
+                'message' => 'You are not authorized to perform this action.',
+                'code' => 'forbidden',
+                'meta' => [],
+            ],
+            [
+                'response' => 'PublicNotFoundError',
+                'schema' => 'PublicNotFoundErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_NOT_FOUND,
+                'description' => 'Not found',
+                'message' => 'Resource not found.',
+                'code' => 'not_found',
+                'meta' => [],
+            ],
+            [
+                'response' => 'PublicMethodNotAllowedError',
+                'schema' => 'PublicMethodNotAllowedErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_METHOD_NOT_ALLOWED,
+                'description' => 'Method not allowed',
+                'message' => 'Method not allowed.',
+                'code' => 'method_not_allowed',
+                'meta' => [],
+            ],
+            [
+                'response' => 'PublicConflictError',
+                'schema' => 'PublicConflictErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_CONFLICT,
+                'description' => 'Conflict',
+                'message' => 'The request conflicts with the current resource state.',
+                'code' => 'conflict',
+                'meta' => [],
+            ],
+            [
+                'response' => 'PublicValidationError',
+                'schema' => 'PublicApiValidationErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY,
+                'description' => 'Validation error',
+                'message' => 'Validation failed.',
+                'code' => 'validation_error',
+                'meta' => [],
+            ],
+            [
+                'response' => 'PublicRateLimitError',
+                'schema' => 'PublicRateLimitErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_TOO_MANY_REQUESTS,
+                'description' => 'Too many requests',
+                'message' => 'Too many requests. Please try again later.',
+                'code' => 'rate_limited',
+                'meta' => ['retry_after_seconds' => 42],
+            ],
+            [
+                'response' => 'PublicInternalServerError',
+                'schema' => 'PublicInternalServerErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR,
+                'description' => 'Internal server error',
+                'message' => 'An unexpected server error occurred.',
+                'code' => 'internal_server_error',
+                'meta' => [],
+            ],
+            [
+                'response' => 'PublicServiceUnavailableError',
+                'schema' => 'PublicServiceUnavailableErrorEnvelope',
+                'status' => SymfonyResponse::HTTP_SERVICE_UNAVAILABLE,
+                'description' => 'Service unavailable',
+                'message' => 'The service is temporarily unavailable.',
+                'code' => 'service_unavailable',
+                'meta' => [],
+            ],
+        ];
     }
 
     private static function registerSharedPublicApiErrorResponse(Components $components, string $name, int $status, string $description, string $schemaName): void
@@ -339,22 +450,33 @@ class AppServiceProvider extends ServiceProvider
         };
     }
 
-    private static function makePublicApiErrorEnvelopeSchema(): Schema
-    {
+    private static function makePublicApiErrorEnvelopeSchema(
+        string $messageExample = 'Resource not found.',
+        string $codeExample = 'not_found',
+        array $metaExample = [],
+    ): Schema {
         $validationErrors = (new ObjectType)
             ->setDescription('Field-level validation details when available.')
-            ->additionalProperties((new ArrayType)->setItems(new StringType));
+            ->additionalProperties((new ArrayType)->setItems(new StringType))
+            ->example((object) []);
 
         $meta = (new ObjectType)
-            ->setDescription('Structured error context when available.');
+            ->setDescription('Structured error context when available.')
+            ->example($metaExample === [] ? (object) [] : (object) $metaExample);
 
         return Schema::fromType(
             (new ObjectType)
-                ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example('Resource not found.'))
-                ->addProperty('code', (new StringType)->setDescription('Stable machine-readable error code.')->example('not_found'))
+                ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example($messageExample))
+                ->addProperty('code', (new StringType)->setDescription('Stable machine-readable error code.')->example($codeExample))
                 ->addProperty('errors', $validationErrors)
                 ->addProperty('meta', $meta)
                 ->setRequired(['message', 'code', 'errors', 'meta'])
+                ->example([
+                    'message' => $messageExample,
+                    'code' => $codeExample,
+                    'errors' => (object) [],
+                    'meta' => $metaExample === [] ? (object) [] : (object) $metaExample,
+                ])
         );
     }
 
@@ -375,8 +497,16 @@ class AppServiceProvider extends ServiceProvider
                 ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example('Validation failed.'))
                 ->addProperty('code', (new StringType)->setDescription('Stable machine-readable error code.')->example('validation_error'))
                 ->addProperty('errors', $validationErrors)
-                ->addProperty('meta', $meta)
+                ->addProperty('meta', $meta->example((object) []))
                 ->setRequired(['message', 'code', 'errors', 'meta'])
+                ->example([
+                    'message' => 'Validation failed.',
+                    'code' => 'validation_error',
+                    'errors' => [
+                        'email' => ['The provided credentials are incorrect.'],
+                    ],
+                    'meta' => (object) [],
+                ])
         );
     }
 }

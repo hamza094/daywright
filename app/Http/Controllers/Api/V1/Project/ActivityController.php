@@ -14,6 +14,11 @@ use Illuminate\Http\JsonResponse;
 
 class ActivityController extends ApiController
 {
+    /**
+     * List project activity entries.
+     *
+     * Returns the released project activity feed with filter and pagination support.
+     */
     public function index(Project $project, ProjectActivityIndexRequest $request, ProjectRepository $repository): JsonResponse
     {
         $activities = $repository->filterActivities(

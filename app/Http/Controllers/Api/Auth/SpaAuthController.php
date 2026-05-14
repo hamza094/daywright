@@ -18,12 +18,12 @@ class SpaAuthController extends ApiController
     public function __construct(protected LoginUserService $loginUserService) {}
 
     /**
-     * @unauthenticated
-     * SPA session login (cookie-based via Sanctum stateful).
+     * Sign in a browser session.
      *
-     * Establishes a session for first-party SPA clients.
-     * When two-factor authentication is enabled, this flow returns the
-     * challenge state and is completed through the two-factor endpoints.
+     * Establishes a Sanctum-backed session for first-party browser clients.
+     * When two-factor authentication is enabled, this flow returns the challenge state instead.
+     *
+     * @unauthenticated
      */
     #[ScrambleResponse(
         status: 200,

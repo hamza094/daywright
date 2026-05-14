@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+#[SchemaName('NotificationStatusUpdateRequestData')]
 class NotificationStatusUpdateRequest extends FormRequest
 {
     public function authorize(): bool
@@ -20,6 +22,11 @@ class NotificationStatusUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * New notification state.
+             *
+             * @example read
+             */
             'status' => ['required', 'in:read,unread'],
         ];
     }

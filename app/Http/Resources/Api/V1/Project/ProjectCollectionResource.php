@@ -6,6 +6,7 @@ namespace App\Http\Resources\Api\V1\Project;
 
 use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\StageResource;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
@@ -13,6 +14,7 @@ use Override;
 /**
  * @mixin \App\Models\Project
  */
+#[SchemaName('ProjectListItem')]
 class ProjectCollectionResource extends JsonResource
 {
     /**
@@ -26,16 +28,22 @@ class ProjectCollectionResource extends JsonResource
     {
         return [
             /**
+             * Project identifier.
+             *
              * @example 1
              */
             'id' => $this->id,
 
             /**
+             * Project display name.
+             *
              * @example The Dimension
              */
             'name' => $this->name,
 
             /**
+             * Stable project slug used in public routes.
+             *
              * @example the-dimension
              */
             'slug' => $this->slug,

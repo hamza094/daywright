@@ -20,9 +20,28 @@ class TaskIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Nested task list filters.
+             */
             'filter' => ['sometimes', 'array'],
+            /**
+             * Filter tasks by lifecycle state.
+             * Use `archived` to retrieve archived tasks without pagination.
+             *
+             * @example archived
+             */
             'filter.state' => ['sometimes', 'in:archived'],
+            /**
+             * Paginator page number for active task results.
+             *
+             * @example 1
+             */
             'page' => ['sometimes', 'integer', 'min:1'],
+            /**
+             * Number of active tasks to return per page.
+             *
+             * @example 3
+             */
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];
     }

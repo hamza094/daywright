@@ -24,14 +24,47 @@ class UserActivitiesResource extends JsonResource
     public function toArray($request)
     {
         return [
+            /**
+             * Activity identifier.
+             *
+             * @example 91
+             */
             'id' => $this->id,
+            /**
+             * Human-readable activity summary.
+             *
+             * @example Task 'Finalize copy..' status updated in Website Refresh
+             */
             'description' => method_exists($this, $this->description)
               ? $this->{$this->description}()
               : $this->description,
+            /**
+             * Related project summary, including soft-deleted projects when the activity still references them.
+             */
             'project' => $this->whenLoaded('project') && $this->project ? new ProjectSummaryResource($this->project) : null,
+            /**
+             * Activity timestamp in UTC ISO 8601 format.
+             *
+             * @example 2025-08-15T10:00:00+00:00
+             */
             'created_at' => $this->created_at?->toIso8601String(),
+            /**
+             * Minimal reference to the affected subject.
+             *
+             * @example {"type":"Task","id":22}
+             */
             'subject' => $this->getSubjectDetails(),
+            /**
+             * UI color hint derived from the activity type.
+             *
+             * @example yellow
+             */
             'color' => $this->color(),
+            /**
+             * Identifier of the user who triggered the activity.
+             *
+             * @example 5
+             */
             'user_id' => $this->user_id,
         ];
     }

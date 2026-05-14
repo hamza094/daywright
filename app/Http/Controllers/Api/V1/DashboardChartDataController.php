@@ -5,13 +5,24 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\DashboardChartDataRequest;
 use App\Repository\DashBoardRepository;
+use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 final class DashboardChartDataController extends ApiController
 {
-    public function __invoke(Request $request, DashBoardRepository $dashboardRepository): JsonResponse
+    /**
+     * Return project portfolio counts for the authenticated user's dashboard.
+     *
+     * Summarizes active, trashed, member, and total project counts for the selected dashboard time window.
+     */
+    #[ScrambleResponse(
+        status: 200,
+        description: 'Dashboard project counts grouped by active, trashed, and member access.',
+        type: 'array{data: array{active_projects: int, trashed_projects: int, member_projects: int, total_projects: int}}',
+    )]
+    public function __invoke(DashboardChartDataRequest $request, DashBoardRepository $dashboardRepository): JsonResponse
     {
         $data = $dashboardRepository->getProjectStats($request);
 

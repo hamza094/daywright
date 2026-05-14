@@ -27,42 +27,39 @@ class TaskResource extends JsonResource
     public function toArray($request)
     {
         return [
+            /**
+             * Task identifier.
+             *
+             * @example 14
+             */
             'id' => $this->id,
             /**
-             * Task Title
+             * Task title.
              *
-             * @example "The rise of plant"
+             * @example The rise of plant
              */
             'title' => Str::ucfirst($this->title),
             /**
-             * Task Description
+             * Task description.
              *
-             * @example "this is the description of task"
+             * @example This is the description of the task.
              */
             'description' => $this->description,
             /**
-             * Task Satus id
-             *
-             * @example 1
-             */
-
-            // 'status_id'=>$this->status_id,
-
-            /**
-             * TaskStatus Resource
+             * Current task status.
              */
             'status' => new TaskStatusResource($this->whenLoaded('status')),
 
-            /*
-          * Users associated to task
-          */
+            /**
+             * Users currently assigned to the task.
+             */
             'members' => $this->whenLoaded(
                 'assignee',
                 fn () => TaskMemberResource::collection($this->assignee),
             ),
 
             /**
-             * Task notified wheater notificatopn sent to asinee or not
+             * Reminder strategy for due-date notifications.
              */
             'notified' => $this->notified,
 
@@ -89,6 +86,9 @@ class TaskResource extends JsonResource
                 $this->updated_at->isAfter($this->created_at),
                 fn (): string => $this->updated_at->toIso8601String(),
             ),
+            /**
+             * Route links related to the task.
+             */
             'links' => [
                 'self' => ApiResourceLink::task($this->resource),
             ],

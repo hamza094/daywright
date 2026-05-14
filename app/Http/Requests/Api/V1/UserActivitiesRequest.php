@@ -23,7 +23,18 @@ class UserActivitiesRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Inclusive start date for the dashboard activity window.
+             *
+             * @example 2025-08-01
+             */
             'start_date' => 'required|date_format:Y-m-d',
+            /**
+             * Inclusive end date for the dashboard activity window.
+             * Must be the same as or after `start_date`.
+             *
+             * @example 2025-08-31
+             */
             'end_date' => 'required|date_format:Y-m-d|after_or_equal:start_date',
         ];
     }

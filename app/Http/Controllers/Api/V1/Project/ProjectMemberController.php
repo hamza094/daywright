@@ -12,6 +12,11 @@ use Illuminate\Http\JsonResponse;
 
 final class ProjectMemberController extends ApiController
 {
+    /**
+     * Remove a project member.
+     *
+     * Removes an existing member from the project membership list.
+     */
     public function __invoke(Project $project, User $user, InvitationService $invitationService): JsonResponse
     {
         $invitationService->removeMember($user, $project);

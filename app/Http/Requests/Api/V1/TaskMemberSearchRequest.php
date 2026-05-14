@@ -20,6 +20,11 @@ class TaskMemberSearchRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Search term matched against active project members.
+             *
+             * @example berry
+             */
             'search' => ['required', 'string', 'min:1'],
         ];
     }

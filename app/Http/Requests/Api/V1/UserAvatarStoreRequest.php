@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+#[SchemaName('UserAvatarUploadRequestData')]
 class UserAvatarStoreRequest extends FormRequest
 {
     public function authorize(): bool
@@ -20,6 +22,10 @@ class UserAvatarStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Avatar image file.
+             * Accepted types: jpeg, jpg, png. Maximum size: 700 KB.
+             */
             'avatar' => ['required', 'image', 'max:700', 'mimes:jpeg,png,jpg'],
         ];
     }

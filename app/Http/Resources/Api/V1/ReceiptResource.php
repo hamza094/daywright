@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
 
+#[SchemaName('SubscriptionReceipt')]
 class ReceiptResource extends JsonResource
 {
     /**

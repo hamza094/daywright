@@ -14,6 +14,11 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 final class TaskMemberSearchController extends ApiController
 {
+    /**
+     * Search assignable task members.
+     *
+     * Returns project members that match the provided search term for assignment workflows.
+     */
     public function __invoke(Project $project, Task $task, TaskMemberSearchRequest $request, TaskRepository $repository): AnonymousResourceCollection
     {
         return TaskMemberResource::collection($repository->searchMembers($request->searchTerm(), $project, $task));

@@ -12,6 +12,11 @@ use Illuminate\Http\JsonResponse;
 
 class TaskStatusController extends ApiController
 {
+    /**
+     * List task statuses and due-notification options.
+     *
+     * Returns the released task status reference data used by public task workflows.
+     */
     public function __invoke(): JsonResponse
     {
         return $this->respondWithData(

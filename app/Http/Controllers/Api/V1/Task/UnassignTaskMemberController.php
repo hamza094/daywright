@@ -13,6 +13,11 @@ use Illuminate\Http\JsonResponse;
 
 final class UnassignTaskMemberController extends ApiController
 {
+    /**
+     * Unassign a member from a task.
+     *
+     * Removes one assigned project member from the specified task.
+     */
     public function __invoke(Project $project, Task $task, TaskMemberUnassignRequest $request, TaskFeatureService $service): JsonResponse
     {
         $memberId = (int) $request->validated('member');

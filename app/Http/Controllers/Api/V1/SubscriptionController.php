@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\SubscriptionRequest;
 use App\Interfaces\Paddle;
 use App\Services\Subscription\SubscriptionViewService;
+use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -18,10 +19,17 @@ class SubscriptionController extends ApiController
     /**
      * Generate a subscription pay link.
      *
+     * Creates the checkout URL for the selected subscription plan.
+     *
      * @operationId subscribe
      *
      * @tags Subscription
      */
+    #[ScrambleResponse(
+        status: 200,
+        description: 'Subscription checkout URL returned for the selected plan.',
+        type: 'array{data: array{paylink: string}}',
+    )]
     public function subscribe(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $payLink = $paddle->subscribe($this->authenticatedUser(), (string) $request->string('plan')->trim());
@@ -33,6 +41,8 @@ class SubscriptionController extends ApiController
 
     /**
      * Get the authenticated user's subscription details.
+     *
+     * Returns the current subscription snapshot for the authenticated user.
      *
      * @operationId getSubscription
      *
@@ -51,6 +61,8 @@ class SubscriptionController extends ApiController
     /**
      * Swap subscription plan.
      *
+     * Changes the authenticated user's subscription to a different supported plan.
+     *
      * @operationId swapSubscription
      *
      * @tags Subscription
@@ -68,6 +80,8 @@ class SubscriptionController extends ApiController
 
     /**
      * Cancel subscription.
+     *
+     * Cancels the authenticated user's subscription and returns the updated subscription snapshot.
      *
      * @operationId cancelSubscription
      *

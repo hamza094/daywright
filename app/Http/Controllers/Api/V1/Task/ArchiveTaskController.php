@@ -12,6 +12,11 @@ use Illuminate\Http\JsonResponse;
 
 final class ArchiveTaskController extends ApiController
 {
+    /**
+     * Archive a task.
+     *
+     * Moves the task into the archived state without deleting its history.
+     */
     public function __invoke(Project $project, Task $task, TaskFeatureService $service): JsonResponse
     {
         $service->archiveTask($task);

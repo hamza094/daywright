@@ -13,6 +13,8 @@ class UserInvitationsController extends ApiController
 {
     /**
      * List all pending project invitations for the authenticated user.
+     *
+     * Returns the authenticated user's currently pending project invitations.
      */
     public function myInvitations(): JsonResponse
     {

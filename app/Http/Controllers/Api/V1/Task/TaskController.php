@@ -14,6 +14,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Services\Task\TaskFeatureService;
 use App\Services\Task\TaskService;
+use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -30,6 +31,7 @@ class TaskController extends ApiController
      *
      * @response AnonymousResourceCollection<LengthAwarePaginator<TaskCollectionResource>>
      */
+    #[QueryParameter('request', description: 'Legacy alias for `filter[state]=archived`.', type: 'string', example: 'archived')]
     public function index(Project $project, TaskIndexRequest $request, TaskService $taskService): JsonResponse
     {
         $tasksData = $taskService->getTasksData($project, $request->isArchived(), $request->perPage());
@@ -74,6 +76,11 @@ class TaskController extends ApiController
         return $this->respondUpdated(new TaskResource($task));
     }
 
+    /**
+     * Delete a task.
+     *
+     * Permanently removes a task that the authenticated user is allowed to manage.
+     */
     public function destroy(Project $project, Task $task, TaskFeatureService $taskFeatureService): JsonResponse
     {
         $this->authorize('manage', $task);

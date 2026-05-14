@@ -31,6 +31,8 @@ class UserController extends ApiController
 
     /**
      * Get the currently authenticated user.
+     *
+     * Returns the full current-user payload used by the public product.
      */
     public function me(): JsonResponse
     {

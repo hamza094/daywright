@@ -25,6 +25,8 @@ class VerificationController extends ApiController
 
     /**
      * Mark the user's email address as verified.
+     *
+     * Confirms the signed verification request and marks the targeted user's email as verified.
      */
     public function verify(Request $request, User $user): JsonResponse
     {
@@ -45,6 +47,8 @@ class VerificationController extends ApiController
 
     /**
      * Resend the email verification notification.
+     *
+     * Sends another email verification notification for the authenticated user when verification is still pending.
      */
     public function resend(Request $request): JsonResponse
     {

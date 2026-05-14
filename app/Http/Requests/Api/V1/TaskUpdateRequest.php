@@ -6,10 +6,12 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Enums\TaskDueNotifies;
 use App\Rules\Iso8601Timestamp;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Override;
 
+#[SchemaName('TaskUpdateRequestData')]
 class TaskUpdateRequest extends FormRequest
 {
     /**
@@ -28,27 +30,30 @@ class TaskUpdateRequest extends FormRequest
         $project = $this->project;
 
         return [
-            /*
-            * Task's Title
-            */
+            /**
+             * Updated task title. Titles must remain unique within the project.
+             *
+             * @example Draft QA checklist
+             */
             'title' => [
                 'sometimes',
                 'required',
                 'max:55',
                 Rule::unique('tasks')/* ->ignore($this->task) */ ->where(fn ($query) => $query->where('project_id', $project->id)),
             ],
-            /*
-                * Task's Description
-                */
+            /**
+             * Optional task description.
+             *
+             * @example Confirm release notes, test scenarios, and sign-off owners.
+             */
             'description' => 'sometimes|max:1000',
 
-            /*
-                    * Task's Due Date
-                    * - This field required with notified
-                    * - Field must be a valid ISO 8601 timestamp with a timezone offset
-                    *
-                    @example "2024-12-09T15:25:00+00:00"
-                    */
+            /**
+             * Task due date in ISO 8601 format with a timezone offset.
+             * Required when `notified` is present.
+             *
+             * @example 2024-12-09T15:25:00+00:00
+             */
             'due_at' => [
                 'sometimes',
                 'required_with:notified',
@@ -57,14 +62,16 @@ class TaskUpdateRequest extends FormRequest
                 new Iso8601Timestamp,
             ],
             /**
-             * TaskStatus id which task associated to
+             * Task status identifier.
              *
              * @example 1
              */
             'status_id' => 'required|int|max:4|sometimes',
-            /*
-                    * Notified task users about task due date
-                    */
+            /**
+             * Notification strategy used for due-date reminders.
+             *
+             * @example all
+             */
             'notified' => [
                 'sometimes',
                 'required',

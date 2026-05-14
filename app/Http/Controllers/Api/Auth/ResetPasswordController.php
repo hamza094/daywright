@@ -31,8 +31,13 @@ class ResetPasswordController extends ApiController
     */
 
     /**
+     * Send a password reset link.
+     *
+     * Sends a password reset email when the address belongs to an existing account.
+     * The response message is intentionally generic.
+     *
      * @unauthenticated
-     *  Send Reset Link */
+     */
     public function sendResetLink(ForgotPasswordRequest $request): JsonResponse
     {
         $status = Password::sendResetLink(
@@ -50,8 +55,12 @@ class ResetPasswordController extends ApiController
     }
 
     /**
+     * Reset a password with a valid reset token.
+     *
+     * Completes the password reset flow for a guest user and invalidates the reset token.
+     *
      * @unauthenticated
-     * Reset User's Password */
+     */
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
         $status = Password::reset(

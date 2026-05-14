@@ -154,9 +154,14 @@ class ProjectResource extends JsonResource
                 fn () => InvitedUserResource::collection($this->activeMembers),
             ),
 
+            /**
+             * Current project-scoped usage and maximums for tracked subscription limits.
+             *
+             * */
             'limits' => $this->when(
+
                 $this->limits !== null,
-                $this->limits,
+                fn () => ProjectLimitResource::collection($this->limits),
             ),
 
             /**

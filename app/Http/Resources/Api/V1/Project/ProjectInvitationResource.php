@@ -6,6 +6,7 @@ namespace App\Http\Resources\Api\V1\Project;
 
 use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\User\UserSummaryResource;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
@@ -14,6 +15,7 @@ use Override;
 /**
  * @mixin \App\Models\Project
  */
+#[SchemaName('ProjectInvitation')]
 class ProjectInvitationResource extends JsonResource
 {
     /**

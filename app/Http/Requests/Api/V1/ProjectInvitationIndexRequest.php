@@ -20,7 +20,16 @@ class ProjectInvitationIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Nested invitation filters.
+             */
             'filter' => ['required', 'array'],
+            /**
+             * Invitation status filter. Only pending invitations are exposed by this endpoint.
+             * The controller also accepts a top-level `status` query parameter and normalizes it here.
+             *
+             * @example pending
+             */
             'filter.status' => ['required', 'in:pending'],
         ];
     }

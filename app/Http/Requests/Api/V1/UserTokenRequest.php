@@ -6,8 +6,10 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Rules\Iso8601Timestamp;
 use Closure;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 
+#[SchemaName('ApiTokenStoreRequestData')]
 class UserTokenRequest extends FormRequest
 {
     /**
@@ -24,17 +26,18 @@ class UserTokenRequest extends FormRequest
     public function rules(): array
     {
         return [
-            /*
-             * @example "My API Token"
+            /**
+             * Human-readable label for the token.
+             *
+             * @example My API Token
              */
             'name' => 'required|string|max:255',
 
-            /*
-             * @example "2025-12-31T23:59:59+00:00"
-             *
-             * ISO 8601 expiration timestamp with a timezone offset.
-             *
+            /**
+             * Optional ISO 8601 expiration timestamp with timezone offset.
              * Must not be more than 180 days from now.
+             *
+             * @example 2025-12-31T23:59:59+00:00
              */
             'expires_at' => [
                 'bail',

@@ -21,9 +21,28 @@ class NotificationIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Nested notification filters.
+             */
             'filter' => ['sometimes', 'array'],
+            /**
+             * Filter notifications by read state.
+             * Accepts either `filter[status]` or a top-level `status` query parameter.
+             *
+             * @example unread
+             */
             'filter.status' => ['sometimes', 'in:'.implode(',', array_column(NotificationFilter::cases(), 'value'))],
+            /**
+             * Paginator page number.
+             *
+             * @example 1
+             */
             'page' => ['sometimes', 'integer', 'min:1'],
+            /**
+             * Number of notifications to return per page.
+             *
+             * @example 25
+             */
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];
     }

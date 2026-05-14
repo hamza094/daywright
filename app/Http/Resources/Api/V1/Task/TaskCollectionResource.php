@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1\Task;
 
 use App\Http\Resources\Api\V1\ApiResourceLink;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 use JsonSerializable;
@@ -13,6 +14,7 @@ use Override;
 /**
  * @mixin \App\Models\Task
  */
+#[SchemaName('ProjectTaskListItem')]
 class TaskCollectionResource extends JsonResource
 {
     /**
@@ -26,21 +28,21 @@ class TaskCollectionResource extends JsonResource
     {
         return [
             /**
-             * Task Id
+             * Task identifier.
              *
              * @example 1
              */
             'id' => $this->id,
 
             /**
-             * Task Title
+             * Task title.
              *
-             * @example "The rise of plant"
+             * @example The rise of plant
              */
             'title' => Str::ucfirst($this->title),
 
             /**
-             * TaskStatus Resource
+             * Current task status.
              */
             'status' => new TaskStatusResource($this->whenLoaded('status')),
 
@@ -58,7 +60,7 @@ class TaskCollectionResource extends JsonResource
             'created_at' => $this->created_at?->toIso8601String(),
 
             /**
-             * Links related to the project.
+             * Route links related to the task.
              *
              * @example {
              * "self": "/api/v1/projects/the-dimension/tasks/1"

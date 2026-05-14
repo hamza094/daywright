@@ -21,6 +21,11 @@ class ProjectController extends ApiController
 {
     public function __construct(private readonly ProjectService $projectService) {}
 
+    /**
+     * List the authenticated user's projects.
+     *
+     * Returns the released project index with supported filters, sorting, and pagination.
+     */
     public function index(
         DashboardProjectRequest $request,
         DashboardService $dashboardService,
@@ -72,9 +77,7 @@ class ProjectController extends ApiController
      *
      *  This endpoint allows you to update the details of an existing project.
      * It requires the project's slug and the updated fields (name, about, notes) when they are present in the request body and returns the updated resource.
-     *
-     * @response array{message: 'Project updated successfully.',project:array{id:1, slug:'the-dimension', name:'The Dimension', about:'This is the project dimension description', score:5, created_at:'5 days ago', updated_at:'few seconds ago',links:array{self:'api/v1/projects/the-dimension'}}}
-     */
+     *     */
     public function update(Project $project, ProjectUpdateRequest $request): JsonResponse
     {
         $this->authorize('access', $project);
@@ -92,10 +95,10 @@ class ProjectController extends ApiController
         );
     }
 
-    /*
-     * Forget the specified resource from database.
+    /**
+     * Soft-delete a project.
      *
-     * @param  int  $project
+     * Marks the project as abandoned so it can be restored or permanently deleted later.
      */
     public function destroy(Project $project): JsonResponse
     {
@@ -105,6 +108,11 @@ class ProjectController extends ApiController
         return $this->respondWithMessage($project->name.' abandoned successfully');
     }
 
+    /**
+     * Restore a soft-deleted project.
+     *
+     * Re-activates a previously abandoned project.
+     */
     public function restore(Project $project): JsonResponse
     {
         $this->projectService->restoreProject($project);

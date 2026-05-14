@@ -24,8 +24,11 @@ class OAuthController extends ApiController
     public function __construct(protected LoginUserService $loginUserService) {}
 
     /**
+     * Get the OAuth redirect URL.
+     *
+     * Returns the provider authorization URL used to start the browser-based OAuth flow.
+     *
      * @unauthenticated
-     * Get OAuth redirect url
      */
     public function redirect(OAuthProvider $provider): JsonResponse
     {
@@ -41,10 +44,12 @@ class OAuthController extends ApiController
     }
 
     /**
-     * @unauthenticated
-     *  OAuth Authentication
+     * Complete the OAuth callback flow.
      *
-     * API endpoint for creating or updating user and enabling login through OAuth provider callback.
+     * Creates or updates the linked user account and returns either an authenticated session
+     * or a two-factor challenge payload for browser clients.
+     *
+     * @unauthenticated
      */
     #[ScrambleResponse(
         status: 200,

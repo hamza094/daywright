@@ -26,6 +26,8 @@ class TwoFactorController extends ApiController
 
     /**
      * Get the current 2FA status for the authenticated user
+     *
+     * Returns the current two-factor state and any in-progress setup details for the signed-in user.
      */
     public function getUserStatus(Request $request): JsonResponse
     {
@@ -55,6 +57,8 @@ class TwoFactorController extends ApiController
 
     /**
      * Prepare 2FA setup by creating a new secret
+     *
+     * Starts two-factor setup and returns the QR code, URI, and plain-text secret needed by an authenticator app.
      */
     public function prepareTwoFactor(PrepareTwoFactorRequest $request): JsonResponse
     {
@@ -71,6 +75,8 @@ class TwoFactorController extends ApiController
 
     /**
      * Confirm 2FA setup with verification code
+     *
+     * Verifies the submitted authenticator code and enables two-factor authentication for the user.
      */
     public function confirmTwoFactor(ConfirmTwoFactorRequest $request): JsonResponse
     {
@@ -83,8 +89,11 @@ class TwoFactorController extends ApiController
     }
 
     /**
+     * Complete sign-in with a two-factor code.
+     *
+     * Finishes the browser-based login flow after the client receives a two-factor challenge.
+     *
      * @unauthenticated
-     * Complete 2FA login with verification code
      */
     public function twoFactorLogin(TwoFactorLoginRequest $request): JsonResponse
     {
@@ -100,6 +109,8 @@ class TwoFactorController extends ApiController
 
     /**
      * Show and regenerate recovery codes
+     *
+     * Generates and returns a fresh set of recovery codes for the authenticated user.
      */
     public function showRecoveryCodes(Request $request): JsonResponse
     {
@@ -112,6 +123,8 @@ class TwoFactorController extends ApiController
 
     /**
      * Disable 2FA for the authenticated user
+     *
+     * Turns off two-factor authentication and clears the current user's stored two-factor setup.
      */
     public function disableTwoFactorAuth(DisableTwoFactorRequest $request): JsonResponse
     {

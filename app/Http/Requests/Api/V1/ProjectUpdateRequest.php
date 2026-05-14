@@ -6,9 +6,11 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Models\Project;
 use Closure;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+#[SchemaName('ProjectUpdateRequestData')]
 class ProjectUpdateRequest extends FormRequest
 {
     /**
@@ -20,13 +22,15 @@ class ProjectUpdateRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
 
         return [
             /**
+             * Updated project name.
+             *
              * @example The Lightning rod
              */
             'name' => [
@@ -38,6 +42,8 @@ class ProjectUpdateRequest extends FormRequest
                 },
             ],
             /**
+             * Updated project summary.
+             *
              * @example This project aims to revolutionize the tech industry by...
              */
             'about' => [
@@ -49,6 +55,8 @@ class ProjectUpdateRequest extends FormRequest
                 },
             ],
             /**
+             * Updated private notes. Send an empty string to clear the notes field.
+             *
              * @example These notes are for internal use only and outline key considerations.
              */
             'notes' => [
@@ -63,7 +71,7 @@ class ProjectUpdateRequest extends FormRequest
     }
 
     #[Override]
-    public function messages()
+    public function messages(): array
     {
         return [
             'name.required' => 'Project name required.',

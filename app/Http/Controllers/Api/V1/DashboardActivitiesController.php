@@ -12,6 +12,11 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 final class DashboardActivitiesController extends ApiController
 {
+    /**
+     * Return the authenticated user's dashboard activity feed for a date range.
+     *
+     * Lists dashboard activity entries between the requested start and end dates.
+     */
     public function __invoke(UserActivitiesRequest $request, DashBoardRepository $repository): AnonymousResourceCollection
     {
         $dateRange = $request->getDateRange();

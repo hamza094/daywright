@@ -11,6 +11,11 @@ use Illuminate\Http\JsonResponse;
 
 final class RejectProjectInvitationController extends ApiController
 {
+    /**
+     * Reject a project invitation.
+     *
+     * Declines the authenticated user's pending invitation for the project.
+     */
     public function __invoke(Project $project, InvitationService $invitationService): JsonResponse
     {
         $user = $this->authenticatedUser();

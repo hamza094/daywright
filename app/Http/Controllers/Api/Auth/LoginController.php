@@ -17,13 +17,12 @@ class LoginController extends ApiController
     public function __construct(protected LoginUserService $loginUserService) {}
 
     /**
-     * @unauthenticated
-     * Token-based login (for mobile/3rd-party clients).
+     * Authenticate with email and password for bearer-token clients.
      *
-     * This method authenticates the user using provided credentials
-     * and returns a personal access token upon successful login.
-     * Accounts with two-factor authentication enabled must use the
-     * session login flow instead of this endpoint.
+     * Returns a Sanctum personal access token for public API clients.
+     * Accounts with two-factor authentication enabled must use the session login flow instead.
+     *
+     * @unauthenticated
      */
     public function login(LoginUserRequest $request): JsonResponse
     {

@@ -17,6 +17,11 @@ class ConversationController extends ApiController
 {
     public function __construct(private readonly ConversationService $conversationService) {}
 
+    /**
+     * List project conversations.
+     *
+     * Returns the released conversation feed for the specified project.
+     */
     public function index(Project $project, ConversationRepository $repository): JsonResponse
     {
         $this->authorize('access', $project);
@@ -24,6 +29,11 @@ class ConversationController extends ApiController
         return $this->respondWithData($repository->getProjectConversations($project));
     }
 
+    /**
+     * Create a project conversation.
+     *
+     * Creates a new project conversation with a message body, an attachment, or both.
+     */
     public function store(Project $project, ConversationRequest $request): JsonResponse
     {
         $this->authorize('access', $project);
@@ -33,6 +43,11 @@ class ConversationController extends ApiController
         return $this->respondCreated(new ConversationResource($conversation));
     }
 
+    /**
+     * Delete a project conversation.
+     *
+     * Permanently removes a conversation that the authenticated user is allowed to delete.
+     */
     public function destroy(Project $project, Conversation $conversation): JsonResponse
     {
         $this->authorize('delete', $conversation);

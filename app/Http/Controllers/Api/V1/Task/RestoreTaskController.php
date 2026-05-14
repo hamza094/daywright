@@ -12,6 +12,11 @@ use Illuminate\Http\JsonResponse;
 
 final class RestoreTaskController extends ApiController
 {
+    /**
+     * Restore an archived task.
+     *
+     * Returns an archived task to the active task list.
+     */
     public function __invoke(Project $project, Task $task, TaskFeatureService $service): JsonResponse
     {
         $service->unarchiveTask($task);

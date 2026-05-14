@@ -24,11 +24,39 @@ class UserTasksRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Nested dashboard task filters.
+             */
             'filter' => ['sometimes', 'array'],
+            /**
+             * Limit results to tasks created by the authenticated user.
+             *
+             * @example true
+             */
             'filter.user_created' => ['sometimes', 'boolean'],
+            /**
+             * Limit results to tasks assigned to the authenticated user.
+             *
+             * @example true
+             */
             'filter.task_assigned' => ['sometimes', 'boolean'],
+            /**
+             * Limit results to completed tasks.
+             *
+             * @example false
+             */
             'filter.completed' => ['sometimes', 'boolean'],
+            /**
+             * Limit results to overdue tasks.
+             *
+             * @example true
+             */
             'filter.overdue' => ['sometimes', 'boolean'],
+            /**
+             * Limit results to remaining, not-yet-completed tasks.
+             *
+             * @example false
+             */
             'filter.remaining' => ['sometimes', 'boolean'],
         ];
     }

@@ -11,6 +11,11 @@ use Illuminate\Http\JsonResponse;
 
 final class AcceptProjectInvitationController extends ApiController
 {
+    /**
+     * Accept a project invitation.
+     *
+     * Adds the authenticated user to the project through an existing pending invitation.
+     */
     public function __invoke(Project $project, InvitationService $invitationService): JsonResponse
     {
         $user = $this->authenticatedUser();

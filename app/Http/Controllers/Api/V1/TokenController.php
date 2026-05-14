@@ -18,7 +18,7 @@ class TokenController extends ApiController
     /**
      * List all personal access tokens
      *
-     * This endpoint returns all personal access tokens for the authenticated user.
+     * Returns the authenticated user's existing personal access tokens.
      */
     public function index(): JsonResponse
     {
@@ -30,7 +30,7 @@ class TokenController extends ApiController
     /**
      * Create a new personal access token
      *
-     * This endpoint creates a new personal access token for the authenticated user.
+     * Creates a new personal access token for the authenticated user.
      */
     public function store(UserTokenRequest $request, ApiTokenService $apiTokenService): JsonResponse
     {
@@ -48,7 +48,8 @@ class TokenController extends ApiController
     /**
      * Delete a personal access token
      *
-     * This endpoint deletes a personal access token by ID for the authenticated user. Cannot delete the current session token via this route.
+     * Deletes a personal access token by ID for the authenticated user.
+     * The current token used for this request cannot be deleted through this route.
      */
     public function destroy(int $token): JsonResponse
     {

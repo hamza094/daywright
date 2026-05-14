@@ -6,8 +6,10 @@ namespace App\Http\Requests\Api\V1;
 
 use App\Rules\ActiveProjectMember;
 use Closure;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 
+#[SchemaName('TaskMemberAssignRequestData')]
 class TaskMembersRequest extends FormRequest
 {
     /**
@@ -19,14 +21,17 @@ class TaskMembersRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
             /**
+             * Member identifiers to assign to the task.
              * - Prevents assigning a task to users who are already assigned.
              * - Ensures tasks can only be assigned to active members of the project.
+             *
+             * @example [3, 5]
              */
             'members' => ['required',
                 'array',
@@ -34,6 +39,11 @@ class TaskMembersRequest extends FormRequest
                 $this->membersValidation(),
                 new ActiveProjectMember($this->task),
             ],
+            /**
+             * Individual member identifier.
+             *
+             * @example 3
+             */
             'members.*' => ['required', 'exists:users,id', 'distinct'],
         ];
     }

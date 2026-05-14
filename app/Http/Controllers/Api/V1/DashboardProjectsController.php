@@ -11,6 +11,11 @@ use Illuminate\Http\JsonResponse;
 
 final class DashboardProjectsController extends ApiController
 {
+    /**
+     * Return recent dashboard projects along with a top-level total count.
+     *
+     * Returns the latest dashboard projects and includes a top-level total count in the response meta.
+     */
     public function __invoke(DashboardService $dashboardService): JsonResponse
     {
         $projects = $dashboardService->getDashboardProjects();

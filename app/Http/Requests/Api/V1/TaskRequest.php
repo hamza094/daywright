@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1;
 
 use App\Models\Project;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Override;
 
+#[SchemaName('TaskStoreRequestData')]
 class TaskRequest extends FormRequest
 {
     /**
@@ -29,11 +31,9 @@ class TaskRequest extends FormRequest
 
         return [
             /**
-             * Tasks title
+             * Task title. Titles must be unique within the selected project.
              *
-             * - Project task must be unique
-             *
-             * @example "this is a new project task"
+             * @example Draft QA checklist
              */
             'title' => [
                 'required',
@@ -47,11 +47,9 @@ class TaskRequest extends FormRequest
 
     /**
      * Get the error messages for the defined validation rules.
-     *
-     * @return array
      */
     #[Override]
-    public function messages()
+    public function messages(): array
     {
         return [
             'title.required' => 'Task title required.',

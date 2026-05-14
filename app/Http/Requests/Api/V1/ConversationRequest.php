@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+#[SchemaName('ConversationStoreRequestData')]
 class ConversationRequest extends FormRequest
 {
     /**
@@ -18,13 +20,22 @@ class ConversationRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
+            /**
+             * Conversation message body. Required when no file is attached.
+             *
+             * @example Can someone review the latest copy draft?
+             */
             'message' => 'required_without:file|string|min:2|max:1000',
 
+            /**
+             * Optional conversation attachment.
+             * Accepted types: jpg, png, pdf, docx. Maximum size: 700 KB.
+             */
             'file' => 'required_without:message|file|max:700|mimes:jpg,png,pdf,docx',
         ];
     }
