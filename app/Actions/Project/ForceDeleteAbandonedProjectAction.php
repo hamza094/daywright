@@ -10,7 +10,7 @@ use App\Models\Project;
 final readonly class ForceDeleteAbandonedProjectAction
 {
     public function __construct(
-        private CancelProjectZoomMeetingsAction $cancelProjectZoomMeetingsAction,
+        private CollectProjectZoomMeetingsForCancellationAction $collectProjectZoomMeetingsForCancellationAction,
     ) {}
 
     public function execute(Project $project): bool
@@ -19,7 +19,7 @@ final readonly class ForceDeleteAbandonedProjectAction
             return false;
         }
 
-        $meetings = $this->cancelProjectZoomMeetingsAction->execute($project);
+        $meetings = $this->collectProjectZoomMeetingsForCancellationAction->execute($project);
 
         if ($meetings !== []) {
             CancelZoomMeetingsJob::dispatch($meetings)->afterCommit();

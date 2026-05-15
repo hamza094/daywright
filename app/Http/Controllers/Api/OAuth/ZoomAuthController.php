@@ -13,10 +13,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class ZoomAuthController extends ApiController
 {
-    public function redirect(Request $request): JsonResponse
+    public function __construct(private readonly Zoom $zoom) {}
+
+    public function redirect(): JsonResponse
     {
-        $redirectDetails = app(Zoom::class)
-            ->getAuthRedirectDetails();
+        $redirectDetails = $this->zoom->getAuthRedirectDetails();
 
         session()->put('oauth_zoom_state', $redirectDetails->state);
 
@@ -47,9 +48,9 @@ final class ZoomAuthController extends ApiController
             codeVerifier: session()->pull('oauth_zoom_code_verifier'),
         );
 
-        $accessDetails = app(Zoom::class)->authorize($callbackDetails);
+        $accessDetails = $this->zoom->authorize($callbackDetails);
 
-        auth()->user()->updateZoomOAuthDetails(
+        $this->authenticatedUser()->updateZoomOAuthDetails(
             accessToken: $accessDetails->accessToken,
             refreshToken: $accessDetails->refreshToken,
             expiresAt: $accessDetails->expiresAt,

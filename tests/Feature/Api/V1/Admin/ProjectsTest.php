@@ -12,9 +12,11 @@ use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Traits\EnablesUserTwoFactor;
 
 class ProjectsTest extends TestCase
 {
+    use EnablesUserTwoFactor;
     use RefreshDatabase;
 
     private User $admin;
@@ -267,13 +269,6 @@ class ProjectsTest extends TestCase
         ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('project_ids.0');
-    }
-
-    private function enableTwoFactorForUser(User $user): void
-    {
-        $user->createTwoFactorAuth();
-
-        $user->enableTwoFactorAuth();
     }
 
     /**

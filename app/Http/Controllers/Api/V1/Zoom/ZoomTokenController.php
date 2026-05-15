@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Zoom;
 
-use App\Actions\ZoomAction;
+use App\Actions\CreateZoomJwtAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Zoom\JwtTokenRequest;
 use App\Interfaces\Zoom;
@@ -22,13 +22,13 @@ class ZoomTokenController extends ApiController
         return $this->respondWithData(['zak_token' => $token], Response::HTTP_OK);
     }
 
-    public function getJwtToken(JwtTokenRequest $request, ZoomAction $action): JsonResponse
+    public function getJwtToken(JwtTokenRequest $request, CreateZoomJwtAction $action): JsonResponse
     {
         $role = (int) $request->integer('role');
 
         $meetingId = $request->integer('meetingId');
 
-        $token = $action->handle($meetingId, $role);
+        $token = $action->execute($meetingId, $role);
 
         return $this->respondWithData(['jwt_token' => $token], Response::HTTP_OK);
     }

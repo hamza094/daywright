@@ -6,12 +6,14 @@ namespace App\Services\Project;
 
 use App\Actions\Project\ForceDeleteAbandonedProjectAction;
 use App\Actions\Project\SendProjectUpdatedNotificationAction;
+use App\Enums\StageStatus;
 use App\Enums\Subscription\PlanLimitType;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Subscription\PlanLimitService;
 use App\Services\Subscription\SubscriptionUsageService;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 
 class ProjectService
 {
@@ -109,6 +111,25 @@ class ProjectService
         $project->restore();
     }
 
+    /**
+     * @param  array{stage: int, postponed_reason?: string}  $data
+     */
+    public function updateStageStatus(Project $project, array $data): Project
+    {
+        DB::transaction(function () use ($project, $data): void {
+            $project->stage()->associate($data['stage']);
+
+            $project->update([
+                'postponed_reason' => $this->getPostponedReason($project, $data),
+                'stage_updated_at' => now(),
+            ]);
+        });
+
+        $project->load('stage');
+
+        return $project;
+    }
+
     public function sendNotification(Project $project, User $actor): void
     {
         $this->sendProjectUpdatedNotificationAction->execute($project, $actor);
@@ -117,5 +138,15 @@ class ProjectService
     public function forceDeleteIfAbandoned(Project $project): bool
     {
         return $this->forceDeleteAbandonedProjectAction->execute($project);
+    }
+
+    /**
+     * @param  array{stage: int, postponed_reason?: string}  $data
+     */
+    private function getPostponedReason(Project $project, array $data): ?string
+    {
+        return ($project->stage->name === StageStatus::Postponed->value && ! empty($data['postponed_reason']))
+            ? $data['postponed_reason']
+            : null;
     }
 }

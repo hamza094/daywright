@@ -15,9 +15,11 @@ use Override;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\TestCase;
+use Tests\Traits\EnablesUserTwoFactor;
 
 class DashboardTest extends TestCase
 {
+    use EnablesUserTwoFactor;
     use RefreshDatabase;
 
     private User $admin;
@@ -190,16 +192,5 @@ class DashboardTest extends TestCase
             ->assertStatus(500)
             ->assertJsonPath('message', 'Failed to load dashboard data.')
             ->assertJsonPath('code', 'internal_server_error');
-    }
-
-    private function enableTwoFactorForUser(User $user): void
-    {
-        $twoFactor = $user->createTwoFactorAuth();
-
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
-
-        $user->enableTwoFactorAuth();
     }
 }

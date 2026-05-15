@@ -11,7 +11,7 @@ use App\Interfaces\Zoom;
 use App\Models\User;
 use App\Services\Admin\Integration\PaddleService;
 use App\Services\Paddle\SubscriptionService;
-use App\Services\SendSmsService;
+use App\Services\VonageSmsService;
 use App\Services\Zoom\ZoomService;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\Components;
@@ -48,7 +48,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(
             SendSmsInterface::class,
-            SendSmsService::class
+            VonageSmsService::class
         );
 
         $this->app->bind(Paddle::class, SubscriptionService::class);

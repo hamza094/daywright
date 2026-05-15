@@ -17,7 +17,7 @@ final readonly class BulkDeleteProjectsAction
     /**
      * @param  array<int, int>  $projectIds
      */
-    public function handle(array $projectIds): void
+    public function execute(array $projectIds): void
     {
         if ($projectIds === []) {
             return;

@@ -15,6 +15,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class TokenController extends ApiController
 {
+    public function __construct(private readonly ApiTokenService $apiTokenService) {}
+
     /**
      * List all personal access tokens
      *
@@ -22,7 +24,7 @@ class TokenController extends ApiController
      */
     public function index(): JsonResponse
     {
-        $tokens = app(ApiTokenService::class)->listForUser($this->authenticatedUser());
+        $tokens = $this->apiTokenService->listForUser($this->authenticatedUser());
 
         return TokenResource::collection($tokens)->response();
     }
@@ -32,12 +34,12 @@ class TokenController extends ApiController
      *
      * Creates a new personal access token for the authenticated user.
      */
-    public function store(UserTokenRequest $request, ApiTokenService $apiTokenService): JsonResponse
+    public function store(UserTokenRequest $request): JsonResponse
     {
         $data = $request->validated();
         $expiresAt = ! empty($data['expires_at']) ? Carbon::parse($data['expires_at']) : null;
 
-        $token = $apiTokenService->createForUser($this->authenticatedUser(), $data['name'], $expiresAt);
+        $token = $this->apiTokenService->createForUser($this->authenticatedUser(), $data['name'], $expiresAt);
 
         return $this->respondWithData(
             new TokenStoreResource($token->plainTextToken, $token->accessToken),
@@ -53,7 +55,7 @@ class TokenController extends ApiController
      */
     public function destroy(int $token): JsonResponse
     {
-        app(ApiTokenService::class)->deleteForUser($this->authenticatedUser(), $token);
+        $this->apiTokenService->deleteForUser($this->authenticatedUser(), $token);
 
         return $this->respondWithMessage('Token deleted successfully.');
     }

@@ -12,7 +12,6 @@ use App\Http\Resources\Api\V1\Task\TaskCollectionResource;
 use App\Http\Resources\Api\V1\Task\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
-use App\Services\Task\TaskFeatureService;
 use App\Services\Task\TaskService;
 use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\JsonResponse;
@@ -81,11 +80,11 @@ class TaskController extends ApiController
      *
      * Permanently removes a task that the authenticated user is allowed to manage.
      */
-    public function destroy(Project $project, Task $task, TaskFeatureService $taskFeatureService): JsonResponse
+    public function destroy(Project $project, Task $task, TaskService $taskService): JsonResponse
     {
         $this->authorize('manage', $task);
 
-        $taskFeatureService->removeTask($task);
+        $taskService->removeTask($task);
 
         return $this->respondWithMessage('Task deleted successfully.');
     }

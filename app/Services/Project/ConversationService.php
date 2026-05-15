@@ -7,12 +7,13 @@ namespace App\Services\Project;
 use App\Enums\FileType;
 use App\Events\DeleteConversation;
 use App\Events\NewMessage;
-use App\Http\Requests\Api\V1\ConversationRequest;
 use App\Models\Conversation;
 use App\Models\Project;
+use App\Models\User;
 use App\Notifications\UserMentioned;
 use App\Services\FileService;
 use Exception;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -30,23 +31,23 @@ class ConversationService
 
     /**
      * Stores a new conversation and dispatches events and notifications.
+     *
+     * @param  array<string, mixed>  $payload
      */
-    public function storeConversation(ConversationRequest $request, Project $project): ?Conversation
+    public function storeConversation(Project $project, User $actor, array $payload, ?UploadedFile $file = null): ?Conversation
     {
         try {
-            $data = $this->prepareConversationData($request, $project);
+            $data = $this->prepareConversationData($payload, $project, $file);
 
-            $conversation = $this->createConversation($project, $data);
+            $conversation = $this->createConversation($project, $actor, $data);
 
             $conversation->load(['user', 'project:id,slug']);
 
-            // Fire the NewMessage event
             NewMessage::dispatch($conversation, $project->slug);
 
-            $this->userMentioned($conversation, $project);
+            $this->userMentioned($conversation, $project, $actor);
 
             return $conversation;
-
         } catch (Exception $e) {
             Log::error('Error storing conversation', [
                 'message' => $e->getMessage(),
@@ -57,7 +58,7 @@ class ConversationService
         }
     }
 
-    public function userMentioned(Conversation $conversation, Project $project): void
+    public function userMentioned(Conversation $conversation, Project $project, User $actor): void
     {
         if (! $conversation->message) {
             return;
@@ -74,9 +75,8 @@ class ConversationService
                 new UserMentioned(
                     $project->name,
                     $project->slug,
-                    auth()->user()->getNotifierData())
+                    $actor->getNotifierData())
             );
-
         } catch (Exception $e) {
             Log::error('Failed to send notifications', [
                 'error' => $e->getMessage(),
@@ -96,20 +96,22 @@ class ConversationService
 
     /**
      * Prepares the data required to create a conversation.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
      */
-    private function prepareConversationData(ConversationRequest $request, Project $project): array
+    private function prepareConversationData(array $payload, Project $project, ?UploadedFile $file = null): array
     {
         $data = [];
 
-        if ($request->has('message')) {
-            $data = $request->safe()->only(['message']);
+        if (array_key_exists('message', $payload)) {
+            $data['message'] = $payload['message'];
         }
 
-        // Check if a file is present in the request and process the upload
-        if ($request->hasFile('file')) {
+        if ($file instanceof UploadedFile) {
             $data['file'] = $this->fileService->store(
                 $project->id,
-                $request->file('file'),
+                $file,
                 FileType::CONVERSATION
             );
         }
@@ -117,10 +119,13 @@ class ConversationService
         return $data;
     }
 
-    private function createConversation(Project $project, array $data): Conversation
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function createConversation(Project $project, User $actor, array $data): Conversation
     {
         return $project->conversations()->create(array_merge($data, [
-            'user_id' => auth()->id(),
+            'user_id' => $actor->id,
         ]));
     }
 

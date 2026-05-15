@@ -9,12 +9,12 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\ProjectInsightsRequest;
 use App\Http\Resources\Api\V1\Project\ProjectInsightsResource;
 use App\Models\Project;
-use App\Services\Project\ProjectInsightService;
+use App\Services\Project\ProjectInsightsService;
 
 class ProjectInsightsController extends ApiController
 {
     public function __construct(
-        private readonly ProjectInsightService $insightService,
+        private readonly ProjectInsightsService $insightService,
         private readonly ProjectHealthRecalculationAction $healthRecalculationAction
     ) {}
 
@@ -33,7 +33,7 @@ class ProjectInsightsController extends ApiController
 
         $insights = $this->insightService->getInsights($project, $sections);
 
-        $this->healthRecalculationAction->handle($project, $sections);
+        $this->healthRecalculationAction->execute($project, $sections);
 
         return new ProjectInsightsResource([
             'project' => $project,

@@ -88,8 +88,11 @@ App\
 ├── QueryBuilder\               # Custom query builders
 ├── Repository\                 # Repository classes
 ├── Rules\                      # Custom validation rules
-├── Services\Api\V1\            # Versioned services
-│   ├── Dashboard\              # Feature-specific services
+├── Services\                   # Application services (not API-versioned)
+│   ├── Auth\
+│   ├── Dashboard\
+│   ├── Project\
+│   ├── Subscription\
 │   └── Task\
 └── Traits\                     # Reusable traits
 ```
@@ -140,6 +143,21 @@ Routing rules aim for clarity and consistency. Follow these concise guidelines w
 - Fallbacks: API routes should return a JSON 404 fallback; reserve the SPA catch-all route for `web` and place it last.
 - Misc middleware: use middleware for subscription checks, owner/role checks, and tracking (e.g., `subscription`, `can:owner`, custom middlewares); document custom middleware usage near the route declaration.
 
+### Backend Layer Boundaries
+
+Use this decision guide before adding a new class:
+
+| Layer      | Owns                                      | Accepts                                                            | Returns                                                                | Must Not Do                                                                                                          |
+| ---------- | ----------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Controller | One HTTP endpoint boundary                | Form Request / Request, route models, injected services or actions | `JsonResponse`, API resource, API resource collection                  | Own transactions, orchestrate multiple domain steps, use `app()`, pass the whole request deeper into the domain      |
+| Service    | One application use case or read workflow | Models, scalars, arrays, DTOs, explicit acting user when needed    | Models, collections, paginators, arrays, DTOs, booleans, value objects | Read `request()` / `auth()` in non-auth services, return HTTP responses or resources                                 |
+| Action     | One focused domain step                   | Models, scalars, arrays, DTOs                                      | Model, array, bool, primitive, value object                            | Behave like a controller or service, accept Request objects, return HTTP responses or resources                      |
+| Repository | Query and data-access reuse               | Models, scalars, filter arrays, DTOs                               | Builder, models, collections, paginators, arrays, DTOs                 | Own business workflows, mutate as the main use-case boundary, read auth/request state, return resources or responses |
+
+API versioning lives at the HTTP boundary. Version controllers, requests, and resources. Keep services, actions, and repositories under their domain namespaces unless a documented exception is truly required.
+
+If a class mainly filters an in-memory collection, coordinates collaborators, or shapes API output, it should not keep a `Repository` name.
+
 ---
 
 ## 2. Actions
@@ -154,11 +172,18 @@ Actions are single-responsibility classes that encapsulate specific business log
 
 ### Guidelines
 
+- ✅ Default public entrypoint: `execute()`
 - ✅ Inject dependencies via constructor
 - ✅ Keep actions focused on a single responsibility
+- ✅ Accept explicit domain inputs (models, scalars, arrays, DTOs)
+- ✅ Return domain results (model, bool, array, primitive, value object)
 - ✅ Use other actions as dependencies for composition
+- ✅ Create an action when the step is a named domain operation, reused in more than one flow, or isolates an integration / side effect
+- ✅ Controllers may call an action directly only for tiny isolated operations; otherwise actions should sit under a service
 - ❌ Do not extend base classes
 - ❌ Do not handle HTTP concerns (that's for controllers)
+- ❌ Do not accept `Request` / Form Request objects or return API resources / `JsonResponse`
+- ❌ Do not turn an action into a mini-service that coordinates an entire endpoint flow
 
 ---
 
@@ -166,21 +191,32 @@ Actions are single-responsibility classes that encapsulate specific business log
 
 ### Purpose
 
-Services orchestrate business logic, coordinating between repositories, actions, and external integrations.
+Services orchestrate one application use case or read workflow, coordinating between repositories, actions, and external integrations.
 
 ### Location
 
-`app/Services/Api/V1/` or `app/Services/Api/V1/{Feature}/`
+`app/Services/` or `app/Services/{Domain}/`
 
 ### Guidelines
 
 - ✅ Use `final readonly` for immutable services
+- ✅ Name services by workflow or responsibility; avoid vague names such as `FeatureService`, `HelperService`, or `ManagerService`
+- ✅ Own one use case boundary or one read/listing/composition workflow boundary
 - ✅ Wrap multi-step operations in `DB::transaction()`
 - ✅ Use PHPDoc for array parameter types: `@param array<string, mixed>`
+- ✅ Accept models, scalars, arrays, or DTOs; pass the acting user explicitly when needed
+- ✅ Coordinate actions, repositories, transactions, notifications, domain events, and external integrations
+- ✅ Keep cohesive orchestration in the service; do not extract a new action for one-off glue code that is only used inside that service
+- ✅ Extract an action only when the step is clearly named in the domain, independently testable, reused, or integration-heavy
 - ✅ Fire events after successful operations
 - ✅ Dispatch notifications from services
+- ✅ Return models, collections, paginators, arrays, DTOs, or value objects and let controllers shape HTTP responses
 - ❌ Do not access `Request` directly (pass data as parameters)
+- ❌ Do not accept Form Request objects in non-auth/session services
+- ❌ Do not call `request()`, `auth()`, or `Auth::user()` in non-auth/session services
 - ❌ Do not return HTTP responses
+
+Auth or session oriented services are the narrow exception. They may touch request or auth state only when that coupling is their actual job.
 
 ---
 
@@ -196,11 +232,17 @@ Repositories encapsulate data access logic, providing a clean API for querying t
 
 ### Guidelines
 
+- ✅ Keep repositories query-only and data-access focused
 - ✅ Return typed collections (`Collection`, `Builder`, model types)
+- ✅ Accept explicit models, scalars, filter arrays, or DTOs
 - ✅ Use `private` helper methods for reusable query logic
 - ✅ Method prefixes: `get`, `find`, `filter`, `search`, `count`
 - ❌ Do not include business logic (that belongs in Services/Actions)
+- ❌ Do not own create / update / delete workflows or cross-entity orchestration
 - ❌ Do not fire events from repositories
+- ❌ Do not return API resources or HTTP responses
+- ❌ Do not accept `Request` objects or read `Auth` / `auth()` state
+- ❌ If a class mainly filters already-loaded collections, coordinates collaborators, or shapes API payloads, move or rename it out of `Repository`
 
 ---
 
@@ -245,13 +287,21 @@ Controller (base)
 ### Guidelines
 
 - ✅ Extend `ApiController` for API endpoints
+- ✅ Keep controllers as HTTP boundaries: validate, authorize, resolve actor, delegate, and return the response
 - ✅ Use method injection for Request and Service dependencies
+- ✅ Prefer resource controllers for canonical CRUD and invokable controllers for one-off commands or queries
 - ✅ Use `$this->authorize()` for policy checks
 - ✅ Use `$request->validated()` or `$request->safe()` for clean data
+- ✅ Pass validated arrays or explicit request accessors downstream instead of the whole request
+- ✅ Resolve the authenticated user in the controller and pass it explicitly to services or actions when needed
+- ✅ Call one main collaborator per endpoint. In most cases that collaborator is a service; call an action directly only for tiny isolated operations
 - ✅ Add docblocks with `@operationId` and `@tags` for API documentation
 - ✅ Return JSON with `message` + `resource` pattern
 - ❌ Do not put business logic in controllers
+- ❌ Do not coordinate multi-step workflows, transactions, or multiple domain collaborators in controllers
 - ❌ Do not access database directly (use services/repositories)
+- ❌ Do not use `app()` inside controllers
+- ❌ Do not create duplicate feature-bucket controllers when a focused routed controller already owns the behavior
 
 ### Response Status Codes
 
@@ -531,30 +581,58 @@ Interfaces define contracts for services and integrations.
 
 ```
 tests/
-├── TestCase.php              # Base test case
-├── CreatesApplication.php    # Application bootstrapping
+├── TestCase.php               # Base test case
+├── CreatesApplication.php     # Application bootstrapping
 ├── Feature/
-│   └── Api/
-│       ├── V1/               # API version tests
-│       │   ├── ProjectFeatureTest.php
-│       │   └── TaskTest.php
-│       ├── Auth/             # Authentication tests
-│       ├── Controllers/      # Controller-specific tests
-│       ├── Services/         # Service tests
-│       └── Middleware/       # Middleware tests
+│   ├── Api/
+│   │   ├── Auth/             # Authentication, session, and OAuth endpoint tests
+│   │   ├── Contracts/
+│   │   │   ├── Docs/         # API documentation contract tests
+│   │   │   └── Routes/       # Route registration and naming contract tests
+│   │   ├── Middleware/       # API middleware behavior tests
+│   │   ├── V1/
+│   │   │   ├── Conversations/
+│   │   │   ├── Dashboard/
+│   │   │   ├── Meetings/
+│   │   │   ├── Messages/
+│   │   │   ├── Notifications/
+│   │   │   ├── Projects/
+│   │   │   ├── Subscriptions/
+│   │   │   ├── Tasks/
+│   │   │   └── Users/
+│   │   └── Webhooks/         # Webhook endpoint tests grouped by provider
+│   ├── Database/             # Database constraints and migration behavior tests
+│   └── Exceptions/           # Exception handler and reporting tests
 ├── Unit/
-│   ├── ProjectTest.php
-│   ├── Repository/           # Repository unit tests
-│   └── Services/             # Service unit tests
-├── Fixtures/                 # Test fixtures (JSON, etc.)
-├── Support/                  # Test helpers and builders
-└── Traits/                   # Reusable test traits
+│   ├── Actions/
+│   ├── Enums/
+│   ├── Models/
+│   ├── Repository/
+│   ├── Resources/
+│   └── Services/
+├── Fixtures/                  # Test fixtures (JSON, etc.)
+├── Helpers/                   # Shared test helper classes
+├── Support/                   # Test builders and scenario setup
+└── Traits/                    # Reusable test traits
 ```
 
 ### Test File Naming
 
-- **Feature tests**: `{Feature}Test.php` or `{Feature}FeatureTest.php`
-- **Unit tests**: `{Subject}Test.php`
+- **Default pattern**: `{Subject}Test.php`
+- **Canonical acceptance files**: `{Feature}FeatureTest.php` only when a single file intentionally owns a broader feature boundary
+- Class names must match file names
+- Do not introduce `*Tests.php`, `Phase*Test.php`, placeholder names like `test_example`, or misspelled test file names
+
+### Test Boundaries
+
+- Feature tests are organized by external behavior first, not by implementation type
+- Versioned endpoint tests belong under `tests/Feature/Api/V1/{Domain}/`
+- Authentication, session, and OAuth flows belong under `tests/Feature/Api/Auth/`
+- API contract tests belong under `tests/Feature/Api/Contracts/{Concern}/`
+- Webhook endpoint tests belong under `tests/Feature/Api/Webhooks/{Provider}/`
+- Do not create new permanent tests under `tests/Feature/Api/Controllers/` or `tests/Feature/Api/Services/`
+- Unit tests instantiate subjects directly and belong under `tests/Unit/{Layer or Domain}/`
+- Shared setup belongs in `tests/TestCase.php`, `tests/Traits/`, or `tests/Support/`
 
 ### Base Test Case
 
@@ -583,6 +661,7 @@ abstract class TestCase extends BaseTestCase
 ### Testing Guidelines
 
 - ✅ Use `/** @test */` annotation or `test_` prefix
+- ✅ Keep one clear subject per test file so the file is easy to skim
 - ✅ Method naming: `snake_case` describing behavior
 - ✅ Follow AAA pattern: Arrange, Act, Assert
 - ✅ Use `RefreshDatabase` trait for database tests
@@ -590,7 +669,9 @@ abstract class TestCase extends BaseTestCase
 - ✅ Use `assertJsonValidationErrors()` for validation tests
 - ✅ Define route constants for repeated route names
 - ✅ Create setup traits for common test configuration
+- ✅ Move repeated test-only setup into shared helpers instead of copying it across files
 - ✅ Use `Http::preventStrayRequests()` to catch unmocked HTTP calls
+- ❌ Do not group feature tests by controller or service implementation folder when the real boundary is a domain or endpoint
 
 ---
 

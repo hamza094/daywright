@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Actions\TaskDueAction;
+use App\Actions\SendTaskDueNotificationAction;
 use App\Models\Task;
 use Exception;
 use Illuminate\Console\Command;
@@ -16,7 +16,7 @@ class TaskNotify extends Command
 
     protected $description = 'Send tasks due notification on scheduled time';
 
-    public function __construct(protected TaskDueAction $taskDueAction)
+    public function __construct(protected SendTaskDueNotificationAction $sendTaskDueNotificationAction)
     {
         parent::__construct();
     }
@@ -50,7 +50,7 @@ class TaskNotify extends Command
     {
         foreach ($tasks as $task) {
             try {
-                $this->taskDueAction->sendNotification($task);
+                $this->sendTaskDueNotificationAction->execute($task);
             } catch (Exception $e) {
                 Log::error('Failed to process task notification', [
                     'task_id' => $task->id,

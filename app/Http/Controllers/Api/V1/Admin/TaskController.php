@@ -27,7 +27,7 @@ class TaskController extends ApiController
     {
         $taskIds = $request->validated('task_ids');
 
-        $bulkDeleteTasksAction->handle($taskIds);
+        $bulkDeleteTasksAction->execute($taskIds);
 
         return $this->respondWithMessage('Tasks deleted successfully.');
     }

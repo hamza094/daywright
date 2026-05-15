@@ -14,6 +14,8 @@ final class ExportProjectController extends ApiController
 {
     public function __invoke(Project $project): BinaryFileResponse
     {
-        return Excel::download(new ProjectsExport($project), "Project $project->name.xls");
+        $safeName = preg_replace('/[\\\\\/]+/', '-', (string) $project->name);
+
+        return Excel::download(new ProjectsExport($project), "Project {$safeName}.xls");
     }
 }

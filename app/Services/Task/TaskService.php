@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Task;
 
-use App\Actions\NotificationAction;
+use App\Actions\NotifyProjectMembersAction;
+use App\Actions\Task\ArchiveTaskAction;
+use App\Actions\Task\AssignTaskMembersAction;
+use App\Actions\Task\DeleteTaskAction;
 use App\Actions\Task\ResetTaskNotificationAction;
+use App\Actions\Task\RestoreTaskAction;
+use App\Actions\Task\UnassignTaskMemberAction;
 use App\Enums\Subscription\PlanLimitType;
 use App\Models\Project;
 use App\Models\Task;
@@ -21,8 +26,14 @@ use Illuminate\Validation\ValidationException;
 class TaskService
 {
     public function __construct(
+        private readonly NotifyProjectMembersAction $notifyProjectMembersAction,
         private readonly ResetTaskNotificationAction $resetTaskNotificationAction,
         private readonly PlanLimitService $planLimitService,
+        private readonly AssignTaskMembersAction $assignTaskMembersAction,
+        private readonly UnassignTaskMemberAction $unassignTaskMemberAction,
+        private readonly ArchiveTaskAction $archiveTaskAction,
+        private readonly RestoreTaskAction $restoreTaskAction,
+        private readonly DeleteTaskAction $deleteTaskAction,
     ) {}
 
     public function getTasksData(Project $project, bool $isArchived, int $perPage): Collection|LengthAwarePaginator
@@ -69,7 +80,7 @@ class TaskService
             ]);
         }
 
-        $payload = $this->resetTaskNotificationAction->apply($task, $validated);
+        $payload = $this->resetTaskNotificationAction->execute($task, $validated);
 
         $task->update($payload);
         $task->loadMissing('project:id,slug');
@@ -81,11 +92,39 @@ class TaskService
         return $task;
     }
 
+    /**
+     * @param  array<int, int|string>  $members
+     */
+    public function assignMembers(Task $task, array $members, Project $project, User $actor): void
+    {
+        $this->assignTaskMembersAction->execute($task, $project, $actor, $members);
+    }
+
+    public function archiveTask(Task $task): void
+    {
+        $this->archiveTaskAction->execute($task);
+    }
+
+    public function unarchiveTask(Task $task): void
+    {
+        $this->restoreTaskAction->execute($task);
+    }
+
+    public function unassignMember(Task $task, int $memberId): User
+    {
+        return $this->unassignTaskMemberAction->execute($task, $memberId);
+    }
+
+    public function removeTask(Task $task): void
+    {
+        $this->deleteTaskAction->execute($task);
+    }
+
     private function sendNotification(Project $project, User $actor): void
     {
         $notifier = $actor->getNotifierData();
 
-        NotificationAction::send(
+        $this->notifyProjectMembersAction->execute(
             new ProjectTask(
                 $project->name,
                 $project->slug,

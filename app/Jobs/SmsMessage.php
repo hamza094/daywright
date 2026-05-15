@@ -6,7 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Message;
 use App\Models\Project;
-use App\Services\SendSmsService;
+use App\Services\VonageSmsService;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -40,7 +40,7 @@ class SmsMessage implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(SendSmsService $service): void
+    public function handle(VonageSmsService $service): void
     {
         $service->send($this->project, $this->message);
     }

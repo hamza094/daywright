@@ -11,9 +11,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Traits\EnablesUserTwoFactor;
 
 class UsersTest extends TestCase
 {
+    use EnablesUserTwoFactor;
     use RefreshDatabase;
 
     #[Test]
@@ -256,13 +258,6 @@ class UsersTest extends TestCase
 
         $this->assertNotSame('known-token-value', $target->remember_token);
         $this->assertNotNull($target->remember_token);
-    }
-
-    private function enableTwoFactorForUser(User $user): void
-    {
-        $user->createTwoFactorAuth();
-
-        $user->enableTwoFactorAuth();
     }
 
     /**

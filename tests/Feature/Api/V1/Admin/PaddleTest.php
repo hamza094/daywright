@@ -15,9 +15,11 @@ use Override;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\TestCase;
+use Tests\Traits\EnablesUserTwoFactor;
 
 class PaddleTest extends TestCase
 {
+    use EnablesUserTwoFactor;
     use RefreshDatabase;
 
     private User $admin;
@@ -118,16 +120,5 @@ class PaddleTest extends TestCase
             ->assertJsonStructure(['message', 'code', 'errors', 'meta'])
             ->assertJsonPath('message', 'An unexpected server error occurred.')
             ->assertJsonPath('code', 'internal_server_error');
-    }
-
-    private function enableTwoFactorForUser(User $user): void
-    {
-        $twoFactor = $user->createTwoFactorAuth();
-
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
-
-        $user->enableTwoFactorAuth();
     }
 }

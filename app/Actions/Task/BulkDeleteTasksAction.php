@@ -17,7 +17,7 @@ final class BulkDeleteTasksAction
      *
      * @param  array<int,int>  $taskIds
      */
-    public function handle(array $taskIds): void
+    public function execute(array $taskIds): void
     {
         if ($taskIds === []) {
             return;

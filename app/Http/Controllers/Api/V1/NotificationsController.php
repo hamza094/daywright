@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\NotificationIndexRequest;
 use App\Http\Requests\Api\V1\NotificationStatusUpdateRequest;
 use App\Http\Resources\Api\V1\NotificationResource;
-use App\Services\NotificationService;
+use App\Services\UserNotificationService;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 
@@ -26,9 +26,9 @@ class NotificationsController extends ApiController
     )]
     public function index(
         NotificationIndexRequest $request,
-        NotificationService $notificationService,
+        UserNotificationService $userNotificationService,
     ): JsonResponse {
-        $paginator = $notificationService->paginateForUser(
+        $paginator = $userNotificationService->paginateForUser(
             $this->authenticatedUser(),
             $request->statusFilter(),
             $request->perPage(),
@@ -42,9 +42,9 @@ class NotificationsController extends ApiController
      *
      * Marks every notification for the authenticated user as read in a single operation.
      */
-    public function markAllAsRead(NotificationService $notificationService): JsonResponse
+    public function markAllAsRead(UserNotificationService $userNotificationService): JsonResponse
     {
-        $notificationService->markAllAsRead($this->authenticatedUser());
+        $userNotificationService->markAllAsRead($this->authenticatedUser());
 
         return $this->respondWithMessage('All users notifications marked as read.');
     }
@@ -54,9 +54,9 @@ class NotificationsController extends ApiController
      *
      * Deletes one notification belonging to the authenticated user.
      */
-    public function destroy(string $notification, NotificationService $notificationService): JsonResponse
+    public function destroy(string $notification, UserNotificationService $userNotificationService): JsonResponse
     {
-        $notificationService->deleteForUser($this->authenticatedUser(), $notification);
+        $userNotificationService->deleteForUser($this->authenticatedUser(), $notification);
 
         return $this->respondWithMessage('Notification deleted successfully.');
     }
@@ -69,11 +69,11 @@ class NotificationsController extends ApiController
     public function updateStatus(
         NotificationStatusUpdateRequest $request,
         string $notification,
-        NotificationService $notificationService,
+        UserNotificationService $userNotificationService,
     ): JsonResponse {
         $status = $request->validated('status');
 
-        $notificationService->updateStatus($this->authenticatedUser(), $notification, $status);
+        $userNotificationService->updateStatus($this->authenticatedUser(), $notification, $status);
 
         return $this->respondWithMessage('Notification status updated.');
     }

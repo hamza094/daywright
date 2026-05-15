@@ -14,7 +14,7 @@ final class ResetTaskNotificationAction
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
-    public function apply(Task $task, array $validated): array
+    public function execute(Task $task, array $validated): array
     {
         if (! $this->shouldResetNotification($task, $validated)) {
             return $validated;

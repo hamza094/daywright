@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Subscription;
 
-use App\Actions\Subscription\ResolveUsageCountAction;
+use App\Actions\Subscription\PlanUsageCountResolver;
 use App\Enums\Subscription\PlanLimitType;
 use App\Models\Project;
 use App\Models\User;
@@ -16,7 +16,7 @@ final readonly class SubscriptionUsageService
 {
     public function __construct(
         private readonly PlanLimitService $planLimitService,
-        private readonly ResolveUsageCountAction $resolveUsageCountAction
+        private readonly PlanUsageCountResolver $planUsageCountResolver
     ) {}
 
     /**
@@ -53,7 +53,7 @@ final readonly class SubscriptionUsageService
                 'label' => $type->displayLabel(),
                 'scope' => $type->scope(),
                 'limit' => [
-                    'used' => $this->resolveUsageCountAction->execute($type, $user, $project),
+                    'used' => $this->planUsageCountResolver->resolve($type, $user, $project),
                     'max' => $plan->maxFor($type),
                 ],
             ])

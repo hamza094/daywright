@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Subscription;
 
-use App\Actions\Subscription\BuildPlanLimitExceededExceptionAction;
-use App\Actions\Subscription\ResolveUsageCountAction;
+use App\Actions\Subscription\PlanLimitExceededExceptionFactory;
+use App\Actions\Subscription\PlanUsageCountResolver;
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
 use App\Models\Project;
@@ -22,8 +22,8 @@ final readonly class PlanLimitService
     private const int TRANSACTION_RETRY_ATTEMPTS = 5;
 
     public function __construct(
-        private readonly BuildPlanLimitExceededExceptionAction $buildPlanLimitExceededExceptionAction,
-        private readonly ResolveUsageCountAction $resolveUsageCountAction,
+        private readonly PlanLimitExceededExceptionFactory $planLimitExceededExceptionFactory,
+        private readonly PlanUsageCountResolver $planUsageCountResolver,
     ) {}
 
     /**
@@ -84,7 +84,7 @@ final readonly class PlanLimitService
         $this->assertLimit(
             user: $user,
             type: $type,
-            currentUsage: $this->resolveUsageCountAction->execute($type, $user, $project),
+            currentUsage: $this->planUsageCountResolver->resolve($type, $user, $project),
             maxAllowed: $this->plan($user)->maxFor($type),
         );
     }
@@ -104,7 +104,7 @@ final readonly class PlanLimitService
             return;
         }
 
-        throw $this->buildPlanLimitExceededExceptionAction->execute(
+        throw $this->planLimitExceededExceptionFactory->execute(
             user: $user,
             type: $type,
             currentUsage: $currentUsage,

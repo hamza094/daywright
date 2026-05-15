@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Auth;
 
-use App\Actions\OAuthAction;
+use App\Actions\UpsertOAuthUserAction;
 use App\Enums\OAuthProvider;
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Http\Controllers\Api\ApiController;
@@ -56,7 +56,7 @@ class OAuthController extends ApiController
         description: 'Session created successfully or a two-factor challenge is required.',
         type: 'array{data: AuthenticatedSessionResource|\App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource}',
     )]
-    public function callback(OAuthProvider $provider, OAuthAction $action, Request $request): JsonResponse
+    public function callback(OAuthProvider $provider, UpsertOAuthUserAction $action, Request $request): JsonResponse
     {
         try {
             /** @var \Laravel\Socialite\Two\AbstractProvider $socialiteDriver */
@@ -64,7 +64,7 @@ class OAuthController extends ApiController
 
             $oAuthUser = $socialiteDriver->stateless()->user();
 
-            $user = $action->createUpdateUser($oAuthUser, $provider);
+            $user = $action->execute($oAuthUser, $provider);
 
             if ($user->wasRecentlyCreated) {
                 event(new Registered($user));

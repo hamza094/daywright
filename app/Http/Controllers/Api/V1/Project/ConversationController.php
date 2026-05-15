@@ -26,7 +26,7 @@ class ConversationController extends ApiController
     {
         $this->authorize('access', $project);
 
-        return $this->respondWithData($repository->getProjectConversations($project));
+        return ConversationResource::collection($repository->getProjectConversations($project))->response();
     }
 
     /**
@@ -38,7 +38,12 @@ class ConversationController extends ApiController
     {
         $this->authorize('access', $project);
 
-        $conversation = $this->conversationService->storeConversation($request, $project);
+        $conversation = $this->conversationService->storeConversation(
+            $project,
+            $this->authenticatedUser(),
+            $request->validated(),
+            $request->file('file'),
+        );
 
         return $this->respondCreated(new ConversationResource($conversation));
     }

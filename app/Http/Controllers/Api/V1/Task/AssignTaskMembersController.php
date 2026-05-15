@@ -8,7 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\TaskMembersRequest;
 use App\Models\Project;
 use App\Models\Task;
-use App\Services\Task\TaskFeatureService;
+use App\Services\Task\TaskService;
 use Illuminate\Http\JsonResponse;
 
 final class AssignTaskMembersController extends ApiController
@@ -18,7 +18,7 @@ final class AssignTaskMembersController extends ApiController
      *
      * Assigns one or more project members to the specified task.
      */
-    public function __invoke(Project $project, Task $task, TaskMembersRequest $request, TaskFeatureService $service): JsonResponse
+    public function __invoke(Project $project, Task $task, TaskMembersRequest $request, TaskService $service): JsonResponse
     {
         $members = $request->validated('members');
 

@@ -14,9 +14,6 @@ use Tests\TestCase;
 class ProjectTest extends TestCase
 {
     use RefreshDatabase;
-    /**
-     * A basic unit test example.
-     */
 
     /** @test */
     public function a_project_uses_slug_for_route_binding(): void
@@ -63,12 +60,5 @@ class ProjectTest extends TestCase
         $project = Project::factory()->create();
         $project->invite($user = User::factory()->create());
         $this->assertTrue($project->members->contains($user));
-    }
-
-    protected function addMember($project, $user)
-    {
-        $project
-            ->members()
-            ->attach($user, ['active' => true]);
     }
 }

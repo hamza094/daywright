@@ -11,9 +11,11 @@ use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Traits\EnablesUserTwoFactor;
 
 class StatusesTest extends TestCase
 {
+    use EnablesUserTwoFactor;
     use RefreshDatabase;
 
     private User $admin;
@@ -123,16 +125,5 @@ class StatusesTest extends TestCase
             ->assertJsonPath('message', 'Status deleted successfully.');
 
         $this->assertDatabaseMissing('statuses', ['id' => $status->id]);
-    }
-
-    private function enableTwoFactorForUser(User $user): void
-    {
-        $twoFactor = $user->createTwoFactorAuth();
-
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
-
-        $user->enableTwoFactorAuth();
     }
 }

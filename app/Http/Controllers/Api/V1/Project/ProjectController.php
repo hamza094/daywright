@@ -11,7 +11,7 @@ use App\Http\Requests\Api\V1\ProjectUpdateRequest;
 use App\Http\Resources\Api\V1\Project\ProjectCollectionResource;
 use App\Http\Resources\Api\V1\Project\ProjectResource;
 use App\Models\Project;
-use App\Services\Dashboard\DashboardService;
+use App\Services\Dashboard\UserProjectListingService;
 use App\Services\Project\ProjectService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,9 +28,9 @@ class ProjectController extends ApiController
      */
     public function index(
         DashboardProjectRequest $request,
-        DashboardService $dashboardService,
+        UserProjectListingService $userProjectListingService,
     ): JsonResponse {
-        $paginatedProjects = $dashboardService->paginateUserProjects(
+        $paginatedProjects = $userProjectListingService->paginateUserProjects(
             $this->authenticatedUser(),
             $request->filters(),
             $request->sort(),
