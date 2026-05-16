@@ -6,13 +6,15 @@ namespace App\Services\Project;
 
 use App\Actions\Project\ForceDeleteAbandonedProjectAction;
 use App\Actions\Project\SendProjectUpdatedNotificationAction;
+use App\DataTransferObjects\Project\ProjectCreateData;
+use App\DataTransferObjects\Project\ProjectStageUpdateData;
+use App\DataTransferObjects\Project\ProjectUpdateData;
 use App\Enums\StageStatus;
 use App\Enums\Subscription\PlanLimitType;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Subscription\PlanLimitService;
 use App\Services\Subscription\SubscriptionUsageService;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class ProjectService
@@ -26,13 +28,10 @@ class ProjectService
         private readonly ForceDeleteAbandonedProjectAction $forceDeleteAbandonedProjectAction,
     ) {}
 
-    /**
-     * @param  array{name: string, about: string, stage_id: int, notes?: string, tasks?: array<int, array<string, mixed>>}  $attributes
-     */
-    public function createProject(User $user, array $attributes): Project
+    public function createProject(User $user, ProjectCreateData $data): Project
     {
-        /** @var array<int, array<string, mixed>> $tasks */
-        $tasks = Arr::pull($attributes, 'tasks', []);
+        $attributes = $data->projectAttributes();
+        $tasks = $data->starterTasks();
 
         $project = $this->planLimitService->executeWithinAccountLimit(
             PlanLimitType::Projects,
@@ -89,12 +88,9 @@ class ProjectService
         return $project;
     }
 
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    public function updateProject(Project $project, array $attributes, User $actor): Project
+    public function updateProject(Project $project, ProjectUpdateData $data, User $actor): Project
     {
-        $project->update($attributes);
+        $project->update($data->attributes());
 
         $this->sendNotification($project, $actor);
 
@@ -111,13 +107,10 @@ class ProjectService
         $project->restore();
     }
 
-    /**
-     * @param  array{stage: int, postponed_reason?: string}  $data
-     */
-    public function updateStageStatus(Project $project, array $data): Project
+    public function updateStageStatus(Project $project, ProjectStageUpdateData $data): Project
     {
         DB::transaction(function () use ($project, $data): void {
-            $project->stage()->associate($data['stage']);
+            $project->stage()->associate($data->stageId);
 
             $project->update([
                 'postponed_reason' => $this->getPostponedReason($project, $data),
@@ -140,13 +133,10 @@ class ProjectService
         return $this->forceDeleteAbandonedProjectAction->execute($project);
     }
 
-    /**
-     * @param  array{stage: int, postponed_reason?: string}  $data
-     */
-    private function getPostponedReason(Project $project, array $data): ?string
+    private function getPostponedReason(Project $project, ProjectStageUpdateData $data): ?string
     {
-        return ($project->stage->name === StageStatus::Postponed->value && ! empty($data['postponed_reason']))
-            ? $data['postponed_reason']
+        return ($project->stage->name === StageStatus::Postponed->value && ! empty($data->postponedReason))
+            ? $data->postponedReason
             : null;
     }
 }

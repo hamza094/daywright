@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Webhooks\Zoom;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
 use App\Enums\MeetingState;
 use App\Events\MeetingStatusUpdate;
 use App\Models\Meeting;
@@ -120,7 +121,7 @@ class StartMeetingWebhook implements ShouldQueue
             'meeting_timezone' => $meeting->timezone,
             'meeting_join_url' => $meeting->join_url,
             'start_time' => $this->start_time,
-            'notifier' => $user->getNotifierData(),
+            'notifier' => NotificationActorData::fromUser($user)->toArray(),
         ];
 
         Notification::send($members, new MeetingStarted($notificationData));

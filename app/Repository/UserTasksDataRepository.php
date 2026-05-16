@@ -4,16 +4,14 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\DataTransferObjects\Task\UserTaskFilters;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class UserTasksDataRepository
 {
-    /**
-     * @param  array{user_created: bool, task_assigned: bool, completed: bool, overdue: bool, remaining: bool}  $filters
-     */
-    public function getTasks(int $userId, array $filters): Collection
+    public function getTasks(int $userId, UserTaskFilters $filters): Collection
     {
         $query = Task::query();
 
@@ -21,9 +19,9 @@ class UserTasksDataRepository
         $this->applyUserContextFilters($query, $userId, $filters);
 
         return $query
-            ->when($filters['completed'] ?? false, fn ($q) => $q->completed())
-            ->when($filters['overdue'] ?? false, fn ($q) => $q->overdue())
-            ->when($filters['remaining'] ?? false, fn ($q) => $q->remaining())
+            ->when($filters->completed, fn ($q) => $q->completed())
+            ->when($filters->overdue, fn ($q) => $q->overdue())
+            ->when($filters->remaining, fn ($q) => $q->remaining())
             ->with([
                 'project' => fn ($q) => $q->withTrashed(),
                 'status',
@@ -33,10 +31,9 @@ class UserTasksDataRepository
     }
 
     /**
-     * @param  array{user_created: bool, task_assigned: bool, completed: bool, overdue: bool, remaining: bool}  $filters
      * @return array<int, string>
      */
-    public function appliedFilters(array $filters): array
+    public function appliedFilters(UserTaskFilters $filters): array
     {
         $labels = [
             'user_created' => 'Filter by Created',
@@ -46,20 +43,17 @@ class UserTasksDataRepository
             'remaining' => 'Filter by Remaining',
         ];
 
-        $enabled = collect($filters)
+        $enabled = collect($filters->toArray())
             ->filter()
             ->keys();
 
         return collect($labels)->only($enabled)->values()->all();
     }
 
-    /**
-     * @param  array{user_created: bool, task_assigned: bool, completed: bool, overdue: bool, remaining: bool}  $filters
-     */
-    protected function applyUserContextFilters(Builder $query, int $userId, array $filters): void
+    protected function applyUserContextFilters(Builder $query, int $userId, UserTaskFilters $filters): void
     {
-        $created = $filters['user_created'] ?? false;
-        $assigned = $filters['task_assigned'] ?? false;
+        $created = $filters->userCreated;
+        $assigned = $filters->taskAssigned;
 
         if ($created && $assigned) {
             // Both filters: tasks created by user OR assigned to user

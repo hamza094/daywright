@@ -11,6 +11,9 @@ use App\Actions\Task\DeleteTaskAction;
 use App\Actions\Task\ResetTaskNotificationAction;
 use App\Actions\Task\RestoreTaskAction;
 use App\Actions\Task\UnassignTaskMemberAction;
+use App\DataTransferObjects\Notification\NotificationActorData;
+use App\DataTransferObjects\Task\TaskCreateData;
+use App\DataTransferObjects\Task\TaskUpdateData;
 use App\Enums\Subscription\PlanLimitType;
 use App\Models\Project;
 use App\Models\Task;
@@ -47,17 +50,14 @@ class TaskService
         return $query->paginate($perPage);
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    public function createTask(Project $project, User $user, array $validated): Task
+    public function createTask(Project $project, User $user, TaskCreateData $data): Task
     {
         /** @var Task $task */
         $task = $this->planLimitService->executeWithinProjectLimit(
             PlanLimitType::ActiveTasksPerProject,
             $project,
             fn (Project $lockedProject): Task => $lockedProject->tasks()->firstOrCreate(
-                $validated + ['user_id' => $user->id]
+                $data->toCreateAttributes($user->id)
             )
         );
 
@@ -69,23 +69,20 @@ class TaskService
         return $task;
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    public function updateTask(Task $task, array $validated): Task
+    public function updateTask(Task $task, TaskUpdateData $data): Task
     {
-        if ($validated === []) {
+        if ($data->isEmpty()) {
             throw ValidationException::withMessages([
                 'task' => ['Field missing in task'],
             ]);
         }
 
-        $payload = $this->resetTaskNotificationAction->execute($task, $validated);
+        $payload = $this->resetTaskNotificationAction->execute($task, $data);
 
-        $task->update($payload);
+        $task->update($payload->toArray());
         $task->loadMissing('project:id,slug');
 
-        if (array_key_exists('status_id', $validated)) {
+        if ($data->hasStatusUpdate()) {
             $task->load('status');
         }
 
@@ -122,7 +119,7 @@ class TaskService
 
     private function sendNotification(Project $project, User $actor): void
     {
-        $notifier = $actor->getNotifierData();
+        $notifier = NotificationActorData::fromUser($actor);
 
         $this->notifyProjectMembersAction->execute(
             new ProjectTask(

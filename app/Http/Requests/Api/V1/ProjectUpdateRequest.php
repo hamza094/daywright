@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Project\ProjectUpdateData;
 use App\Models\Project;
 use Closure;
 use Dedoc\Scramble\Attributes\SchemaName;
@@ -19,6 +20,14 @@ class ProjectUpdateRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function projectUpdateData(): ProjectUpdateData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        return ProjectUpdateData::fromArray($validated);
     }
 
     /**

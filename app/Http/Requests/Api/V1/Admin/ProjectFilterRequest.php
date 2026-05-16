@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\DataTransferObjects\Project\AdminProjectFilters;
 use App\Enums\ProjectHealthStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
@@ -39,34 +40,14 @@ class ProjectFilterRequest extends FormRequest
         ];
     }
 
-    /**
-     * @return array{
-     *     search: ?string,
-     *     state: ?string,
-     *     status: ?string,
-     *     from: ?string,
-     *     to: ?string,
-     *     stage: mixed,
-     *     members: bool,
-     *     tasks: bool,
-     *     sort: ?string
-     * }
-     */
-    public function filters(): array
+    public function filters(): AdminProjectFilters
     {
         $validatedFilters = $this->validated('filter', []);
 
-        return [
-            'search' => is_string($validatedFilters['search'] ?? null) ? $validatedFilters['search'] : null,
-            'state' => is_string($validatedFilters['state'] ?? null) ? $validatedFilters['state'] : null,
-            'status' => is_string($validatedFilters['status'] ?? null) ? $validatedFilters['status'] : null,
-            'from' => is_string($validatedFilters['from'] ?? null) ? $validatedFilters['from'] : null,
-            'to' => is_string($validatedFilters['to'] ?? null) ? $validatedFilters['to'] : null,
-            'stage' => $validatedFilters['stage'] ?? null,
-            'members' => (bool) ($validatedFilters['members'] ?? false),
-            'tasks' => (bool) ($validatedFilters['tasks'] ?? false),
-            'sort' => is_string($this->validated('sort')) ? $this->validated('sort') : null,
-        ];
+        return AdminProjectFilters::fromArray([
+            ...$validatedFilters,
+            'sort' => $this->validated('sort'),
+        ]);
     }
 
     public function perPage(): int

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Project\ProjectStageUpdateData;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
@@ -16,6 +17,14 @@ class StageRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function projectStageUpdateData(): ProjectStageUpdateData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        return ProjectStageUpdateData::fromArray($validated);
     }
 
     /**

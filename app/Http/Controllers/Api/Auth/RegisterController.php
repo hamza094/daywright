@@ -37,10 +37,8 @@ class RegisterController extends ApiController
      */
     public function register(RegisterUserRequest $request, RegisterUserService $registerUserService): JsonResponse
     {
-        $validated = $request->validated();
-
         try {
-            $user = $registerUserService->register($validated);
+            $user = $registerUserService->register($request->registerUserData());
 
             return $this->respondCreated(new AuthenticatedUserResource($user));
         } catch (Throwable $e) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\DataTransferObjects\Task\AdminTaskFilters;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -28,17 +29,11 @@ class TaskFilterRequest extends FormRequest
         ];
     }
 
-    /**
-     * @return array{search: ?string, state: ?string}
-     */
-    public function filters(): array
+    public function filters(): AdminTaskFilters
     {
         $validatedFilters = $this->validated('filter', []);
 
-        return [
-            'search' => is_string($validatedFilters['search'] ?? null) ? $validatedFilters['search'] : null,
-            'state' => is_string($validatedFilters['state'] ?? null) ? $validatedFilters['state'] : null,
-        ];
+        return AdminTaskFilters::fromArray($validatedFilters);
     }
 
     public function perPage(): int

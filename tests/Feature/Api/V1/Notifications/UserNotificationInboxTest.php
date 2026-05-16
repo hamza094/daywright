@@ -28,7 +28,11 @@ class UserNotificationInboxTest extends TestCase
                 'data',
                 'meta',
                 'links',
-            ]);
+            ])
+            ->assertJsonPath('data.0.type', 'ProjectInvitation')
+            ->assertJsonPath('data.0.message', 'Sent you a project '.$this->project->name.' invitation')
+            ->assertJsonPath('data.0.link', $this->apiV1Route('projects.show', ['project' => $this->project]))
+            ->assertJsonPath('data.0.notifier.name', $this->user->name);
 
         $this->assertCount(1, $response->json('data'));
     }

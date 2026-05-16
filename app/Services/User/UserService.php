@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use App\DataTransferObjects\User\UpdateUserData;
 use App\Events\PasswordUpdateEvent;
 use App\Models\User;
 use Exception;
@@ -36,21 +37,15 @@ class UserService
         return $user;
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    public function updateUser(User $user, array $data): User
+    public function updateUser(User $user, UpdateUserData $data): User
     {
         DB::transaction(function () use ($user, $data): void {
-            $data = collect($data);
-            $userKeys = ['name', 'email', 'username', 'timezone'];
+            $user->update($data->userAttributes());
 
-            $user->update($data->only($userKeys)->toArray());
+            $user->info?->update($data->infoAttributes());
 
-            $user->info?->update($data->except(array_merge($userKeys, ['password', 'current_password']))->toArray());
-
-            if ($data->get('password')) {
-                $this->updatePassword($user, $data->get('password'));
+            if ($data->hasPasswordUpdate()) {
+                $this->updatePassword($user, $data->password);
             }
         });
 

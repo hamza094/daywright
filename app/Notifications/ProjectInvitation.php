@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
+use App\DataTransferObjects\Notification\NotificationPayloadData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -20,7 +22,7 @@ class ProjectInvitation extends Notification implements ShouldBroadcast, ShouldQ
     public function __construct(
         protected string $projectName,
         protected string $projectSlug,
-        protected array $notifierData
+        protected NotificationActorData $notifierData
     ) {}
 
     /**
@@ -40,7 +42,7 @@ class ProjectInvitation extends Notification implements ShouldBroadcast, ShouldQ
      */
     public function toArray(mixed $notifiable): array
     {
-        return $this->notificationData();
+        return $this->payload()->toArray();
     }
 
     /**
@@ -50,21 +52,16 @@ class ProjectInvitation extends Notification implements ShouldBroadcast, ShouldQ
      */
     public function toBroadcast(mixed $notifiable): BroadcastMessage
     {
-        return new BroadcastMessage($this->notificationData());
+        return new BroadcastMessage($this->payload()->toArray());
     }
 
-    /**
-     * Prepare the notification data.
-     *
-     * @return array<string, mixed> The notification data.
-     */
-    private function notificationData(): array
+    private function payload(): NotificationPayloadData
     {
-        return [
-            'message' => 'Sent you a project '.$this->projectName.' invitation',
-            'notifier' => $this->notifierData,
-            'link' => $this->projectLink(),
-        ];
+        return new NotificationPayloadData(
+            message: 'Sent you a project '.$this->projectName.' invitation',
+            notifier: $this->notifierData,
+            link: $this->projectLink(),
+        );
     }
 
     private function projectLink(): string

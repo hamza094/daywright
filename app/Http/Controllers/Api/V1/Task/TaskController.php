@@ -45,7 +45,7 @@ class TaskController extends ApiController
      */
     public function store(Project $project, TaskRequest $request, TaskService $taskService): JsonResponse
     {
-        $task = $taskService->createTask($project, $this->authenticatedUser(), $request->validated());
+        $task = $taskService->createTask($project, $this->authenticatedUser(), $request->taskCreateData());
 
         return $this->respondCreated(new TaskResource($task));
 
@@ -70,7 +70,7 @@ class TaskController extends ApiController
      */
     public function update(Project $project, Task $task, TaskUpdateRequest $request, TaskService $taskService): JsonResponse
     {
-        $task = $taskService->updateTask($task, $request->validated());
+        $task = $taskService->updateTask($task, $request->taskUpdateData());
 
         return $this->respondUpdated(new TaskResource($task));
     }

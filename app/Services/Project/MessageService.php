@@ -7,6 +7,7 @@ namespace App\Services\Project;
 use App\Actions\Project\CreateProjectMessageAction;
 use App\Actions\Project\DispatchProjectMessageAction;
 use App\Actions\Project\ScheduleProjectMessageAction;
+use App\DataTransferObjects\Project\ProjectMessageData;
 use App\Models\Message;
 use App\Models\Project;
 use Illuminate\Support\Collection;
@@ -20,25 +21,21 @@ class MessageService
         private readonly ScheduleProjectMessageAction $scheduleProjectMessageAction,
     ) {}
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    public function send(Project $project, array $payload): string
+    public function send(Project $project, ProjectMessageData $payload): string
     {
         $this->ensureDeliveryOptionSelected($payload);
 
-        $users = $this->extractRecipientIds($payload['users'] ?? []);
-        $isScheduled = ! empty($payload['delivered_at']);
+        $isScheduled = $payload->deliveredAt !== null;
 
         foreach (['mail', 'sms'] as $type) {
             if (! $this->deliveryOptionEnabled($payload, $type)) {
                 continue;
             }
 
-            $message = $this->createProjectMessageAction->execute($project, $type, $users, $payload);
+            $message = $this->createProjectMessageAction->execute($project, $type, $payload);
 
-            if ($isScheduled) {
-                $this->scheduleProjectMessageAction->execute($message, (string) $payload['delivered_at']);
+            if ($isScheduled && $payload->deliveredAt !== null) {
+                $this->scheduleProjectMessageAction->execute($message, $payload->deliveredAt);
 
                 continue;
             }
@@ -68,30 +65,9 @@ class MessageService
         return $this->dispatchProjectMessageAction->execute($project, $message);
     }
 
-    /**
-     * @return Collection<int, int|string>
-     */
-    public function extractRecipientIds(mixed $users): Collection
+    private function ensureDeliveryOptionSelected(ProjectMessageData $payload): void
     {
-        return collect($users)
-            ->map(function (mixed $user): int|string|null {
-                if (is_array($user)) {
-                    return $user['user_id'] ?? $user['id'] ?? null;
-                }
-
-                if (is_object($user)) {
-                    return $user->user_id ?? $user->id ?? null;
-                }
-
-                return is_scalar($user) && $user !== '' ? $user : null;
-            })
-            ->filter(fn (mixed $userId): bool => ! empty($userId))
-            ->values();
-    }
-
-    private function ensureDeliveryOptionSelected(array $payload): void
-    {
-        if ($this->deliveryOptionEnabled($payload, 'mail') || $this->deliveryOptionEnabled($payload, 'sms')) {
+        if ($payload->mail || $payload->sms) {
             return;
         }
 
@@ -100,11 +76,12 @@ class MessageService
         ]);
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function deliveryOptionEnabled(array $payload, string $type): bool
+    private function deliveryOptionEnabled(ProjectMessageData $payload, string $type): bool
     {
-        return filter_var($payload[$type] ?? false, FILTER_VALIDATE_BOOLEAN);
+        return match ($type) {
+            'mail' => $payload->mail,
+            'sms' => $payload->sms,
+            default => false,
+        };
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Project\ProjectCreateData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -16,6 +17,14 @@ class ProjectStoreRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function projectCreateData(): ProjectCreateData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        return ProjectCreateData::fromArray($validated);
     }
 
     /**

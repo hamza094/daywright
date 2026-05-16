@@ -51,7 +51,7 @@ class ProjectController extends ApiController
      */
     public function store(ProjectStoreRequest $request): JsonResponse
     {
-        $project = $this->projectService->createProject($this->authenticatedUser(), $request->validated());
+        $project = $this->projectService->createProject($this->authenticatedUser(), $request->projectCreateData());
 
         return $this->respondCreated(
             new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()))
@@ -82,13 +82,13 @@ class ProjectController extends ApiController
     {
         $this->authorize('access', $project);
 
-        $validated = $request->validated();
+        $data = $request->projectUpdateData();
 
-        if ($validated === []) {
+        if ($data->isEmpty()) {
             abort(Response::HTTP_BAD_REQUEST, "You haven't changed anything.");
         }
 
-        $project = $this->projectService->updateProject($project, $validated, $this->authenticatedUser());
+        $project = $this->projectService->updateProject($project, $data, $this->authenticatedUser());
 
         return $this->respondUpdated(
             new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()))

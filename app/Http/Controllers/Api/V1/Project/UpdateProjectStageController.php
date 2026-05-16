@@ -20,9 +20,7 @@ final class UpdateProjectStageController extends ApiController
      */
     public function __invoke(Project $project, StageRequest $request, ProjectService $projectService): JsonResponse
     {
-        $validated = $request->validated();
-
-        $project = $projectService->updateStageStatus($project, $validated);
+        $project = $projectService->updateStageStatus($project, $request->projectStageUpdateData());
         $projectService->sendNotification($project, $this->authenticatedUser());
 
         return $this->respondUpdated(new ProjectStageResource($project));

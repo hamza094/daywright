@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Task;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -77,7 +78,7 @@ final class AssignTaskMembersAction
             $task->title,
             $project->name,
             $project->slug,
-            $actor->getNotifierData()
+            NotificationActorData::fromUser($actor)
         ));
     }
 

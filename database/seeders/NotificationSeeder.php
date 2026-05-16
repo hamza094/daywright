@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
+use App\DataTransferObjects\Notification\NotificationPayloadData;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -27,15 +29,14 @@ class NotificationSeeder extends Seeder
         //             $member->notify(new ProjectTask(
         //                 $project->name,
         //                 $project->path(),
-        //                 $project->user->getNotifierData()
+        //                 NotificationActorData::fromUser($project->user)
         //             ));
         //         }
         //     });
         // });
 
         // New implementation: insert notifications directly into the DB (no queue).
-        // The data payload should match the actual ProjectInvitation notification:
-        // [ 'message' => string, 'notifier' => array, 'link' => string ]
+        // The data payload should match the actual ProjectInvitation notification.
         $projects = Project::query()
             ->with(['user:id,uuid,name,username,avatar_path,email'])
             ->get(['id', 'name', 'slug', 'user_id']);
@@ -56,18 +57,20 @@ class NotificationSeeder extends Seeder
 
                         $projectName = $project?->name ?? 'Unknown project';
                         $projectPath = $project ? $project->path() : '/api/v1/projects/'.Str::uuid();
-                        $notifierData = $project?->user?->getNotifierData();
+                        $notifierData = $project?->user
+                            ? NotificationActorData::fromUser($project->user)
+                            : null;
 
                         $rows[] = [
                             'id' => (string) Str::uuid(),
                             'type' => 'App\\Notifications\\ProjectInvitation',
                             'notifiable_type' => User::class,
                             'notifiable_id' => (string) $user->id,
-                            'data' => json_encode([
-                                'message' => 'Sent you a project '.$projectName.' invitation',
-                                'notifier' => $notifierData,
-                                'link' => $projectPath,
-                            ]),
+                            'data' => json_encode((new NotificationPayloadData(
+                                message: 'Sent you a project '.$projectName.' invitation',
+                                notifier: $notifierData,
+                                link: $projectPath,
+                            ))->toArray()),
                             'read_at' => null,
                             'created_at' => $now,
                             'updated_at' => $now,

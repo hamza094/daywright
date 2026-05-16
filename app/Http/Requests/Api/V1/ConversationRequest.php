@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Project\CreateConversationData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
@@ -17,6 +18,14 @@ class ConversationRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function conversationData(): CreateConversationData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        return CreateConversationData::fromArray($validated);
     }
 
     /**

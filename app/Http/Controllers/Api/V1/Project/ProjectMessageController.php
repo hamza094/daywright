@@ -15,7 +15,7 @@ final class ProjectMessageController extends ApiController
 {
     public function store(Project $project, MessageRequest $request, MessageService $messageService): JsonResponse
     {
-        return $this->respondWithMessage($messageService->send($project, $request->validated()));
+        return $this->respondWithMessage($messageService->send($project, $request->messageData()));
     }
 
     public function destroy(Project $project, Message $message, MessageService $messageService): JsonResponse

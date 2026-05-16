@@ -243,20 +243,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     }
 
     /**
-     * @return array<string, mixed>
-     */
-    public function getNotifierData(): array
-    {
-        return [
-            'uuid' => $this->uuid,
-            'name' => $this->name,
-            'username' => $this->username,
-            'avatar_path' => $this->avatar_path,
-            'email' => $this->email,
-        ];
-    }
-
-    /**
      * The attributes that are mass assignable.
      *
      * @var array

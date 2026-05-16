@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Task\TaskUpdateData;
 use App\Enums\TaskDueNotifies;
 use App\Rules\Iso8601Timestamp;
 use Dedoc\Scramble\Attributes\SchemaName;
@@ -20,6 +21,14 @@ class TaskUpdateRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function taskUpdateData(): TaskUpdateData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        return TaskUpdateData::fromArray($validated);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use App\DataTransferObjects\Notification\NotificationPayloadData;
 use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
@@ -20,6 +21,8 @@ class NotificationResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
+        $payload = NotificationPayloadData::fromArray(is_array($this->data) ? $this->data : []);
+
         return [
             /**
              * Notification identifier.
@@ -38,17 +41,17 @@ class NotificationResource extends JsonResource
              *
              * @example You have been invited to join Website Refresh.
              */
-            'message' => $this->data['message'],
+            'message' => $payload->message,
             /**
              * Relative or absolute link the client can open from the notification.
              *
              * @example /api/v1/projects/website-refresh
              */
-            'link' => $this->data['link'],
+            'link' => $payload->link,
             /**
              * User summary for the actor that triggered the notification, when available.
              */
-            'notifier' => new InvitedUserResource((object) ($this->data['notifier'] ?? [])),
+            'notifier' => new InvitedUserResource((object) ($payload->notifier?->toArray() ?? [])),
             /**
              * Read timestamp in UTC ISO 8601 format, or null when unread.
              *

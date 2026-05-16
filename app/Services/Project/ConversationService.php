@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Project;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
+use App\DataTransferObjects\Project\CreateConversationData;
 use App\Enums\FileType;
 use App\Events\DeleteConversation;
 use App\Events\NewMessage;
@@ -31,10 +33,8 @@ class ConversationService
 
     /**
      * Stores a new conversation and dispatches events and notifications.
-     *
-     * @param  array<string, mixed>  $payload
      */
-    public function storeConversation(Project $project, User $actor, array $payload, ?UploadedFile $file = null): ?Conversation
+    public function storeConversation(Project $project, User $actor, CreateConversationData $payload, ?UploadedFile $file = null): ?Conversation
     {
         try {
             $data = $this->prepareConversationData($payload, $project, $file);
@@ -75,7 +75,7 @@ class ConversationService
                 new UserMentioned(
                     $project->name,
                     $project->slug,
-                    $actor->getNotifierData())
+                    NotificationActorData::fromUser($actor))
             );
         } catch (Exception $e) {
             Log::error('Failed to send notifications', [
@@ -96,35 +96,23 @@ class ConversationService
 
     /**
      * Prepares the data required to create a conversation.
-     *
-     * @param  array<string, mixed>  $payload
-     * @return array<string, mixed>
      */
-    private function prepareConversationData(array $payload, Project $project, ?UploadedFile $file = null): array
+    private function prepareConversationData(CreateConversationData $payload, Project $project, ?UploadedFile $file = null): CreateConversationData
     {
-        $data = [];
-
-        if (array_key_exists('message', $payload)) {
-            $data['message'] = $payload['message'];
-        }
-
         if ($file instanceof UploadedFile) {
-            $data['file'] = $this->fileService->store(
+            return $payload->withStoredFile($this->fileService->store(
                 $project->id,
                 $file,
                 FileType::CONVERSATION
-            );
+            ));
         }
 
-        return $data;
+        return $payload;
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function createConversation(Project $project, User $actor, array $data): Conversation
+    private function createConversation(Project $project, User $actor, CreateConversationData $data): Conversation
     {
-        return $project->conversations()->create(array_merge($data, [
+        return $project->conversations()->create(array_merge($data->toArray(), [
             'user_id' => $actor->id,
         ]));
     }

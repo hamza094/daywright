@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Task\TaskCreateData;
 use App\Models\Project;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,6 +23,14 @@ class TaskRequest extends FormRequest
         // Authorization is handled at the route level via `can:access,project`
         // Returning true here ensures validation runs when the middleware passes.
         return true;
+    }
+
+    public function taskCreateData(): TaskCreateData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        return TaskCreateData::fromArray($validated);
     }
 
     public function rules(): array

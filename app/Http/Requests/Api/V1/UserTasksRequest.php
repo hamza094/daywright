@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Task\UserTaskFilters;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
 use Override;
@@ -61,22 +62,11 @@ class UserTasksRequest extends FormRequest
         ];
     }
 
-    /**
-     * Convenience: return only known filter keys
-     *
-     * @return array{user_created: bool, task_assigned: bool, completed: bool, overdue: bool, remaining: bool}
-     */
-    public function filters(): array
+    public function filters(): UserTaskFilters
     {
         $validatedFilters = $this->validated('filter', []);
 
-        return [
-            'user_created' => (bool) ($validatedFilters['user_created'] ?? false),
-            'task_assigned' => (bool) ($validatedFilters['task_assigned'] ?? false),
-            'completed' => (bool) ($validatedFilters['completed'] ?? false),
-            'overdue' => (bool) ($validatedFilters['overdue'] ?? false),
-            'remaining' => (bool) ($validatedFilters['remaining'] ?? false),
-        ];
+        return UserTaskFilters::fromArray($validatedFilters);
     }
 
     #[Override]
@@ -104,25 +94,11 @@ class UserTasksRequest extends FormRequest
     #[Override]
     protected function passedValidation(): void
     {
-        if (! $this->hasAnyFilter($this->filters())) {
+        if (! $this->filters()->hasAnyFilter()) {
             throw ValidationException::withMessages([
                 'filter' => 'At least one filter must be provided.',
             ]);
         }
-    }
-
-    /**
-     * @param  array<string, bool>  $filters
-     */
-    protected function hasAnyFilter(array $filters): bool
-    {
-        foreach ($filters as $enabled) {
-            if ($enabled) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private function normalizeBooleanValue(mixed $value): mixed

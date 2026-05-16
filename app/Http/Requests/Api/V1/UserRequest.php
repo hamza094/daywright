@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\User\UpdateUserData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
@@ -18,6 +19,14 @@ class UserRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function updateUserData(): UpdateUserData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        return UpdateUserData::fromArray($validated);
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Project\ProjectMessageData;
 use App\Rules\Iso8601Timestamp;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -35,6 +36,14 @@ class MessageRequest extends FormRequest
         ]);
 
         return $this->all();
+    }
+
+    public function messageData(): ProjectMessageData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        return ProjectMessageData::fromArray($validated);
     }
 
     /**

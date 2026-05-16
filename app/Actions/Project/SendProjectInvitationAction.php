@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Project;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
 use App\Enums\Subscription\PlanLimitType;
 use App\Models\Project;
 use App\Models\User;
@@ -68,7 +69,7 @@ final readonly class SendProjectInvitationAction
         $user->notify(new ProjectInvitation(
             $project->name,
             $project->slug,
-            $project->user->getNotifierData()
+            NotificationActorData::fromUser($project->user)
         ));
     }
 }

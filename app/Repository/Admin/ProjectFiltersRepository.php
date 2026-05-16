@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository\Admin;
 
+use App\DataTransferObjects\Project\AdminProjectFilters;
 use App\Enums\ProjectHealthStatus;
 use App\Models\Project;
 use App\Models\Stage;
@@ -13,56 +14,45 @@ use Illuminate\Database\Eloquent\Builder;
 class ProjectFiltersRepository
 {
     /**
-     * @param  array<string, mixed>  $filters
      * @param  array<int, string>  $appliedFilters
      * @return array{projects: \Illuminate\Contracts\Pagination\LengthAwarePaginator, appliedFilters: array<int, string>}
      */
-    public function filters(array $filters, int $perPage, array $appliedFilters): array
+    public function filters(AdminProjectFilters $filters, int $perPage, array $appliedFilters): array
     {
-        $sort = $this->stringFilter($filters, 'sort');
-        $search = $this->stringFilter($filters, 'search');
-        $state = $this->stringFilter($filters, 'state');
-        $status = $this->stringFilter($filters, 'status');
-        $from = $this->stringFilter($filters, 'from');
-        $to = $this->stringFilter($filters, 'to');
-        $stage = $filters['stage'] ?? null;
-        $members = $filters['members'] ?? null;
-        $tasks = $filters['tasks'] ?? null;
-
         $projects = Project::with('stage', 'user')
             ->withCount('tasks', 'activeMembers')
             ->withTrashed()
-            ->when($sort, function ($query, $sortDirection) use (&$appliedFilters): void {
+            ->when($filters->sort, function ($query, $sortDirection) use (&$appliedFilters): void {
                 $this->applySort($query, $sortDirection, $appliedFilters);
             })
 
-            ->when($search, function ($query) use ($search, &$appliedFilters): void {
-                $this->applySearchFilter($query, $search, $appliedFilters);
+            ->when($filters->search, function ($query) use ($filters, &$appliedFilters): void {
+                $this->applySearchFilter($query, $filters->search, $appliedFilters);
             })
 
-            ->when($state === 'active', function ($query) use (&$appliedFilters): void {
+            ->when($filters->state === 'active', function ($query) use (&$appliedFilters): void {
                 $query->whereNull('deleted_at');
                 $appliedFilters[] = 'Filter by Active';
             })
-            ->when($state === 'trashed', function ($query) use (&$appliedFilters): void {
+            ->when($filters->state === 'trashed', function ($query) use (&$appliedFilters): void {
                 $query->whereNotNull('deleted_at');
                 $appliedFilters[] = 'Filter by Trashed';
 
             })
 
-            ->when($members, function ($query) use (&$appliedFilters): void {
+            ->when($filters->members, function ($query) use (&$appliedFilters): void {
                 $query->whereHas('members', function ($subQuery): void {
                     $subQuery->where('project_members.active', true);
                 });
                 $appliedFilters[] = 'Filter by Active Members';
             })
 
-            ->when($tasks, function ($query) use (&$appliedFilters): void {
+            ->when($filters->tasks, function ($query) use (&$appliedFilters): void {
                 $query->has('tasks');
                 $appliedFilters[] = 'Filter by Active Members';
 
             })
-            ->when((string) $stage === '0', function ($query) use (&$appliedFilters): void {
+            ->when($filters->stage === 0, function ($query) use (&$appliedFilters): void {
                 $query->where(function ($query): void {
                     $query->where('stage_id', 0)
                         ->where(function ($query): void {
@@ -72,18 +62,18 @@ class ProjectFiltersRepository
                 });
                 $appliedFilters[] = 'Filter by Stage: Clo/Pos';
             })
-            ->when($stage, function ($query, $stageId) use (&$appliedFilters): void {
-                $stage = Stage::find($stageId);
+            ->when($filters->stage !== null && $filters->stage !== 0, function ($query) use ($filters, &$appliedFilters): void {
+                $stage = Stage::find($filters->stage);
                 if ($stage) {
-                    $query->where('stage_id', $stageId);
+                    $query->where('stage_id', $filters->stage);
                     $appliedFilters[] = "Filter by Stage: {$stage->name}";
                 }
             })
-            ->when($from && $to, function ($query) use ($from, $to, &$appliedFilters): void {
-                $this->applyDateRangeFilter($query, $from, $to, $appliedFilters);
+            ->when($filters->from && $filters->to, function ($query) use ($filters, &$appliedFilters): void {
+                $this->applyDateRangeFilter($query, $filters->from, $filters->to, $appliedFilters);
             })
-            ->when($status, function ($query) use ($status, &$appliedFilters): void {
-                $this->applyStatusFilter($query, $status, $appliedFilters);
+            ->when($filters->status, function ($query) use ($filters, &$appliedFilters): void {
+                $this->applyStatusFilter($query, $filters->status, $appliedFilters);
             })
             ->paginate($perPage);
 
@@ -156,19 +146,5 @@ class ProjectFiltersRepository
         };
 
         $appliedFilters[] = "Filter by status {$normalizedStatus}";
-    }
-
-    /**
-     * @param  array<string, mixed>  $filters
-     */
-    private function stringFilter(array $filters, string $key): ?string
-    {
-        $value = $filters[$key] ?? null;
-
-        if (! is_string($value)) {
-            return null;
-        }
-
-        return $value;
     }
 }

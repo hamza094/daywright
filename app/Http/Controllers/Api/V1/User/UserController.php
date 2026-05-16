@@ -49,7 +49,7 @@ class UserController extends ApiController
     {
         $this->authorize('owner', $user);
 
-        $updatedUser = $this->userService->updateUser($user, $request->validated());
+        $updatedUser = $this->userService->updateUser($user, $request->updateUserData());
 
         return $this->respondUpdated(new UserProfileResource($updatedUser));
     }

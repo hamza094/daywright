@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
 use App\Enums\TaskDueNotifies;
 use App\Models\Task;
 use App\Notifications\TaskDue;
@@ -45,7 +46,7 @@ final class SendTaskDueNotificationAction
                     $taskForNotification->due_at,
                     $taskForNotification->title,
                     $taskForNotification->notified,
-                    $taskForNotification->owner->getNotifierData(),
+                    NotificationActorData::fromUser($taskForNotification->owner),
                     $project->name,
                     $project->slug
                 ));

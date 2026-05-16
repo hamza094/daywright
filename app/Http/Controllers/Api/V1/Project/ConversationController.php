@@ -41,7 +41,7 @@ class ConversationController extends ApiController
         $conversation = $this->conversationService->storeConversation(
             $project,
             $this->authenticatedUser(),
-            $request->validated(),
+            $request->conversationData(),
             $request->file('file'),
         );
 

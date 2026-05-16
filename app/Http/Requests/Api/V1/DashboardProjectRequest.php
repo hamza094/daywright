@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Project\DashboardProjectFilters;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -53,18 +54,11 @@ class DashboardProjectRequest extends FormRequest
         ];
     }
 
-    /**
-     * @return array{search: ?string, member: bool, abandoned: bool}
-     */
-    public function filters(): array
+    public function filters(): DashboardProjectFilters
     {
         $validatedFilters = $this->validated('filter', []);
 
-        return [
-            'search' => is_string($validatedFilters['search'] ?? null) ? $validatedFilters['search'] : null,
-            'member' => (bool) ($validatedFilters['member'] ?? false),
-            'abandoned' => (bool) ($validatedFilters['abandoned'] ?? false),
-        ];
+        return DashboardProjectFilters::fromArray($validatedFilters);
     }
 
     public function sort(): string

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use App\DataTransferObjects\Auth\RegisterUserData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
@@ -33,6 +34,14 @@ class RegisterUserRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function registerUserData(): RegisterUserData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        return RegisterUserData::fromArray($validated);
     }
 
     /**

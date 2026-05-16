@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Project;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
 use App\Models\Project;
 use App\Models\User;
 use App\Notifications\AcceptInvitation;
@@ -31,7 +32,7 @@ final class AcceptProjectInvitationAction
                 $lockedProject->user->notify(new AcceptInvitation(
                     $lockedProject->name,
                     $lockedProject->slug,
-                    $user->getNotifierData()
+                    NotificationActorData::fromUser($user)
                 ));
             });
         }, attempts: self::TRANSACTION_RETRY_ATTEMPTS);
