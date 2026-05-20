@@ -7,12 +7,10 @@ namespace App\Http\Controllers\Api\V1\Admin;
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Admin\ActivitiesResource;
-use App\Models\Activity;
 use App\Services\Admin\DashboardService;
 use Carbon\Carbon;
 use Dedoc\Scramble\Attributes\ExcludeRouteFromDocs;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
@@ -39,9 +37,9 @@ class DashboardController extends ApiController
     public function activities(): AnonymousResourceCollection|JsonResponse
     {
         try {
-            $activities = Activity::with('user', 'subject', 'project')->latest()->limit(15)->get();
+            $activities = $this->dashboardService->recentActivities();
 
-            return $this->respondWithData(ActivitiesResource::collection($activities));
+            return ActivitiesResource::collection($activities);
         } catch (Throwable $e) {
             Log::error('Failed to load admin activities', ['error' => $e->getMessage()]);
 
@@ -50,7 +48,7 @@ class DashboardController extends ApiController
     }
 
     #[ExcludeRouteFromDocs]
-    public function data(Request $request): JsonResponse
+    public function data(): JsonResponse
     {
         try {
             $startDate = Carbon::now()->subMonths(11)->startOfMonth();

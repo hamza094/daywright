@@ -131,13 +131,19 @@ class MessageTest extends TestCase
         Message::factory()->for($this->project)->count(4)
             ->create(['delivered_at' => Carbon::now()->addDay()]);
 
-        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))
+        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project, query: [
+            'per_page' => 2,
+        ]))
             ->assertOk()
-            ->assertJsonCount(4, 'data')
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.per_page', 2)
+            ->assertJsonPath('meta.total', 4)
             ->assertJsonStructure([
                 'data' => [
                     ['id', 'type', 'subject', 'message', 'delivered_at', 'created_at', 'users'],
                 ],
+                'links',
+                'meta',
             ]);
 
         $this->assertEquals($this->project->scheduledMessages()
@@ -149,9 +155,24 @@ class MessageTest extends TestCase
     {
         $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))
             ->assertOk()
-            ->assertExactJson([
-                'data' => [],
+            ->assertJsonCount(0, 'data')
+            ->assertJsonStructure([
+                'data',
+                'links',
+                'meta',
             ]);
+    }
+
+    /** @test */
+    public function scheduled_messages_reject_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project, query: [
+            'sort' => 'delivered_at',
+            'include' => 'users',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort', 'include', 'random']);
     }
 
     /** @test */

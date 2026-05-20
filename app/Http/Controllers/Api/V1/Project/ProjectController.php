@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\DashboardProjectRequest;
-use App\Http\Requests\Api\V1\ProjectStoreRequest;
-use App\Http\Requests\Api\V1\ProjectUpdateRequest;
+use App\Http\Requests\Api\V1\Project\DashboardProjectRequest;
+use App\Http\Requests\Api\V1\Project\ProjectStoreRequest;
+use App\Http\Requests\Api\V1\Project\ProjectUpdateRequest;
 use App\Http\Resources\Api\V1\Project\ProjectCollectionResource;
 use App\Http\Resources\Api\V1\Project\ProjectResource;
 use App\Models\Project;
 use App\Services\Dashboard\UserProjectListingService;
 use App\Services\Project\ProjectService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class ProjectController extends ApiController
@@ -35,7 +34,7 @@ class ProjectController extends ApiController
             $request->filters(),
             $request->sort(),
             $request->perPage(),
-            (int) $request->validated('page', 1),
+            $request->pageNumber(),
             $request->url(),
         );
 
@@ -63,13 +62,13 @@ class ProjectController extends ApiController
      *
      * Returns detailed information about a project including its members, conversations, and activities
      */
-    public function show(Project $project, Request $request): ProjectResource
+    public function show(Project $project): ProjectResource
     {
         $this->authorize('access', $project);
 
         $project = $this->projectService->loadForDetails($project);
 
-        return new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()));
+        return new ProjectResource($project, $this->projectService->projectLimits($project, $this->authenticatedUser()));
     }
 
     /**

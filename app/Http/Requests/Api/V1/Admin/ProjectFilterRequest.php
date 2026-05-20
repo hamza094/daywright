@@ -6,11 +6,16 @@ namespace App\Http\Requests\Api\V1\Admin;
 
 use App\DataTransferObjects\Project\AdminProjectFilters;
 use App\Enums\ProjectHealthStatus;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\ApiQueryRequest;
 use Override;
 
-class ProjectFilterRequest extends FormRequest
+class ProjectFilterRequest extends ApiQueryRequest
 {
+    // Static allowlist hooks removed — this request relies on `rules()` for
+    // validation. If Spatie QueryBuilder is adopted for this endpoint in the
+    // future, reintroduce `allowedFilters()`, `allowedSorts()`, and
+    // `defaultSorts()` here as the single source of truth for allowlists.
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -25,7 +30,7 @@ class ProjectFilterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'filter' => ['sometimes', 'array'],
+            'filter' => ['sometimes', 'array:state,search,members,status,tasks,stage,from,to'],
             'filter.state' => ['sometimes', 'in:active,trashed'],
             'filter.search' => ['sometimes', 'string', 'max:255'],
             'filter.members' => ['sometimes', 'nullable', 'boolean'],
@@ -34,9 +39,21 @@ class ProjectFilterRequest extends FormRequest
             'filter.stage' => ['sometimes', 'required', 'integer', 'min:0', 'max:6'],
             'filter.from' => ['sometimes', 'required', 'date', 'required_with:filter.to'],
             'filter.to' => ['sometimes', 'required', 'date', 'required_with:filter.from'],
-            'sort' => ['sometimes', 'required', 'in:asc,desc'],
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ...$this->topLevelFilterAliasRules(['state', 'search', 'members', 'status', 'tasks', 'stage', 'from', 'to']),
+            'sort' => ['sometimes', 'required', 'in:-created_at,created_at,name,-name,health_score,-health_score'],
+            ...$this->unsupportedQueryParameterRules(),
+            'page' => $this->pageRule(),
+            'per_page' => $this->perPageRule(),
+        ];
+    }
+
+    #[Override]
+    public function messages(): array
+    {
+        return [
+            'filter.array' => 'Only the supported filter keys may be provided.',
+            ...$this->topLevelFilterAliasMessages(['state', 'search', 'members', 'status', 'tasks', 'stage', 'from', 'to']),
+            ...$this->unsupportedQueryParameterMessages(),
         ];
     }
 
@@ -52,56 +69,29 @@ class ProjectFilterRequest extends FormRequest
 
     public function perPage(): int
     {
-        return (int) $this->validated('per_page', 10);
+        return $this->perPageValue(10);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function supportedTopLevelQueryParameters(): array
+    {
+        return ['filter', 'sort', 'page', 'per_page'];
     }
 
     #[Override]
     protected function prepareForValidation(): void
     {
-        $inputFilters = $this->input('filter', []);
-        $filters = is_array($inputFilters) ? $inputFilters : [];
+        $filters = $this->normalizedFilters();
+        $filters = $this->normalizeBooleanFilters($filters, ['members', 'tasks']);
+        $filters = $this->lowercaseFilterValue($filters, 'status');
 
-        if (is_string($inputFilters) && $inputFilters !== '') {
-            $filters['state'] = $inputFilters;
-        }
+        // No client-side alias or casing normalization for `sort` here.
+        // The API requires canonical, lowercase snake_case tokens
+        // (for example `created_at` or `-created_at`) and validation
+        // enforces the allowed values.
 
-        foreach (['search', 'state', 'status', 'stage', 'from', 'to'] as $legacyKey) {
-            if (! array_key_exists($legacyKey, $filters) && $this->has($legacyKey)) {
-                $filters[$legacyKey] = $this->input($legacyKey);
-            }
-        }
-
-        $members = $filters['members'] ?? $this->input('members');
-        $tasks = $filters['tasks'] ?? $this->input('tasks');
-
-        if (isset($filters['status']) && is_string($filters['status'])) {
-            $this->merge([
-                'filter' => array_merge($filters, [
-                    'status' => mb_strtolower($filters['status']),
-                    'members' => $this->normalizeBooleanValue($members),
-                    'tasks' => $this->normalizeBooleanValue($tasks),
-                ]),
-            ]);
-
-            return;
-        }
-
-        $this->merge([
-            'filter' => array_merge($filters, [
-                'members' => $this->normalizeBooleanValue($members),
-                'tasks' => $this->normalizeBooleanValue($tasks),
-            ]),
-        ]);
-    }
-
-    private function normalizeBooleanValue(mixed $value): mixed
-    {
-        if (! is_string($value)) {
-            return $value;
-        }
-
-        $normalized = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-
-        return $normalized ?? $value;
+        $this->mergeFilters($filters);
     }
 }

@@ -117,4 +117,38 @@ class DashboardChartDataTest extends TestCase
             $noFilterResponse,
         ])->each->assertOk();
     }
+
+    /** @test */
+    public function chart_data_requires_year_when_month_is_provided(): void
+    {
+        $this->getJson($this->apiV1Route('dashboard.chart-data', query: [
+            'month' => now()->month,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['year']);
+    }
+
+    /** @test */
+    public function chart_data_validates_month_range(): void
+    {
+        $this->getJson($this->apiV1Route('dashboard.chart-data', query: [
+            'year' => now()->year,
+            'month' => 13,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['month']);
+    }
+
+    /** @test */
+    public function chart_data_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson($this->apiV1Route('dashboard.chart-data', query: [
+            'year' => now()->year,
+            'sort' => 'created_at',
+            'include' => 'projects',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort', 'include', 'random']);
+    }
 }

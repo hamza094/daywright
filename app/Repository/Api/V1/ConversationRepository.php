@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace App\Repository\Api\V1;
 
 use App\Models\Project;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ConversationRepository
 {
-    /**
-     * @return Collection<int, \App\Models\Conversation>
-     */
-    public function getProjectConversations(Project $project): Collection
+    private const array CONVERSATION_RESOURCE_RELATIONS = ['user', 'project:id,slug'];
+
+    public function getProjectConversations(Project $project, int $perPage, int $page): LengthAwarePaginator
     {
         return $project->conversations()
-            ->with(['user', 'project:id,slug'])
+            ->with(self::CONVERSATION_RESOURCE_RELATIONS)
             ->orderBy('id')
-            ->get();
+            ->paginate($perPage, ['*'], 'page', $page)
+            ->withQueryString();
     }
 }

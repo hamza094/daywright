@@ -26,7 +26,7 @@ class ProjectIndexTest extends TestCase
                 'message' => 'Validation failed.',
                 'code' => 'validation_error',
                 'errors' => [
-                    'sort' => ['Sort must be one of: latest, oldest, or name'],
+                    'sort' => ['Sort must be one of: -created_at, created_at, name, or -name'],
                 ],
             ]);
     }
@@ -73,12 +73,38 @@ class ProjectIndexTest extends TestCase
     }
 
     /** @test */
+    public function it_validates_per_page_parameter_bounds(): void
+    {
+        $this->getJson(route('api.v1.projects.index', ['per_page' => 0]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['per_page'])
+            ->assertJson([
+                'message' => 'Validation failed.',
+                'code' => 'validation_error',
+                'errors' => [
+                    'per_page' => ['Per page must be at least 1'],
+                ],
+            ]);
+
+        $this->getJson(route('api.v1.projects.index', ['per_page' => 101]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['per_page'])
+            ->assertJson([
+                'message' => 'Validation failed.',
+                'code' => 'validation_error',
+                'errors' => [
+                    'per_page' => ['Per page may not be greater than 100'],
+                ],
+            ]);
+    }
+
+    /** @test */
     public function it_accepts_valid_parameters(): void
     {
         Project::factory()->create(['name' => 'Test Project', 'user_id' => $this->user->id]);
 
         $response = $this->getJson(route('api.v1.projects.index', [
-            'sort' => 'latest',
+            'sort' => '-created_at',
             'filter' => [
                 'member' => true,
                 'abandoned' => false,
@@ -114,6 +140,63 @@ class ProjectIndexTest extends TestCase
     }
 
     /** @test */
+    public function auth_user_search_treats_sql_wildcards_as_literals(): void
+    {
+        $literalMatch = Project::factory()->create([
+            'name' => 'Client% Portal',
+            'user_id' => $this->user->id,
+        ]);
+        Project::factory()->create([
+            'name' => 'ClientX Portal',
+            'user_id' => $this->user->id,
+        ]);
+
+        $response = $this->getJson(route('api.v1.projects.index', ['filter' => ['search' => 'Client%']]))
+            ->assertOk();
+
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame($literalMatch->id, $response->json('data.0.id'));
+    }
+
+    /** @test */
+    public function auth_user_rejects_legacy_top_level_filter_aliases(): void
+    {
+        Project::factory()->create(['name' => 'Frontend Project', 'user_id' => $this->user->id]);
+        Project::factory()->create(['name' => 'Backend Project', 'user_id' => $this->user->id]);
+
+        $this->getJson(route('api.v1.projects.index', [
+            'search' => 'Frontend',
+            'member' => true,
+            'abandoned' => false,
+        ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['search', 'member', 'abandoned']);
+    }
+
+    /** @test */
+    public function auth_user_rejects_unsupported_nested_filter_keys(): void
+    {
+        $this->getJson(route('api.v1.projects.index', [
+            'filter' => ['status' => 'healthy'],
+        ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['filter']);
+    }
+
+    /** @test */
+    public function auth_user_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson(route('api.v1.projects.index', [
+            'include' => 'members',
+            'fields' => ['projects' => 'id,name'],
+            'append' => 'metrics',
+            'random' => 'value',
+        ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['include', 'fields', 'append', 'random']);
+    }
+
+    /** @test */
     public function auth_user_can_sort_projects_by_latest(): void
     {
         Project::factory()->create([
@@ -124,9 +207,24 @@ class ProjectIndexTest extends TestCase
 
         $latestProject = $this->project; // Assuming this is the default project created in ProjectSetup
 
-        $response = $this->getJson(route('api.v1.projects.index', ['sort' => 'latest']));
+        $response = $this->getJson(route('api.v1.projects.index', ['sort' => '-created_at']));
         $projects = $response->json('data');
         $this->assertEquals($latestProject->name, $projects[0]['name']);
+    }
+
+    /** @test */
+    public function auth_user_projects_default_to_newest_first_when_sort_is_omitted(): void
+    {
+        Project::factory()->create([
+            'name' => 'Old Project',
+            'user_id' => $this->user->id,
+            'created_at' => now()->subDays(5),
+        ]);
+
+        $response = $this->getJson(route('api.v1.projects.index'))
+            ->assertOk();
+
+        $this->assertSame($this->project->id, $response->json('data.0.id'));
     }
 
     /** @test */
@@ -139,7 +237,7 @@ class ProjectIndexTest extends TestCase
         ]);
         // Assuming this is the default project created in ProjectSetup
 
-        $response = $this->getJson(route('api.v1.projects.index', ['sort' => 'oldest']));
+        $response = $this->getJson(route('api.v1.projects.index', ['sort' => 'created_at']));
         $projects = $response->json('data');
         $this->assertEquals('Old Project', $projects[0]['name']);
     }
@@ -170,6 +268,22 @@ class ProjectIndexTest extends TestCase
             array_search('Zoo Project', $projectNames, true),
             array_search('Alpha Project', $projectNames, true),
         );
+    }
+
+    /** @test */
+    public function legacy_sort_aliases_are_rejected(): void
+    {
+        Project::factory()->create([
+            'name' => 'Old Project',
+            'user_id' => $this->user->id,
+            'created_at' => now()->subDays(5),
+        ]);
+
+        $latestResponse = $this->getJson(route('api.v1.projects.index', ['sort' => 'latest']));
+        $latestResponse->assertStatus(422)->assertJsonValidationErrors(['sort']);
+
+        $oldestResponse = $this->getJson(route('api.v1.projects.index', ['sort' => 'oldest']));
+        $oldestResponse->assertStatus(422)->assertJsonValidationErrors(['sort']);
     }
 
     /** @test */

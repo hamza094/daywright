@@ -60,4 +60,30 @@ class MeetingReadTest extends TestCase
 
         $this->assertCount(2, $response->json('data'));
     }
+
+    /** @test */
+    public function it_rejects_unsupported_meeting_query_parameters(): void
+    {
+        $this->actingAs($this->user);
+
+        $this->getJson($this->apiV1Route('meetings.index', ['project' => $this->project], [
+            'sort' => '-created_at',
+            'include' => 'passwords',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort', 'include', 'random']);
+    }
+
+    /** @test */
+    public function it_rejects_invalid_previous_meeting_alias_values(): void
+    {
+        $this->actingAs($this->user);
+
+        $this->getJson($this->apiV1Route('meetings.index', ['project' => $this->project], [
+            'request' => 'archived',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['request']);
+    }
 }

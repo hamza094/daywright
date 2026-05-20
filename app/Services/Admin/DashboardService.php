@@ -4,11 +4,21 @@ declare(strict_types=1);
 
 namespace App\Services\Admin;
 
+use App\Models\Activity;
 use App\Repository\Admin\DashboardRepository;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class DashboardService
 {
     public function __construct(protected DashboardRepository $dashboardRepository) {}
+
+    /**
+     * @return EloquentCollection<int, Activity>
+     */
+    public function recentActivities(int $limit = 15): EloquentCollection
+    {
+        return $this->dashboardRepository->recentActivities($limit);
+    }
 
     /**
      * @return array<mixed, array<'active_projects'|'active_tasks'|'month'|'projects_count'|'tasks_count'|'trashed_projects'|'trashed_tasks', mixed>>

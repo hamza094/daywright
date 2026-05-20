@@ -40,7 +40,7 @@ class ActivityLogged implements ShouldBroadcast
      */
     public function broadcastWith(): array
     {
-        return (new ActivityResource($this->activity))->resolve();
+        return (new ActivityResource($this->activity->loadMissing(['user', 'subject'])))->resolve();
     }
 
     /**

@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\InvitationUsersRequest;
-use App\Http\Requests\Api\V1\ProjectInvitationIndexRequest;
+use App\Http\Requests\Api\V1\Project\InvitationUsersRequest;
+use App\Http\Requests\Api\V1\Project\ProjectInvitationIndexRequest;
 use App\Http\Resources\Api\V1\Project\ProjectInvitationResource;
 use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Project\InvitationService;
-use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\JsonResponse;
 
 final class ProjectInvitationController extends ApiController
@@ -40,8 +39,9 @@ final class ProjectInvitationController extends ApiController
      * List pending project invitations.
      *
      * Returns the released pending invitation view for a project.
+     * Use `filter[status]=pending` to retrieve the supported invitation slice.
+     * This endpoint intentionally returns a bounded, non-paginated list.
      */
-    #[QueryParameter('status', description: 'Shorthand for `filter[status]`. Only `pending` is supported.', type: 'string', example: 'pending')]
     public function index(ProjectInvitationIndexRequest $request, Project $project, InvitationService $invitationService): JsonResponse
     {
         $request->validated();

@@ -42,6 +42,11 @@ class UserTest extends TestCase
         $response = $this->getJson($this->apiV1Route('users.index'));
 
         $response->assertStatus(200)
+            ->assertJsonStructure([
+                'data',
+                'links',
+                'meta',
+            ])
             ->assertJsonFragment([
                 'uuid' => $this->user->uuid,
                 'name' => $this->user->name,
@@ -50,6 +55,55 @@ class UserTest extends TestCase
                 'email' => $this->user->email,
             ]);
 
+    }
+
+    #[Test]
+    public function users_index_can_limit_results_per_page(): void
+    {
+        User::factory()->count(4)->create();
+
+        $this->getJson($this->apiV1Route('users.index', query: [
+            'per_page' => 2,
+        ]))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.per_page', 2);
+    }
+
+    #[Test]
+    public function users_index_validates_pagination_bounds(): void
+    {
+        $this->getJson($this->apiV1Route('users.index', query: [
+            'page' => 0,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['page']);
+
+        $this->getJson($this->apiV1Route('users.index', query: [
+            'per_page' => 0,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['per_page']);
+
+        $this->getJson($this->apiV1Route('users.index', query: [
+            'per_page' => 101,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['per_page']);
+    }
+
+    #[Test]
+    public function users_index_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson($this->apiV1Route('users.index', query: [
+            'sort' => 'name',
+            'include' => 'projects',
+            'fields' => ['users' => 'id,name'],
+            'append' => 'profile',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort', 'include', 'fields', 'append', 'random']);
     }
 
     #[Test]

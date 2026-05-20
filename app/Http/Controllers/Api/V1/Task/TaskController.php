@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Task;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\TaskIndexRequest;
-use App\Http\Requests\Api\V1\TaskRequest;
-use App\Http\Requests\Api\V1\TaskUpdateRequest;
+use App\Http\Requests\Api\V1\Task\TaskIndexRequest;
+use App\Http\Requests\Api\V1\Task\TaskRequest;
+use App\Http\Requests\Api\V1\Task\TaskUpdateRequest;
 use App\Http\Resources\Api\V1\Task\TaskCollectionResource;
 use App\Http\Resources\Api\V1\Task\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\Task\TaskService;
-use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -23,17 +22,20 @@ class TaskController extends ApiController
     /**
      * Retrieve Project Tasks.
      *
-     * This endpoint fetches all tasks related to a specific project.
+     * This endpoint fetches a paginated task list for a specific project.
      *
-     *  - Archived tasks are returned without pagination.
-     * - Active tasks are paginated for easier navigation.
+     * Use `filter[state]=archived` to page through archived tasks on the same route.
      *
      * @response AnonymousResourceCollection<LengthAwarePaginator<TaskCollectionResource>>
      */
-    #[QueryParameter('request', description: 'Legacy alias for `filter[state]=archived`.', type: 'string', example: 'archived')]
     public function index(Project $project, TaskIndexRequest $request, TaskService $taskService): JsonResponse
     {
-        $tasksData = $taskService->getTasksData($project, $request->isArchived(), $request->perPage());
+        $tasksData = $taskService->getTasksData(
+            $project,
+            $request->isArchived(),
+            $request->perPage(),
+            $request->pageNumber(),
+        );
 
         return TaskCollectionResource::collection($tasksData)->response();
     }

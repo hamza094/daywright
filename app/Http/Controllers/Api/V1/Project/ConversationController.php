@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\ConversationRequest;
+use App\Http\Requests\Api\V1\Project\ConversationIndexRequest;
+use App\Http\Requests\Api\V1\Project\ConversationRequest;
 use App\Http\Resources\Api\V1\ConversationResource;
 use App\Models\Conversation;
 use App\Models\Project;
@@ -20,13 +21,15 @@ class ConversationController extends ApiController
     /**
      * List project conversations.
      *
-     * Returns the released conversation feed for the specified project.
+     * Returns a paginated conversation feed for the specified project.
      */
-    public function index(Project $project, ConversationRepository $repository): JsonResponse
+    public function index(Project $project, ConversationIndexRequest $request, ConversationRepository $repository): JsonResponse
     {
         $this->authorize('access', $project);
 
-        return ConversationResource::collection($repository->getProjectConversations($project))->response();
+        return ConversationResource::collection(
+            $repository->getProjectConversations($project, $request->perPage(), $request->pageNumber())
+        )->response();
     }
 
     /**

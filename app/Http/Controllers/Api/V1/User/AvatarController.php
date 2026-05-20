@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\User;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\UserAvatarStoreRequest;
+use App\Http\Requests\Api\V1\User\UserAvatarStoreRequest;
 use App\Models\User;
 use App\Services\User\AvatarService;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;

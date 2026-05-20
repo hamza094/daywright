@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\StageRequest;
+use App\Http\Requests\Api\V1\Project\StageRequest;
 use App\Http\Resources\Api\V1\Project\ProjectStageResource;
 use App\Models\Project;
 use App\Services\Project\ProjectService;

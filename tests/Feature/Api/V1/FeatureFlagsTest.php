@@ -27,8 +27,11 @@ class FeatureFlagsTest extends TestCase
 
         $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))
             ->assertOk()
-            ->assertExactJson([
-                'data' => [],
+            ->assertJsonCount(0, 'data')
+            ->assertJsonStructure([
+                'data',
+                'links',
+                'meta',
             ]);
     }
 

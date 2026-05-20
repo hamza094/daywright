@@ -26,15 +26,17 @@ class MeetingService
 
     private const int OPERATION_LOCK_WAIT_SECONDS = 10;
 
+    private const array MEETING_RESOURCE_RELATIONS = ['user'];
+
     public function __construct(private readonly PlanLimitService $planLimitService) {}
 
-    public function getMeetingsData(Project $project, bool $isPrevious): LengthAwarePaginator
+    public function getMeetingsData(Project $project, bool $isPrevious, int $perPage = 3, ?int $page = null): LengthAwarePaginator
     {
-        $meetingsQuery = $project->meetings()->with('user');
+        $meetingsQuery = $project->meetings()->with(self::MEETING_RESOURCE_RELATIONS);
 
         $meetingsQuery->when($isPrevious, fn ($query) => $query->previous(), fn ($query) => $query->scheduled());
 
-        return $meetingsQuery->paginate(3);
+        return $meetingsQuery->paginate($perPage, ['*'], 'page', $page);
     }
 
     /**
@@ -61,7 +63,7 @@ class MeetingService
             },
         );
 
-        return $projectMeeting->load('user');
+        return $this->loadForResponse($projectMeeting);
     }
 
     /**
@@ -91,7 +93,14 @@ class MeetingService
             },
         );
 
-        return $updatedMeeting->load('user');
+        return $this->loadForResponse($updatedMeeting);
+    }
+
+    public function loadForResponse(Meeting $meeting): Meeting
+    {
+        $meeting->loadMissing(self::MEETING_RESOURCE_RELATIONS);
+
+        return $meeting;
     }
 
     public function deleteProjectMeeting(Meeting $meeting, User $user, Zoom $zoom): void

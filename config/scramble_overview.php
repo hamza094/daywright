@@ -114,9 +114,47 @@ Content-Type: application/json
 
 - File upload endpoints use `multipart/form-data`.
 - Request and response fields use `snake_case`.
-- Common query parameters include `page`, `per_page`, `sort`, and nested `filter[...]` values.
 - Where timestamps are accepted, the API expects ISO 8601 timestamps with a timezone offset, for example `2025-12-31T23:59:59+00:00`.
-- Several filter requests normalize boolean-like query values, but JSON booleans are preferred.
+- Selected filter requests normalize boolean-like query values, but JSON booleans are preferred.
+
+## Query Contract
+
+Released collection and collection-like read endpoints use a strict query contract unless an endpoint description explicitly documents an exception.
+
+### Filtering
+
+- Use `filter[field]=value` for general collection endpoints.
+- Only documented filter keys are accepted.
+- Unknown filter keys and invalid filter values return `422 Unprocessable Entity`.
+- A valid filter that matches no records still returns `200 OK` with an empty `data` payload.
+
+### Sorting
+
+- Use `sort=field` for ascending order.
+- Use `sort=-field` for descending order.
+- Only documented sort keys are accepted.
+- Endpoints that do not document `sort` reject it with `422 Unprocessable Entity`.
+
+### Includes And Extra Parameters
+
+- `include` is not part of the public contract unless an endpoint explicitly documents it.
+- `fields` and `append` are also rejected unless an endpoint explicitly opts in.
+- Unsupported top-level parameters, including arbitrary extras such as `random=value`, return `422 Unprocessable Entity` instead of being ignored.
+
+### Pagination Categories
+
+- Paginated endpoints use the top-level `data`, `links`, and `meta` structure with `page` and `per_page`.
+- Unless an endpoint documents a narrower limit, `per_page` is validated in the range `1..100`.
+- Empty paginated results still return `data`, `links`, and `meta`.
+- Fixed-size endpoints return a documented server-controlled slice, for example the dashboard projects feed.
+- Intentional bounded exceptions return a non-paginated collection only when the dataset is small and server-controlled, for example pending project invitations and dedicated lookup endpoints.
+
+### Documented Query Exceptions
+
+- Dashboard activity reads use top-level `start_date` and `end_date`.
+- Dashboard chart data uses top-level `year` and optional `month`.
+- Dedicated lookup endpoints may use a top-level `search` parameter instead of the general `filter[...]` grammar.
+- Zoom-backed meeting endpoints under `/projects/{project}/meetings` are intentionally excluded from the generated OpenAPI. They remain supported runtime endpoints, including the `request=previous` meeting-index alias, but are treated as an integration-specific documentation exception for now.
 
 ## Response Format
 
@@ -213,6 +251,7 @@ Notes:
 
 - Form request validation is used extensively across the API.
 - Validation errors are keyed by input name.
+- Query validation errors use the same envelope and surface nested keys in dot notation, for example `filter.state`.
 - Authentication failures during credential-based login are surfaced as validation errors on `email`, not as a separate `401` login response.
 
 ## Pagination
@@ -241,7 +280,7 @@ Notes:
 
 - `page` and `per_page` are the common pagination parameters.
 - Many list endpoints validate `per_page` with a maximum of `100`.
-- Some list endpoints intentionally return non-paginated collections or custom `meta`; rely on each endpoint's documentation for exact behavior.
+- Some list endpoints intentionally return fixed-size or bounded non-paginated collections; rely on the query-contract section above and each endpoint's description for exact behavior.
 
 ## Rate Limiting
 

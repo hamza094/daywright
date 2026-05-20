@@ -17,6 +17,7 @@ use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\Components;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\Operation;
+use Dedoc\Scramble\Support\Generator\Parameter;
 use Dedoc\Scramble\Support\Generator\Reference;
 use Dedoc\Scramble\Support\Generator\Response;
 use Dedoc\Scramble\Support\Generator\Schema;
@@ -84,6 +85,7 @@ class AppServiceProvider extends ServiceProvider
 
             self::applyPublicApiTagMetadata($openApi);
             self::applySharedPublicApiErrorResponses($openApi);
+            self::pruneUnsupportedQueryParametersFromDocs($openApi);
 
             $applicationUrl = rtrim(url('/'), '/');
 
@@ -261,6 +263,52 @@ class AppServiceProvider extends ServiceProvider
                 self::ensureSharedPublicApiErrorResponse($operation, $openApi->components, 500);
             }
         }
+    }
+
+    private static function pruneUnsupportedQueryParametersFromDocs(OpenApi $openApi): void
+    {
+        foreach ($openApi->paths as $path) {
+            foreach ($path->operations as $operation) {
+                $documentedFilterAliases = self::documentedFilterAliases($operation);
+
+                $operation->parameters = array_values(array_filter(
+                    $operation->parameters ?? [],
+                    static function ($parameter) use ($documentedFilterAliases): bool {
+                        $resolvedParameter = $parameter instanceof Reference ? $parameter->resolve() : $parameter;
+
+                        if (! $resolvedParameter instanceof Parameter || $resolvedParameter->in !== 'query') {
+                            return true;
+                        }
+
+                        if (in_array($resolvedParameter->name, ['include', 'fields', 'append'], true)) {
+                            return false;
+                        }
+
+                        return ! in_array($resolvedParameter->name, $documentedFilterAliases, true);
+                    },
+                ));
+            }
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function documentedFilterAliases(Operation $operation): array
+    {
+        return collect($operation->parameters ?? [])
+            ->map(static fn ($parameter) => $parameter instanceof Reference ? $parameter->resolve() : $parameter)
+            ->filter(static fn ($parameter): bool => $parameter instanceof Parameter && $parameter->in === 'query')
+            ->map(static function (Parameter $parameter): ?string {
+                if (preg_match('/^filter\[([^\]]+)\]$/', $parameter->name, $matches) !== 1) {
+                    return null;
+                }
+
+                return $matches[1];
+            })
+            ->filter(static fn (?string $parameterName): bool => is_string($parameterName) && $parameterName !== '')
+            ->values()
+            ->all();
     }
 
     private static function registerSharedPublicApiErrorResponses(Components $components): void

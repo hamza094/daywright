@@ -43,6 +43,14 @@ class UserActivitiesTest extends TestCase
     }
 
     /** @test */
+    public function activities_endpoint_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson('api/v1/dashboard/activities?start_date=2025-08-01&end_date=2025-08-31&page=2&include=project&random=value')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['page', 'include', 'random']);
+    }
+
+    /** @test */
     public function user_can_view_activities_within_date_range(): void
     {
         // Create activities for different dates

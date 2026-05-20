@@ -15,8 +15,8 @@
             @input="handleSearchInput" />
         </div>
         <select class="form-select form-select-sm" :value="sortBy" @change="handleSortChange">
-          <option value="latest">Latest</option>
-          <option value="oldest">Oldest</option>
+          <option value="-created_at">Latest</option>
+          <option value="created_at">Oldest</option>
           <option value="name">Name A-Z</option>
         </select>
       </div>
@@ -39,7 +39,7 @@ export default {
     },
     sortBy: {
       type: String,
-      default: 'latest',
+      default: '-created_at',
     },
   },
 

@@ -103,6 +103,25 @@ class TasksTest extends TestCase
     }
 
     #[Test]
+    public function task_search_treats_sql_wildcards_as_literals(): void
+    {
+        /** @var Project $literalProject */
+        $literalProject = $this->createProject(['name' => 'Client% Migration']);
+        $this->createTask(['project_id' => $literalProject->id]);
+
+        /** @var Project $wildcardProject */
+        $wildcardProject = $this->createProject(['name' => 'ClientX Migration']);
+        $this->createTask(['project_id' => $wildcardProject->id]);
+
+        $response = $this->getJson($this->tasksUrl(['search' => 'Client%']))
+            ->assertOk();
+
+        $projectNames = collect($response->json('data'))->pluck('project.name')->all();
+
+        $this->assertSame([$literalProject->name], $projectNames);
+    }
+
+    #[Test]
     public function can_filter_tasks_by_active_and_trashed(): void
     {
         Task::factory()->create();
@@ -116,6 +135,27 @@ class TasksTest extends TestCase
         // Trashed filter
         $trashedResponse = $this->getJson($this->tasksUrl(['state' => 'trashed']))->assertOk();
         $this->assertNotEmpty($trashedResponse->json('data'));
+    }
+
+    #[Test]
+    public function rejects_legacy_top_level_filter_aliases(): void
+    {
+        $this->getJson($this->apiV1AdminRoute('tasks.index', query: [
+            'search' => 'Unique Searchable',
+            'state' => 'active',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['search', 'state']);
+    }
+
+    #[Test]
+    public function rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson($this->apiV1AdminRoute('tasks.index', query: [
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['random']);
     }
 
     #[Test]
@@ -154,6 +194,69 @@ class TasksTest extends TestCase
         $this->getJson($this->tasksUrl(['search' => str_repeat('a', 256)]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('filter.search');
+    }
+
+    #[Test]
+    public function validates_sort_param(): void
+    {
+        $this->getJson($this->tasksUrl(params: ['sort' => 'invalid']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('sort');
+    }
+
+    #[Test]
+    public function rejects_unknown_filter_keys(): void
+    {
+        $this->getJson($this->apiV1AdminRoute('tasks.index', query: [
+            'filter' => ['owner' => 'admin'],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter');
+    }
+
+    #[Test]
+    public function rejects_unsupported_spatie_package_parameters(): void
+    {
+        $this->getJson($this->apiV1AdminRoute('tasks.index', query: [
+            'include' => 'project',
+            'fields' => ['tasks' => 'id,title'],
+            'append' => 'foo',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['include', 'fields', 'append']);
+    }
+
+    #[Test]
+    public function can_sort_tasks_by_title(): void
+    {
+        $alphaTask = $this->createTask(['title' => 'Alpha Task']);
+        $zuluTask = $this->createTask(['title' => 'Zulu Task']);
+
+        $response = $this->getJson($this->tasksUrl(params: ['sort' => 'title']))
+            ->assertOk();
+
+        $this->assertSame($alphaTask->id, $response->json('data.0.id'));
+        $this->assertContains($zuluTask->id, collect($response->json('data'))->pluck('id')->all());
+    }
+
+    #[Test]
+    public function tasks_index_defaults_to_newest_first_when_sort_is_omitted(): void
+    {
+        $oldTask = $this->createTask([
+            'title' => 'Old Task',
+            'created_at' => now()->subDays(3),
+        ]);
+        $newTask = $this->createTask([
+            'title' => 'New Task',
+            'created_at' => now(),
+        ]);
+
+        $response = $this->getJson($this->apiV1AdminRoute('tasks.index'))
+            ->assertOk();
+
+        $taskIds = collect($response->json('data'))->pluck('id')->take(2)->all();
+
+        $this->assertSame([$newTask->id, $oldTask->id], $taskIds);
     }
 
     // Bulk Delete

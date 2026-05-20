@@ -9,6 +9,20 @@ use Tests\TestCase;
 
 class ScrambleDocsTest extends TestCase
 {
+    public function test_docs_json_describes_the_shared_query_contract_and_exceptions(): void
+    {
+        $docs = $this->docs();
+        $description = (string) ($docs['info']['description'] ?? '');
+
+        $this->assertNotSame('', trim($description));
+        $this->assertStringContainsString('Use `filter[field]=value` for general collection endpoints.', $description);
+        $this->assertStringContainsString('Use `sort=field` for ascending order.', $description);
+        $this->assertStringContainsString('`include` is not part of the public contract unless an endpoint explicitly documents it.', $description);
+        $this->assertStringContainsString('Unsupported top-level parameters, including arbitrary extras such as `random=value`, return `422 Unprocessable Entity` instead of being ignored.', $description);
+        $this->assertStringContainsString('Dashboard activity reads use top-level `start_date` and `end_date`.', $description);
+        $this->assertStringContainsString('Zoom-backed meeting endpoints under `/projects/{project}/meetings` are intentionally excluded from the generated OpenAPI.', $description);
+    }
+
     public function test_docs_json_exposes_released_public_surface(): void
     {
         $docs = $this->docs();
@@ -231,14 +245,14 @@ class ScrambleDocsTest extends TestCase
         $paths = $docs['paths'] ?? [];
         $schemas = $docs['components']['schemas'] ?? [];
 
-        $chartParams = $paths['/v1/dashboard/chart-data']['get']['parameters'] ?? [];
-        $notificationParams = $paths['/v1/notifications']['get']['parameters'] ?? [];
+        $chartParams = $this->queryParameterNames($paths['/v1/dashboard/chart-data']['get']['parameters'] ?? []);
+        $notificationParams = $this->queryParameterNames($paths['/v1/notifications']['get']['parameters'] ?? []);
 
-        $this->assertSame(['year', 'month'], array_column($chartParams, 'name'));
-        $this->assertSame('integer', $chartParams[0]['schema']['type'] ?? null);
-        $this->assertSame('integer', $chartParams[1]['schema']['type'] ?? null);
+        $this->assertSame(['year', 'month'], $chartParams);
+        $this->assertContains('integer', (array) (($paths['/v1/dashboard/chart-data']['get']['parameters'][0]['schema']['type'] ?? [])));
+        $this->assertContains('integer', (array) (($paths['/v1/dashboard/chart-data']['get']['parameters'][1]['schema']['type'] ?? [])));
 
-        $this->assertSame(['filter[status]', 'page', 'per_page'], array_column($notificationParams, 'name'));
+        $this->assertSame(['filter[status]', 'page', 'per_page'], $notificationParams);
         $this->assertSame(
             '#/components/schemas/NotificationResource',
             $paths['/v1/notifications']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null,
@@ -256,11 +270,23 @@ class ScrambleDocsTest extends TestCase
         }
     }
 
+    public function test_docs_json_documents_dashboard_activity_exception_params(): void
+    {
+        $docs = $this->docs();
+        $paths = $docs['paths'] ?? [];
+
+        $activityParams = $this->queryParameterNames($paths['/v1/dashboard/activities']['get']['parameters'] ?? []);
+
+        $this->assertSame(['start_date', 'end_date'], $activityParams);
+    }
+
     public function test_docs_json_documents_project_collaboration_contracts(): void
     {
         $docs = $this->docs();
         $paths = $docs['paths'] ?? [];
         $schemas = $docs['components']['schemas'] ?? [];
+        $taskIndexParams = $this->queryParameterNames($paths['/v1/projects/{project}/tasks']['get']['parameters'] ?? []);
+        $invitationIndexParams = $this->queryParameterNames($paths['/v1/projects/{project}/invitations']['get']['parameters'] ?? []);
 
         $this->assertSame(
             '#/components/schemas/ProjectStoreRequestData',
@@ -287,13 +313,15 @@ class ScrambleDocsTest extends TestCase
             $this->schemaRefs($paths['/v1/projects/{project}/conversations']['get']['responses']['200']['content']['application/json']['schema']['properties']['data'] ?? []),
         );
         $this->assertSame(
-            '#/components/schemas/ProjectInvitationStoreRequestData',
+            '#/components/schemas/InvitationUsersRequest',
             $paths['/v1/projects/{project}/invitations']['post']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
         );
         $this->assertSame(
             '#/components/schemas/PendingInvitationUser',
             $paths['/v1/projects/{project}/invitations']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null,
         );
+        $this->assertEqualsCanonicalizing(['filter[state]', 'page', 'per_page'], $taskIndexParams);
+        $this->assertSame(['filter[status]'], $invitationIndexParams);
         $this->assertSame(
             '#/components/schemas/TaskMember',
             $paths['/v1/projects/{project}/tasks/{task}/members/search']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null,
@@ -357,5 +385,20 @@ class ScrambleDocsTest extends TestCase
         }
 
         return array_values(array_unique($refs));
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $parameters
+     * @return array<int, string>
+     */
+    private function queryParameterNames(array $parameters): array
+    {
+        return array_values(array_map(
+            static fn (array $parameter): string => (string) $parameter['name'],
+            array_values(array_filter(
+                $parameters,
+                static fn (array $parameter): bool => ($parameter['in'] ?? null) === 'query',
+            )),
+        ));
     }
 }

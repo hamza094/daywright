@@ -50,11 +50,30 @@ final class MeetingServiceTest extends TestCase
         ], $zoom);
 
         $this->assertSame(1234, $updatedMeeting->meeting_id);
+        $this->assertTrue($updatedMeeting->relationLoaded('user'));
 
         $this->assertDatabaseHas('meetings', [
             'id' => $meeting->id,
             'meeting_id' => 1234,
             'topic' => 'Updated topic',
         ]);
+    }
+
+    #[Test]
+    public function it_uses_the_meeting_resource_load_profile_for_meeting_lists(): void
+    {
+        Meeting::factory()
+            ->for($this->project)
+            ->for($this->user)
+            ->create([
+                'start_time' => now()->addDay(),
+            ]);
+
+        $meetings = app(MeetingService::class)->getMeetingsData($this->project, false, 10, 1);
+
+        $meeting = $meetings->getCollection()->first();
+
+        $this->assertInstanceOf(Meeting::class, $meeting);
+        $this->assertTrue($meeting->relationLoaded('user'));
     }
 }

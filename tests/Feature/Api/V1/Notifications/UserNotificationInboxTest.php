@@ -67,6 +67,42 @@ class UserNotificationInboxTest extends TestCase
     }
 
     /** @test */
+    public function notification_index_rejects_legacy_top_level_status_alias(): void
+    {
+        $this->actingAsInvitedUser();
+
+        $this->getJson($this->apiV1Route('notifications.index', query: [
+            'status' => NotificationFilter::UNREAD->value,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('status');
+    }
+
+    /** @test */
+    public function notification_index_rejects_legacy_string_filter_alias(): void
+    {
+        $this->actingAsInvitedUser();
+
+        $this->getJson($this->apiV1Route('notifications.index', query: [
+            'filter' => NotificationFilter::UNREAD->value,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter');
+    }
+
+    /** @test */
+    public function notification_index_rejects_unsupported_nested_filter_keys(): void
+    {
+        $this->actingAsInvitedUser();
+
+        $this->getJson($this->apiV1Route('notifications.index', query: [
+            'filter' => ['state' => NotificationFilter::UNREAD->value],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter');
+    }
+
+    /** @test */
     public function notification_index_validates_filter_status(): void
     {
         $this->actingAsInvitedUser();
@@ -74,6 +110,20 @@ class UserNotificationInboxTest extends TestCase
         $this->getJson($this->notificationsUrl(['status' => 'archived']))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('filter.status');
+    }
+
+    /** @test */
+    public function notification_index_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->actingAsInvitedUser();
+
+        $this->getJson($this->apiV1Route('notifications.index', query: [
+            'sort' => 'password',
+            'include' => 'passwords',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort', 'include', 'random']);
     }
 
     /** @test */

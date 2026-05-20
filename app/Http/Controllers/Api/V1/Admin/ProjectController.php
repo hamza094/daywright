@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
+use App\Actions\Project\BuildAdminProjectAppliedFiltersAction;
 use App\Actions\Project\BulkDeleteProjectsAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Admin\ProjectBulkDeleteRequest;
@@ -17,14 +18,12 @@ class ProjectController extends ApiController
     public function index(
         ProjectFilterRequest $request,
         ProjectFiltersRepository $repository,
+        BuildAdminProjectAppliedFiltersAction $buildAppliedFilters,
     ): JsonResponse {
-        $appliedFilters = [];
         $filters = $request->filters();
 
-        $data = $repository->filters($filters, $request->perPage(), $appliedFilters);
-
-        $projects = $data['projects'];
-        $appliedFilters = $data['appliedFilters'];
+        $projects = $repository->filter($filters, $request->perPage());
+        $appliedFilters = $buildAppliedFilters->execute($filters);
 
         return ProjectResource::collection($projects)
             ->additional([

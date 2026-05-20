@@ -22,7 +22,7 @@ final class AdminProjectFiltersTest extends TestCase
             'stage' => '4',
             'members' => '1',
             'tasks' => false,
-            'sort' => 'desc',
+            'sort' => '-created_at',
         ]);
 
         $this->assertSame([
@@ -34,7 +34,7 @@ final class AdminProjectFiltersTest extends TestCase
             'stage' => 4,
             'members' => true,
             'tasks' => false,
-            'sort' => 'desc',
+            'sort' => '-created_at',
         ], $filters->toArray());
     }
 }

@@ -145,6 +145,23 @@ class TaskMemberManagementTest extends TestCase
             ->assertJsonValidationErrors('search');
     }
 
+    /** @test */
+    public function search_project_members_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $task = Task::factory()->create(['project_id' => $this->project->id]);
+
+        $this->getJson(route('api.v1.task.members.search', [
+            'project' => $this->project->slug,
+            'task' => $task->id,
+            'search' => 'test',
+            'sort' => 'name',
+            'include' => 'users',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort', 'include', 'random']);
+    }
+
     protected function assignMembersToTask(Task $task, array $members)
     {
         return $this->withHeaders($this->idempotencyHeaders())->patchJson(route('api.v1.task.assign', [

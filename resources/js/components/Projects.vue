@@ -155,7 +155,7 @@ export default {
     return {
       currentTab: 'active',
       searchQuery: '',
-      sortBy: 'latest',
+      sortBy: '-created_at',
       loading: false,
       searchTimeout: null,
       tabData: { ...INITIAL_TAB_DATA },

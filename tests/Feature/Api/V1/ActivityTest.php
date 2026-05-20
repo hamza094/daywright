@@ -34,6 +34,10 @@ class ActivityTest extends TestCase
         $this->assertCount(2, $data);
         $this->assertEquals('Task "'.($task->title).'" added', $data[0]['description']);
         $this->assertEquals('New project created', $data[1]['description']);
+        $this->assertSame($this->user->id, $data[0]['user']['id']);
+        $this->assertSame($this->user->uuid, $data[0]['user']['uuid']);
+        $this->assertSame($this->user->username, $data[0]['user']['username']);
+        $this->assertArrayNotHasKey('email', $data[0]['user']);
     }
 
     /** @test */
@@ -46,6 +50,30 @@ class ActivityTest extends TestCase
             ->assertOk();
 
         $this->assertEquals('Task "'.($task->title).'" added', $response->json()['data'][0]['description']);
+    }
+
+    /** @test */
+    public function it_rejects_legacy_top_level_alias(): void
+    {
+        $this->project->addTask('test task');
+
+        $this->getJson($this->apiV1ProjectRoute('projects.activities', $this->project, query: [
+            'tasks' => 1,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['tasks']);
+    }
+
+    /** @test */
+    public function it_rejects_unsupported_nested_filter_keys(): void
+    {
+        $this->project->addTask('test task');
+
+        $this->getJson($this->apiV1ProjectRoute('projects.activities', $this->project, query: [
+            'filter' => ['status' => 'mine'],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['filter']);
     }
 
     /** @test */

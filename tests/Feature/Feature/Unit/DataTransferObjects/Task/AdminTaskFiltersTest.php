@@ -16,11 +16,13 @@ final class AdminTaskFiltersTest extends TestCase
         $filters = AdminTaskFilters::fromArray([
             'search' => 'Unique Project',
             'state' => 'TRASHED',
+            'sort' => '-created_at',
         ]);
 
         $this->assertSame([
             'search' => 'Unique Project',
             'state' => 'trashed',
+            'sort' => '-created_at',
         ], $filters->toArray());
     }
 }

@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
 
 class ProjectService
 {
-    private const array RESPONSE_RELATIONS = ['user', 'stage', 'activeMembers', 'limitedActivities'];
+    private const array PROJECT_RESOURCE_RELATIONS = ['user', 'stage', 'activeMembers', 'limitedActivities'];
 
     public function __construct(
         private readonly SubscriptionUsageService $subscriptionUsageService,
@@ -76,16 +76,14 @@ class ProjectService
 
     public function loadForResponse(Project $project): Project
     {
-        $project->load(self::RESPONSE_RELATIONS);
+        $project->loadMissing(self::PROJECT_RESOURCE_RELATIONS);
 
         return $project;
     }
 
     public function loadForDetails(Project $project): Project
     {
-        $project->load(array_merge(self::RESPONSE_RELATIONS, ['meetings']));
-
-        return $project;
+        return $this->loadForResponse($project);
     }
 
     public function updateProject(Project $project, ProjectUpdateData $data, User $actor): Project

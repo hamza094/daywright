@@ -252,6 +252,32 @@ class UserTasksDataTest extends TestCase
     }
 
     /** @test */
+    public function request_rejects_legacy_top_level_boolean_aliases(): void
+    {
+        $response = $this->getJson('api/v1/dashboard/tasks?'.http_build_query([
+            'user_created' => 1,
+            'completed' => 1,
+        ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['user_created', 'completed']);
+    }
+
+    /** @test */
+    public function request_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $response = $this->getJson('api/v1/dashboard/tasks?'.http_build_query([
+            'filter' => ['user_created' => 1],
+            'sort' => 'created_at',
+            'include' => 'project',
+            'random' => 'value',
+        ]));
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['sort', 'include', 'random']);
+    }
+
+    /** @test */
     public function status_filters_without_user_context_default_to_user_tasks(): void
     {
         // Create overdue task by authenticated user

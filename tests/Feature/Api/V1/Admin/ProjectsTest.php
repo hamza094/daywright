@@ -73,6 +73,29 @@ class ProjectsTest extends TestCase
     }
 
     #[Test]
+    public function admin_project_index_serializes_stage_and_owner_with_explicit_resources(): void
+    {
+        /** @var User $owner */
+        $owner = $this->createUser([
+            'name' => 'Owner Person',
+            'username' => 'owner-person',
+        ]);
+        /** @var Stage $stage */
+        $stage = Stage::factory()->create(['name' => 'Planning']);
+
+        Project::factory()->for($owner)->for($stage)->create();
+
+        $this->getJson($this->apiV1AdminRoute('projects.index'))
+            ->assertOk()
+            ->assertJsonPath('data.0.owner.id', $owner->id)
+            ->assertJsonPath('data.0.owner.uuid', $owner->uuid)
+            ->assertJsonPath('data.0.owner.username', $owner->username)
+            ->assertJsonMissingPath('data.0.owner.email')
+            ->assertJsonPath('data.0.stage.id', $stage->id)
+            ->assertJsonPath('data.0.stage.name', $stage->name);
+    }
+
+    #[Test]
     public function returns_empty_message_when_no_projects(): void
     {
         $this->getJson($this->apiV1AdminRoute('projects.index'))
@@ -98,6 +121,19 @@ class ProjectsTest extends TestCase
     }
 
     #[Test]
+    public function admin_project_search_treats_sql_wildcards_as_literals(): void
+    {
+        $literalProject = $this->createProject(['name' => 'Alpha% Project']);
+        $this->createProject(['name' => 'AlphaX Project']);
+
+        $response = $this->getJson($this->projectsUrl(['search' => 'Alpha%']))
+            ->assertOk();
+
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame($literalProject->id, $response->json('data.0.id'));
+    }
+
+    #[Test]
     public function can_filter_projects_by_active_and_trashed(): void
     {
         $this->createProject();
@@ -113,6 +149,41 @@ class ProjectsTest extends TestCase
         $trashedResponse = $this->getJson($this->projectsUrl(['state' => 'trashed']))->assertOk();
         $this->assertNotEmpty($trashedResponse->json('data'));
         $this->assertContains('Filter by Trashed', $trashedResponse->json('meta.applied_filters'));
+    }
+
+    #[Test]
+    public function rejects_legacy_string_filter_alias(): void
+    {
+        $this->createProject();
+        $trashed = $this->createProject();
+        $trashed->delete();
+
+        $this->getJson($this->apiV1AdminRoute('projects.index', query: [
+            'filter' => 'trashed',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter');
+    }
+
+    #[Test]
+    public function rejects_legacy_top_level_filter_aliases(): void
+    {
+        $this->getJson($this->apiV1AdminRoute('projects.index', query: [
+            'search' => 'Alpha',
+            'members' => true,
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['search', 'members']);
+    }
+
+    #[Test]
+    public function rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson($this->apiV1AdminRoute('projects.index', query: [
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['random']);
     }
 
     #[Test]
@@ -143,6 +214,14 @@ class ProjectsTest extends TestCase
         $this->getJson($this->projectsUrl(['status' => 'invalid']))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('filter.status');
+    }
+
+    #[Test]
+    public function validates_invalid_sort_parameter(): void
+    {
+        $this->getJson($this->projectsUrl(params: ['sort' => 'invalid']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('sort');
     }
 
     #[Test]
@@ -190,6 +269,54 @@ class ProjectsTest extends TestCase
         $projectIds = collect($projects)->pluck('id')->toArray();
         $this->assertContains($activeProject->id, $projectIds);
         $this->assertNotContains($trashedProject->id, $projectIds);
+    }
+
+    #[Test]
+    public function can_sort_projects_by_canonical_sort_values(): void
+    {
+        $oldProject = $this->createProject([
+            'name' => 'Zulu Project',
+            'created_at' => now()->subDays(3),
+        ]);
+        $newProject = $this->createProject([
+            'name' => 'Alpha Project',
+            'created_at' => now(),
+        ]);
+
+        $newestResponse = $this->getJson($this->projectsUrl(params: ['sort' => '-created_at']))->assertOk();
+        $nameResponse = $this->getJson($this->projectsUrl(params: ['sort' => 'name']))->assertOk();
+
+        $this->assertSame($newProject->id, $newestResponse->json('data.0.id'));
+        $this->assertSame($newProject->id, $nameResponse->json('data.0.id'));
+        $this->assertSame($oldProject->id, $nameResponse->json('data.1.id'));
+    }
+
+    #[Test]
+    public function admin_projects_default_to_newest_first_when_sort_is_omitted(): void
+    {
+        $oldProject = $this->createProject([
+            'name' => 'Old Project',
+            'created_at' => now()->subDays(3),
+        ]);
+        $newProject = $this->createProject([
+            'name' => 'New Project',
+            'created_at' => now(),
+        ]);
+
+        $response = $this->getJson($this->apiV1AdminRoute('projects.index'))
+            ->assertOk();
+
+        $projectIds = collect($response->json('data'))->pluck('id')->take(2)->all();
+
+        $this->assertSame([$newProject->id, $oldProject->id], $projectIds);
+    }
+
+    #[Test]
+    public function rejects_legacy_direction_only_sort_aliases(): void
+    {
+        $this->getJson($this->projectsUrl(params: ['sort' => 'desc']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('sort');
     }
 
     #[Test]

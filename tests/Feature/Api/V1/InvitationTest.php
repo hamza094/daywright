@@ -239,6 +239,22 @@ class InvitationTest extends TestCase
     }
 
     /** @test */
+    public function project_owner_can_view_pending_member_invitations_with_status_filter(): void
+    {
+        $pendingUsers = User::factory()->count(2)->create();
+
+        $this->project
+            ->members()
+            ->attach($pendingUsers, ['active' => false]);
+
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'filter' => ['status' => 'pending'],
+        ]))
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+    }
+
+    /** @test */
     public function pending_project_invitations_requires_pending_status_filter(): void
     {
         $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project))
@@ -250,5 +266,38 @@ class InvitationTest extends TestCase
         ]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['filter.status']);
+    }
+
+    /** @test */
+    public function pending_project_invitations_reject_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'filter' => ['status' => 'pending'],
+            'page' => 2,
+            'include' => 'owner',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['page', 'include', 'random']);
+    }
+
+    /** @test */
+    public function pending_project_invitations_reject_legacy_top_level_status_alias(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'status' => 'pending',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+    }
+
+    /** @test */
+    public function pending_project_invitations_reject_unsupported_nested_filter_keys(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'filter' => ['state' => 'pending'],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['filter']);
     }
 }

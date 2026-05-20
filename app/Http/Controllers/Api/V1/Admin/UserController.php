@@ -9,33 +9,21 @@ use App\Http\Requests\Api\V1\Admin\UpdateUserRoleRequest;
 use App\Http\Requests\Api\V1\Admin\UserFilterRequest;
 use App\Http\Resources\Api\V1\Admin\User\AdminUserResource;
 use App\Models\User;
+use App\Repository\Admin\UserRepository;
 use App\Services\Admin\AdminAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class UserController extends ApiController
 {
-    public function __construct(private readonly AdminAccessService $adminAccessService) {}
+    public function __construct(
+        private readonly AdminAccessService $adminAccessService,
+        private readonly UserRepository $userRepository,
+    ) {}
 
     public function index(UserFilterRequest $request): AnonymousResourceCollection
     {
-        $search = $request->searchTerm();
-
-        $users = User::with([
-            'subscriptions',
-            'adminGrantedBy:id,name',
-            'adminRevokedBy:id,name',
-        ])
-            ->withCount('projects')
-            ->withCount('activeMembers as projects_member_count')
-            ->when($search, function ($query) use ($search): void {
-                $query->where(function ($subQuery) use ($search): void {
-                    $subQuery->where('name', 'like', '%'.$search.'%')
-                        ->orWhere('username', 'like', '%'.$search.'%')
-                        ->orWhere('email', 'like', '%'.$search.'%');
-                });
-            })
-            ->paginate($request->perPage());
+        $users = $this->userRepository->getUsersWithFilters($request);
 
         return AdminUserResource::collection($users);
     }

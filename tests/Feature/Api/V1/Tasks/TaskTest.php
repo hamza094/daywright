@@ -31,7 +31,59 @@ class TaskTest extends TestCase
         ]))
             ->assertOk()
             ->assertJsonCount(3, 'data')
-            ->assertJsonStructure(['data']);
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => [
+                        'links' => ['self'],
+                    ],
+                ],
+                'links',
+                'meta',
+            ]);
+    }
+
+    /** @test */
+    public function allowed_user_see_archived_tasks_via_legacy_request_alias(): void
+    {
+        Task::factory(['deleted_at' => now()])
+            ->count(2)
+            ->for($this->project)
+            ->create();
+
+        $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project, query: [
+            'filter' => ['state' => 'archived'],
+        ]))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.total', 2);
+    }
+
+    /** @test */
+    public function task_index_rejects_invalid_legacy_request_alias_values(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project, query: [
+            'request' => 'previous',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['request']);
+    }
+
+    /** @test */
+    public function archived_tasks_can_limit_results_per_page(): void
+    {
+        Task::factory(['deleted_at' => now()])
+            ->count(5)
+            ->for($this->project)
+            ->create();
+
+        $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project, query: [
+            'filter' => ['state' => 'archived'],
+            'per_page' => 2,
+        ]))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.per_page', 2)
+            ->assertJsonPath('meta.total', 5);
     }
 
     /** @test */
@@ -42,6 +94,28 @@ class TaskTest extends TestCase
         ]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors('filter.state');
+    }
+
+    /** @test */
+    public function task_index_rejects_unsupported_nested_filter_keys(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project, query: [
+            'filter' => ['status' => 'archived'],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter');
+    }
+
+    /** @test */
+    public function task_index_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project, query: [
+            'sort' => '-created_at',
+            'include' => 'passwords',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort', 'include', 'random']);
     }
 
     /** @test */

@@ -38,6 +38,7 @@
     "saloonphp/saloon": "^4.0",
     "spatie/image-optimizer": "^1.6",
     "spatie/laravel-backup": "^9.3",
+    "spatie/laravel-query-builder": "^7.3",
     "torann/geoip": "^3.0",
     "vonage/client": "^3.0",
     "wendelladriel/laravel-idempotency": "^1.0"

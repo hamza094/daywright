@@ -29,10 +29,10 @@ class SearchableTest extends TestCase
     {
         $user = User::first();
 
-        $query = $user->name;
+        $searchTerm = $user->name;
 
         $service = app(InvitationService::class);
-        $result = $service->usersSearch($query);
+        $result = $service->usersSearch($searchTerm);
 
         $this->assertCount(1, $result);
     }
@@ -48,7 +48,7 @@ class SearchableTest extends TestCase
 
         // Act
         $response = $this->withoutExceptionHandling()->getJson(route('api.v1.users.search', [
-            'query' => $searchTerm,
+            'search' => $searchTerm,
         ]));
 
         $response->assertStatus(200)
@@ -59,5 +59,28 @@ class SearchableTest extends TestCase
             ])
             ->assertJsonCount(5, 'data');
 
+    }
+
+    /** @test */
+    public function search_endpoint_rejects_legacy_query_alias(): void
+    {
+        $this->getJson(route('api.v1.users.search', [
+            'query' => 'Test',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['search']);
+    }
+
+    /** @test */
+    public function search_endpoint_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson(route('api.v1.users.search', [
+            'search' => 'Test',
+            'sort' => 'name',
+            'include' => 'projects',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort', 'include', 'random']);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Admin;
 
+use App\Http\Resources\Api\V1\Admin\User\AdminUserSummaryResource;
 use App\Http\Resources\Api\V1\ApiResourceLink;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
@@ -26,9 +27,15 @@ class ProjectResource extends JsonResource
             'about' => str_limit($this->about, 50),
             'slug' => $this->slug,
             'state' => $this->state(),
-            'stage' => $this->whenLoaded('stage'),
+            'stage' => $this->whenLoaded(
+                'stage',
+                fn (): StageResource => new StageResource($this->stage),
+            ),
             'created_at' => $this->created_at?->toIso8601String(),
-            'owner' => $this->whenLoaded('user'),
+            'owner' => $this->whenLoaded(
+                'user',
+                fn (): AdminUserSummaryResource => new AdminUserSummaryResource($this->user),
+            ),
             'tasks_count' => $this->whenCounted('tasks'),
             'members_count' => $this->whenCounted('activeMembers'),
             'score' => $this->health_score,

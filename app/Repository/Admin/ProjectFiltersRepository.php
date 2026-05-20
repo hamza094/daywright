@@ -8,130 +8,116 @@ use App\DataTransferObjects\Project\AdminProjectFilters;
 use App\Enums\ProjectHealthStatus;
 use App\Models\Project;
 use App\Models\Stage;
-use Carbon\Carbon;
+use App\QueryBuilder\Concerns\EscapesLikeWildcards;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 
 class ProjectFiltersRepository
 {
+    use EscapesLikeWildcards;
+
     /**
-     * @param  array<int, string>  $appliedFilters
-     * @return array{projects: \Illuminate\Contracts\Pagination\LengthAwarePaginator, appliedFilters: array<int, string>}
+     * @return LengthAwarePaginator<int, Project>
      */
-    public function filters(AdminProjectFilters $filters, int $perPage, array $appliedFilters): array
+    public function filter(AdminProjectFilters $filters, int $perPage): LengthAwarePaginator
     {
-        $projects = Project::with('stage', 'user')
+        $query = Project::query()
+            ->with('stage', 'user')
             ->withCount('tasks', 'activeMembers')
             ->withTrashed()
-            ->when($filters->sort, function ($query, $sortDirection) use (&$appliedFilters): void {
-                $this->applySort($query, $sortDirection, $appliedFilters);
+
+            ->when($filters->search, function (Builder $query) use ($filters): void {
+                $this->applySearchFilter($query, $filters->search);
             })
 
-            ->when($filters->search, function ($query) use ($filters, &$appliedFilters): void {
-                $this->applySearchFilter($query, $filters->search, $appliedFilters);
-            })
-
-            ->when($filters->state === 'active', function ($query) use (&$appliedFilters): void {
+            ->when($filters->state === 'active', function (Builder $query): void {
                 $query->whereNull('deleted_at');
-                $appliedFilters[] = 'Filter by Active';
             })
-            ->when($filters->state === 'trashed', function ($query) use (&$appliedFilters): void {
+            ->when($filters->state === 'trashed', function (Builder $query): void {
                 $query->whereNotNull('deleted_at');
-                $appliedFilters[] = 'Filter by Trashed';
-
             })
 
-            ->when($filters->members, function ($query) use (&$appliedFilters): void {
+            ->when($filters->members, function (Builder $query): void {
                 $query->whereHas('members', function ($subQuery): void {
                     $subQuery->where('project_members.active', true);
                 });
-                $appliedFilters[] = 'Filter by Active Members';
             })
 
-            ->when($filters->tasks, function ($query) use (&$appliedFilters): void {
+            ->when($filters->tasks, function (Builder $query): void {
                 $query->has('tasks');
-                $appliedFilters[] = 'Filter by Active Members';
-
             })
-            ->when($filters->stage === 0, function ($query) use (&$appliedFilters): void {
-                $query->where(function ($query): void {
-                    $query->where('stage_id', 0)
-                        ->where(function ($query): void {
-                            $query->whereNotNull('postponed')
+
+            ->when($filters->stage === 0, function (Builder $query): void {
+                $query->where(function (Builder $stageQuery): void {
+                    $stageQuery->where('stage_id', 0)
+                        ->where(function (Builder $stageStateQuery): void {
+                            $stageStateQuery->whereNotNull('postponed')
                                 ->orWhere('completed', true);
                         });
                 });
-                $appliedFilters[] = 'Filter by Stage: Clo/Pos';
             })
-            ->when($filters->stage !== null && $filters->stage !== 0, function ($query) use ($filters, &$appliedFilters): void {
-                $stage = Stage::find($filters->stage);
+            ->when($filters->stage !== null && $filters->stage !== 0, function (Builder $query) use ($filters): void {
+                $stage = Stage::query()->find($filters->stage);
+
                 if ($stage) {
                     $query->where('stage_id', $filters->stage);
-                    $appliedFilters[] = "Filter by Stage: {$stage->name}";
                 }
             })
-            ->when($filters->from && $filters->to, function ($query) use ($filters, &$appliedFilters): void {
-                $this->applyDateRangeFilter($query, $filters->from, $filters->to, $appliedFilters);
+            ->when($filters->from && $filters->to, function (Builder $query) use ($filters): void {
+                $this->applyDateRangeFilter($query, $filters->from, $filters->to);
             })
-            ->when($filters->status, function ($query) use ($filters, &$appliedFilters): void {
-                $this->applyStatusFilter($query, $filters->status, $appliedFilters);
-            })
-            ->paginate($perPage);
+            ->when($filters->status, function (Builder $query) use ($filters): void {
+                $this->applyStatusFilter($query, $filters->status);
+            });
 
-        return [
-            'projects' => $projects,
-            'appliedFilters' => $appliedFilters,
-        ];
+        $this->applySort($query, $filters->sort ?? '-created_at');
 
+        return $query->paginate($perPage);
     }
 
     /**
      * @param  Builder<Project>  $query
-     * @param  array<int, string>  $appliedFilters
      */
-    protected function applySort(Builder $query, string $sortDirection, array &$appliedFilters): void
+    protected function applySort(Builder $query, string $sort): void
     {
-        $query->orderBy('created_at', $sortDirection);
-        $appliedFilters[] = "Sort by $sortDirection";
+        match ($sort) {
+            'created_at' => $query->orderBy('created_at', 'asc'),
+            '-created_at' => $query->orderBy('created_at', 'desc'),
+            'name' => $query->orderBy('name', 'asc'),
+            '-name' => $query->orderBy('name', 'desc'),
+            'health_score' => $query->orderBy('health_score', 'asc')->orderBy('created_at', 'desc'),
+            '-health_score' => $query->orderBy('health_score', 'desc')->orderBy('created_at', 'desc'),
+            default => $query->orderBy('created_at', 'desc'),
+        };
     }
 
     /**
      * @param  Builder<Project>  $query
-     * @param  array<int, string>  $appliedFilters
      */
-    protected function applySearchFilter(Builder $query, string $searchTerm, array &$appliedFilters): void
+    protected function applySearchFilter(Builder $query, string $searchTerm): void
     {
-        $escaped = str_replace(['%', '_'], ['\%', '\_'], $searchTerm);
+        $query->where(function (Builder $q) use ($searchTerm): void {
+            $this->likeContainsLiteral($q, 'name', $searchTerm);
 
-        $query->where(function (Builder $q) use ($escaped): void {
-            $q->where('name', 'like', "%{$escaped}%")
-                ->orWhereHas('user', function (Builder $subQuery) use ($escaped): void {
-                    $subQuery->where('name', 'like', "%{$escaped}%")
-                        ->orWhere('username', 'like', "%{$escaped}%");
-                });
+            $q->orWhereHas('user', function (Builder $subQuery) use ($searchTerm): void {
+                $this->likeContainsLiteral($subQuery, 'name', $searchTerm);
+                $this->likeContainsLiteral($subQuery, 'username', $searchTerm, 'or');
+            });
         });
-
-        $appliedFilters[] = 'Search in all';
     }
 
     /**
      * @param  Builder<Project>  $query
-     * @param  array<int, string>  $appliedFilters
      */
-    protected function applyDateRangeFilter(Builder $query, string $from, string $to, array &$appliedFilters): void
+    protected function applyDateRangeFilter(Builder $query, string $from, string $to): void
     {
         $query->whereBetween('created_at', [$from, $to]);
-
-        $fromDate = Carbon::parse($from);
-        $toDate = Carbon::parse($to);
-
-        $appliedFilters[] = 'Filter from '.$fromDate->format('Y-m-d').' to '.$toDate->format('Y-m-d');
     }
 
     /**
      * @param  Builder<Project>  $query
-     * @param  array<int, string>  $appliedFilters
      */
-    protected function applyStatusFilter(Builder $query, string $status, array &$appliedFilters): void
+    protected function applyStatusFilter(Builder $query, string $status): void
     {
         $normalizedStatus = mb_strtolower($status);
 
@@ -144,7 +130,5 @@ class ProjectFiltersRepository
             }),
             default => null,
         };
-
-        $appliedFilters[] = "Filter by status {$normalizedStatus}";
     }
 }

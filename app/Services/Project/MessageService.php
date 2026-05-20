@@ -10,7 +10,8 @@ use App\Actions\Project\ScheduleProjectMessageAction;
 use App\DataTransferObjects\Project\ProjectMessageData;
 use App\Models\Message;
 use App\Models\Project;
-use Illuminate\Support\Collection;
+use App\Repository\Api\V1\MessageRepository;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 
 class MessageService
@@ -19,6 +20,7 @@ class MessageService
         private readonly CreateProjectMessageAction $createProjectMessageAction,
         private readonly DispatchProjectMessageAction $dispatchProjectMessageAction,
         private readonly ScheduleProjectMessageAction $scheduleProjectMessageAction,
+        private readonly MessageRepository $messageRepository,
     ) {}
 
     public function send(Project $project, ProjectMessageData $payload): string
@@ -46,12 +48,9 @@ class MessageService
         return 'Messages '.($isScheduled ? 'Scheduled' : 'Sent').' Successfully';
     }
 
-    /**
-     * @return Collection<int, mixed>
-     */
-    public function scheduledMessages(Project $project): Collection
+    public function paginateScheduledMessages(Project $project, int $perPage, int $page): LengthAwarePaginator
     {
-        return $project->scheduledMessages();
+        return $this->messageRepository->paginateScheduledMessages($project, $perPage, $page);
     }
 
     public function deleteScheduledMessage(Message $message): void

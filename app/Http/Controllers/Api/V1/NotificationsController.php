@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\NotificationIndexRequest;
-use App\Http\Requests\Api\V1\NotificationStatusUpdateRequest;
+use App\Http\Requests\Api\V1\Notifications\NotificationIndexRequest;
+use App\Http\Requests\Api\V1\Notifications\NotificationStatusUpdateRequest;
 use App\Http\Resources\Api\V1\NotificationResource;
 use App\Services\UserNotificationService;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\QueryBuilder;
 
+use App\QueryBuilder\Concerns\EscapesLikeWildcards;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -14,22 +15,26 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class ProjectQueryBuilder extends Builder
 {
+    use EscapesLikeWildcards;
+
     /**
      * Search projects by name
      */
     public function search(string $search): self
     {
-        return $this->where('name', 'like', "%{$search}%");
+        return $this->likeContainsLiteral($this, 'name', $search);
     }
 
     /**
      * Sort projects by different criteria
      */
-    public function sortBy(string $sortBy = 'latest'): self
+    public function sortBy(string $sortBy = '-created_at'): self
     {
         return match ($sortBy) {
-            'oldest' => $this->orderBy('created_at', 'asc'),
+            'created_at' => $this->orderBy('created_at', 'asc'),
+            '-created_at' => $this->orderBy('created_at', 'desc'),
             'name' => $this->orderBy('name', 'asc'),
+            '-name' => $this->orderBy('name', 'desc'),
             default => $this->orderBy('created_at', 'desc'),
         };
     }

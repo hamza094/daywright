@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Actions\ProjectMetrics\ProjectHealthRecalculationAction;
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\ProjectInsightsRequest;
+use App\Http\Requests\Api\V1\Project\ProjectInsightsRequest;
 use App\Http\Resources\Api\V1\Project\ProjectInsightsResource;
 use App\Models\Project;
 use App\Services\Project\ProjectInsightsService;

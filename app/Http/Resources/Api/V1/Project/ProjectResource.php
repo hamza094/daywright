@@ -7,7 +7,7 @@ namespace App\Http\Resources\Api\V1\Project;
 use App\Http\Resources\Api\V1\ActivityResource;
 use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\StageResource;
-use App\Http\Resources\Api\V1\User\InvitedUserResource;
+use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
@@ -116,7 +116,7 @@ class ProjectResource extends JsonResource
              */
             'user' => $this->whenLoaded(
                 'user',
-                fn (): array => $this->user->only(['uuid', 'name', 'avatar_path', 'username', 'email']),
+                fn (): UserSummaryResource => new UserSummaryResource($this->user),
             ),
 
             /**
@@ -151,7 +151,7 @@ class ProjectResource extends JsonResource
              */
             'members' => $this->whenLoaded(
                 'activeMembers',
-                fn () => InvitedUserResource::collection($this->activeMembers),
+                fn () => UserSummaryResource::collection($this->activeMembers),
             ),
 
             /**

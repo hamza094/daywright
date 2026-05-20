@@ -9,6 +9,7 @@ final readonly class AdminTaskFilters
     public function __construct(
         public ?string $search,
         public ?string $state,
+        public ?string $sort,
     ) {}
 
     /**
@@ -19,17 +20,19 @@ final readonly class AdminTaskFilters
         return new self(
             search: is_string($payload['search'] ?? null) ? $payload['search'] : null,
             state: is_string($payload['state'] ?? null) ? mb_strtolower($payload['state']) : null,
+            sort: is_string($payload['sort'] ?? null) ? $payload['sort'] : null,
         );
     }
 
     /**
-     * @return array{search: ?string, state: ?string}
+     * @return array{search: ?string, state: ?string, sort: ?string}
      */
     public function toArray(): array
     {
         return [
             'search' => $this->search,
             'state' => $this->state,
+            'sort' => $this->sort,
         ];
     }
 }

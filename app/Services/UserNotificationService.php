@@ -11,13 +11,13 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class UserNotificationService
 {
-    public function paginateForUser(User $user, ?string $filter, int $perPage = 25): LengthAwarePaginator
+    public function paginateForUser(User $user, ?string $status, int $perPage = 25): LengthAwarePaginator
     {
-        return $user->notifications()
-            ->latest()
-            ->when($filter === NotificationFilter::READ->value, fn ($query) => $query->whereNotNull('read_at'))
-            ->when($filter === NotificationFilter::UNREAD->value, fn ($query) => $query->whereNull('read_at'))
-            ->paginate($perPage);
+        $query = $user->notifications()->latest();
+
+        $this->applyStatusFilter($query, $status);
+
+        return $query->paginate($perPage);
     }
 
     public function markAllAsRead(User $user): void
@@ -47,5 +47,18 @@ class UserNotificationService
         $notification = $user->notifications()->findOrFail($notificationId);
 
         return $notification;
+    }
+
+    private function applyStatusFilter(mixed $query, ?string $status): void
+    {
+        if ($status === NotificationFilter::READ->value) {
+            $query->whereNotNull('read_at');
+
+            return;
+        }
+
+        if ($status === NotificationFilter::UNREAD->value) {
+            $query->whereNull('read_at');
+        }
     }
 }

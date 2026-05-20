@@ -7,11 +7,11 @@ declare(strict_types=1);
 |--------------------------------------------------------------------------
 */
 use App\Http\Controllers\Api\OAuth\ZoomAuthController;
-use App\Http\Controllers\Api\V1\DashboardActivitiesController;
-use App\Http\Controllers\Api\V1\DashboardChartDataController;
-use App\Http\Controllers\Api\V1\DashboardKpisController;
-use App\Http\Controllers\Api\V1\DashboardProjectsController;
-use App\Http\Controllers\Api\V1\DashboardTasksController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardActivitiesController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardChartDataController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardKpisController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardProjectsController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardTasksController;
 use App\Http\Controllers\Api\V1\NotificationsController;
 use App\Http\Controllers\Api\V1\Project\AcceptProjectInvitationController;
 use App\Http\Controllers\Api\V1\Project\ActivityController;

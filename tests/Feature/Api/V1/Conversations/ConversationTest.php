@@ -25,11 +25,59 @@ class ConversationTest extends TestCase
 
         $response = $this->withoutExceptionHandling()->getJson($this->apiV1ProjectRoute('conversations.index', $this->project));
 
-        $response->assertJsonFragment([
-            'message' => $conversation->message,
-        ]);
+        $response->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonStructure([
+                'data',
+                'links',
+                'meta',
+            ])
+            ->assertJsonFragment([
+                'message' => $conversation->message,
+            ]);
 
         $this->assertEquals($this->apiV1ProjectRoute('projects.show', $this->project), $response->json('data.0.links.project'));
+    }
+
+    /** @test */
+    public function conversation_index_can_limit_results_per_page(): void
+    {
+        Conversation::factory()->count(4)->create([
+            'project_id' => $this->project->id,
+        ]);
+
+        $this->getJson($this->apiV1ProjectRoute('conversations.index', $this->project, query: [
+            'per_page' => 2,
+        ]))
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.per_page', 2)
+            ->assertJsonPath('meta.total', 4);
+    }
+
+    /** @test */
+    public function conversation_index_returns_empty_paginated_payload(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('conversations.index', $this->project))
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonStructure([
+                'data',
+                'links',
+                'meta',
+            ]);
+    }
+
+    /** @test */
+    public function conversation_index_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('conversations.index', $this->project, query: [
+            'sort' => 'created_at',
+            'include' => 'user',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sort', 'include', 'random']);
     }
 
     /** @test */

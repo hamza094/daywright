@@ -6,11 +6,14 @@ namespace App\Services\Dashboard;
 
 use App\DataTransferObjects\Project\DashboardProjectFilters;
 use App\Models\User;
-use App\Services\ApiPaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class UserProjectListingService
 {
+    private const array PROJECT_LIST_RELATIONS = ['stage'];
+
     /**
      * @return Collection<int, \App\Models\Project>|null
      */
@@ -25,7 +28,7 @@ class UserProjectListingService
     public function getDashboardProjects(User $user): Collection
     {
         return $user->projects()
-            ->with('stage')
+            ->with(self::PROJECT_LIST_RELATIONS)
             ->latest()
             ->take(3)
             ->get();
@@ -38,19 +41,15 @@ class UserProjectListingService
         int $perPage,
         int $page,
         string $path,
-    ): ApiPaginator {
-        $projects = $this->getUserProjects($user, $filters, $sort);
+    ): LengthAwarePaginator {
+        $query = $this->filterProjectsQuery($user, $filters, $sort);
 
-        return new ApiPaginator(
-            $projects->forPage($page, $perPage)->values(),
-            $projects->count(),
-            $perPage,
-            $page,
-            [
-                'path' => $path,
-                'pageName' => 'page',
-            ],
-        );
+        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
+
+        // Ensure the paginator uses the requested path for generated links.
+        $paginator->withPath($path);
+
+        return $paginator;
     }
 
     /**
@@ -58,15 +57,26 @@ class UserProjectListingService
      */
     private function filterProjects(User $user, DashboardProjectFilters $filters, string $sort): Collection
     {
+        return $this->filterProjectsQuery($user, $filters, $sort)->get();
+    }
+
+    /**
+     * Build the query for user projects. This preserves the previous
+     * filtering semantics but returns a query builder so callers can
+     * paginate at the database level.
+     *
+     * @return Builder<\App\Models\Project>
+     */
+    private function filterProjectsQuery(User $user, DashboardProjectFilters $filters, string $sort): Builder
+    {
         $query = $filters->member
-            ? $user->activeMembers()
-            : $user->projects();
+            ? $user->activeMembers()->getQuery()
+            : $user->projects()->getQuery();
 
         return $query
-            ->with(['stage', 'user'])
+            ->with(self::PROJECT_LIST_RELATIONS)
             ->when($filters->abandoned, fn ($query) => $query->trashed())
             ->when($filters->search, fn ($query) => $query->search($filters->search))
-            ->sortBy($sort)
-            ->get();
+            ->sortBy($sort);
     }
 }

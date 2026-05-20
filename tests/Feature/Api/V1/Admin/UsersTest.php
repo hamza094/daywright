@@ -232,6 +232,151 @@ class UsersTest extends TestCase
     }
 
     #[Test]
+    public function users_index_search_treats_sql_wildcards_as_literals(): void
+    {
+        $admin = $this->createAdminUser();
+        $this->enableTwoFactorForUser($admin);
+
+        $literalUser = $this->createUser(['name' => 'Literal% User']);
+        $this->createUser(['name' => 'LiteralX User']);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson($this->apiV1AdminRoute('users.index', query: [
+            'filter' => ['search' => 'Literal%'],
+        ]))->assertOk();
+
+        $this->assertCount(1, $response->json('data'));
+        $this->assertSame($literalUser->uuid, $response->json('data.0.uuid'));
+    }
+
+    #[Test]
+    public function users_index_rejects_legacy_top_level_search_alias(): void
+    {
+        $admin = $this->createAdminUser();
+        $this->enableTwoFactorForUser($admin);
+
+        $this->createUser(['name' => 'Alias Search User']);
+        $this->createUser(['name' => 'Other User']);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson($this->apiV1AdminRoute('users.index', query: [
+            'search' => 'Alias Search',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('search');
+    }
+
+    #[Test]
+    public function users_index_validates_sort_parameter(): void
+    {
+        $admin = $this->createAdminUser();
+        $this->enableTwoFactorForUser($admin);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson($this->apiV1AdminRoute('users.index', query: [
+            'sort' => 'invalid',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('sort');
+    }
+
+    #[Test]
+    public function users_index_rejects_unknown_filter_keys(): void
+    {
+        $admin = $this->createAdminUser();
+        $this->enableTwoFactorForUser($admin);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson($this->apiV1AdminRoute('users.index', query: [
+            'filter' => ['role' => 'admin'],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('filter');
+    }
+
+    #[Test]
+    public function users_index_rejects_unsupported_top_level_query_parameters(): void
+    {
+        $admin = $this->createAdminUser();
+        $this->enableTwoFactorForUser($admin);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson($this->apiV1AdminRoute('users.index', query: [
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['random']);
+    }
+
+    #[Test]
+    public function users_index_rejects_unsupported_spatie_package_parameters(): void
+    {
+        $admin = $this->createAdminUser();
+        $this->enableTwoFactorForUser($admin);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson($this->apiV1AdminRoute('users.index', query: [
+            'include' => 'subscriptions',
+            'fields' => ['users' => 'id,name'],
+            'append' => 'foo',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['include', 'fields', 'append']);
+    }
+
+    #[Test]
+    public function users_index_can_sort_by_name(): void
+    {
+        $admin = $this->createAdminUser(['name' => 'ZZZ Sorting Admin']);
+        $this->enableTwoFactorForUser($admin);
+
+        $alphaUser = $this->createUser(['name' => 'Alpha Admin User']);
+        $zuluUser = $this->createUser(['name' => 'Zulu Admin User']);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson($this->apiV1AdminRoute('users.index', query: [
+            'sort' => 'name',
+        ]))->assertOk();
+
+        $this->assertSame($alphaUser->uuid, $response->json('data.0.uuid'));
+        $this->assertContains($zuluUser->uuid, collect($response->json('data'))->pluck('uuid')->all());
+    }
+
+    #[Test]
+    public function users_index_defaults_to_newest_first_when_sort_is_omitted(): void
+    {
+        $admin = $this->createAdminUser([
+            'created_at' => now()->subDays(10),
+        ]);
+        $this->enableTwoFactorForUser($admin);
+
+        $oldUser = $this->createUser([
+            'name' => 'Old User',
+            'created_at' => now()->subDays(3),
+        ]);
+        $newUser = $this->createUser([
+            'name' => 'New User',
+            'created_at' => now(),
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson($this->apiV1AdminRoute('users.index'))
+            ->assertOk();
+
+        $uuids = collect($response->json('data'))->pluck('uuid')->take(2)->all();
+
+        $this->assertSame([$newUser->uuid, $oldUser->uuid], $uuids);
+    }
+
+    #[Test]
     public function revoking_admin_access_revokes_tokens_and_rotates_remember_token(): void
     {
         $actor = $this->createAdminUser();

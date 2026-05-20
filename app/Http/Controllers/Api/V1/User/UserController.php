@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\User;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\UserRequest;
+use App\Http\Requests\Api\V1\User\UserIndexRequest;
+use App\Http\Requests\Api\V1\User\UserRequest;
 use App\Http\Resources\Api\V1\User\UserProfileResource;
 use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use App\Models\User;
@@ -19,11 +20,11 @@ class UserController extends ApiController
     /**
      * List all users
      *
-     * This endpoint returns a list of all users in the application.
+     * This endpoint returns a paginated list of users in the application.
      */
-    public function index(): JsonResponse
+    public function index(UserIndexRequest $request): JsonResponse
     {
-        $users = $this->userService->allUsers();
+        $users = $this->userService->paginateUsers($request->perPage(), $request->pageNumber());
 
         return UserSummaryResource::collection($users)->response();
     }

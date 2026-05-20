@@ -243,6 +243,9 @@ return [
         'filters' => '10',
         'items_limit' => '6',
     ],
+    'activity' => [
+        'items_limit' => '10',
+    ],
     'tasks' => [
         'limit' => '20',
     ],

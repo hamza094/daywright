@@ -76,7 +76,10 @@ trait RecordActivity
         : $this->morphMany(Activity::class, 'subject');
 
         return $query
-            ->with(['user:id,name,uuid', 'subject' => fn ($query) => $query->withTrashed()])
+            ->with([
+                'user:id,uuid,name,username,avatar_path',
+                'subject' => fn ($query) => $query->withTrashed(),
+            ])
             ->latest()
             ->orderByDesc('id'); // Break ties when multiple activities share same created_at
     }

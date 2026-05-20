@@ -24,6 +24,8 @@ use function Safe\parse_url;
 
 class ConversationService
 {
+    private const array CONVERSATION_RESOURCE_RELATIONS = ['user', 'project:id,slug'];
+
     /**
      * Service For File Storage
      *
@@ -39,9 +41,9 @@ class ConversationService
         try {
             $data = $this->prepareConversationData($payload, $project, $file);
 
-            $conversation = $this->createConversation($project, $actor, $data);
-
-            $conversation->load(['user', 'project:id,slug']);
+            $conversation = $this->loadForResponse(
+                $this->createConversation($project, $actor, $data)
+            );
 
             NewMessage::dispatch($conversation, $project->slug);
 
@@ -92,6 +94,13 @@ class ConversationService
         defer(fn () => $this->deleteFileIfExists($conversation->file));
 
         $conversation->delete();
+    }
+
+    public function loadForResponse(Conversation $conversation): Conversation
+    {
+        $conversation->loadMissing(self::CONVERSATION_RESOURCE_RELATIONS);
+
+        return $conversation;
     }
 
     /**

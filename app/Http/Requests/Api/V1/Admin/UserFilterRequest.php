@@ -4,11 +4,53 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\Api\V1\ApiQueryRequest;
+use App\QueryBuilder\Filters\AdminUserSearchFilter;
 use Override;
+use Spatie\QueryBuilder\AllowedFilter;
+use Spatie\QueryBuilder\AllowedInclude;
+use Spatie\QueryBuilder\AllowedSort;
 
-class UserFilterRequest extends FormRequest
+class UserFilterRequest extends ApiQueryRequest
 {
+    /**
+     * @return array<int, AllowedFilter|string>
+     */
+    public static function allowedFilters(): array
+    {
+        return [
+            AllowedFilter::custom('search', new AdminUserSearchFilter),
+        ];
+    }
+
+    /**
+     * @return array<int, AllowedSort|string>
+     */
+    public static function allowedSorts(): array
+    {
+        return [
+            AllowedSort::field('created_at'),
+            AllowedSort::field('name'),
+            AllowedSort::field('email'),
+        ];
+    }
+
+    /**
+     * @return array<int, AllowedSort|string>
+     */
+    public static function defaultSorts(): array
+    {
+        return ['-created_at'];
+    }
+
+    /**
+     * @return array<int, AllowedInclude|string>
+     */
+    public static function allowedIncludes(): array
+    {
+        return [];
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -20,37 +62,46 @@ class UserFilterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'filter' => ['sometimes', 'array'],
+            'filter' => ['sometimes', 'array:search'],
             'filter.search' => ['sometimes', 'string', 'max:255'],
-            'page' => ['sometimes', 'integer', 'min:1'],
-            'per_page' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            ...$this->topLevelFilterAliasRules(['search']),
+            'sort' => ['sometimes', 'string', 'in:-created_at,created_at,name,-name,email,-email'],
+            ...$this->unsupportedQueryParameterRules(),
+            'page' => $this->pageRule(),
+            'per_page' => $this->perPageRule(),
         ];
-    }
-
-    public function searchTerm(): ?string
-    {
-        $search = $this->validated('filter.search');
-
-        return is_string($search) ? $search : null;
     }
 
     public function perPage(): int
     {
-        return (int) $this->validated('per_page', 7);
+        return $this->perPageValue(7);
+    }
+
+    #[Override]
+    public function messages(): array
+    {
+        return [
+            'filter.array' => 'Only the supported filter keys may be provided.',
+            ...$this->topLevelFilterAliasMessages(['search']),
+            ...$this->unsupportedQueryParameterMessages(),
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function supportedTopLevelQueryParameters(): array
+    {
+        return ['filter', 'sort', 'page', 'per_page'];
     }
 
     #[Override]
     protected function prepareForValidation(): void
     {
-        $inputFilters = $this->input('filter', []);
-        $filters = is_array($inputFilters) ? $inputFilters : [];
+        $filters = $this->normalizedFilters();
 
-        if (! array_key_exists('search', $filters) && $this->has('search')) {
-            $filters['search'] = $this->input('search');
-        }
+        // Strict canonical sort tokens required; validation enforces allowed sorts.
 
-        $this->merge([
-            'filter' => $filters,
-        ]);
+        $this->mergeFilters($filters);
     }
 }

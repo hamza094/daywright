@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use App\Models\Stage;
 use App\Models\TaskStatus;
 use App\Models\User;
@@ -27,7 +28,10 @@ class ActivityResource extends JsonResource
             'description' => $this->{$this->description}(),
             'time' => $this->created_at?->toIso8601String(),
             'subject' => $this->getSubjectDetails(),
-            'user' => $this->user,
+            'user' => $this->whenLoaded(
+                'user',
+                fn (): UserSummaryResource => new UserSummaryResource($this->user),
+            ),
             'affected_users' => $this->when(! empty($this->affected_users), $this->loadAffectedUsers()),
         ];
     }

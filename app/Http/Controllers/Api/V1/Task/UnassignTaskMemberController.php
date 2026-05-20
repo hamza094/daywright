@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Task;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\TaskMemberUnassignRequest;
+use App\Http\Requests\Api\V1\Task\TaskMemberUnassignRequest;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\Task\TaskService;

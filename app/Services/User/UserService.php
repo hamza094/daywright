@@ -8,19 +8,19 @@ use App\DataTransferObjects\User\UpdateUserData;
 use App\Events\PasswordUpdateEvent;
 use App\Models\User;
 use Exception;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class UserService
 {
-    /**
-     * @return Collection<int, User>
-     */
-    public function allUsers(): Collection
+    public function paginateUsers(int $perPage, int $page): LengthAwarePaginator
     {
-        return User::query()->get();
+        return User::query()
+            ->orderBy('id')
+            ->paginate($perPage, ['*'], 'page', $page)
+            ->withQueryString();
     }
 
     public function loadAuthenticatedUser(User $user): User

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\Zoom\MeetingIndexRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingStoreRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingUpdateRequest;
 use App\Http\Resources\Api\V1\Zoom\MeetingResource;
@@ -13,27 +14,29 @@ use App\Models\Meeting;
 use App\Models\Project;
 use App\Services\Project\MeetingService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ZoomMeetingController extends ApiController
 {
-    public function index(Project $project, Request $request, MeetingService $meetingService): JsonResponse
+    public function index(Project $project, MeetingIndexRequest $request, MeetingService $meetingService): JsonResponse
     {
         $this->authorize('access', $project);
+        $isPrevious = $request->isPrevious();
 
-        $isPrevious = ($request->query('request') === 'previous');
-
-        $meetings = $meetingService->getMeetingsData($project, $isPrevious);
+        $meetings = $meetingService->getMeetingsData(
+            $project,
+            $isPrevious,
+            $request->perPage(),
+            $request->pageNumber(),
+        );
 
         return MeetingResource::collection($meetings)->response();
     }
 
-    public function show(Project $project, Meeting $meeting): MeetingResource
+    public function show(Project $project, Meeting $meeting, MeetingService $meetingService): MeetingResource
     {
         $this->authorize('access', $project);
-        $meeting->load(['user']);
 
-        return new MeetingResource($meeting);
+        return new MeetingResource($meetingService->loadForResponse($meeting));
     }
 
     public function store(Zoom $zoom, Project $project, MeetingStoreRequest $request, MeetingService $meetingService): JsonResponse

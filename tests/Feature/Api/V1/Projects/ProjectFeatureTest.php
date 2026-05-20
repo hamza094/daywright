@@ -114,6 +114,33 @@ class ProjectFeatureTest extends TestCase
     }
 
     /** @test */
+    public function project_show_serializes_owner_members_and_recent_activity_users_with_summary_resources(): void
+    {
+        /** @var User $member */
+        $member = User::factory()->create();
+
+        $this->project->members()->attach($member, ['active' => true]);
+        $this->project->addTask('Ship API cleanup');
+
+        $response = $this->getJson($this->apiV1Route('projects.show', ['project' => $this->project]))
+            ->assertOk();
+
+        $response
+            ->assertJsonPath('data.user.id', $this->user->id)
+            ->assertJsonPath('data.user.uuid', $this->user->uuid)
+            ->assertJsonPath('data.user.username', $this->user->username)
+            ->assertJsonMissingPath('data.user.email')
+            ->assertJsonPath('data.members.0.id', $member->id)
+            ->assertJsonPath('data.members.0.uuid', $member->uuid)
+            ->assertJsonPath('data.members.0.username', $member->username)
+            ->assertJsonMissingPath('data.members.0.email')
+            ->assertJsonPath('data.activities.0.user.id', $this->user->id)
+            ->assertJsonPath('data.activities.0.user.uuid', $this->user->uuid)
+            ->assertJsonPath('data.activities.0.user.username', $this->user->username)
+            ->assertJsonMissingPath('data.activities.0.user.email');
+    }
+
+    /** @test */
     public function project_show_includes_project_scoped_limits_only(): void
     {
         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([

@@ -23,7 +23,6 @@ use App\Services\Subscription\PlanLimitService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class TaskService
@@ -39,15 +38,11 @@ class TaskService
         private readonly DeleteTaskAction $deleteTaskAction,
     ) {}
 
-    public function getTasksData(Project $project, bool $isArchived, int $perPage): Collection|LengthAwarePaginator
+    public function getTasksData(Project $project, bool $isArchived, int $perPage, int $page): LengthAwarePaginator
     {
         $query = $this->getTasks($project, $isArchived);
 
-        if ($isArchived) {
-            return $query->get();
-        }
-
-        return $query->paginate($perPage);
+        return $query->paginate($perPage, ['*'], 'page', $page)->withQueryString();
     }
 
     public function createTask(Project $project, User $user, TaskCreateData $data): Task
@@ -133,6 +128,7 @@ class TaskService
     {
         return $project->tasks()
             ->with('project:id,slug')
+            ->orderBy('id')
             ->when(
                 $isArchived,
                 fn (Builder $query) => $query->archived(),
