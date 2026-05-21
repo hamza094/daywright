@@ -75,7 +75,11 @@ class InvitationTest extends TestCase
         Sanctum::actingAs($invitedUser);
 
         $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
-            ->assertJsonPath('message', 'You have accepted Project invitation');
+            ->assertOk()
+            ->assertJsonPath('data.project.id', $this->project->id)
+            ->assertJsonPath('data.project.slug', $this->project->slug)
+            ->assertJsonPath('data.project.links.self', $this->apiV1ProjectRoute('projects.show', $this->project))
+            ->assertJsonPath('data.invitation_state', 'accepted');
 
         $this->assertDatabaseHas('project_members', [
             'project_id' => $this->project->id,
@@ -106,7 +110,11 @@ class InvitationTest extends TestCase
         Sanctum::actingAs($invitedUser);
 
         $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('reject.invitation', $this->project))
-            ->assertJsonPath('message', 'You have rejected the invitation to join the project.');
+            ->assertOk()
+            ->assertJsonPath('data.project.id', $this->project->id)
+            ->assertJsonPath('data.project.slug', $this->project->slug)
+            ->assertJsonPath('data.project.links.self', $this->apiV1ProjectRoute('projects.show', $this->project))
+            ->assertJsonPath('data.invitation_state', 'rejected');
 
         $this->assertDatabaseMissing('project_members', [
             'project_id' => $this->project->id,

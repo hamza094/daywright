@@ -36,7 +36,7 @@ class VerificationTest extends TestCase
 
         $this->postJson($url)
             ->assertSuccessful()
-            ->assertJsonPath('message', 'verification.verified');
+            ->assertJsonPath('data.verified', true);
 
         Event::assertDispatched(Verified::class, fn (Verified $e) => $e->user->is($user));
     }

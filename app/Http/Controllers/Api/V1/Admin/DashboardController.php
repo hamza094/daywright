@@ -28,7 +28,7 @@ class DashboardController extends ApiController
             Artisan::call('backup:clean');
             Artisan::call('backup:run');
 
-            return $this->respondWithMessage('Backup process started');
+            return $this->respondWithMessage('Backup completed successfully.');
         } catch (Throwable $e) {
             throw new ExternalServiceUnavailableException('Backup process could not be started.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }

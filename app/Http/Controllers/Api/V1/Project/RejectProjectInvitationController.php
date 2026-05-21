@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Resources\Api\V1\Project\ProjectSummaryResource;
 use App\Models\Project;
 use App\Services\Project\InvitationService;
 use Illuminate\Http\JsonResponse;
@@ -22,6 +23,9 @@ final class RejectProjectInvitationController extends ApiController
 
         $invitationService->rejectInvitation($project, $user);
 
-        return $this->respondWithMessage('You have rejected the invitation to join the project.');
+        return $this->respondWithData([
+            'project' => (new ProjectSummaryResource($project))->resolve(),
+            'invitation_state' => 'rejected',
+        ]);
     }
 }

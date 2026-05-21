@@ -42,7 +42,9 @@ class VerificationController extends ApiController
 
         event(new Verified($user));
 
-        return $this->respondWithMessage(trans('verification.verified'));
+        return $this->respondWithData([
+            'verified' => true,
+        ]);
     }
 
     /**

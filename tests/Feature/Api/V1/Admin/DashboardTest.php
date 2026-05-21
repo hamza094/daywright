@@ -165,7 +165,7 @@ class DashboardTest extends TestCase
 
         $this->postJson($this->apiV1AdminRoute('backup.database'))
             ->assertOk()
-            ->assertJsonPath('message', 'Backup process started');
+            ->assertJsonPath('message', 'Backup completed successfully.');
     }
 
     #[Test]
