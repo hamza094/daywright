@@ -127,7 +127,9 @@ class LoginUserService
      */
     public function buildTwoFactorRequiredResponse(): JsonResponse
     {
-        return (new TwoFactorChallengeResource)->response()->setStatusCode(Response::HTTP_OK);
+        return response()->json([
+            'data' => (new TwoFactorChallengeResource)->resolve(request()),
+        ], Response::HTTP_OK);
     }
 
     /**

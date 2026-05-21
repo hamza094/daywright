@@ -146,7 +146,8 @@ class TwoFactorAuthenticationTest extends TestCase
         [$response] = $this->beginTwoFactorLogin();
 
         $response->assertJsonPath('data.message', 'Two-factor authentication is enabled. Please provide the verification code.')
-            ->assertJsonPath('data.two_factor_state', '2fa_required');
+            ->assertJsonPath('data.two_factor_state', '2fa_required')
+            ->assertJsonMissingPath('status');
 
         $encryptedSession = session(self::TWO_FA_SESSION);
         $this->assertIsString($encryptedSession);

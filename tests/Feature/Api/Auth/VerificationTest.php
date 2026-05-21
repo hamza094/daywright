@@ -36,9 +36,27 @@ class VerificationTest extends TestCase
 
         $this->postJson($url)
             ->assertSuccessful()
-            ->assertJsonPath('data.verified', true);
+            ->assertJsonPath('data.verified', true)
+            ->assertJsonMissingPath('status');
 
         Event::assertDispatched(Verified::class, fn (Verified $e) => $e->user->is($user));
+    }
+
+    /** @test */
+    public function can_not_verify_if_signature_is_invalid(): void
+    {
+        $user = User::factory()->create([
+            'email_verified_at' => null,
+        ]);
+
+        Sanctum::actingAs(
+            $user
+        );
+
+        $this->postJson(route('api.v1.verification.verify', ['user' => $user]))
+            ->assertStatus(400)
+            ->assertJsonPath('message', 'verification.invalid')
+            ->assertJsonPath('code', 'bad_request');
     }
 
     /** @test */
@@ -54,7 +72,8 @@ class VerificationTest extends TestCase
 
         $this->postJson($url)
             ->assertStatus(400)
-            ->assertJsonPath('message', 'verification.already_verified');
+            ->assertJsonPath('message', 'verification.already_verified')
+            ->assertJsonPath('code', 'bad_request');
     }
 
     /** @test */
@@ -72,7 +91,8 @@ class VerificationTest extends TestCase
         Notification::fake();
 
         $this->postJson($this->apiV1Route('verification.resend', ['user' => $user]), ['email' => $user->email])
-            ->assertSuccessful();
+            ->assertSuccessful()
+            ->assertJsonPath('message', 'verification.sent');
 
         $expectedUrl = URL::temporarySignedRoute('api.v1.verification.verify', $now->copy()->addMinutes(60), [
             'user' => $user->uuid,
@@ -97,6 +117,8 @@ class VerificationTest extends TestCase
 
         $this->postJson($this->apiV1Route('verification.resend', ['user' => $user]), ['email' => $user->email])
             ->assertUnprocessable()
+            ->assertJsonPath('message', 'Validation failed.')
+            ->assertJsonPath('code', 'validation_error')
             ->assertJsonFragment([
                 'errors' => [
                     'email' => ['verification.already_verified'],

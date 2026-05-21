@@ -1,3 +1,5 @@
+import { readErrorMessage } from './apiResponse.js';
+
 // Small, reusable auth-related helpers for Vue/Vuex code
 
 export const twoFaKeys = ['twofa_pending', 'twofa_timestamp'];
@@ -42,6 +44,5 @@ export const pushRoute = (vm, to, appRouter) => {
 };
 
 export const getErrorMessage = (error, fallback = 'An unexpected error occurred.') => {
-  const data = error?.response?.data;
-  return data?.error || data?.message || fallback;
+  return readErrorMessage(error, fallback);
 };
