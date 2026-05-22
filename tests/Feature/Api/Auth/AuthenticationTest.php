@@ -184,6 +184,7 @@ class AuthenticationTest extends TestCase
             ->assertJsonStructure([
                 'data' => [
                     'user' => ['uuid', 'name', 'email'],
+                    'features',
                 ],
             ])
             ->assertJsonMissingPath('data.access_token');

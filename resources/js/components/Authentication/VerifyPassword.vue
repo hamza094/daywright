@@ -29,27 +29,32 @@
 </template>
 
 <script>
+import { getVerificationFailureReason, parseVerificationResponse } from '../../utils/authResponse.js';
+
 // Use axios `params` for query encoding instead of manual builder
 export default {
   async beforeRouteEnter(to, from, next) {
     try {
-      const { data } = await axios.post(`/email/verify/${encodeURIComponent(to.params.user)}`, null, {
+      const response = await axios.post(`/email/verify/${encodeURIComponent(to.params.user)}`, null, {
         params: to.query,
       });
       next((vm) => {
-        vm.success = data.status;
-        vm.$store.dispatch('currentUser/updateVerifiedStatus', true);
+        vm.success = parseVerificationResponse(response).verified;
+
+        if (vm.success) {
+          vm.$store.dispatch('currentUser/updateVerifiedStatus', true);
+        }
       });
     } catch (e) {
       next((vm) => {
         vm.handleErrorResponse(e);
-        vm.error = e.response?.data?.status || 'verification.invalid';
+        vm.error = getVerificationFailureReason(e);
       });
     }
   },
   data: () => ({
     error: '',
-    success: '',
+    success: false,
   }),
 };
 </script>

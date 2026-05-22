@@ -1,88 +1,79 @@
-const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
-
-const isAxiosResponse = (value) =>
-  isPlainObject(value) && 'data' in value && ('status' in value || 'headers' in value || 'config' in value);
-
-const normalizePayload = (value) => {
-  if (isAxiosResponse(value)) {
-    return isPlainObject(value.data) ? value.data : {};
-  }
-
-  return isPlainObject(value) ? value : {};
+const asObject = (value) => {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {};
 };
 
-const firstValidationMessage = (errors) => {
-  if (!isPlainObject(errors)) {
-    return '';
+const asNonEmptyString = (value) => {
+  return typeof value === 'string' && value.trim() !== '' ? value : '';
+};
+
+const asStringArray = (value) => {
+  if (!Array.isArray(value)) {
+    return [];
   }
 
-  return (
-    Object.values(errors)
-      .flat()
-      .find((message) => typeof message === 'string' && message.trim() !== '') || ''
+  return value.filter((item) => typeof item === 'string' && item.trim() !== '');
+};
+
+const looksLikeAxiosResponse = (value) => {
+  const candidate = asObject(value);
+
+  return 'status' in candidate || 'headers' in candidate || 'config' in candidate;
+};
+
+export const getResponsePayload = (value) => {
+  if (looksLikeAxiosResponse(value)) {
+    return asObject(value.data);
+  }
+
+  return asObject(value);
+};
+
+const normalizeValidationErrors = (errors) => {
+  return Object.fromEntries(
+    Object.entries(asObject(errors)).map(([field, messages]) => [field, asStringArray(messages)]),
   );
 };
 
-export const readResponsePayload = (response) => normalizePayload(response);
+const findFirstValidationMessage = (errors) => {
+  for (const messages of Object.values(errors)) {
+    if (messages.length > 0) {
+      return messages[0];
+    }
+  }
 
-export const readResourceData = (response) => {
-  const payload = readResponsePayload(response);
+  return '';
+};
+
+export const getResponseData = (response) => {
+  const payload = getResponsePayload(response);
 
   return Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : null;
 };
 
-export const readPaginatedResponse = (response) => {
-  const payload = readResponsePayload(response);
+export const getPaginatedData = (response) => {
+  const payload = getResponsePayload(response);
 
   return {
     data: Array.isArray(payload.data) ? payload.data : [],
-    meta: isPlainObject(payload.meta) ? payload.meta : {},
-    links: isPlainObject(payload.links) ? payload.links : {},
+    meta: asObject(payload.meta),
+    links: asObject(payload.links),
   };
 };
 
-export const readMessage = (response) => {
-  const payload = readResponsePayload(response);
-
-  return typeof payload.message === 'string' ? payload.message : '';
+export const getResponseMessage = (response) => {
+  return asNonEmptyString(getResponsePayload(response).message);
 };
 
-export const readErrorPayload = (error) => normalizePayload(error?.response ?? error);
+export const parseApiError = (error, fallback = '') => {
+  const payload = getResponsePayload(error?.response ?? error);
+  const errors = normalizeValidationErrors(payload.errors);
+  const message = asNonEmptyString(payload.message) || findFirstValidationMessage(errors) || fallback;
 
-export const readErrorCode = (error) => {
-  const payload = readErrorPayload(error);
-
-  return typeof payload.code === 'string' ? payload.code : '';
-};
-
-export const readValidationErrors = (error) => {
-  const payload = readErrorPayload(error);
-
-  return isPlainObject(payload.errors) ? payload.errors : {};
-};
-
-export const readErrorMeta = (error) => {
-  const payload = readErrorPayload(error);
-
-  return isPlainObject(payload.meta) ? payload.meta : {};
-};
-
-export const readErrorMessage = (error, fallback = '') => {
-  const payload = readErrorPayload(error);
-
-  if (typeof payload.message === 'string' && payload.message.trim() !== '') {
-    return payload.message;
-  }
-
-  if (typeof payload.error === 'string' && payload.error.trim() !== '') {
-    return payload.error;
-  }
-
-  const validationMessage = firstValidationMessage(payload.errors);
-
-  if (validationMessage !== '') {
-    return validationMessage;
-  }
-
-  return fallback;
+  return {
+    payload,
+    code: asNonEmptyString(payload.code),
+    errors,
+    message,
+    meta: asObject(payload.meta),
+  };
 };

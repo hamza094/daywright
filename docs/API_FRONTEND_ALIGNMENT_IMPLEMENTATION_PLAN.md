@@ -193,15 +193,15 @@ Why this phase comes second:
 
 Step-by-step tasks:
 
-- [ ] Update `resources/js/store/currentUser` so helper-backed login success reads `response.data.data.user` and `response.data.data.features`.
-- [ ] Update the same store so `/users/me` bootstrap reads `response.data.data.user` and `response.data.data.features`.
-- [ ] Update the 2FA login branch to look for `two_factor_state` from the agreed Phase 1 contract instead of `status`.
-- [ ] Update `resources/js/components/Authentication/TwoFACode.vue` to read the 2FA fetch-user response from `data.two_factor_state`.
-- [ ] Update `resources/js/components/Profile/TwoFactorAuth.vue` to read `data.two_factor_state`, `data.qr_code`, and `data.recovery_codes`.
-- [ ] Replace camelCase assumptions such as `recoveryCodes` with the backend's snake_case contract unless a local adapter normalizes that explicitly.
-- [ ] Update `resources/js/components/Authentication/VerifyPassword.vue` to read `data.verified` on success.
-- [ ] Update verification failure handling to use the Phase 1 error contract decision.
-- [ ] Verify `POST /email/resend/{user}` remains message-only and update all callers accordingly.
+- [x] Update `resources/js/store/currentUser` so helper-backed login success reads `response.data.data.user` and `response.data.data.features`.
+- [x] Update the same store so `/users/me` bootstrap reads `response.data.data.user` and `response.data.data.features`.
+- [x] Update the 2FA login branch to look for `two_factor_state` from the agreed Phase 1 contract instead of `status`.
+- [x] Update `resources/js/components/Authentication/TwoFACode.vue` to read the 2FA fetch-user response from `data.two_factor_state`.
+- [x] Update `resources/js/components/Profile/TwoFactorAuth.vue` to read `data.two_factor_state`, `data.qr_code`, and `data.recovery_codes`.
+- [x] Replace camelCase assumptions such as `recoveryCodes` with the backend's snake_case contract unless a local adapter normalizes that explicitly.
+- [x] Update `resources/js/components/Authentication/VerifyPassword.vue` to read `data.verified` on success.
+- [x] Update verification failure handling to use the Phase 1 error contract decision.
+- [x] Verify `POST /email/resend/{user}` remains message-only and update all callers accordingly.
 
 Likely files involved:
 

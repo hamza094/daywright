@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Auth;
 
+use App\Http\Resources\Api\V1\FeatureFlagsResource;
 use App\Http\Resources\Api\V1\User\AuthenticatedUserResource;
 use App\Models\User;
 use Dedoc\Scramble\Attributes\SchemaName;
@@ -29,6 +30,7 @@ class AuthenticatedSessionResource extends JsonResource
     {
         return [
             'user' => new AuthenticatedUserResource($this->user),
+            'features' => new FeatureFlagsResource($this->user),
         ];
     }
 }

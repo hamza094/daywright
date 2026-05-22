@@ -88,6 +88,7 @@
 import ProjectChart from './ProjectChart.vue';
 import TasksData from './TasksData.vue';
 import ActivityCalendar from './ActivityCalendar.vue';
+import { getResponseMessage } from '../../utils/apiResponse.js';
 
 export default {
   components: {
@@ -117,8 +118,8 @@ export default {
     resendMail() {
       axios
         .post('/email/resend/' + this.user.uuid, {})
-        .then(() => {
-          this.$vToastify.success('Verification link sent successfully');
+        .then((response) => {
+          this.$vToastify.success(getResponseMessage(response) || 'Verification link sent successfully');
         })
         .catch((error) => {
           this.handleErrorResponse(error);

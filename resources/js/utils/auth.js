@@ -1,4 +1,4 @@
-import { readErrorMessage } from './apiResponse.js';
+import { parseApiError } from './apiResponse.js';
 
 // Small, reusable auth-related helpers for Vue/Vuex code
 
@@ -44,5 +44,5 @@ export const pushRoute = (vm, to, appRouter) => {
 };
 
 export const getErrorMessage = (error, fallback = 'An unexpected error occurred.') => {
-  return readErrorMessage(error, fallback);
+  return parseApiError(error, fallback).message;
 };

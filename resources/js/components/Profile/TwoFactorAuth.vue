@@ -117,10 +117,10 @@
             <ul class="list-group" role="list" aria-label="Recovery codes list">
               <li
                 v-for="(rc, index) in recoveryCodes"
-                :key="rc.code"
+                :key="rc"
                 class="list-group-item d-flex justify-content-between align-items-center"
                 role="listitem">
-                <span class="font-monospace">{{ rc.code }}</span>
+                <span class="font-monospace">{{ rc }}</span>
                 <small class="text-muted">Code {{ index + 1 }}</small>
               </li>
             </ul>
@@ -269,6 +269,9 @@
 <script>
 import ConfirmPasswordModal from './Partials/ConfirmPasswordModal.vue';
 import Disable2FAConfirmModal from './Partials/Disable2FAConfirmModal.vue';
+import { parseApiError } from '../../utils/apiResponse.js';
+import { parseTwoFactorResponse } from '../../utils/authResponse.js';
+
 export default {
   name: 'TwoFactorAuth',
   components: {
@@ -338,7 +341,7 @@ export default {
       this.showCodes = !this.showCodes;
     },
     copyRecoveryCodes() {
-      const codes = this.recoveryCodes.map((code) => code.code).join('\n');
+      const codes = this.recoveryCodes.join('\n');
       navigator.clipboard.writeText(codes).then(
         () => {
           this.$vToastify.success('Recovery codes copied to clipboard!');
@@ -361,12 +364,9 @@ export default {
       }
     },
     extractError(e, fallback = 'An error occurred.') {
-      return (
-        e.response?.data?.errors?.code?.[0] ||
-        e.response?.data?.errors?.two_factor?.[0] ||
-        e.response?.data?.message ||
-        fallback
-      );
+      const { errors, message } = parseApiError(e, fallback);
+
+      return errors.code?.[0] || errors.two_factor?.[0] || errors.password?.[0] || message || fallback;
     },
     resetState(loadingKey) {
       this.error = '';
@@ -390,9 +390,11 @@ export default {
         () => axios.get('/twofactor/fetch-user'),
         [],
         async (res) => {
-          this.status = res.data.status;
+          const twoFactor = parseTwoFactorResponse(res);
+
+          this.status = twoFactor.state;
           if (this.status === 'in_progress') {
-            this.qrCode = res.data.qr_code;
+            this.qrCode = twoFactor.qrCode;
           }
           if (this.status === 'enabled') {
             // Always fetch recovery codes when enabled
@@ -407,7 +409,7 @@ export default {
         () => axios.get('/twofactor/recovery-codes'),
         [],
         (res) => {
-          this.recoveryCodes = res.data.recoveryCodes;
+          this.recoveryCodes = parseTwoFactorResponse(res).recoveryCodes;
         },
       );
     },
@@ -416,8 +418,10 @@ export default {
         () => axios.post('/twofactor/setup', { password }),
         [],
         (res) => {
-          this.status = res.data.status;
-          this.qrCode = res.data.qr_code;
+          const twoFactor = parseTwoFactorResponse(res);
+
+          this.status = twoFactor.state;
+          this.qrCode = twoFactor.qrCode;
           this.$vToastify.success('2FA setup started.');
           this.closeModal();
         },
@@ -429,8 +433,10 @@ export default {
         () => axios.post('/twofactor/confirm', { code: this.code }),
         [],
         async (res) => {
-          this.recoveryCodes = res.data.recoveryCodes;
-          this.status = res.data.status;
+          const twoFactor = parseTwoFactorResponse(res);
+
+          this.recoveryCodes = twoFactor.recoveryCodes;
+          this.status = twoFactor.state;
           this.qrCode = null;
           this.code = '';
           this.$vToastify.success('2FA successfully verified.');
@@ -443,7 +449,7 @@ export default {
         () => axios.get('/twofactor/recovery-codes'),
         [],
         (res) => {
-          this.recoveryCodes = res.data.recoveryCodes;
+          this.recoveryCodes = parseTwoFactorResponse(res).recoveryCodes;
           this.$vToastify.success('Recovery codes regenerated.');
         },
         'regenerateLoading',
@@ -454,11 +460,13 @@ export default {
         () => axios.delete('/twofactor/disable'),
         [],
         (res) => {
-          this.status = res.data.status;
+          this.status = parseTwoFactorResponse(res).state;
           this.recoveryCodes = [];
           this.qrCode = null;
           this.code = '';
-          this.$vToastify.success(res.data.message);
+          this.codeError = '';
+          this.showCodes = false;
+          this.$vToastify.success('Two-factor authentication disabled.');
         },
         'disableLoading',
       );

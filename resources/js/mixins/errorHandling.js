@@ -1,10 +1,4 @@
-import {
-  readErrorCode,
-  readErrorMessage,
-  readErrorMeta,
-  readErrorPayload,
-  readValidationErrors,
-} from '../utils/apiResponse.js';
+import { parseApiError } from '../utils/apiResponse.js';
 
 function isCanceledRequestError(error) {
   const message = typeof error?.message === 'string' ? error.message : '';
@@ -20,15 +14,15 @@ export function logApiError(error) {
   }
 
   const response = error?.response;
-  const data = readErrorPayload(error);
+  const { payload } = parseApiError(error);
 
   if (import.meta?.env?.DEV) {
     console.debug('API error response', {
       status: response?.status,
-      message: data?.message,
-      code: data?.code,
-      errors: data?.errors,
-      meta: data?.meta,
+      message: payload?.message,
+      code: payload?.code,
+      errors: payload?.errors,
+      meta: payload?.meta,
     });
   }
 }
@@ -82,9 +76,7 @@ function redirectToSubscription(router) {
 
 export function handleGlobalApiError(error, { modal, toast, router } = {}) {
   const response = error?.response;
-  const code = readErrorCode(error);
-  const message = readErrorMessage(error);
-  const meta = readErrorMeta(error);
+  const { code, message, meta } = parseApiError(error);
 
   if (isCanceledRequestError(error)) {
     markGlobalApiHandled(error);
@@ -137,8 +129,7 @@ export function handleGlobalApiError(error, { modal, toast, router } = {}) {
 export default {
   methods: {
     handleErrorResponse(error) {
-      const validationErrors = readValidationErrors(error);
-      const message = readErrorMessage(error);
+      const { errors: validationErrors, message } = parseApiError(error);
 
       logApiError(error);
 

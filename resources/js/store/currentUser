@@ -1,11 +1,16 @@
 import router from '../router.js';
 import Vue from 'vue';
 import { clearTwoFaState, markTwoFaPending, pushRoute, getErrorMessage } from '../utils/auth.js';
-import { getFeaturesFromStore } from '../utils/features.js';
+import { parseApiError } from '../utils/apiResponse.js';
+import { isTwoFactorChallenge, parseAuthSession } from '../utils/authResponse.js';
+
+const normalizeFeatureFlags = (features) => {
+  return features !== null && typeof features === 'object' && !Array.isArray(features) ? features : {};
+};
 
 const normalizeUser = (user, features = null) => {
   const baseUser = user ?? {};
-  const mergedFeatures = features ?? baseUser.features ?? {};
+  const mergedFeatures = normalizeFeatureFlags(features ?? baseUser.features);
 
   return {
     ...baseUser,
@@ -34,8 +39,10 @@ const getters = {};
 
 const actions = {
   finalizeLogin({ commit, dispatch }, { response, vm, toastMsg }) {
+    const { user, features } = parseAuthSession(response);
+
     clearTwoFaState();
-    commit('setUser', normalizeUser(response.data.user, response.data.features));
+    commit('setUser', normalizeUser(user, features));
     commit('loggedIn', true);
     commit('clearErrors');
 
@@ -45,7 +52,7 @@ const actions = {
   },
 
   handleLoginResponse({ dispatch }, response) {
-    if (response.data.status === '2fa_required') {
+    if (isTwoFactorChallenge(response)) {
       markTwoFaPending();
       pushRoute(null, { name: 'TwoFACode' }, router);
       return;
@@ -62,9 +69,9 @@ const actions = {
       Vue.prototype.$Progress.finish();
     } catch (error) {
       Vue.prototype.$Progress.fail();
-      const data = error?.response?.data;
-      if (data?.errors) {
-        commit('setErrors', data.errors);
+      const { errors: validationErrors } = parseApiError(error);
+      if (Object.keys(validationErrors).length > 0) {
+        commit('setErrors', validationErrors);
       } else {
         commit('clearErrors');
         Vue.prototype.$vToastify.error(getErrorMessage(error));
@@ -99,23 +106,24 @@ const actions = {
 
   async bootstrapSession({ commit, dispatch }) {
     try {
-      const { data } = await axios.get('/users/me');
+      const response = await axios.get('/users/me');
+      const { user, features } = parseAuthSession(response);
 
-      if (data?.user) {
-        commit('setUser', normalizeUser(data.user, data.features));
+      if (user) {
+        commit('setUser', normalizeUser(user, features));
         commit('loggedIn', true);
         commit('clearErrors');
         try {
           await dispatch('subscribeUser/userSubscription', null, { root: true });
-        } catch (_) {
+        } catch {
           // ignore subscription errors during bootstrap
         }
-        return data.user;
+        return user;
       }
 
       resetAuthState(commit, dispatch, { notify: false });
       return null;
-    } catch (_) {
+    } catch {
       resetAuthState(commit, dispatch, { notify: false });
       return null;
     } finally {

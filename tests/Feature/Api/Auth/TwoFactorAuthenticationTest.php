@@ -213,6 +213,7 @@ class TwoFactorAuthenticationTest extends TestCase
             ->assertJsonStructure([
                 'data' => [
                     'user' => ['uuid', 'name', 'email'],
+                    'features',
                 ],
             ]);
 
