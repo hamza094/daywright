@@ -72,6 +72,8 @@ class TaskController extends ApiController
      */
     public function update(Project $project, Task $task, TaskUpdateRequest $request, TaskService $taskService): JsonResponse
     {
+        $this->authorize('manage', $task);
+
         $task = $taskService->updateTask($task, $request->taskUpdateData());
 
         return $this->respondUpdated(new TaskResource($task));

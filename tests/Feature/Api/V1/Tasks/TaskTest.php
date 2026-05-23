@@ -276,6 +276,28 @@ class TaskTest extends TestCase
     }
 
     /** @test */
+    public function project_member_cannot_update_another_users_task(): void
+    {
+        $task = $this->project->addTask('test task');
+        $member = User::factory()->create();
+
+        $this->project->members()->attach($member->id, ['active' => true]);
+
+        Sanctum::actingAs($member);
+
+        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
+            'title' => 'Unauthorized update',
+        ])->assertForbidden()
+            ->assertJsonPath('message', "Only Project's owner and task owner are allowed to access this feature.")
+            ->assertJsonPath('code', 'forbidden');
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'title' => 'test task',
+        ]);
+    }
+
+    /** @test */
     public function user_cannot_update_task_when_project_is_abandoned(): void
     {
         $task = $this->project->addTask('test task');

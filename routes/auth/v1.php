@@ -31,7 +31,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
         ->name('verification.verify')
         ->middleware('throttle:verification');
 
-    Route::post('email/resend/{user}', [VerificationController::class, 'resend'])
+    Route::post('email/resend', [VerificationController::class, 'resend'])
         ->name('verification.resend')
         ->middleware('throttle:verification');
 

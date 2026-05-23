@@ -128,16 +128,20 @@ class InvitationTest extends TestCase
         /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
-        $this->deleteJson(route('api.v1.projects.cancel-invitation',
-            ['project' => $this->project, 'user' => $invitedUser,
-            ]))
-            ->assertForbidden();
+        $route = route('api.v1.projects.cancel-invitation', [
+            'project' => $this->project,
+            'user' => $invitedUser,
+        ]);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => 'You have canceled the invitation for '.$invitedUser->name.' to join the project.',
+            ]);
 
         $this->project->invite($invitedUser);
 
-        $this->deleteJson(route('api.v1.projects.cancel-invitation',
-            ['project' => $this->project, 'user' => $invitedUser,
-            ]))
+        $this->deleteJson($route)
             ->assertJson([
                 'message' => 'You have canceled the invitation for '.$invitedUser->name.' to join the project.',
             ]);
@@ -146,6 +150,32 @@ class InvitationTest extends TestCase
             'project_id' => $this->project->id,
             'user_id' => $invitedUser->id,
         ]);
+    }
+
+    /** @test */
+    public function project_owner_can_repeat_invitation_cancellation_without_error(): void
+    {
+        /** @var User $invitedUser */
+        $invitedUser = User::factory()->create();
+
+        $this->project->invite($invitedUser);
+
+        $route = route('api.v1.projects.cancel-invitation', [
+            'project' => $this->project,
+            'user' => $invitedUser,
+        ]);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => 'You have canceled the invitation for '.$invitedUser->name.' to join the project.',
+            ]);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => 'You have canceled the invitation for '.$invitedUser->name.' to join the project.',
+            ]);
     }
 
     /** @test */

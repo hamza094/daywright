@@ -118,7 +118,7 @@ export default {
   methods: {
     resendMail() {
       axios
-        .post('/email/resend/' + this.user.uuid, {})
+        .post('/email/resend', {})
         .then((response) => {
           this.$vToastify.success(getResponseMessage(response) || 'Verification link sent successfully');
         })
