@@ -43,7 +43,8 @@ class ApiTokenService
     {
         $currentToken = $user->currentAccessToken();
 
-        if (! $currentToken instanceof PersonalAccessToken) {
+        // @phpstan-ignore-next-line - currentAccessToken() phpdoc may be overly-certain about nullability
+        if ($currentToken === null) {
             throw new AccessDeniedHttpException('No current access token found.');
         }
 

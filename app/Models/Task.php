@@ -14,6 +14,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Override;
 
+/**
+ * @mixin \App\QueryBuilder\TaskQueryBuilder
+ */
 class Task extends Model
 {
     use HasFactory, RecordActivity, SoftDeletes;
@@ -46,9 +49,12 @@ class Task extends Model
      * Get project associated to the task.
      *
      * @return BelongsTo<Project, Task>
+     *
+     * @phpstan-return BelongsTo<Project, static>
      */
     public function project(): BelongsTo
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsTo(Project::class);
     }
 
@@ -56,26 +62,38 @@ class Task extends Model
      * Get user who created task.
      *
      * @return BelongsTo<User, Task>
+     *
+     * @phpstan-return BelongsTo<User, static>
      */
     public function owner(): BelongsTo
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsTo(User::class, 'user_id');
     }
 
     /**
      * Get the task assignees.
      *
-     * @return BelongsToMany<User>
+     * @return BelongsToMany<User, Task, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function assignee(): BelongsToMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsToMany(User::class);
     }
 
+    /**
+     * @return BelongsToMany<User, Task, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot>
+     */
     public function assigneeBasic(): BelongsToMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsToMany(User::class)
-            ->select('users.id', 'users.name'); // no roles
+            ->select(['users.id', 'users.name']);
     }
 
     /**

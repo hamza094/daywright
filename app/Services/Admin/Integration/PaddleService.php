@@ -20,6 +20,7 @@ final class PaddleService implements PaddleApi
     public function subscriptionUsersList(UserSubscriptionData $listData): DataCollection
     {
         try {
+            /** @var array<string, mixed> $subscriptionsData */
             $subscriptionsData = $this->connector()
                 ->send(new SubscriptionUsersList($listData))
                 ->collect();
@@ -27,7 +28,11 @@ final class PaddleService implements PaddleApi
             throw new PaddleRequestException(previous: $exception);
         }
 
-        $subscriptions = collect($subscriptionsData['response']);
+        /** @var array<int, array<string,mixed>> $subscriptionsArray */
+        $subscriptionsArray = $subscriptionsData['response'] ?? [];
+
+        /** @var \Illuminate\Support\Collection<int, array<string,mixed>> $subscriptions */
+        $subscriptions = collect($subscriptionsArray);
 
         $filteredSubscriptions = $subscriptions->map(fn ($subscription): Data => new Data(
             (int) ($subscription['user_id'] ?? 0),

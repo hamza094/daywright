@@ -8,7 +8,6 @@ use App\Http\Resources\Api\V1\ApiResourceLink;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
-use JsonSerializable;
 use Override;
 
 /**
@@ -21,7 +20,7 @@ class TaskCollectionResource extends JsonResource
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
+     * @return array<string, mixed>
      */
     #[Override]
     public function toArray($request)
@@ -51,7 +50,7 @@ class TaskCollectionResource extends JsonResource
              *
              * @example 2024-12-19T15:25:00+00:00
              */
-            'due_at' => $this->when($this->due_at, fn (): string => $this->due_at->toIso8601String()),
+            'due_at' => $this->when($this->due_at !== null, fn (): string => $this->due_at->toIso8601String()),
             /**
              * Task created date time in UTC ISO 8601 format.
              *

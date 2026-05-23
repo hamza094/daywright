@@ -23,6 +23,7 @@ final class RemoveProjectMemberAction
                 return;
             }
 
+            // @phpstan-ignore-next-line - Eloquent pivot exposes dynamic properties at runtime
             if (! (bool) $membership->pivot->active) {
                 throw ValidationException::withMessages([
                     'user' => 'This user is not an active member of the project.',

@@ -19,9 +19,9 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use App\Notifications\ProjectTask;
+use App\QueryBuilder\TaskQueryBuilder;
 use App\Services\Subscription\PlanLimitService;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 
@@ -38,8 +38,12 @@ class TaskService
         private readonly DeleteTaskAction $deleteTaskAction,
     ) {}
 
+    /**
+     * @return LengthAwarePaginator<int, Task>
+     */
     public function getTasksData(Project $project, bool $isArchived, int $perPage, int $page): LengthAwarePaginator
     {
+        /** @var TaskQueryBuilder $query */
         $query = $this->getTasks($project, $isArchived);
 
         return $query->paginate($perPage, ['*'], 'page', $page)->withQueryString();
@@ -133,7 +137,7 @@ class TaskService
             ), $project, $actor);
     }
 
-    private function getTasks(Project $project, bool $isArchived): HasMany
+    private function getTasks(Project $project, bool $isArchived): TaskQueryBuilder
     {
         return $project->tasks()
             ->with('project:id,slug')

@@ -22,6 +22,11 @@ class ApiController extends Controller
 {
     use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
 
+    /**
+     * @param  array<int|string,mixed>|Arrayable<int,mixed>|JsonSerializable  $data
+     * @param  array<string,mixed>  $meta
+     * @param  array<string,mixed>  $links
+     */
     protected function respondWithData(
         array|Arrayable|JsonSerializable $data,
         int $status = Response::HTTP_OK,
@@ -31,16 +36,27 @@ class ApiController extends Controller
         return $this->respondWithPayload($data, $status, $meta, $links);
     }
 
+    /**
+     * @param  array<int|string,mixed>|Arrayable<int,mixed>|JsonSerializable  $data
+     */
     protected function respondCreated(array|Arrayable|JsonSerializable $data): JsonResponse
     {
         return $this->respondWithData($data, Response::HTTP_CREATED);
     }
 
+    /**
+     * @param  array<int|string,mixed>|Arrayable<int,mixed>|JsonSerializable  $data
+     */
     protected function respondUpdated(array|Arrayable|JsonSerializable $data): JsonResponse
     {
         return $this->respondWithData($data);
     }
 
+    /**
+     * @param  array<int|string,mixed>|Arrayable<int,mixed>|JsonSerializable  $data
+     * @param  LengthAwarePaginator<int,mixed>  $paginator
+     * @param  array<string,mixed>  $meta
+     */
     protected function respondWithPaginatedData(
         array|Arrayable|JsonSerializable $data,
         LengthAwarePaginator $paginator,
@@ -97,6 +113,9 @@ class ApiController extends Controller
         return $user;
     }
 
+    /**
+     * @param  array<int|string,mixed>|Arrayable<int,mixed>|JsonSerializable  $data
+     */
     private function normalizeResponseData(array|Arrayable|JsonSerializable $data): mixed
     {
         if ($data instanceof JsonResource) {
@@ -114,6 +133,11 @@ class ApiController extends Controller
         return $data;
     }
 
+    /**
+     * @param  array<int|string,mixed>|Arrayable<int,mixed>|JsonSerializable  $data
+     * @param  array<string,mixed>  $meta
+     * @param  array<string,mixed>  $links
+     */
     private function respondWithPayload(
         array|Arrayable|JsonSerializable $data,
         int $status,

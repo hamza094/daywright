@@ -11,6 +11,9 @@ final class MessageRepository
 {
     private const MESSAGE_RESOURCE_RELATIONS = ['users:id,uuid,name,username,avatar_path'];
 
+    /**
+     * @return LengthAwarePaginator<int, \App\Models\Message>
+     */
     public function paginateScheduledMessages(Project $project, int $perPage, int $page): LengthAwarePaginator
     {
         return $project->messages()

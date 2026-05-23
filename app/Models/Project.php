@@ -19,10 +19,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Collection;
 use Override;
 
-/** @use HasFactory<ProjectFactory> */
+/**
+ * @use HasFactory<ProjectFactory>
+ *
+ * @mixin \App\QueryBuilder\ProjectQueryBuilder
+ */
 class Project extends Model
 {
     use HasFactory;
@@ -42,7 +45,7 @@ class Project extends Model
     /**
      * Accessors to append to model's array/JSON form.
      *
-     * @var array<int,string>
+     * @var list<string>
      */
     protected $appends = ['health_status'];
 
@@ -114,7 +117,9 @@ class Project extends Model
             return $project;
         }
 
-        if ($this->resolveSoftDeletableRouteBinding($value, $field)?->trashed()) {
+        $softModel = $this->resolveSoftDeletableRouteBinding($value, $field);
+
+        if ($softModel instanceof Project && $softModel->trashed()) {
             throw ArchivedResourceException::project();
         }
 
@@ -171,21 +176,31 @@ class Project extends Model
     /**
      * Get tasks releated to the project.
      *
-     * @return HasMany<Task>
+     * @return HasMany<Task, Project>
+     *
+     * @phpstan-return HasMany<Task, static>
      */
     public function tasks(): HasMany
     {
-        return $this->hasMany(Task::class)->latest();
+        /** @var HasMany<Task, static> $relation */
+        $relation = $this->hasMany(Task::class)->latest();
+
+        return $relation;
     }
 
     /**
      * Get project messages.
      *
-     * @return HasMany<Message>
+     * @return HasMany<Message, Project>
+     *
+     * @phpstan-return HasMany<Message, static>
      */
     public function messages(): HasMany
     {
-        return $this->hasMany(Message::class);
+        /** @var HasMany<Message, static> $relation */
+        $relation = $this->hasMany(Message::class);
+
+        return $relation;
     }
 
     public function addTask(string $title): Task
@@ -201,7 +216,7 @@ class Project extends Model
      * Add multiple tasks to the project.
      *
      * @param  array<int,array<string,mixed>>  $tasks
-     * @return EloquentCollection<int,Task>
+     * @return EloquentCollection<int, Task>
      */
     public function addTasks(array $tasks): EloquentCollection
     {
@@ -220,47 +235,67 @@ class Project extends Model
     /**
      * Get the project members.
      *
-     * @return BelongsToMany<User>
+     * @return BelongsToMany<User, Project, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'project_members')
+        /** @var BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot> $relation */
+        $relation = $this->belongsToMany(User::class, 'project_members')
             ->withPivot('active')->withTimestamps();
+
+        return $relation;
     }
 
     /**
      * Get project active members.
      *
-     * @return BelongsToMany<User>
+     * @return BelongsToMany<User, Project, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function activeMembers(): BelongsToMany
     {
-        return $this
+        /** @var BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot> $relation */
+        $relation = $this
             ->members()
             ->wherePivot('active', true);
+
+        return $relation;
     }
 
     /**
      * Get the project active members.
      *
-     * @return BelongsToMany<User>
+     * @return BelongsToMany<User, Project, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function asignees(): BelongsToMany
     {
-        return $this
+        /** @var BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot> $relation */
+        $relation = $this
             ->belongsToMany(User::class, 'project_members')
             ->wherePivot('active', true)
             ->select(['users.id', 'users.name', 'users.email']);
+
+        return $relation;
     }
 
     /**
      * Get chat conversations releated to the project.
      *
-     * @return HasMany<Conversation>
+     * @return HasMany<Conversation, Project>
+     *
+     * @phpstan-return HasMany<Conversation, static>
      */
     public function conversations(): HasMany
     {
-        return $this->hasMany(Conversation::class);
+        /** @var HasMany<Conversation, static> $relation */
+        $relation = $this->hasMany(Conversation::class);
+
+        return $relation;
     }
 
     public function tasksReachedItsLimit(): bool
@@ -299,9 +334,9 @@ class Project extends Model
     /**
      * Get all scheduled messages releated to project
      *
-     * @return Collection<int, Message>
+     * @return EloquentCollection<int, Message>
      */
-    public function scheduledMessages(): Collection
+    public function scheduledMessages(): EloquentCollection
     {
         return $this
             ->messages()
@@ -315,7 +350,7 @@ class Project extends Model
     /**
      * Return a limited activities relation (shallow wrapper).
      *
-     * @return HasMany<Activity>
+     * @return HasMany<Activity, Project>
      */
     public function limitedActivities(): HasMany
     {
@@ -335,11 +370,16 @@ class Project extends Model
     /**
      * Get meetings releated to the project.
      *
-     * @return HasMany<Meeting>
+     * @return HasMany<Meeting, Project>
+     *
+     * @phpstan-return HasMany<Meeting, static>
      */
     public function meetings(): HasMany
     {
-        return $this->hasMany(Meeting::class);
+        /** @var HasMany<Meeting, static> $relation */
+        $relation = $this->hasMany(Meeting::class);
+
+        return $relation;
     }
 
     /**

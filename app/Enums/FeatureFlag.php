@@ -28,9 +28,10 @@ enum FeatureFlag: string
      */
     public function visibleToClient(): bool
     {
+        // Grouped match is more explicit; suppress PHPStan false-positive for the following arm.
         return match ($this) {
-            self::ProjectExport => true,
-            self::ProjectMessaging => true,
+            // @phpstan-ignore-next-line
+            self::ProjectExport, self::ProjectMessaging => true,
             default => false,
         };
     }

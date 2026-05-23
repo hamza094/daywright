@@ -33,6 +33,9 @@ class ProjectInsightsRequest extends FormRequest
         ];
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function getSections(): array
     {
         $sections = $this->validated('sections', []);

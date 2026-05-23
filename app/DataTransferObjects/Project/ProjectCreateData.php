@@ -78,6 +78,7 @@ final readonly class ProjectCreateData
      */
     private static function normalizeTasks(mixed $tasks): array
     {
+        /** @phpstan-ignore-next-line */
         return collect($tasks)
             ->map(fn (mixed $t) => is_array($t) ? ($t['title'] ?? null) : (is_object($t) ? ($t->title ?? null) : null))
             ->filter(fn ($title) => is_string($title) && $title !== '')

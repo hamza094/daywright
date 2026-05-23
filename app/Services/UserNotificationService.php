@@ -11,8 +11,12 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 class UserNotificationService
 {
+    /**
+     * @return LengthAwarePaginator<int, DatabaseNotification>
+     */
     public function paginateForUser(User $user, ?string $status, int $perPage = 25): LengthAwarePaginator
     {
+        /** @var \Illuminate\Database\Eloquent\Builder<DatabaseNotification> $query */
         $query = $user->notifications()->latest();
 
         $this->applyStatusFilter($query, $status);

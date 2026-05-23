@@ -9,11 +9,13 @@ use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use JsonSerializable;
 use Override;
 
 /**
  * @mixin \App\Models\Project
+ *
+ * @property-read \Illuminate\Database\Eloquent\Relations\Pivot $pivot
+ * @property-read string $status
  */
 #[SchemaName('ProjectInvitation')]
 class ProjectInvitationResource extends JsonResource
@@ -21,7 +23,7 @@ class ProjectInvitationResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
+     * @return array<string, mixed>
      */
     #[Override]
     public function toArray(Request $request): array
@@ -60,7 +62,8 @@ class ProjectInvitationResource extends JsonResource
              *
              * @example "2025-07-09T14:00:00+00:00"
              */
-            'invitation_sent_at' => $this->pivot->created_at->toIso8601String(),
+            // @phpstan-ignore-next-line - Eloquent pivot exposes dynamic properties at runtime
+            'invitation_sent_at' => $this->when($this->pivot !== null, fn () => $this->pivot->created_at?->toIso8601String()),
 
             /**
              * Project owner details

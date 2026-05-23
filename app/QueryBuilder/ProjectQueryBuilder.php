@@ -22,7 +22,9 @@ class ProjectQueryBuilder extends Builder
      */
     public function search(string $search): self
     {
-        return $this->likeContainsLiteral($this, 'name', $search);
+        $this->likeContainsLiteral($this, 'name', $search);
+
+        return $this;
     }
 
     /**

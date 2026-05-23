@@ -59,6 +59,7 @@ final class ZoomService implements Zoom
         AuthorizationCallbackDetails $callbackDetails
     ): AccessTokenDetails {
 
+        /** @var AccessTokenDetails $tokenDetails */
         $tokenDetails = $this->connector()->getAccessToken(
             code: $callbackDetails->authorizationCode,
             state: $callbackDetails->state,
@@ -171,7 +172,7 @@ final class ZoomService implements Zoom
     }
 
     private function updateZoomOAuthDetails(
-        AccessTokenAuthenticator $newAccessTokenDetails,
+        AccessTokenAuthenticator|\Saloon\Contracts\OAuthAuthenticator $newAccessTokenDetails,
         User $user
     ): void {
         $user->updateZoomOAuthDetails(

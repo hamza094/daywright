@@ -7,7 +7,6 @@ namespace App\Http\Resources\Api\V1\User;
 use App\Http\Resources\Api\V1\Project\ProjectSummaryResource;
 use App\Http\Resources\Api\V1\Task\TaskStatusResource;
 use Illuminate\Http\Resources\Json\JsonResource;
-use JsonSerializable;
 use Override;
 
 /**
@@ -19,7 +18,7 @@ class UserTasksResource extends JsonResource
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
+     * @return array<string, mixed>
      */
     #[Override]
     public function toArray($request)
@@ -54,7 +53,7 @@ class UserTasksResource extends JsonResource
              *
              * @example 2025-08-20T10:30:00+00:00
              */
-            'due_at' => $this->when($this->due_at, fn (): string => $this->due_at->toIso8601String()),
+            'due_at' => $this->when($this->due_at !== null, fn (): string => $this->due_at->toIso8601String()),
             /**
              * Whether the task appears because it was created by or assigned to the user.
              *

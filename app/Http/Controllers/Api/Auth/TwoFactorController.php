@@ -39,6 +39,7 @@ class TwoFactorController extends ApiController
             ]);
         }
 
+        /** @var \Laragear\TwoFactor\Contracts\TwoFactorTotp|null $pending */
         $pending = $user->twoFactorAuth()->whereNull('enabled_at')->first();
 
         if ($pending) {
@@ -63,6 +64,7 @@ class TwoFactorController extends ApiController
     public function prepareTwoFactor(PrepareTwoFactorRequest $request): JsonResponse
     {
         $user = $request->user();
+        /** @var \Laragear\TwoFactor\Contracts\TwoFactorTotp|null $secret */
         $secret = $user->createTwoFactorAuth();
 
         return $this->respondWithData([

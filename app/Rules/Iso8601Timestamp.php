@@ -34,12 +34,14 @@ final class Iso8601Timestamp implements ValidationRule
 
     private static function parse(string $value): ?DateTimeImmutable
     {
-        if (! preg_match(self::ISO_8601_PATTERN, $value, $matches)) {
+        // @phpstan-ignore-next-line - using preg_match for strict ISO pattern matching
+        $matched = preg_match(self::ISO_8601_PATTERN, $value, $matches);
+        if ($matched !== 1) {
             return null;
         }
 
         $timezone = $matches['timezone'] === 'Z' ? '+00:00' : $matches['timezone'];
-        $fraction = $matches['fraction'] ?? '';
+        $fraction = $matches['fraction'];
 
         if ($fraction !== '') {
             $normalizedValue = $matches['date'].'T'.$matches['time'].'.'.mb_str_pad($fraction, 6, '0').$timezone;
@@ -52,7 +54,11 @@ final class Iso8601Timestamp implements ValidationRule
         $dateTime = DateTimeImmutable::createFromFormat($format, $normalizedValue);
         $errors = DateTimeImmutable::getLastErrors();
 
-        if ($dateTime === false || (is_array($errors) && (($errors['warning_count'] ?? 0) > 0 || ($errors['error_count'] ?? 0) > 0))) {
+        if ($dateTime === false) {
+            return null;
+        }
+
+        if (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) {
             return null;
         }
 

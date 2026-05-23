@@ -32,7 +32,7 @@ class DashboardProjectRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array|string>
+     * @return array<string, array<int, string>|string|\Illuminate\Contracts\Validation\ValidationRule>
      */
     public function rules(): array
     {

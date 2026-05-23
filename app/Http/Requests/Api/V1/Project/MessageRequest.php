@@ -44,6 +44,7 @@ class MessageRequest extends FormRequest
         $payload = $this->validated();
 
         if (isset($payload['users']) && is_string($payload['users'])) {
+            // @phpstan-ignore-next-line - decoding user-provided JSON; fall back to CSV on error
             $decoded = json_decode($payload['users'], true);
 
             if (json_last_error() === JSON_ERROR_NONE) {

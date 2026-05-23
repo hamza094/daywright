@@ -11,6 +11,9 @@ use Override;
 
 /**
  * @mixin \App\Models\User
+ *
+ * @property-read \App\Models\User|null $adminGrantedBy
+ * @property-read \App\Models\User|null $adminRevokedBy
  */
 class AdminUserResource extends JsonResource
 {

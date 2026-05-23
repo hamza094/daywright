@@ -21,7 +21,7 @@ class VonageSmsService
         $this->client = new \Vonage\Client($this->basic);
     }
 
-    public function send($project, $message): string
+    public function send(\App\Models\Project $project, \App\Models\Message $message): string
     {
         $response = $this->client->sms()->send(
             new \Vonage\SMS\Message\SMS(

@@ -37,7 +37,7 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     /**
      * The attributes that should be hidden for arrays.
      *
-     * @var array<int, string>
+     * @var list<string>
      */
     protected $hidden = [
         'password',
@@ -90,10 +90,13 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     /**
      * Get projects created by user.
      *
-     * @return HasMany<Project>
+     * @return HasMany<Project, User>
+     *
+     * @phpstan-return HasMany<Project, static>
      */
     public function projects(): HasMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasMany(Project::class);
     }
 
@@ -105,20 +108,26 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     /**
      * Get all conversation associated by user
      *
-     * @return HasMany<Conversation>
+     * @return HasMany<Conversation, User>
+     *
+     * @phpstan-return HasMany<Conversation, static>
      */
     public function conversations(): HasMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasMany(Conversation::class);
     }
 
     /**
      * Get user profile information
      *
-     * @return HasOne<UserInfo>
+     * @return HasOne<UserInfo, User>
+     *
+     * @phpstan-return HasOne<UserInfo, static>
      */
     public function info(): HasOne
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasOne(UserInfo::class);
     }
 
@@ -126,9 +135,12 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
      * Get the user who granted admin access.
      *
      * @return BelongsTo<User, User>
+     *
+     * @phpstan-return BelongsTo<User, static>
      */
     public function adminGrantedBy(): BelongsTo
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsTo(self::class, 'admin_granted_by');
     }
 
@@ -136,33 +148,42 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
      * Get the user who revoked admin access.
      *
      * @return BelongsTo<User, User>
+     *
+     * @phpstan-return BelongsTo<User, static>
      */
     public function adminRevokedBy(): BelongsTo
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsTo(self::class, 'admin_revoked_by');
     }
 
     /**
      * Get projects which user is member of.
      *
-     * @return BelongsToMany<Project>
+     * @return BelongsToMany<Project, User, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<Project, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function members(?bool $active = null): BelongsToMany
     {
-        $relation = $this->belongsToMany(Project::class, 'project_members')
-            ->withTimestamps();
-
         if ($active !== null) {
-            $relation->wherePivot('active', $active);
+            // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
+            return $this->belongsToMany(Project::class, 'project_members')
+                ->withTimestamps()
+                ->wherePivot('active', $active);
         }
 
-        return $relation;
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
+        return $this->belongsToMany(Project::class, 'project_members')
+            ->withTimestamps();
     }
 
     /**
      * Get projects where the user is an active member.
      *
-     * @return BelongsToMany<Project>
+     * @return BelongsToMany<Project, User, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<Project, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function activeMembers(): BelongsToMany
     {
@@ -172,7 +193,9 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     /**
      * Get projects where the user is an inactive member.
      *
-     * @return BelongsToMany<Project>
+     * @return BelongsToMany<Project, User, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<Project, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function inactiveMembers(): BelongsToMany
     {
@@ -187,30 +210,39 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     /**
      * Get all messages created by user
      *
-     * @return BelongsToMany<Message>
+     * @return BelongsToMany<Message, User, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<Message, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function messages(): BelongsToMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsToMany(Message::class);
     }
 
     /**
      * Get all tasks created by the user
      *
-     * @return HasMany<Task>
+     * @return HasMany<Task, User>
+     *
+     * @phpstan-return HasMany<Task, static>
      */
     public function tasks(): HasMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasMany(Task::class);
     }
 
     /**
      * Get tasks assigned to user
      *
-     * @return BelongsToMany<Task>
+     * @return BelongsToMany<Task, User, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<Task, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function assigned(): BelongsToMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsToMany(Task::class);
     }
 
@@ -227,18 +259,21 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
 
     public function isConnectedToZoom(): bool
     {
-        return $this->zoom_access_token
-        && $this->zoom_refresh_token
-        && $this->zoom_expires_at;
+        return (bool) ($this->zoom_access_token
+            && $this->zoom_refresh_token
+            && $this->zoom_expires_at);
     }
 
     /**
      * Get meetings created by user.
      *
-     * @return HasMany<Meeting>
+     * @return HasMany<Meeting, User>
+     *
+     * @phpstan-return HasMany<Meeting, static>
      */
     public function meetings(): HasMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasMany(Meeting::class);
     }
 

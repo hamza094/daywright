@@ -20,6 +20,7 @@ final class AcceptProjectInvitationAction
             $lockedProject = $this->lockProject($project);
             $membership = $lockedProject->members()->whereKey($user->getKey())->first();
 
+            // @phpstan-ignore-next-line - Eloquent pivot exposes dynamic properties at runtime
             if ($membership === null || (bool) $membership->pivot->active) {
                 return;
             }

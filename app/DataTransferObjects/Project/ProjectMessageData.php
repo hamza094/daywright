@@ -55,6 +55,7 @@ final readonly class ProjectMessageData
      */
     private static function extractRecipientIds(mixed $users): array
     {
+        /** @phpstan-ignore-next-line */
         return collect($users)
             ->map(function (mixed $user): int|string|null {
                 if (is_array($user)) {

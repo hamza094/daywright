@@ -15,12 +15,15 @@ use Illuminate\Validation\ValidationException;
 
 class UserService
 {
+    /**
+     * @return LengthAwarePaginator<int, User>
+     */
     public function paginateUsers(int $perPage, int $page): LengthAwarePaginator
     {
-        return User::query()
-            ->orderBy('id')
-            ->paginate($perPage, ['*'], 'page', $page)
-            ->withQueryString();
+        /** @var \Illuminate\Database\Eloquent\Builder<User> $query */
+        $query = User::query()->orderBy('id');
+
+        return $query->paginate($perPage, ['*'], 'page', $page)->withQueryString();
     }
 
     public function loadAuthenticatedUser(User $user): User

@@ -33,6 +33,9 @@ class TaskRequest extends FormRequest
         return TaskCreateData::fromArray($validated);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         /** @var Project $project */

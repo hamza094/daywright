@@ -6,7 +6,6 @@ namespace App\Http\Resources\Api\V1\Project;
 
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
-use JsonSerializable;
 use Override;
 
 #[SchemaName('ProjectUsageLimit')]
@@ -16,8 +15,7 @@ final class ProjectLimitResource extends JsonResource
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return array<string, mixed>|
-     *   array<array-key, mixed>|\Illuminate\Contracts\Support\Arrayable<array-key, mixed>|JsonSerializable
+     * @return array<string, mixed>
      */
     #[Override]
     public function toArray($request)

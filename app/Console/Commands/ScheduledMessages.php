@@ -43,6 +43,7 @@ class ScheduledMessages extends Command
             ->with('project')
             ->chunkById(50, function ($messages) use ($service): void {
                 foreach ($messages as $message) {
+                    /** @var \App\Models\Project|null $project */
                     $project = $message->project;
 
                     if ($project === null) {

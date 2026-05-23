@@ -15,7 +15,7 @@ class UserProjectListingService
     private const array PROJECT_LIST_RELATIONS = ['stage'];
 
     /**
-     * @return Collection<int, \App\Models\Project>|null
+     * @return Collection<int, \App\Models\Project>
      */
     public function getUserProjects(User $user, DashboardProjectFilters $filters, string $sort = 'latest'): Collection
     {
@@ -34,6 +34,9 @@ class UserProjectListingService
             ->get();
     }
 
+    /**
+     * @return LengthAwarePaginator<int, \App\Models\Project>
+     */
     public function paginateUserProjects(
         User $user,
         DashboardProjectFilters $filters,
@@ -42,6 +45,7 @@ class UserProjectListingService
         int $page,
         string $path,
     ): LengthAwarePaginator {
+        /** @var Builder<\App\Models\Project> $query */
         $query = $this->filterProjectsQuery($user, $filters, $sort);
 
         $paginator = $query->paginate($perPage, ['*'], 'page', $page);
@@ -75,8 +79,13 @@ class UserProjectListingService
 
         return $query
             ->with(self::PROJECT_LIST_RELATIONS)
-            ->when($filters->abandoned, fn ($query) => $query->trashed())
-            ->when($filters->search, fn ($query) => $query->search($filters->search))
+            ->when($filters->abandoned, fn (Builder $query) => $query->whereNotNull('deleted_at'))
+            ->when($filters->search, function (Builder $query, string $value) {
+                /** @var \App\QueryBuilder\ProjectQueryBuilder $query */
+                $query->search($value);
+
+                return $query;
+            })
             ->sortBy($sort);
     }
 }

@@ -68,7 +68,7 @@ class Conversation extends Model
         // Extract usernames preceded by a non-word boundary to avoid matching emails (name@domain)
         // Allows letters, numbers, underscore, dot and hyphen in usernames
         preg_match_all('/(?<![\w])@([\w.-]+)/', $message, $matches);
-        $usernames = $matches[1] ?? [];
+        $usernames = $matches[1];
 
         // De-duplicate while preserving order
         $seen = [];

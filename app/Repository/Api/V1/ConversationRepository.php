@@ -11,6 +11,9 @@ class ConversationRepository
 {
     private const array CONVERSATION_RESOURCE_RELATIONS = ['user', 'project:id,slug'];
 
+    /**
+     * @return LengthAwarePaginator<int, \App\Models\Conversation>
+     */
     public function getProjectConversations(Project $project, int $perPage, int $page): LengthAwarePaginator
     {
         return $project->conversations()

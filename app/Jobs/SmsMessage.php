@@ -21,7 +21,7 @@ class SmsMessage implements ShouldQueue
     /**
      * The project instance.
      *
-     * @var \App\Models\Podcast
+     * @var Project
      */
     private $project;
     // private $user;

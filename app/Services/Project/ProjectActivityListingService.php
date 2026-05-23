@@ -32,6 +32,7 @@ class ProjectActivityListingService
             'subject' => fn ($query) => $query->withTrashed(),
         ]);
 
+        /** @var \Illuminate\Database\Eloquent\Builder<Activity> $activitiesQuery */
         $paginator = $activitiesQuery->paginate($perPage, ['*'], 'page', $page);
         $paginator->withPath($path);
 

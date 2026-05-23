@@ -30,6 +30,9 @@ class MeetingService
 
     public function __construct(private readonly PlanLimitService $planLimitService) {}
 
+    /**
+     * @return LengthAwarePaginator<int, Meeting>
+     */
     public function getMeetingsData(Project $project, bool $isPrevious, int $perPage = 3, ?int $page = null): LengthAwarePaginator
     {
         $meetingsQuery = $project->meetings()->with(self::MEETING_RESOURCE_RELATIONS);

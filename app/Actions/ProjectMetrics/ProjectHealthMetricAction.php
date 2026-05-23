@@ -86,10 +86,6 @@ class ProjectHealthMetricAction
 
     private function normalizePercentage(float|int $value): float
     {
-        if (! is_numeric($value)) {
-            return 0.0;
-        }
-
         return max(0.0, min(100.0, (float) $value));
     }
 

@@ -7,9 +7,11 @@ namespace App\Http\Resources\Api\V1\User;
 use App\Http\Resources\Api\V1\Project\ProjectSummaryResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
-use JsonSerializable;
 use Override;
 
+/**
+ * @mixin \App\Models\Activity
+ */
 class UserActivitiesResource extends JsonResource
 {
     private const string DELETED = '(deleted)';
@@ -18,7 +20,7 @@ class UserActivitiesResource extends JsonResource
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
+     * @return array<string, mixed>
      */
     #[Override]
     public function toArray($request)
@@ -69,6 +71,9 @@ class UserActivitiesResource extends JsonResource
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     protected function getSubjectDetails(): array
     {
         return [
@@ -124,7 +129,7 @@ class UserActivitiesResource extends JsonResource
 
     protected function created_task(): string
     {
-        if ($this->subject && $this->subject->title) {
+        if ($this->subject && property_exists($this->subject, 'title') && $this->subject->title) {
             $projectName = $this->project ? $this->project->name : self::DELETED;
 
             return 'Task '.Str::limit($this->subject->title, 12, '..').' added in '.$projectName;
@@ -138,7 +143,7 @@ class UserActivitiesResource extends JsonResource
     {
         $task = $this->subject;
         $updatedKey = isset($this->changes['after']) ? key($this->changes['after']) : null;
-        $taskTitle = $task && $task->title ? Str::limit($task->title, 12, '..') : '(deleted)';
+        $taskTitle = $task && property_exists($task, 'title') && $task->title ? Str::limit($task->title, 12, '..') : '(deleted)';
         $projectName = $this->project ? $this->project->name : self::DELETED;
 
         if ($updatedKey === 'status_id') {
@@ -154,7 +159,7 @@ class UserActivitiesResource extends JsonResource
         if (! $this->subject) {
             return "One Task has been removed from the project {$projectName}";
         }
-        $taskTitle = Str::limit($this->subject->title, 17, '...');
+        $taskTitle = property_exists($this->subject, 'title') ? Str::limit($this->subject->title, 17, '...') : self::DELETED;
 
         return "Task '$taskTitle' archived from the project {$projectName}";
     }

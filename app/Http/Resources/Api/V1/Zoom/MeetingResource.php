@@ -34,7 +34,7 @@ class MeetingResource extends JsonResource
             'updated_at' => $this->updated_at?->toIso8601String(),
             'owner' => new UserSummaryResource($this->whenLoaded('user')),
             'start_time' => $this->when(
-                $this->start_time,
+                (bool) $this->start_time,
                 fn (): string => Carbon::parse($this->start_time)->setTimezone('UTC')->toIso8601String(),
             ),
             'duration' => $this->duration,

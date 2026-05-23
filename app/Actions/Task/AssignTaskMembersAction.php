@@ -50,7 +50,13 @@ final class AssignTaskMembersAction
      */
     private function extractAttachedMemberIds(array $changes, int $actorId): array
     {
-        return collect($changes['attached'] ?? [])
+        /** @var array<int, int|string> $attachedRaw */
+        $attachedRaw = (array) ($changes['attached'] ?? []);
+
+        /** @var \Illuminate\Support\Collection<int, int|string> $attached */
+        $attached = collect($attachedRaw);
+
+        return $attached
             ->map(fn ($id) => (int) $id)
             ->reject(fn (int $id) => $id === $actorId)
             ->values()
@@ -62,6 +68,10 @@ final class AssignTaskMembersAction
      *
      * @param  array<int>  $ids
      */
+    /**
+     * @param  array<int>  $ids
+     * @return \Illuminate\Database\Eloquent\Collection<int, User>
+     */
     private function fetchUsersForNotification(array $ids): \Illuminate\Database\Eloquent\Collection
     {
         return User::query()
@@ -70,6 +80,9 @@ final class AssignTaskMembersAction
             ->get();
     }
 
+    /**
+     * @param  \Illuminate\Database\Eloquent\Collection<int, User>  $users
+     */
     private function notifyUsers(\Illuminate\Database\Eloquent\Collection $users, Task $task, Project $project, User $actor): void
     {
         if ($users->isEmpty()) {

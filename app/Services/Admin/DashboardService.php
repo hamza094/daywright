@@ -6,6 +6,7 @@ namespace App\Services\Admin;
 
 use App\Models\Activity;
 use App\Repository\Admin\DashboardRepository;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class DashboardService
@@ -23,7 +24,7 @@ class DashboardService
     /**
      * @return array<mixed, array<'active_projects'|'active_tasks'|'month'|'projects_count'|'tasks_count'|'trashed_projects'|'trashed_tasks', mixed>>
      */
-    public function fetchDataForMonths($startDate, $endDate): array
+    public function fetchDataForMonths(DateTimeInterface|string $startDate, DateTimeInterface|string $endDate): array
     {
         $data = [];
         $result = $this->dashboardRepository->fetchDataForMonths($startDate, $endDate);

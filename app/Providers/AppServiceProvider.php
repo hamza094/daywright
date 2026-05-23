@@ -257,7 +257,7 @@ class AppServiceProvider extends ServiceProvider
 
                         return new Reference('responses', $responseName, $openApi->components);
                     },
-                    $operation->responses ?? [],
+                    $operation->responses,
                 ));
 
                 self::ensureSharedPublicApiErrorResponse($operation, $openApi->components, 500);
@@ -272,7 +272,7 @@ class AppServiceProvider extends ServiceProvider
                 $documentedFilterAliases = self::documentedFilterAliases($operation);
 
                 $operation->parameters = array_values(array_filter(
-                    $operation->parameters ?? [],
+                    $operation->parameters,
                     static function ($parameter) use ($documentedFilterAliases): bool {
                         $resolvedParameter = $parameter instanceof Reference ? $parameter->resolve() : $parameter;
 
@@ -296,17 +296,22 @@ class AppServiceProvider extends ServiceProvider
      */
     private static function documentedFilterAliases(Operation $operation): array
     {
-        return collect($operation->parameters ?? [])
+        return collect($operation->parameters)
             ->map(static fn ($parameter) => $parameter instanceof Reference ? $parameter->resolve() : $parameter)
             ->filter(static fn ($parameter): bool => $parameter instanceof Parameter && $parameter->in === 'query')
             ->map(static function (Parameter $parameter): ?string {
-                if (preg_match('/^filter\[([^\]]+)\]$/', $parameter->name, $matches) !== 1) {
+                $name = $parameter->name;
+
+                $inner = Str::between($name, 'filter[', ']');
+
+                /** @var string|null $inner */
+                if ($inner === null || $inner === '') {
                     return null;
                 }
 
-                return $matches[1];
+                return $inner;
             })
-            ->filter(static fn (?string $parameterName): bool => is_string($parameterName) && $parameterName !== '')
+            ->filter(static fn (?string $parameterName): bool => is_string($parameterName))
             ->values()
             ->all();
     }
@@ -497,6 +502,9 @@ class AppServiceProvider extends ServiceProvider
         };
     }
 
+    /**
+     * @param  array<string,mixed>  $metaExample
+     */
     private static function makePublicApiErrorEnvelopeSchema(
         string $messageExample = 'Resource not found.',
         string $codeExample = 'not_found',
@@ -505,11 +513,11 @@ class AppServiceProvider extends ServiceProvider
         $validationErrors = (new ObjectType)
             ->setDescription('Field-level validation details when available.')
             ->additionalProperties((new ArrayType)->setItems(new StringType))
-            ->example((object) []);
+            ->example([]);
 
         $meta = (new ObjectType)
             ->setDescription('Structured error context when available.')
-            ->example($metaExample === [] ? (object) [] : (object) $metaExample);
+            ->example($metaExample === [] ? [] : $metaExample);
 
         return Schema::fromType(
             (new ObjectType)
@@ -521,8 +529,8 @@ class AppServiceProvider extends ServiceProvider
                 ->example([
                     'message' => $messageExample,
                     'code' => $codeExample,
-                    'errors' => (object) [],
-                    'meta' => $metaExample === [] ? (object) [] : (object) $metaExample,
+                    'errors' => [],
+                    'meta' => $metaExample === [] ? [] : $metaExample,
                 ])
         );
     }
@@ -544,7 +552,7 @@ class AppServiceProvider extends ServiceProvider
                 ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example('Validation failed.'))
                 ->addProperty('code', (new StringType)->setDescription('Stable machine-readable error code.')->example('validation_error'))
                 ->addProperty('errors', $validationErrors)
-                ->addProperty('meta', $meta->example((object) []))
+                ->addProperty('meta', $meta->example([]))
                 ->setRequired(['message', 'code', 'errors', 'meta'])
                 ->example([
                     'message' => 'Validation failed.',
@@ -552,7 +560,7 @@ class AppServiceProvider extends ServiceProvider
                     'errors' => [
                         'email' => ['The provided credentials are incorrect.'],
                     ],
-                    'meta' => (object) [],
+                    'meta' => [],
                 ])
         );
     }

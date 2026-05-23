@@ -6,17 +6,20 @@ namespace App\Http\Resources\Api\V1\Admin;
 
 use App\Http\Resources\Api\V1\Admin\User\AdminUserSummaryResource;
 use App\Http\Resources\Api\V1\ApiResourceLink;
+use App\Http\Resources\Api\V1\StageResource;
 use Illuminate\Http\Resources\Json\JsonResource;
-use JsonSerializable;
 use Override;
 
+/**
+ * @mixin \App\Models\Project
+ */
 class ProjectResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
+     * @return array<string, mixed>
      */
     #[Override]
     public function toArray($request)

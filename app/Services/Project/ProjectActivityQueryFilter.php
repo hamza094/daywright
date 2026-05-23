@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Builder;
 
 class ProjectActivityQueryFilter
 {
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
     public function filterActivities(Builder $query, ?string $filterType = null, ?int $actorId = null): Builder
     {
         return match ($filterType) {
@@ -19,16 +25,34 @@ class ProjectActivityQueryFilter
         };
     }
 
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
     private function filterActivityByTasks(Builder $query): Builder
     {
         return $query->where('description', 'like', '%_task%');
     }
 
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
     private function filterActivityByProjectSpecified(Builder $query): Builder
     {
         return $query->where('description', 'like', '%_project%');
     }
 
+    /**
+     * @template TModel of \Illuminate\Database\Eloquent\Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
     private function filterActivityByMembers(Builder $query): Builder
     {
         $types = [

@@ -7,7 +7,6 @@ namespace App\Http\Resources\Api\V1\Project;
 use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\StageResource;
 use Illuminate\Http\Resources\Json\JsonResource;
-use JsonSerializable;
 use Override;
 
 /**
@@ -19,7 +18,7 @@ class ProjectStageResource extends JsonResource
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
+     * @return array<string, mixed>
      */
     #[Override]
     public function toArray($request)

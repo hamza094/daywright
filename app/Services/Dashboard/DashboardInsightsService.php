@@ -72,6 +72,9 @@ final readonly class DashboardInsightsService
         ];
     }
 
+    /**
+     * @return array<int, array{type:string, title:string, message:string, action:string, priority:string}>
+     */
     private function buildOverdueInsights(int $overdueCount): array
     {
         $insights = [];
@@ -98,6 +101,9 @@ final readonly class DashboardInsightsService
         return $insights;
     }
 
+    /**
+     * @return array<int, array{type:string, title:string, message:string, action:string, priority:string}>
+     */
     private function buildCriticalProjectsInsights(int $criticalProjects): array
     {
         if ($criticalProjects <= 0) {
@@ -115,6 +121,10 @@ final readonly class DashboardInsightsService
         ];
     }
 
+    /**
+     * @param  Collection<int, \App\Models\Project>  $userProjects
+     * @return array<int, array{type:string, title:string, message:string, action:string, priority:string}>
+     */
     private function buildPortfolioInsights(Collection $userProjects, int $criticalProjects, int $overdueCount): array
     {
         if ($userProjects->count() === 0) {

@@ -8,6 +8,9 @@ use App\QueryBuilder\Concerns\EscapesLikeWildcards;
 use Illuminate\Database\Eloquent\Builder;
 use Spatie\QueryBuilder\Filters\Filter;
 
+/**
+ * @implements Filter<\App\Models\User>
+ */
 final class AdminUserSearchFilter implements Filter
 {
     use EscapesLikeWildcards;

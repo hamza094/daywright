@@ -10,7 +10,6 @@ use App\Http\Resources\Api\V1\StageResource;
 use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
-use JsonSerializable;
 use Override;
 
 /**
@@ -31,7 +30,7 @@ class ProjectResource extends JsonResource
      * Transform the resource into an array.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
+     * @return array<string, mixed>
      */
     #[Override]
     public function toArray($request)
@@ -102,7 +101,7 @@ class ProjectResource extends JsonResource
 
             'ownerNotAuthorized' => $this->whenLoaded(
                 'user',
-                fn (): bool => $requestUser?->is($this->user) && ! $requestUser?->isConnectedToZoom(),
+                fn (): bool => $requestUser && $requestUser->is($this->user) && ! $requestUser->isConnectedToZoom(),
             ),
 
             'days_limit' => config('app.project.abandonedLimit'),

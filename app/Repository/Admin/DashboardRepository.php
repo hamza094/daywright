@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository\Admin;
 
 use App\Models\Activity;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 
@@ -22,7 +23,7 @@ class DashboardRepository
             ->get();
     }
 
-    public function fetchDataForMonths($startDate, $endDate): array
+    public function fetchDataForMonths(DateTimeInterface|string $startDate, DateTimeInterface|string $endDate): array
     {
         $projectsData = DB::table('projects')
             ->selectRaw('

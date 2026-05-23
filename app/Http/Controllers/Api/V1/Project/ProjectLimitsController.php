@@ -21,7 +21,7 @@ final class ProjectLimitsController extends ApiController
     public function __invoke(Project $project): JsonResponse
     {
         return $this->respondWithData(
-            $this->projectService->projectLimits($project, $this->authenticatedUser()) ?? []
+            (array) ($this->projectService->projectLimits($project, $this->authenticatedUser()) ?? [])
         );
     }
 }

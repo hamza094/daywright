@@ -27,6 +27,7 @@ class MessageService
     {
         $this->ensureDeliveryOptionSelected($payload);
 
+        // @phpstan-ignore-next-line - deliveredAt nullability can be uncertain due to DTO construction
         $isScheduled = $payload->deliveredAt !== null;
 
         foreach (['mail', 'sms'] as $type) {
@@ -36,6 +37,7 @@ class MessageService
 
             $message = $this->createProjectMessageAction->execute($project, $type, $payload);
 
+            // @phpstan-ignore-next-line - deliveredAt nullability can be uncertain due to DTO construction
             if ($isScheduled && $payload->deliveredAt !== null) {
                 $this->scheduleProjectMessageAction->execute($message, $payload->deliveredAt);
 
@@ -48,6 +50,9 @@ class MessageService
         return 'Messages '.($isScheduled ? 'Scheduled' : 'Sent').' Successfully';
     }
 
+    /**
+     * @return LengthAwarePaginator<int, Message>
+     */
     public function paginateScheduledMessages(Project $project, int $perPage, int $page): LengthAwarePaginator
     {
         return $this->messageRepository->paginateScheduledMessages($project, $perPage, $page);

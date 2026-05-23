@@ -20,6 +20,9 @@ class UserActivitiesRequest extends ApiQueryRequest
     /**
      * Get the validation rules that apply to the request.
      */
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [
@@ -41,6 +44,8 @@ class UserActivitiesRequest extends ApiQueryRequest
 
     /**
      * Get the validated and transformed date range.
+     *
+     * @return array{start_date: Carbon, end_date: Carbon}
      */
     public function getDateRange(): array
     {

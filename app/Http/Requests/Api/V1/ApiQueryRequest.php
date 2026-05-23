@@ -62,7 +62,7 @@ abstract class ApiQueryRequest extends FormRequest
         return $this->supportedTopLevelQueryParameters() !== [];
     }
 
-    protected function withValidator($validator): void
+    protected function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
             if (! $this->enforcesSupportedTopLevelQueryParameters()) {

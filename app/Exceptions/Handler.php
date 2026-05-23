@@ -61,7 +61,9 @@ class Handler extends ExceptionHandler
     public function report(Throwable $e): void
     {
         if ($this->shouldRecordExceptionMetric($e)) {
-            $this->recordExceptionMetric($e);
+            if ($e instanceof ApiException) {
+                $this->recordExceptionMetric($e);
+            }
 
             return;
         }
@@ -176,6 +178,12 @@ class Handler extends ExceptionHandler
 
     }
 
+    /**
+     * Ensure the $request is treated as mixed for static analysis; the
+     * actual runtime value may be an HTTP request or another context.
+     *
+     * @param  mixed  $request
+     */
     #[Override]
     protected function renderViaCallbacks($request, Throwable $e)
     {
@@ -209,6 +217,7 @@ class Handler extends ExceptionHandler
             'message' => $e->publicMessage(),
         ];
 
+        /** @var mixed $request */
         $request = request();
 
         if ($request instanceof Request) {

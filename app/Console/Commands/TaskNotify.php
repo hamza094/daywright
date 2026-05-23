@@ -44,12 +44,13 @@ class TaskNotify extends Command
     /**
      * Process each task in the chunk.
      *
-     * @param  \Illuminate\Database\Eloquent\Collection  $tasks
+     * @param  \Illuminate\Database\Eloquent\Collection<int, Task>  $tasks
      */
     private function processTasks($tasks): void
     {
         foreach ($tasks as $task) {
             try {
+                /** @var Task $task */
                 $this->sendTaskDueNotificationAction->execute($task);
             } catch (Exception $e) {
                 Log::error('Failed to process task notification', [

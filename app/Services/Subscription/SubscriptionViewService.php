@@ -28,10 +28,13 @@ final readonly class SubscriptionViewService
     {
         $user = $user->loadMissing(['receipts', 'subscriptions', 'customer']);
 
+        /** @var ?PaddleSubscription $subscription */
         $subscription = $user->getSubscription();
-        $isBillingSubscribed = $subscription?->recurring() === true;
-        $hasGracePeriod = $subscription?->onGracePeriod() === true;
-        $isBillingVisible = $subscription !== null && ($isBillingSubscribed || $hasGracePeriod);
+        // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
+        $isBillingSubscribed = $subscription !== null && $subscription->recurring() === true;
+        // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
+        $hasGracePeriod = $subscription !== null && $subscription->onGracePeriod() === true;
+        $isBillingVisible = $isBillingSubscribed || $hasGracePeriod;
         $isOnTrial = $user->isOnTrial();
 
         return new SubscriptionResource(
@@ -53,7 +56,8 @@ final readonly class SubscriptionViewService
             ],
             [
                 'active' => $hasGracePeriod,
-                'ends_at' => $hasGracePeriod ? $subscription?->ends_at : null,
+                // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
+                'ends_at' => $hasGracePeriod && $subscription !== null ? $subscription->ends_at : null,
             ],
         );
     }
@@ -67,11 +71,17 @@ final readonly class SubscriptionViewService
         bool $isBillingSubscribed,
         bool $isBillingVisible,
     ): array {
+        $createdAt = null;
+        // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
+        if ($isBillingSubscribed && $subscription !== null) {
+            $createdAt = $subscription->created_at;
+        }
+
         return [
             'subscribed' => $isBillingSubscribed,
             'billing_plan' => $isBillingVisible ? $user->displayBillingPlan() : null,
             'next_payment' => $isBillingSubscribed ? $user->payment() : null,
-            'created_at' => $isBillingSubscribed ? $subscription?->created_at : null,
+            'created_at' => $createdAt,
         ];
     }
 }

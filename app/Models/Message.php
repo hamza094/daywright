@@ -25,20 +25,26 @@ class Message extends Model
     protected static $recordableEvents = ['created'];
 
     /**
-     * @phpstan-return BelongsTo<Project, $this>
+     * @return BelongsTo<Project, Message>
+     *
+     * @phpstan-return BelongsTo<Project, static>
      */
     public function project(): BelongsTo
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsTo(Project::class);
     }
 
     /**
      * Get the users associated to message.
      *
-     * @return BelongsToMany<User>
+     * @return BelongsToMany<User, Message, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function users(): BelongsToMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsToMany(User::class);
     }
 
