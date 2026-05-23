@@ -20,7 +20,11 @@ function shouldReuseKey(error) {
   return status === IDEMPOTENCY_RETRY_STATUS;
 }
 
-// Use one helper instance per logical submit action.
+/*
+ * Use this helper only for UI actions whose backend route applies Idempotent middleware.
+ * Keep one helper instance per logical submit action, call reset() on teardown, and do not
+ * inject Idempotency-Key globally with an axios interceptor.
+ */
 export function createIdempotentRequest(client = axios) {
   let activeKey = null;
   let activeRequest = null;

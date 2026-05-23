@@ -158,7 +158,6 @@ export default {
       this.healthInsight = null;
       try {
         const result = await this.loadCurrentProjectInsights(['health']);
-        if (!result || !result.success) throw new Error('Failed to load health insight');
         const arr = Array.isArray(result.insights) ? result.insights : [];
         this.healthInsight = arr[0] || null;
       } catch (e) {

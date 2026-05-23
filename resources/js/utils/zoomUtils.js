@@ -1,10 +1,11 @@
 import axios from 'axios';
 import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
+import { getObjectData } from './apiResponse.js';
 
 export async function getToken(url, errorMessage, toastify) {
   try {
     const response = await axios.get(url);
-    return response.data && response.data.data ? response.data.data : response.data;
+    return getObjectData(response);
   } catch (error) {
     toastify.error(errorMessage);
     throw error;

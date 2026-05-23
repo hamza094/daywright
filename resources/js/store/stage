@@ -1,3 +1,5 @@
+import { getArrayData, getObjectData, getResponseMessage } from '../utils/apiResponse.js';
+
 const state = {
   stages:[],
 };
@@ -32,7 +34,7 @@ const actions = {
   loadStages({ commit }) {
     	return axios.get(`/admin/stages`)
         .then(response => {
-        commit('setStages', response.data);
+        commit('setStages', getArrayData(response));
         })
         .catch(error => {
           throw error;
@@ -42,9 +44,34 @@ const actions = {
     async addNewStage({ commit }, stageData) {
     try {
       const response = await axios.post('/admin/stages', stageData);
-      commit('addStage', response.data.stage);
+      commit('addStage', getObjectData(response));
     } catch (error) {
       throw error; 
+    }
+  },
+
+    async updateExistingStage({ commit }, { stageId, stageData }) {
+    try {
+      const response = await axios.put(`/admin/stages/${stageId}`, stageData);
+      const stage = getObjectData(response);
+
+      commit('stageUpdate', stage);
+
+      return stage;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+    async deleteExistingStage({ commit }, stageId) {
+    try {
+      const response = await axios.delete(`/admin/stages/${stageId}`);
+
+      commit('stageDelete', stageId);
+
+      return getResponseMessage(response);
+    } catch (error) {
+      throw error;
     }
   },
 };

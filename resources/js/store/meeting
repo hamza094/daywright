@@ -1,16 +1,20 @@
 
+import { getObjectData, getPaginatedData, getResponseMessage, parseApiError } from '../utils/apiResponse.js';
+
+const createEmptyMeetingPage = () => ({
+  data: [],
+  links: {},
+  meta: {},
+});
+
 const state = {
-  meetings:{
-    data: [],
-    links: {},
-    meta: {}
-  },
+  meetings: createEmptyMeetingPage(),
     message:'',
 };
 
 const mutations = {
-setMeetings(state,meetingsData) {
-    state.meetings = meetingsData.meetings;
+setMeetings(state, meetingsPage) {
+  state.meetings = meetingsPage;
   },
 
   UPDATE_MEETING_STATUS(state, { id, status }) {
@@ -48,12 +52,16 @@ const actions = {
     const params = isPrevious ? { request: 'previous', page } : { page };
     return axios.get(`/projects/${slug}/meetings`, { params })
       .then(response => {
-        commit('setMeetings', { page, meetings: response.data.meetingsData });
-        commit('setMessage', response.data.message);
+        const meetings = getPaginatedData(response);
+
+        commit('setMeetings', meetings);
+        commit('setMessage', getResponseMessage(response) || (meetings.data.length === 0
+          ? (isPrevious ? 'No previous meetings found.' : 'No meetings found.')
+          : ''));
       })
       .catch(error => {
-        commit('setMeetings', { meetings: { data: [], links: {}, meta: {} } });
-        commit('setMessage', error.response?.data?.message || 'Failed to load project meetings');
+        commit('setMeetings', createEmptyMeetingPage());
+        commit('setMessage', parseApiError(error).message || 'Failed to load project meetings');
       });
   },
    updateMeetingStatus({ commit }, { id, status }) {

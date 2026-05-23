@@ -49,6 +49,7 @@
 
 <script>
 import { mapMutations } from 'vuex';
+import { getArrayData, getObjectData } from '../../utils/apiResponse.js';
 
 export default {
   props: {
@@ -119,7 +120,7 @@ export default {
 
         .then((response) => {
           this.$Progress.finish();
-          const project = response.data.project;
+          const project = getObjectData(response);
 
           let eventData = {
             current_stage: project.stage || null,
@@ -154,7 +155,7 @@ export default {
       axios
         .get('/stages')
         .then((response) => {
-          this.stages = response.data;
+          this.stages = getArrayData(response);
         })
         .catch((error) => {
           this.handleErrorResponse(error);

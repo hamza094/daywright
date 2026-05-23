@@ -14,9 +14,9 @@
 
 7. Phase 6. Implemented. Scheduled message dispatch now claims each due message under a row lock before batching any jobs, stores the claim in `batch_id`, and only dispatches the batch after commit so overlapping scheduler runs cannot enqueue the same message twice. Due-task notifications now use one locked claim path that marks `notify_sent` exactly once before queued notifications are dispatched, removing the old check-then-send race from `tasks:notify`.
 
-8. Phase 7. Lock the contract with focused tests. Keep this route-level suite concentrated on the package contract and the highest-risk production paths: token mismatch and in-flight duplicate handling, subscription create replay, meeting create replay, and Zoom webhook replay. Invitations, task assignment, and project messaging already have focused feature or action coverage for duplicate side effects, so extra route-replay cases can stay out of this file for now.
+8. Phase 7. Implemented. The route-level idempotency suite now covers token create replay plus mismatch and in-flight handling, subscription create and update replay, invitation send and accept and reject replay, project message send replay, task assign and unassign replay, meeting create and update replay, and Zoom webhook replay.
 
-9. Phase 8. Defer lower-risk coverage until the production-critical paths are stable. Secondary UI mutations such as invitation send, task assign, and project message send can be widened later instead of broadening this contract suite before the high-risk financial and integration routes are proven safe.
+9. Phase 8. Implemented. Frontend governance now has dedicated Node tests for `createIdempotentRequest()` lifecycle behavior, static coverage for every current client-triggered idempotent route, and a guard that keeps `Idempotency-Key` header writing inside the shared helper instead of a global axios interceptor.
 
 **Key Files**
 

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\Middleware\Idempotency;
 
 use App\Interfaces\Paddle;
+use App\Interfaces\Zoom;
 use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
 use App\Models\Meeting;
+use App\Models\Message;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Cache\Lock;
@@ -15,6 +17,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
+use Laravel\Sanctum\Sanctum;
+use Mockery;
+use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
@@ -77,6 +82,27 @@ final class IdempotencyContractTest extends TestCase
     }
 
     #[Test]
+    public function token_creation_replays_without_creating_a_second_token(): void
+    {
+        $headers = $this->idempotencyHeaders('phase-six-token-store');
+        $payload = ['name' => 'Phase Six Token'];
+
+        $firstResponse = $this->withHeaders($headers)
+            ->postJson($this->apiV1Route('api-tokens.store'), $payload)
+            ->assertCreated();
+
+        $secondResponse = $this->withHeaders($headers)
+            ->postJson($this->apiV1Route('api-tokens.store'), $payload)
+            ->assertCreated();
+
+        $this->assertDatabaseCount('personal_access_tokens', 1);
+        $this->assertSame(
+            $firstResponse->json('data.token_resource.id'),
+            $secondResponse->json('data.token_resource.id'),
+        );
+    }
+
+    #[Test]
     public function subscription_creation_replays_without_calling_the_provider_twice(): void
     {
         $provider = new class implements Paddle
@@ -118,6 +144,188 @@ final class IdempotencyContractTest extends TestCase
     }
 
     #[Test]
+    public function subscription_update_replays_without_calling_the_provider_twice(): void
+    {
+        $provider = new class implements Paddle
+        {
+            public int $swapCalls = 0;
+
+            public function subscribe(User $user, string $plan): mixed
+            {
+                return 'unused';
+            }
+
+            public function swap(User $user, string $plan): array
+            {
+                $this->swapCalls++;
+
+                return ['message' => 'unused'];
+            }
+
+            public function cancel(User $user, string $plan): array
+            {
+                return ['message' => 'unused'];
+            }
+        };
+
+        $this->swap(Paddle::class, $provider);
+
+        $headers = $this->idempotencyHeaders('phase-six-subscription-update');
+        $payload = ['plan' => 'yearly'];
+
+        $this->withHeaders($headers)
+            ->patchJson($this->apiV1Route('users.me.subscription.update'), $payload)
+            ->assertOk();
+
+        $this->withHeaders($headers)
+            ->patchJson($this->apiV1Route('users.me.subscription.update'), $payload)
+            ->assertOk();
+
+        $this->assertSame(1, $provider->swapCalls);
+    }
+
+    #[Test]
+    public function invitation_send_replays_without_creating_duplicate_memberships(): void
+    {
+        /** @var User $invitedUser */
+        $invitedUser = User::factory()->create();
+        $headers = $this->idempotencyHeaders('phase-six-invitation-send');
+        $payload = ['email' => $invitedUser->email];
+
+        $this->withHeaders($headers)
+            ->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), $payload)
+            ->assertCreated();
+
+        $this->withHeaders($headers)
+            ->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), $payload)
+            ->assertCreated();
+
+        $this->assertSame(1, $this->project->members()->whereKey($invitedUser->id)->count());
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $this->project->id,
+            'user_id' => $invitedUser->id,
+            'active' => false,
+        ]);
+    }
+
+    #[Test]
+    public function invitation_accept_replays_without_reprocessing_the_membership(): void
+    {
+        /** @var User $invitedUser */
+        $invitedUser = User::factory()->create();
+        $this->project->invite($invitedUser);
+        Sanctum::actingAs($invitedUser);
+
+        $headers = $this->idempotencyHeaders('phase-six-invitation-accept');
+        $route = $this->apiV1ProjectRoute('accept.invitation', $this->project);
+
+        $this->withHeaders($headers)->postJson($route)->assertOk();
+        $this->withHeaders($headers)->postJson($route)->assertOk();
+
+        $this->assertSame(1, $this->project->members()->whereKey($invitedUser->id)->count());
+        $this->assertDatabaseHas('project_members', [
+            'project_id' => $this->project->id,
+            'user_id' => $invitedUser->id,
+            'active' => true,
+        ]);
+    }
+
+    #[Test]
+    public function invitation_reject_replays_without_recreating_the_membership(): void
+    {
+        /** @var User $invitedUser */
+        $invitedUser = User::factory()->create();
+        $this->project->invite($invitedUser);
+        Sanctum::actingAs($invitedUser);
+
+        $headers = $this->idempotencyHeaders('phase-six-invitation-reject');
+        $route = $this->apiV1ProjectRoute('reject.invitation', $this->project);
+
+        $this->withHeaders($headers)->postJson($route)->assertOk();
+        $this->withHeaders($headers)->postJson($route)->assertOk();
+
+        $this->assertDatabaseMissing('project_members', [
+            'project_id' => $this->project->id,
+            'user_id' => $invitedUser->id,
+        ]);
+    }
+
+    #[Test]
+    public function project_message_send_replays_without_creating_duplicate_messages(): void
+    {
+        $this->user->forceFill(['is_admin' => true])->save();
+
+        $headers = $this->idempotencyHeaders('phase-six-message-send');
+        $payload = [
+            'message' => 'Phase six message payload',
+            'users' => json_encode([$this->user->id]),
+            'subject' => 'Phase six subject',
+            'mail' => true,
+        ];
+
+        $route = $this->apiV1ProjectRoute('projects.messages.store', $this->project);
+
+        $this->withHeaders($headers)->postJson($route, $payload)->assertOk();
+        $this->withHeaders($headers)->postJson($route, $payload)->assertOk();
+
+        $this->assertSame(1, Message::query()->count());
+        $this->assertDatabaseHas('messages', [
+            'project_id' => $this->project->id,
+            'subject' => 'Phase six subject',
+            'type' => 'mail',
+        ]);
+    }
+
+    #[Test]
+    public function task_assignment_replays_without_creating_duplicate_task_members(): void
+    {
+        $task = $this->project->addTask('phase six task assignment');
+        /** @var User $member */
+        $member = User::factory()->create();
+        $member->members()->syncWithoutDetaching([
+            $this->project->id => ['active' => true],
+        ]);
+
+        $headers = $this->idempotencyHeaders('phase-six-task-assign');
+        $route = route('api.v1.task.assign', [
+            'project' => $this->project->slug,
+            'task' => $task->id,
+        ]);
+        $payload = ['members' => [$member->id]];
+
+        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+
+        $this->assertSame(1, $task->assignee()->whereKey($member->id)->count());
+        $this->assertDatabaseHas('task_user', [
+            'task_id' => $task->id,
+            'user_id' => $member->id,
+        ]);
+    }
+
+    #[Test]
+    public function task_unassign_replays_without_error_after_the_first_removal(): void
+    {
+        $task = $this->project->addTask('phase six task unassign');
+        $task->assignee()->attach($this->user);
+
+        $headers = $this->idempotencyHeaders('phase-six-task-unassign');
+        $route = route('api.v1.task.unassign', [
+            'project' => $this->project->slug,
+            'task' => $task->id,
+        ]);
+        $payload = ['member' => $this->user->id];
+
+        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+
+        $this->assertDatabaseMissing('task_user', [
+            'task_id' => $task->id,
+            'user_id' => $this->user->id,
+        ]);
+    }
+
+    #[Test]
     public function meeting_creation_replays_without_creating_a_second_meeting(): void
     {
         $zoomFake = $this->fakeZoom();
@@ -136,6 +344,40 @@ final class IdempotencyContractTest extends TestCase
 
         $this->assertCount(1, $zoomFake->meetingsToCreate);
         $this->assertDatabaseCount('meetings', 1);
+    }
+
+    #[Test]
+    public function meeting_update_replays_without_calling_zoom_twice(): void
+    {
+        $meeting = Meeting::factory()
+            ->for($this->project)
+            ->create(['user_id' => $this->user->id]);
+
+        $this->mock(Zoom::class, function (MockInterface $mock) use ($meeting): void {
+            $mock->shouldReceive('updateMeeting')
+                ->once()
+                ->with(
+                    Mockery::on(fn (array $payload): bool => $payload['meeting_id'] === $meeting->meeting_id && $payload['duration'] === 45),
+                    Mockery::type(User::class),
+                )
+                ->andReturn(response()->json(status: 204));
+        });
+
+        $headers = $this->idempotencyHeaders('phase-six-meeting-update');
+        $payload = [
+            'meeting_id' => 18976,
+            'duration' => 45,
+        ];
+        $route = $this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]);
+
+        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+
+        $this->assertDatabaseHas('meetings', [
+            'id' => $meeting->id,
+            'meeting_id' => $meeting->meeting_id,
+            'duration' => 45,
+        ]);
     }
 
     #[Test]

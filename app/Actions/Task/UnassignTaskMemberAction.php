@@ -5,17 +5,18 @@ declare(strict_types=1);
 namespace App\Actions\Task;
 
 use App\Models\Task;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 final class UnassignTaskMemberAction
 {
-    public function execute(Task $task, int $memberId): User
+    public function execute(Task $task, int $memberId): Task
     {
-        return DB::transaction(function () use ($task, $memberId): User {
+        DB::transaction(function () use ($task, $memberId): void {
             $task->assignee()->detach($memberId);
-
-            return User::query()->findOrFail($memberId);
         });
+
+        $task->load('assignee');
+
+        return $task;
     }
 }

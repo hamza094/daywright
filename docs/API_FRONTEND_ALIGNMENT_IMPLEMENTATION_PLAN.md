@@ -231,15 +231,15 @@ Why this phase comes third:
 
 Step-by-step tasks:
 
-- [ ] Update dashboard projects to read the native paginated/collection response shape from top-level `data` and `meta.total`.
-- [ ] Update dashboard tasks to send nested `filter[user_created]`, `filter[task_assigned]`, `filter[completed]`, `filter[overdue]`, and `filter[remaining]`.
-- [ ] Update dashboard tasks to consume `response.data.data` and `response.data.meta` using the shared parser.
-- [ ] Update the projects page to send nested project filters such as `filter[search]`, `filter[member]`, and `filter[abandoned]`.
-- [ ] Keep project list sort tokens canonical, for example `-created_at`, `created_at`, `name`, and `-name`.
-- [ ] Update the projects page to read the collection response from top-level `data`, `meta`, and `links` instead of `projects` and `projectsCount`.
-- [ ] Update pending invitation listing to read the paginated collection returned by `/users/me/invitations`.
-- [ ] Update profile and user-detail reads that still expect `response.data.user` to read the current resource shape.
-- [ ] Update token list reads that still expect `response.data.tokens` to use the native collection contract.
+- [x] Update dashboard projects to read the native paginated/collection response shape from top-level `data` and `meta.total`.
+- [x] Update dashboard tasks to send nested `filter[user_created]`, `filter[task_assigned]`, `filter[completed]`, `filter[overdue]`, and `filter[remaining]`.
+- [x] Update dashboard tasks to consume `response.data.data` and `response.data.meta` using the shared parser.
+- [x] Update the projects page to send nested project filters such as `filter[search]`, `filter[member]`, and `filter[abandoned]`.
+- [x] Keep project list sort tokens canonical, for example `-created_at`, `created_at`, `name`, and `-name`.
+- [x] Update the projects page to read the collection response from top-level `data`, `meta`, and `links` instead of `projects` and `projectsCount`.
+- [x] Update pending invitation listing to read the paginated collection returned by `/users/me/invitations`.
+- [x] Update profile and user-detail reads that still expect `response.data.user` to read the current resource shape.
+- [x] Update token list reads that still expect `response.data.tokens` to use the native collection contract.
 
 Likely files involved:
 
@@ -269,18 +269,18 @@ Why this phase comes after read-path stabilization:
 
 Step-by-step tasks:
 
-- [ ] Update subscription create to read `response.data.data.paylink`.
-- [ ] Update subscription show, swap, and cancel flows to read the subscription resource from `response.data.data`.
-- [ ] Stop expecting a success `message` on subscription update and destroy unless the backend contract is intentionally changed.
-- [ ] Update invitation accept and reject flows to read `response.data.data.project` and `response.data.data.invitation_state`.
-- [ ] Use local success copy for invitation accept and reject if the response remains message-less.
-- [ ] Update token creation to read `response.data.data.token` and `response.data.data.token_resource`.
-- [ ] Keep token delete as a message-only flow.
-- [ ] Update avatar upload to read `response.data.data.avatar`.
-- [ ] Update profile edit to read the updated user resource from `response.data.data`.
-- [ ] Update project creation to read the new project resource from `response.data.data`.
-- [ ] Update project name/about/stage update screens to read helper-wrapped project resources from `response.data.data`.
-- [ ] Sweep remaining user-facing mutation handlers for stale assumptions such as `response.data.project`, `response.data.user`, `response.data.stage`, or `response.data.status`.
+- [x] Update subscription create to read `response.data.data.paylink`.
+- [x] Update subscription show, swap, and cancel flows to read the subscription resource from `response.data.data`.
+- [x] Stop expecting a success `message` on subscription update and destroy unless the backend contract is intentionally changed.
+- [x] Update invitation accept and reject flows to read `response.data.data.project` and `response.data.data.invitation_state`.
+- [x] Use local success copy for invitation accept and reject if the response remains message-less.
+- [x] Update token creation to read `response.data.data.token` and `response.data.data.token_resource`.
+- [x] Keep token delete as a message-only flow.
+- [x] Update avatar upload to read `response.data.data.avatar`.
+- [x] Update profile edit to read the updated user resource from `response.data.data`.
+- [x] Update project creation to read the new project resource from `response.data.data`.
+- [x] Update project name/about/stage update screens to read helper-wrapped project resources from `response.data.data`.
+- [x] Sweep remaining user-facing mutation handlers for stale assumptions such as `response.data.project`, `response.data.user`, `response.data.stage`, or `response.data.status`.
 
 Likely files involved:
 
@@ -313,18 +313,18 @@ Why admin is a separate phase:
 
 Step-by-step tasks:
 
-- [ ] Change admin backup from `GET` to `POST`.
-- [ ] Keep admin backup as a message-only success flow.
-- [ ] Update admin projects to send nested filters: `filter[state]`, `filter[search]`, `filter[members]`, `filter[status]`, `filter[tasks]`, `filter[stage]`, `filter[from]`, and `filter[to]`.
-- [ ] Update admin projects sort handling to use canonical tokens such as `-created_at`, `created_at`, `name`, `-name`, `health_score`, and `-health_score` instead of `asc` or `desc`.
-- [ ] Update admin projects to read the paginated response from top-level `data`, `meta`, and `links` and to read applied filters from `meta.applied_filters`.
-- [ ] Update admin tasks to send `filter[state]` and `filter[search]` instead of top-level aliases.
-- [ ] Update admin tasks to read the native paginated response shape directly.
-- [ ] Update admin users to send `filter[search]` instead of top-level search.
-- [ ] Update admin users to read the native paginated response shape directly.
-- [ ] Update admin role mutation to read the updated resource from `response.data.data` and stop expecting a top-level `user` key.
-- [ ] Update stage and status stores so index reads `response.data.data`, create/update reads `response.data.data`, and delete reads `response.data.message`.
-- [ ] Update admin stage and status components to stop expecting `success`, `stage`, or `status` at the top level.
+- [x] Change admin backup from `GET` to `POST`.
+- [x] Keep admin backup as a message-only success flow.
+- [x] Update admin projects to send nested filters: `filter[state]`, `filter[search]`, `filter[members]`, `filter[status]`, `filter[tasks]`, `filter[stage]`, `filter[from]`, and `filter[to]`.
+- [x] Update admin projects sort handling to use canonical tokens such as `-created_at`, `created_at`, `name`, `-name`, `health_score`, and `-health_score` instead of `asc` or `desc`.
+- [x] Update admin projects to read the paginated response from top-level `data`, `meta`, and `links` and to read applied filters from `meta.applied_filters`.
+- [x] Update admin tasks to send `filter[state]` and `filter[search]` instead of top-level aliases.
+- [x] Update admin tasks to read the native paginated response shape directly.
+- [x] Update admin users to send `filter[search]` instead of top-level search.
+- [x] Update admin users to read the native paginated response shape directly.
+- [x] Update admin role mutation to read the updated resource from `response.data.data` and stop expecting a top-level `user` key.
+- [x] Update stage and status stores so index reads `response.data.data`, create/update reads `response.data.data`, and delete reads `response.data.message`.
+- [x] Update admin stage and status components to stop expecting `success`, `stage`, or `status` at the top level.
 
 Likely files involved:
 
@@ -356,13 +356,27 @@ Why this phase closes the plan:
 
 Step-by-step tasks:
 
-- [ ] Verify every route currently using backend `Idempotent` middleware still has matching frontend helper usage where the request originates from the client UI.
-- [ ] Add a short developer note near `IdempotencyRequestService.js` or in docs explaining when to use it and when not to use it.
-- [ ] Do not add a global axios interceptor that injects `Idempotency-Key` on all requests.
-- [ ] Add a review checklist item: when backend adds `Idempotent` middleware, frontend must migrate that action to `createIdempotentRequest()` in the same change set.
-- [ ] Run focused manual duplicate-submit checks for subscription create/update, token create, invitation send/accept/reject, message send, task assign/unassign, and meeting create/update.
-- [ ] Run lint and build after each phase, not only at the end.
-- [ ] Add or update targeted frontend tests for the shared response parser and the most fragile flows from Phases 2 through 5.
+- [x] Verify every route currently using backend `Idempotent` middleware still has matching frontend helper usage where the request originates from the client UI.
+- [x] Add a short developer note near `IdempotencyRequestService.js` or in docs explaining when to use it and when not to use it.
+- [x] Do not add a global axios interceptor that injects `Idempotency-Key` on all requests.
+- [x] Add a review checklist item: when backend adds `Idempotent` middleware, frontend must migrate that action to `createIdempotentRequest()` in the same change set.
+- [x] Run focused manual duplicate-submit checks for subscription create/update, token create, invitation send/accept/reject, message send, task assign/unassign, and meeting create/update.
+- [x] Run lint and build after each phase, not only at the end.
+- [x] Add or update targeted frontend tests for the shared response parser and the most fragile flows from Phases 2 through 5.
+
+Phase 6 review checklist:
+
+- When backend adds `Idempotent` middleware to a client-initiated route, the same change set must update the originating UI action to use a dedicated `createIdempotentRequest()` instance.
+- Keep one helper instance per logical submit action and call `reset()` on modal, form, or component teardown.
+- Do not add a global axios interceptor that injects `Idempotency-Key`; the shared helper owns that header.
+- Keep the frontend coverage table and static coverage test aligned with the current route list.
+
+Phase 6 executable verification:
+
+- `node --test resources/js/utils/apiResponse.test.js resources/js/utils/authResponse.test.js resources/js/utils/dashboardResponse.test.js resources/js/utils/projectListResponse.test.js resources/js/utils/adminListResponse.test.js resources/js/services/IdempotencyRequestService.test.js resources/js/services/idempotencyCoverage.test.js`
+- `php artisan test --compact tests/Feature/Api/Middleware/Idempotency/IdempotentRoutesRegistrationTest.php tests/Feature/Api/Middleware/Idempotency/IdempotencyContractTest.php`
+- `npx eslint resources/js/services/IdempotencyRequestService.js resources/js/services/IdempotencyRequestService.test.js resources/js/services/idempotencyCoverage.test.js`
+- `npm run build`
 
 Exit criteria:
 

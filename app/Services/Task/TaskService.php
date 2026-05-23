@@ -87,9 +87,9 @@ class TaskService
     /**
      * @param  array<int, int|string>  $members
      */
-    public function assignMembers(Task $task, array $members, Project $project, User $actor): void
+    public function assignMembers(Task $task, array $members, Project $project, User $actor): Task
     {
-        $this->assignTaskMembersAction->execute($task, $project, $actor, $members);
+        return $this->hydrateTaskResource($this->assignTaskMembersAction->execute($task, $project, $actor, $members));
     }
 
     public function archiveTask(Task $task): void
@@ -102,14 +102,23 @@ class TaskService
         $this->restoreTaskAction->execute($task);
     }
 
-    public function unassignMember(Task $task, int $memberId): User
+    public function unassignMember(Task $task, int $memberId): Task
     {
-        return $this->unassignTaskMemberAction->execute($task, $memberId);
+        return $this->hydrateTaskResource($this->unassignTaskMemberAction->execute($task, $memberId));
     }
 
     public function removeTask(Task $task): void
     {
         $this->deleteTaskAction->execute($task);
+    }
+
+    private function hydrateTaskResource(Task $task): Task
+    {
+        $task->loadMissing('project:id,slug');
+        $task->loadMissing('status');
+        $task->load('assignee');
+
+        return $task;
     }
 
     private function sendNotification(Project $project, User $actor): void

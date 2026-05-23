@@ -4,7 +4,7 @@
       <div class="auth-form text-center">
         <div class="text-center mb-4">
           <a href="/" aria-label="Back to home">
-            <img src="/img/D2.png" alt="DayWright" class="auth-logo_img" />
+            <img :src="logoSrc" alt="DayWright" class="auth-logo_img" />
           </a>
         </div>
 
@@ -54,6 +54,7 @@ export default {
   },
   data: () => ({
     error: '',
+    logoSrc: '/img/D2.png',
     success: false,
   }),
 };

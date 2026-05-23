@@ -147,11 +147,13 @@
 </template>
 <script>
 import { debounce } from 'lodash';
+import { getPaginatedData, getResponseMessage } from '../../utils/apiResponse.js';
+import { buildAdminTaskParams, createEmptyPaginatedState } from '../../utils/adminListResponse.js';
 
 export default {
   data() {
     return {
-      tasks: [],
+      tasks: createEmptyPaginatedState(),
       from: 0,
       to: 0,
       total: 0,
@@ -187,18 +189,11 @@ export default {
     },
     getResults(page = 1, filter = null) {
       const activeFilter = (filter ?? this.filter) || 'all';
-      const trimmedSearchTerm = this.searchTerm.trim();
-      const queryParameters = {
-        page: page,
-      };
-
-      if (activeFilter !== 'all') {
-        queryParameters.filter = activeFilter;
-      }
-
-      if (trimmedSearchTerm !== '') {
-        queryParameters.search = trimmedSearchTerm;
-      }
+      const queryParameters = buildAdminTaskParams({
+        page,
+        state: activeFilter,
+        searchTerm: this.searchTerm,
+      });
 
       if (activeFilter === 'all') {
         this.appliedFilter = 'All Tasks';
@@ -221,11 +216,13 @@ export default {
           params: queryParameters,
         })
         .then((response) => {
-          this.tasks = response.data || '';
-          this.from = this.tasks.meta.from || '';
-          this.to = this.tasks.meta.to || '';
-          this.total = this.tasks.meta.total || '';
-          this.message = this.tasks.data?.length ? '' : response.data.message || '';
+          const tasks = getPaginatedData(response);
+
+          this.tasks = tasks;
+          this.from = tasks.meta.from || '';
+          this.to = tasks.meta.to || '';
+          this.total = tasks.meta.total || '';
+          this.message = tasks.data.length > 0 ? '' : 'No tasks found.';
         })
         .catch((error) => {
           this.errorMessage = 'Failed to load tasks. Please try again.';
@@ -258,7 +255,7 @@ export default {
               data: { task_ids: this.selectedTasks },
             })
             .then((response) => {
-              this.$vToastify.success(response.data.message);
+              this.$vToastify.success(getResponseMessage(response) || 'Tasks deleted successfully.');
               this.getResults();
             })
             .catch((error) => {

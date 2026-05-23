@@ -166,6 +166,8 @@
 </template>
 
 <script>
+import { buildDashboardTaskParams, readDashboardTasks } from '../../utils/dashboardResponse.js';
+
 export default {
   data() {
     return {
@@ -185,21 +187,30 @@ export default {
     this.loadTasks();
   },
   methods: {
-    loadTasks(additionalParams = {}) {
+    loadTasks() {
       this.loading = true;
-      const params = { ...additionalParams };
+      const params = buildDashboardTaskParams({
+        assigned: this.form.assigned,
+        created: this.form.created,
+        activeFilter: this.activeFilter,
+      });
 
-      // Use 1/0 format for boolean parameters as expected by backend
-      if (this.form.assigned) params.task_assigned = 1;
-      if (this.form.created) params.user_created = 1;
+      if (Object.keys(params.filter).length === 0) {
+        this.userTasks = [];
+        this.appliedFilters = [];
+        this.totalTasks = 0;
+        this.loading = false;
+        return;
+      }
 
       axios
         .get('/dashboard/tasks', { params })
         .then((response) => {
-          // Update to match backend API response structure
-          this.userTasks = response.data.data || [];
-          this.appliedFilters = response.data.meta?.applied_filters || [];
-          this.totalTasks = response.data.meta?.total || 0;
+          const { tasks, appliedFilters, total } = readDashboardTasks(response);
+
+          this.userTasks = tasks;
+          this.appliedFilters = appliedFilters;
+          this.totalTasks = total;
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -214,25 +225,7 @@ export default {
 
     setFilter(filterType) {
       this.activeFilter = filterType;
-      const params = {};
-
-      switch (filterType) {
-        case 'overdue':
-          params.overdue = 1;
-          break;
-        case 'remaining':
-          params.remaining = 1;
-          break;
-        case 'completed':
-          params.completed = 1;
-          break;
-        case 'all':
-        default:
-          // No additional parameters for 'all'
-          break;
-      }
-
-      this.loadTasks(params);
+      this.loadTasks();
     },
 
     isOverdue(task) {

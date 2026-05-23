@@ -62,7 +62,7 @@
 </template>
 
 <script>
-import { mapState, mapMutations, mapActions } from 'vuex';
+import { mapState, mapActions } from 'vuex';
 
 export default {
   data() {
@@ -85,8 +85,7 @@ export default {
     this.loadStatuses();
   },
   methods: {
-    ...mapActions('status', ['loadStatuses', 'addNewStatus']),
-    ...mapMutations('status', ['statusUpdate', 'statusDelete']),
+    ...mapActions('status', ['loadStatuses', 'addNewStatus', 'updateExistingStatus', 'deleteExistingStatus']),
     canMutateAdmin() {
       const user = this.$store.state.currentUser.user || {};
 
@@ -155,16 +154,17 @@ export default {
         return;
       }
 
-      axios
-        .put('/admin/statuses/' + status.id, {
+      this.updateExistingStatus({
+        statusId: status.id,
+        statusData: {
           label: this.form.updateLabel,
           color: this.form.updateColor,
-        })
-        .then((response) => {
-          this.statusUpdate(response.data.status);
+        },
+      })
+        .then(() => {
           this.edit = false;
           this.editStatusId = null;
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success('Status updated successfully.');
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -175,13 +175,9 @@ export default {
         return;
       }
 
-      axios
-        .delete('/admin/statuses/' + statusId, {
-          label: this.form.label,
-        })
-        .then((response) => {
-          this.statusDelete(statusId);
-          this.$vToastify.success(response.data.success);
+      this.deleteExistingStatus(statusId)
+        .then((message) => {
+          this.$vToastify.success(message || 'Status deleted successfully.');
         })
         .catch((error) => {
           this.handleErrorResponse(error);

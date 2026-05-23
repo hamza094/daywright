@@ -114,6 +114,7 @@
 
 <script>
 import { createIdempotentRequest } from '../../services/IdempotencyRequestService';
+import { getArrayData, getObjectData, getResponseMessage } from '../../utils/apiResponse.js';
 
 export default {
   name: 'UserTokens',
@@ -167,7 +168,7 @@ export default {
       axios
         .get('/api-tokens')
         .then((res) => {
-          this.tokens = res.data.tokens;
+          this.tokens = getArrayData(res);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -177,17 +178,24 @@ export default {
         });
     },
     toggleCreateForm() {
-      this.showCreate = !this.showCreate;
-
-      if (!this.showCreate) {
+      if (this.showCreate) {
         this.resetCreateTokenForm();
+        return;
       }
+
+      this.showCreate = true;
     },
-    resetCreateTokenForm() {
-      this.showCreate = false;
+    resetCreateTokenForm(hideForm = true) {
+      this.showCreate = !hideForm;
       this.form.name = '';
       this.form.expires_in = null;
       this.createTokenRequest.reset();
+
+      if (hideForm) {
+        this.newToken = '';
+        this.newTokenId = null;
+        this.showTokenMap = {};
+      }
     },
     createToken() {
       if (!this.form.name) return;
@@ -201,11 +209,13 @@ export default {
       this.createTokenRequest
         .post('/api-tokens', payload)
         .then((res) => {
-          this.$vToastify.success(res.data.message || 'Token created.');
-          this.newToken = res.data.token;
-          this.newTokenId = res.data.token_resource.id;
-          this.showTokenMap = { [this.newTokenId]: false };
-          this.resetCreateTokenForm();
+          const data = getObjectData(res);
+
+          this.$vToastify.success('Token created.');
+          this.newToken = data.token || '';
+          this.newTokenId = data.token_resource?.id || null;
+          this.showTokenMap = this.newTokenId ? { [this.newTokenId]: false } : {};
+          this.resetCreateTokenForm(false);
           this.loadTokens();
         })
         .catch((err) => {
@@ -222,7 +232,7 @@ export default {
           axios
             .delete(`/api-tokens/${id}`)
             .then((res) => {
-              this.$vToastify.success(res.data.message || 'Token deleted.');
+              this.$vToastify.success(getResponseMessage(res) || 'Token deleted.');
               this.loadTokens();
             })
             .catch((err) => {

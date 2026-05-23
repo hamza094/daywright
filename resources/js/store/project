@@ -1,3 +1,5 @@
+import { getArrayData, getObjectData } from '../utils/apiResponse.js';
+
 const state = {
   project: {},
   user: {},
@@ -73,9 +75,12 @@ const mutations = {
 const actions = {
   async loadProject({ commit }, slug) {
     try {
-      const { data } = await axios.get(`/projects/${slug}`);
-      commit('setProject', data);
-      return data;
+      const response = await axios.get(`/projects/${slug}`);
+      const project = getObjectData(response);
+
+      commit('setProject', project);
+
+      return project;
     } catch (error) {
       throw error;
     }
@@ -89,8 +94,9 @@ const actions = {
     }
 
     try {
-      const { data } = await axios.get(`/projects/${slug}/limits`);
-      commit('updateLimits', data.limits);
+      const response = await axios.get(`/projects/${slug}/limits`);
+
+      commit('updateLimits', getArrayData(response));
     } catch {
       // Silently ignore — limits are non-critical UI data
     }

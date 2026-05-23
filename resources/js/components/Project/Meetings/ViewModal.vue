@@ -195,6 +195,7 @@ import MeetingDetail from './MeetingDetail.vue';
 import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 import { shouldShowStartButton, shouldShowJoinButton } from '../../../utils/meetingUtils';
 import { getDisplayTimezone, toUtcIsoString } from '../../../utils/dateTime';
+import { getObjectData, getResponseMessage } from '../../../utils/apiResponse.js';
 
 export default {
   name: 'ViewMeetingModal',
@@ -269,9 +270,13 @@ export default {
       this.updateMeetingRequest
         .patch(`/projects/${this.projectSlug}/meetings/${id}`, filteredForm)
         .then((response) => {
-          this.meeting = response.data.meeting;
+          this.meeting = getObjectData(response);
           this.updateMeetingInState(this.meeting);
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success(
+            this.meeting.topic
+              ? `Meeting ${this.meeting.topic} updated successfully.`
+              : 'Meeting updated successfully.',
+          );
           this.meetingEditClose();
         })
         .catch((error) => {
@@ -291,7 +296,7 @@ export default {
         .then((response) => {
           this.meetingModalClose();
           this.removeMeetingFromState(meeting);
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success(getResponseMessage(response) || 'Meeting deleted successfully.');
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -307,7 +312,7 @@ export default {
       axios
         .get(`/projects/${this.projectSlug}/meetings/${meetingId}`)
         .then((response) => {
-          this.meeting = response.data.data;
+          this.meeting = getObjectData(response);
           this.form.agenda = this.meeting.agenda;
           this.$Progress.finish();
           this.$modal.show('ViewMeeting');

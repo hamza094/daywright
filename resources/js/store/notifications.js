@@ -1,10 +1,15 @@
+import { getPaginatedData } from '../utils/apiResponse.js';
+import { buildNotificationIndexParams } from '../utils/notificationQuery.js';
+
+const EMPTY_PAGINATED_RESPONSE = {
+  data: [],
+  links: {},
+  meta: {},
+};
+
 const state = {
-  notifications: { data: [], links: {}, meta: {} },
-  allNotifications: {
-    data: [],
-    links: {},
-    meta: {},
-  },
+  notifications: { ...EMPTY_PAGINATED_RESPONSE },
+  allNotifications: { ...EMPTY_PAGINATED_RESPONSE },
 };
 
 const mutations = {
@@ -57,12 +62,11 @@ const actions = {
   },
 
   async fetchNotificationsFromApi({ commit }, { filter = null, page = 1, mutation }) {
-    const axiosParams = {};
-    if (filter) axiosParams.filter = filter;
-    if (page) axiosParams.page = page;
+    const response = await axios.get('/notifications', {
+      params: buildNotificationIndexParams(filter, page),
+    });
 
-    const { data } = await axios.get('/notifications', { params: axiosParams });
-    commit(mutation, data);
+    commit(mutation, getPaginatedData(response));
   },
 
   deleteNotification({ commit }, notificationId) {

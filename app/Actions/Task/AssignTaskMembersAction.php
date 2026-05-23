@@ -19,7 +19,7 @@ final class AssignTaskMembersAction
     /**
      * @param  array<int, int|string>  $members
      */
-    public function execute(Task $task, Project $project, User $actor, array $members): void
+    public function execute(Task $task, Project $project, User $actor, array $members): Task
     {
         DB::transaction(function () use ($task, $project, $actor, $members): void {
             $lockedTask = $this->lockTask($task);
@@ -38,6 +38,8 @@ final class AssignTaskMembersAction
         }, attempts: self::TRANSACTION_RETRY_ATTEMPTS);
 
         $task->load('assignee');
+
+        return $task;
     }
 
     /**

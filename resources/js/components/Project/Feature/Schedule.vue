@@ -64,6 +64,8 @@
 </template>
 
 <script>
+import { getPaginatedData } from '../../../utils/apiResponse.js';
+
 export default {
   props: {
     slug: { type: String, required: true },
@@ -87,7 +89,7 @@ export default {
       axios
         .get('/projects/' + this.slug + '/messages/scheduled')
         .then((response) => {
-          this.messages = response.data && response.data.data ? response.data.data : response.data;
+          this.messages = getPaginatedData(response).data;
         })
         .catch((error) => {
           this.handleErrorResponse(error);

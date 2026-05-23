@@ -11,6 +11,8 @@
 
 <script>
 import { mapState } from 'vuex';
+import { getResponseMessage } from '../../utils/apiResponse.js';
+
 export default {
   name: 'ZoomAuth',
   data() {
@@ -36,7 +38,7 @@ export default {
         .get('/oauth/zoom/callback', { params: { code, state } })
         .then((response) => {
           this.$router.push(`/user/${this.user.uuid}/profile`);
-          this.$vToastify.success(response.data.success);
+          this.$vToastify.success(getResponseMessage(response) || 'Zoom account connected successfully.');
         })
         .catch((error) => {
           this.$router.push('/dashboard');

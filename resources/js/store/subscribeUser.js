@@ -1,3 +1,5 @@
+import { getObjectData } from '../utils/apiResponse.js';
+
 const state = {
   subscription: {},
   errors: {},
@@ -38,7 +40,7 @@ const actions = {
     return axios
       .get('/users/me/subscription', {})
       .then((response) => {
-        commit('setSubscription', response.data.subscription);
+        commit('setSubscription', getObjectData(response));
         commit('setErrors', {});
         return response;
       })

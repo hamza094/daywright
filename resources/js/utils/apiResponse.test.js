@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  getArrayData,
+  getObjectData,
   getPaginatedData,
   getResponseData,
   getResponseMessage,
@@ -36,6 +38,10 @@ test('getResponsePayload unwraps axios-style responses and ignores invalid paylo
 test('getResponseData keeps falsey resource values when the data key exists', () => {
   assert.equal(getResponseData(makeResponse({ data: false })), false);
   assert.equal(getResponseData(makeResponse({})), null);
+  assert.deepEqual(getObjectData(makeResponse({ data: { id: 1 } })), { id: 1 });
+  assert.deepEqual(getObjectData(makeResponse({ data: [] })), {});
+  assert.deepEqual(getArrayData(makeResponse({ data: ['a'] })), ['a']);
+  assert.deepEqual(getArrayData(makeResponse({ data: { id: 1 } })), []);
 });
 
 test('getPaginatedData normalizes non-array collections and nested metadata', () => {

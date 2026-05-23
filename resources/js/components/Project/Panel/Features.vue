@@ -149,6 +149,9 @@ import { mapMutations, mapActions } from 'vuex';
 import SubscriptionCheck from '../../SubscriptionChecker.vue';
 import { debounce } from 'lodash';
 import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
+import { getArrayData, getObjectData, getResponseMessage } from '../../../utils/apiResponse.js';
+
+const PENDING_INVITATION_STATUS = 'pending';
 
 export default {
   components: { SubscriptionCheck },
@@ -258,9 +261,9 @@ export default {
       this.isLoading = true;
 
       axios
-        .get('/users/search', { params: { query } })
+        .get('/users/search', { params: { search: query } })
         .then((response) => {
-          this.results = response.data;
+          this.results = getArrayData(response);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -278,9 +281,12 @@ export default {
       this.inviteUserRequest
         .post('/projects/' + this.slug + '/invitations', payload, { useProgress: true })
         .then((response) => {
+          const invitation = getObjectData(response);
+
           this.query = '';
           this.results = [];
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success(invitation.email ? `Invitation sent to ${invitation.email}.` : 'Invitation sent.');
+          this.loadPendingRequests();
         })
         .catch((error) => {
           this.query = '';
@@ -296,7 +302,7 @@ export default {
             .delete('/projects/' + this.slug + '/members/' + id, { useProgress: true })
             .then((response) => {
               this.detachMember(id);
-              this.$vToastify.info(response.data.message);
+              this.$vToastify.info(getResponseMessage(response) || 'Project member removed.');
               this.refreshLimits(this.slug);
             })
             .catch((error) => {
@@ -314,7 +320,7 @@ export default {
           .delete(`/projects/${this.slug}/invitations/${userId}`, { useProgress: true })
           .then((response) => {
             this.pendingMembers = this.pendingMembers.filter((pendingMember) => pendingMember.uuid !== userId);
-            this.$vToastify.info(response.data.message);
+            this.$vToastify.info(getResponseMessage(response) || 'Invitation canceled.');
           })
           .catch((error) => {
             this.handleErrorResponse(error);
@@ -325,10 +331,10 @@ export default {
     loadPendingRequests() {
       axios
         .get(`/projects/${this.slug}/invitations`, {
-          params: { status: 'pending' },
+          params: { filter: { status: PENDING_INVITATION_STATUS } },
         })
         .then((response) => {
-          this.pendingMembers = response.data.pending_invitations;
+          this.pendingMembers = getArrayData(response);
         })
         .catch((error) => {
           this.handleErrorResponse(error);

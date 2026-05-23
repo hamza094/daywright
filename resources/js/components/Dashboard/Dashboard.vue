@@ -89,6 +89,7 @@ import ProjectChart from './ProjectChart.vue';
 import TasksData from './TasksData.vue';
 import ActivityCalendar from './ActivityCalendar.vue';
 import { getResponseMessage } from '../../utils/apiResponse.js';
+import { readDashboardProjects } from '../../utils/dashboardResponse.js';
 
 export default {
   components: {
@@ -126,12 +127,20 @@ export default {
         });
     },
     loadDashboardProjects() {
-      axios.get('/dashboard/projects').then(({ data }) => this.getData(data));
+      axios
+        .get('/dashboard/projects')
+        .then((response) => {
+          this.getData(readDashboardProjects(response));
+        })
+        .catch((error) => {
+          this.handleErrorResponse(error);
+          this.getData({ projects: [], total: 0, message: '' });
+        });
     },
 
     getData(data) {
       this.projects = data.projects;
-      this.projectsCount = data.projectsCount;
+      this.projectsCount = data.total;
       this.message = data.message;
     },
     capitalize(value) {

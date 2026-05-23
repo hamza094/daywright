@@ -81,6 +81,8 @@
 <script>
 import TaskDetailModal from './TaskDetailModal.vue';
 import { mapMutations, mapActions, mapState } from 'vuex';
+import { getObjectData } from '../../../utils/apiResponse.js';
+
 export default {
   components: { TaskDetailModal },
   props: {
@@ -145,7 +147,7 @@ export default {
         .get('/projects/' + this.slug + '/tasks/' + task.id, { useProgress: true })
         .then((response) => {
           //this.$Progress.finish();
-          this.setTask(response.data);
+          this.setTask(getObjectData(response));
           this.$modal.show('task-modal');
         })
         .catch((error) => {

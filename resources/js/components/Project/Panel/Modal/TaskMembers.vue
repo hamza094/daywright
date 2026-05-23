@@ -44,6 +44,7 @@ import { mapMutations, mapState } from 'vuex';
 import { createIdempotentRequest } from '../../../../services/IdempotencyRequestService';
 import { url } from '../../../../utils/TaskUtils';
 import { debounce } from 'lodash';
+import { getArrayData, getObjectData, getResponseMessage, parseApiError } from '../../../../utils/apiResponse.js';
 
 export default {
   props: {
@@ -86,15 +87,22 @@ export default {
   },
 
   methods: {
+    ...mapMutations('task', ['updateTask']),
+
     ...mapMutations('SingleTask', ['setErrors', 'updateTaskMembers']),
 
     performSearch(searchTerm) {
+      if (typeof searchTerm !== 'string' || searchTerm.trim() === '') {
+        this.searchResults = [];
+        return;
+      }
+
       axios
         .get(`/projects/${this.slug}/tasks/${this.taskId}/members/search`, {
           params: { search: searchTerm },
         })
         .then((response) => {
-          this.searchResults = response.data;
+          this.searchResults = getArrayData(response);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -130,16 +138,20 @@ export default {
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.setErrors(error?.response?.data?.errors || {});
+          this.setErrors(parseApiError(error).errors);
         });
     },
 
     assignSuccessfull(response) {
+      const taskData = getObjectData(response);
+
       this.taskMembers = [];
-      this.setErrors([]);
-      this.updateTaskMembers(response.data.taskMembers);
+      this.searchResults = [];
+      this.setErrors({});
       this.$bus.emit('close-members-popup');
-      this.$vToastify.success(response.data.message);
+      this.$vToastify.success(getResponseMessage(response) || 'Task assigned successfully.');
+      this.updateTaskMembers(Array.isArray(taskData.members) ? taskData.members : []);
+      this.updateTask(taskData);
     },
 
     getErrors(key) {

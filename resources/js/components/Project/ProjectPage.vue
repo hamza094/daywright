@@ -281,6 +281,7 @@ import PanelFeatues from './Panel/Features.vue';
 import RecentActivities from './RecentActivities.vue';
 import usageLimitHelpers from '../../mixins/usageLimitHelpers';
 import { permission } from '../../auth';
+import { getObjectData } from '../../utils/apiResponse.js';
 import { mapState, mapMutations, mapActions } from 'vuex';
 
 export default {
@@ -443,10 +444,15 @@ export default {
           name: this.projectname,
         })
         .then((response) => {
-          const { name, slug } = response.data.project;
+          const project = getObjectData(response);
+
           this.$Progress.finish();
-          this.updateNameState(name, slug, response.data.message);
-          this.updateUrl(slug);
+          this.updateNameState(
+            project.name || this.project.name,
+            project.slug || this.project.slug,
+            'Project name updated.',
+          );
+          this.updateUrl(project.slug || this.project.slug);
         })
         .catch((error) => {
           this.$Progress.fail();
@@ -484,11 +490,12 @@ export default {
         })
         .then((response) => {
           this.$Progress.finish();
-          const data = response.data;
-          this.aboutUpdate(data.project.about);
-          this.projectabout = data.project.about;
+          const project = getObjectData(response);
+
+          this.aboutUpdate(project.about);
+          this.projectabout = project.about;
           this.aboutEdit = false;
-          this.$vToastify.success(data.message);
+          this.$vToastify.success('Project details updated.');
         })
         .catch((error) => {
           this.$Progress.fail();

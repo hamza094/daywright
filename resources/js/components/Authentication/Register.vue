@@ -3,12 +3,12 @@
     <div class="auth-card">
       <div class="row g-0 align-items-stretch">
         <div class="col-lg-6 d-none d-lg-flex auth-visual">
-          <img src="/img/sign_in.svg" alt="Sign up illustration" class="auth-visual_img" />
+          <img :src="illustrationSrc" alt="Sign up illustration" class="auth-visual_img" />
         </div>
         <div class="col-lg-6 col-12 auth-form">
           <div class="auth-logo text-center mb-4">
             <a href="/" aria-label="Back to welcome">
-              <img src="/img/D2.png" alt="DayWright" class="auth-logo_img" />
+              <img :src="logoSrc" alt="DayWright" class="auth-logo_img" />
             </a>
           </div>
           <h2 class="auth-title text-center mb-2">Create your account</h2>
@@ -109,6 +109,8 @@ export default {
   data() {
     return {
       errors: {},
+      illustrationSrc: '/img/sign_in.svg',
+      logoSrc: '/img/D2.png',
       form: {
         name: '',
         email: '',

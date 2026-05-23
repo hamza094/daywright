@@ -51,6 +51,7 @@
 <script>
 import VCalendar from 'v-calendar';
 import moment from 'moment';
+import { getArrayData } from '../../utils/apiResponse.js';
 import { toDateInUserTimezone } from '../../utils/dateTime';
 
 export default {
@@ -130,7 +131,7 @@ export default {
           cancelToken: this.cancelTokenSource.token,
         })
         .then((response) => {
-          this.activities = response.data && response.data.data ? response.data.data : response.data;
+          this.activities = getArrayData(response);
           this.errorMessage = null;
           this.$emit('loaded', this.activities);
         })

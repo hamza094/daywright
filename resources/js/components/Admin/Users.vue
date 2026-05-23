@@ -95,11 +95,13 @@
 </template>
 <script>
 import { debounce } from 'lodash';
+import { getObjectData, getPaginatedData } from '../../utils/apiResponse.js';
+import { buildAdminUserParams, createEmptyPaginatedState } from '../../utils/adminListResponse.js';
 
 export default {
   data() {
     return {
-      users: [],
+      users: createEmptyPaginatedState(),
       from: 0,
       to: 0,
       total: 0,
@@ -134,24 +136,22 @@ export default {
     },
 
     async getResults(page = 1) {
-      const queryParameters = {
-        page: page,
-        search: this.searchTerm,
-      };
-
-      const filteredParameters = Object.fromEntries(
-        Object.entries(queryParameters).filter(([, value]) => value !== undefined && value !== ''),
-      );
+      const queryParameters = buildAdminUserParams({
+        page,
+        searchTerm: this.searchTerm,
+      });
 
       try {
         const response = await axios.get('/admin/users', {
-          params: filteredParameters,
+          params: queryParameters,
         });
 
-        this.users = response.data || '';
-        this.from = this.users.meta.from || '';
-        this.to = this.users.meta.to || '';
-        this.total = this.users.meta.total || '';
+        const users = getPaginatedData(response);
+
+        this.users = users;
+        this.from = users.meta.from || '';
+        this.to = users.meta.to || '';
+        this.total = users.meta.total || '';
       } catch (error) {
         this.handleErrorResponse(error);
       }
@@ -239,9 +239,9 @@ export default {
       try {
         const endpoint = this.getAdminMutationEndpoint(user);
         const response = await axios.patch(endpoint, { is_admin: !isRevoking });
-        const updatedUser = response?.data?.user;
+        const updatedUser = getObjectData(response);
 
-        if (updatedUser) {
+        if (updatedUser.uuid) {
           this.handleUpdateUser(updatedUser);
 
           const refreshedCurrentUser = await this.refreshCurrentUserIfNeeded(updatedUser);
@@ -253,7 +253,7 @@ export default {
           }
         }
 
-        this.$vToastify.success(this.getAdminSuccessMessage(response?.data?.message, user, isRevoking));
+        this.$vToastify.success(this.getAdminSuccessMessage('', user, isRevoking));
       } catch (error) {
         this.handleErrorResponse(error);
       } finally {

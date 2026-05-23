@@ -50,6 +50,16 @@ export const getResponseData = (response) => {
   return Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : null;
 };
 
+export const getObjectData = (response) => {
+  return asObject(getResponseData(response));
+};
+
+export const getArrayData = (response) => {
+  const data = getResponseData(response);
+
+  return Array.isArray(data) ? data : [];
+};
+
 export const getPaginatedData = (response) => {
   const payload = getResponsePayload(response);
 

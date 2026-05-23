@@ -102,10 +102,10 @@
 </template>
 
 <script>
-import { mapMutations } from 'vuex';
 import FormGroup from './../FormGroup.vue';
 import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 import { getDisplayTimezone, toUtcIsoString } from '../../../utils/dateTime';
+import { getObjectData } from '../../../utils/apiResponse.js';
 
 export default {
   components: { FormGroup },
@@ -147,8 +147,6 @@ export default {
   },
 
   methods: {
-    ...mapMutations('meeting', ['addMeeting']),
-
     createMeeting() {
       this.initializeMeetingCreation();
 
@@ -159,8 +157,12 @@ export default {
       this.createMeetingRequest
         .post(`/projects/${this.projectSlug}/meetings`, payload)
         .then((response) => {
+          const meeting = getObjectData(response);
+
           this.$bus.emit('get-results');
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success(
+            meeting.topic ? `Meeting ${meeting.topic} created successfully.` : 'Meeting created successfully.',
+          );
           this.modalClose();
         })
         .catch((error) => {

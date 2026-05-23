@@ -33,6 +33,8 @@
 import { VueEditor } from 'vue2-editor';
 import { mapMutations, mapState } from 'vuex';
 import { url } from '../../../../utils/TaskUtils';
+import { getObjectData, parseApiError } from '../../../../utils/apiResponse.js';
+
 export default {
   components: { VueEditor },
   props: {
@@ -75,14 +77,16 @@ export default {
       axios
         .put(url(this.slug, id), { description: this.form.description }, { useProgress: true })
         .then((response) => {
-          this.$vToastify.success(response.data.message);
+          const taskData = getObjectData(response);
+
+          this.$vToastify.success('Task description updated.');
           this.edit = false;
-          this.setErrors([]);
-          this.updateTaskDescription(response.data.task.description);
+          this.setErrors({});
+          this.updateTaskDescription(taskData.description);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.setErrors(error?.response?.data?.errors || {});
+          this.setErrors(parseApiError(error).errors);
         });
     },
 

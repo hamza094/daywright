@@ -206,6 +206,7 @@ import usageLimitHelpers from '../mixins/usageLimitHelpers';
 import { createIdempotentRequest } from '../services/IdempotencyRequestService';
 import { toastInfo, toastSuccess } from '../utils/toast';
 import { formatInUserTimezone } from '../utils/dateTime';
+import { getObjectData } from '../utils/apiResponse.js';
 
 export default {
   name: 'Subscription',
@@ -332,7 +333,7 @@ export default {
     async fetchSubscription() {
       try {
         const response = await axios.get('/users/me/subscription');
-        this.setSubscription(response.data.subscription);
+        this.setSubscription(getObjectData(response));
       } catch (error) {
         this.showError(error);
       }
@@ -352,7 +353,7 @@ export default {
       try {
         const payload = { plan };
         const response = await this.subscribeRequest.post('/users/me/subscription', payload);
-        this.iframeSrc = response.data.paylink;
+        this.iframeSrc = getObjectData(response).paylink || '';
         this.isIframeOpen = true;
       } catch (error) {
         this.showError(error);
@@ -369,12 +370,8 @@ export default {
         try {
           const payload = { plan };
           const response = await this.swapSubscriptionRequest.patch('/users/me/subscription', payload);
-          this.setSubscription(response.data.subscription);
-          toastSuccess(response.data.message);
-          // Wait 5 seconds, then refresh subscription data once
-          setTimeout(() => {
-            this.fetchSubscription();
-          }, 5000);
+          this.setSubscription(getObjectData(response));
+          toastSuccess('Subscription updated successfully.');
         } catch (error) {
           this.showError(error);
         } finally {
@@ -396,8 +393,8 @@ export default {
         this.$Progress.start();
         try {
           const response = await axios.delete('/users/me/subscription', { data: { plan } });
-          this.setSubscription(response.data.subscription);
-          toastInfo(response.data.message);
+          this.setSubscription(getObjectData(response));
+          toastInfo('Subscription canceled successfully.');
         } catch (error) {
           this.showError(error);
           this.$Progress.fail();

@@ -37,9 +37,9 @@ class TaskMemberManagementTest extends TestCase
 
         $this->assignMembersToTask($task, $members)
             ->assertSuccessful()
-            ->assertJson([
-                'message' => 'Task assigned successfully.',
-            ]);
+            ->assertJsonPath('data.id', $task->id)
+            ->assertJsonPath('data.members.0.id', $user->id)
+            ->assertJsonCount(1, 'data.members');
 
         $this->assertDatabaseHas('task_user', [
             'task_id' => $task->id,
@@ -85,7 +85,8 @@ class TaskMemberManagementTest extends TestCase
 
         $this->unassignMemberFromTask($task, $this->user->id)
             ->assertSuccessful()
-            ->assertJson(['message' => 'Task member unassigned.']);
+            ->assertJsonPath('data.id', $task->id)
+            ->assertJsonCount(0, 'data.members');
 
         $this->assertDatabaseMissing('task_user', [
             'task_id' => $task->id,
