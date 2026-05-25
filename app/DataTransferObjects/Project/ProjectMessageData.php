@@ -68,7 +68,7 @@ final readonly class ProjectMessageData
 
                 return is_scalar($user) && $user !== '' ? $user : null;
             })
-            ->filter(fn (mixed $userId): bool => ! empty($userId))
+            ->filter(fn (mixed $userId): bool => $userId !== 0 && ($userId !== '' && $userId !== '0'))
             ->values()
             ->all();
     }

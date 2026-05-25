@@ -87,7 +87,7 @@ class LoginUserService
         $request->session()->regenerate();
         $request->session()->regenerateToken();
 
-        return $this->buildAuthSuccessPayload($user, null);
+        return $this->buildAuthSuccessPayload($user);
     }
 
     /**

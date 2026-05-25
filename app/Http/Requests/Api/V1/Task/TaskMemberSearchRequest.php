@@ -50,6 +50,7 @@ class TaskMemberSearchRequest extends ApiQueryRequest
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['search'];

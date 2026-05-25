@@ -13,7 +13,7 @@ use Illuminate\Support\Collection;
 final readonly class DashboardInsightsService
 {
     public function __construct(
-        private readonly DashboardInsightsRepository $insightsRepository
+        private DashboardInsightsRepository $insightsRepository
     ) {}
 
     /**

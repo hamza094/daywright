@@ -33,7 +33,6 @@ class StartMeetingWebhook implements ShouldQueue
 
     /**
      * @param  array<string, mixed>  $data
-     * @return void
      */
     public function __construct(array $data)
     {

@@ -133,7 +133,7 @@ class ConversationService
         }
 
         $path = str_starts_with($filePath, 'http')
-            ? ltrim(parse_url($filePath, PHP_URL_PATH) ?: '', '/')
+            ? ltrim((string) parse_url($filePath, PHP_URL_PATH) ?: '', '/')
             : $filePath;
 
         if ($path === '') {

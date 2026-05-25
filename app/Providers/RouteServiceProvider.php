@@ -32,7 +32,7 @@ class RouteServiceProvider extends ServiceProvider
     /**
      * @var array<int, string>
      */
-    private const API_VERSIONS = ['v1'];
+    private const array API_VERSIONS = ['v1'];
 
     /**
      * Define your route model bindings, pattern filters, etc.

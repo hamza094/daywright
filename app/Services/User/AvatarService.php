@@ -9,9 +9,9 @@ use App\Models\User;
 use App\Services\FileService;
 use Illuminate\Http\UploadedFile;
 
-final class AvatarService
+final readonly class AvatarService
 {
-    public function __construct(private readonly FileService $fileService) {}
+    public function __construct(private FileService $fileService) {}
 
     public function update(User $user, UploadedFile $avatar): void
     {

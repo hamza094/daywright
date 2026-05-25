@@ -133,7 +133,7 @@ class ProjectService
 
     private function getPostponedReason(Project $project, ProjectStageUpdateData $data): ?string
     {
-        return ($project->stage->name === StageStatus::Postponed->value && ! empty($data->postponedReason))
+        return ($project->stage->name === StageStatus::Postponed->value && ! in_array($data->postponedReason, [null, '', '0'], true))
             ? $data->postponedReason
             : null;
     }

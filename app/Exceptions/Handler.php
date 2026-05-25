@@ -77,49 +77,39 @@ class Handler extends ExceptionHandler
     #[Override]
     public function register(): void
     {
-        $this->renderable(function (ApiException $e, Request $request) {
-            return ApiErrorFormatter::response(
-                $e->publicMessage(),
-                $e->status(),
-                $e->errorCode(),
-                $e->errors(),
-                $e->meta($request),
-            );
-        });
+        $this->renderable(fn (ApiException $e, Request $request) => ApiErrorFormatter::response(
+            $e->publicMessage(),
+            $e->status(),
+            $e->errorCode(),
+            $e->errors(),
+            $e->meta($request),
+        ));
 
-        $this->renderable(function (NotFoundHttpException $e, $request) {
-            return ApiErrorFormatter::response(
-                ApiErrorFormatter::publicMessage($e->getMessage(), 'Resource not found.'),
-                Response::HTTP_NOT_FOUND,
-                'not_found',
-            );
-        });
+        $this->renderable(fn (NotFoundHttpException $e, $request) => ApiErrorFormatter::response(
+            ApiErrorFormatter::publicMessage($e->getMessage(), 'Resource not found.'),
+            Response::HTTP_NOT_FOUND,
+            'not_found',
+        ));
 
-        $this->renderable(function (AuthenticationException $e, $request) {
-            return ApiErrorFormatter::response(
-                'Authentication is required.',
-                Response::HTTP_UNAUTHORIZED,
-                'unauthenticated',
-            );
-        });
+        $this->renderable(fn (AuthenticationException $e, $request) => ApiErrorFormatter::response(
+            'Authentication is required.',
+            Response::HTTP_UNAUTHORIZED,
+            'unauthenticated',
+        ));
 
-        $this->renderable(function (AuthorizationException $e, $request) {
-            return ApiErrorFormatter::response(
-                ApiErrorFormatter::publicMessage($e->getMessage(), 'You are not authorized to perform this action.'),
-                Response::HTTP_FORBIDDEN,
-                'forbidden',
-            );
-        });
+        $this->renderable(fn (AuthorizationException $e, $request) => ApiErrorFormatter::response(
+            ApiErrorFormatter::publicMessage($e->getMessage(), 'You are not authorized to perform this action.'),
+            Response::HTTP_FORBIDDEN,
+            'forbidden',
+        ));
 
-        $this->renderable(function (MethodNotAllowedHttpException $e, $request) {
-            return ApiErrorFormatter::response(
-                'Method not allowed.',
-                Response::HTTP_METHOD_NOT_ALLOWED,
-                'method_not_allowed',
-            );
-        });
+        $this->renderable(fn (MethodNotAllowedHttpException $e, $request) => ApiErrorFormatter::response(
+            'Method not allowed.',
+            Response::HTTP_METHOD_NOT_ALLOWED,
+            'method_not_allowed',
+        ));
 
-        $this->renderable(function (HttpException $e, $request) {
+        $this->renderable(function (HttpException $e, $request): \Illuminate\Http\JsonResponse {
             $status = $e->getStatusCode();
             $defaultMessage = ApiErrorFormatter::defaultMessageForStatus($status);
             $message = $e->getMessage() !== ''
@@ -137,44 +127,36 @@ class Handler extends ExceptionHandler
             );
         });
 
-        $this->renderable(function (ValidationException $e, $request) {
-            return ApiErrorFormatter::response(
-                'Validation failed.',
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-                'validation_error',
-                $e->errors(),
-            );
-        });
+        $this->renderable(fn (ValidationException $e, $request) => ApiErrorFormatter::response(
+            'Validation failed.',
+            Response::HTTP_UNPROCESSABLE_ENTITY,
+            'validation_error',
+            $e->errors(),
+        ));
 
-        $this->renderable(function (RateLimitReachedException $e, $request) {
-            return ApiErrorFormatter::response(
-                'Too many requests. Please try again later.',
-                Response::HTTP_TOO_MANY_REQUESTS,
-                'rate_limited',
-                meta: [
-                    'retry_after_seconds' => $e->getLimit()->getRemainingSeconds(),
-                ],
-            );
-        });
+        $this->renderable(fn (RateLimitReachedException $e, $request) => ApiErrorFormatter::response(
+            'Too many requests. Please try again later.',
+            Response::HTTP_TOO_MANY_REQUESTS,
+            'rate_limited',
+            meta: [
+                'retry_after_seconds' => $e->getLimit()->getRemainingSeconds(),
+            ],
+        ));
 
-        $this->renderable(function (S3Exception $e, $request) {
-            return ApiErrorFormatter::response(
-                'Storage request could not be completed.',
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-                'storage_error',
-                meta: [
-                    'provider' => 's3',
-                ],
-            );
-        });
+        $this->renderable(fn (S3Exception $e, $request) => ApiErrorFormatter::response(
+            'Storage request could not be completed.',
+            Response::HTTP_INTERNAL_SERVER_ERROR,
+            'storage_error',
+            meta: [
+                'provider' => 's3',
+            ],
+        ));
 
-        $this->renderable(function (Throwable $e, $request) {
-            return ApiErrorFormatter::response(
-                'An unexpected server error occurred.',
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-                'internal_server_error',
-            );
-        });
+        $this->renderable(fn (Throwable $e, $request) => ApiErrorFormatter::response(
+            'An unexpected server error occurred.',
+            Response::HTTP_INTERNAL_SERVER_ERROR,
+            'internal_server_error',
+        ));
 
     }
 

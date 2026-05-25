@@ -46,6 +46,7 @@ class MeetingIndexRequest extends ApiQueryRequest
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['request', 'page', 'per_page'];

@@ -81,8 +81,8 @@ final readonly class ProjectCreateData
         /** @phpstan-ignore-next-line */
         return collect($tasks)
             ->map(fn (mixed $t) => is_array($t) ? ($t['title'] ?? null) : (is_object($t) ? ($t->title ?? null) : null))
-            ->filter(fn ($title) => is_string($title) && $title !== '')
-            ->map(fn ($title) => ['title' => $title])
+            ->filter(fn ($title): bool => is_string($title) && $title !== '')
+            ->map(fn ($title): array => ['title' => $title])
             ->values()
             ->all();
     }

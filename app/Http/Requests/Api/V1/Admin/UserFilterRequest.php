@@ -16,6 +16,7 @@ class UserFilterRequest extends ApiQueryRequest
     /**
      * @return array<int, AllowedFilter|string>
      */
+    #[Override]
     public static function allowedFilters(): array
     {
         return [
@@ -26,6 +27,7 @@ class UserFilterRequest extends ApiQueryRequest
     /**
      * @return array<int, AllowedSort|string>
      */
+    #[Override]
     public static function allowedSorts(): array
     {
         return [
@@ -38,6 +40,7 @@ class UserFilterRequest extends ApiQueryRequest
     /**
      * @return array<int, AllowedSort|string>
      */
+    #[Override]
     public static function defaultSorts(): array
     {
         return ['-created_at'];
@@ -46,6 +49,7 @@ class UserFilterRequest extends ApiQueryRequest
     /**
      * @return array<int, AllowedInclude|string>
      */
+    #[Override]
     public static function allowedIncludes(): array
     {
         return [];
@@ -90,6 +94,7 @@ class UserFilterRequest extends ApiQueryRequest
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['filter', 'sort', 'page', 'per_page'];

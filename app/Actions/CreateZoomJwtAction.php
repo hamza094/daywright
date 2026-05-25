@@ -6,11 +6,11 @@ namespace App\Actions;
 
 use Firebase\JWT\JWT;
 
-final class CreateZoomJwtAction
+final readonly class CreateZoomJwtAction
 {
     public function __construct(
-        private readonly ?string $sdkKey = null,
-        private readonly ?string $sdkSecret = null,
+        private ?string $sdkKey = null,
+        private ?string $sdkSecret = null,
     ) {}
 
     public function execute(int|string $meetingNumber, int $role): string

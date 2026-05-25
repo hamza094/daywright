@@ -138,7 +138,7 @@ class Conversation extends Model
         $path = $filePath;
         if (str_starts_with($filePath, 'http')) {
             try {
-                $path = ltrim(parse_url($filePath, PHP_URL_PATH) ?: '', '/');
+                $path = ltrim((string) parse_url($filePath, PHP_URL_PATH) ?: '', '/');
             } catch (Throwable $e) {
                 Log::warning('Failed parsing file URL', ['file' => $filePath, 'error' => $e->getMessage()]);
                 $path = '';

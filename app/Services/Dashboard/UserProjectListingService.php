@@ -80,7 +80,7 @@ class UserProjectListingService
         return $query
             ->with(self::PROJECT_LIST_RELATIONS)
             ->when($filters->abandoned, fn (Builder $query) => $query->whereNotNull('deleted_at'))
-            ->when($filters->search, function (Builder $query, string $value) {
+            ->when($filters->search, function (Builder $query, string $value): Builder {
                 /** @var \App\QueryBuilder\ProjectQueryBuilder $query */
                 $query->search($value);
 

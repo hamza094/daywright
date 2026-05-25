@@ -44,7 +44,7 @@ class MeetingResource extends JsonResource
             'status' => Str::ucfirst($this->status),
             'timezone' => $this->timezone,
             'join_before_host' => $this->join_before_host ? 'Yes' : 'No',
-            'links' => $this->whenLoaded('project', fn () => [
+            'links' => $this->whenLoaded('project', fn (): array => [
                 'self' => ApiResourceLink::meeting($this->resource),
             ]),
         ];

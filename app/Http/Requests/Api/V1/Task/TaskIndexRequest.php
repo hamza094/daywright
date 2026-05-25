@@ -70,6 +70,7 @@ class TaskIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['filter', 'page', 'per_page'];

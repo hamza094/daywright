@@ -83,9 +83,9 @@ class AppServiceProvider extends ServiceProvider
                 SecurityScheme::http('bearer')
             );
 
-            self::applyPublicApiTagMetadata($openApi);
-            self::applySharedPublicApiErrorResponses($openApi);
-            self::pruneUnsupportedQueryParametersFromDocs($openApi);
+            $this->applyPublicApiTagMetadata($openApi);
+            $this->applySharedPublicApiErrorResponses($openApi);
+            $this->pruneUnsupportedQueryParametersFromDocs($openApi);
 
             $applicationUrl = rtrim(url('/'), '/');
 
@@ -218,7 +218,24 @@ class AppServiceProvider extends ServiceProvider
         ];
     }
 
-    private static function applyPublicApiTagMetadata(OpenApi $openApi): void
+    private static function publicApiErrorResponseName(int $status): ?string
+    {
+        return match ($status) {
+            400 => 'PublicBadRequestError',
+            401 => 'PublicUnauthenticatedError',
+            403 => 'PublicForbiddenError',
+            404 => 'PublicNotFoundError',
+            405 => 'PublicMethodNotAllowedError',
+            409 => 'PublicConflictError',
+            422 => 'PublicValidationError',
+            429 => 'PublicRateLimitError',
+            500 => 'PublicInternalServerError',
+            503 => 'PublicServiceUnavailableError',
+            default => null,
+        };
+    }
+
+    private function applyPublicApiTagMetadata(OpenApi $openApi): void
     {
         $usedTags = collect($openApi->paths)
             ->flatMap(static fn ($path): array => array_values($path->operations))
@@ -239,14 +256,14 @@ class AppServiceProvider extends ServiceProvider
             ->all();
     }
 
-    private static function applySharedPublicApiErrorResponses(OpenApi $openApi): void
+    private function applySharedPublicApiErrorResponses(OpenApi $openApi): void
     {
-        self::registerSharedPublicApiErrorResponses($openApi->components);
+        $this->registerSharedPublicApiErrorResponses($openApi->components);
 
         foreach ($openApi->paths as $path) {
             foreach ($path->operations as $operation) {
                 $operation->responses = array_values(array_map(
-                    static function ($response) use ($openApi) {
+                    static function ($response) use ($openApi): Reference|\Dedoc\Scramble\Support\Generator\Response {
                         $resolvedResponse = $response instanceof Reference ? $response->resolve() : $response;
                         $responseCode = is_numeric($resolvedResponse->code) ? (int) $resolvedResponse->code : null;
                         $responseName = $responseCode ? self::publicApiErrorResponseName($responseCode) : null;
@@ -260,20 +277,20 @@ class AppServiceProvider extends ServiceProvider
                     $operation->responses,
                 ));
 
-                self::ensureSharedPublicApiErrorResponse($operation, $openApi->components, 500);
+                $this->ensureSharedPublicApiErrorResponse($operation, $openApi->components, 500);
             }
         }
     }
 
-    private static function pruneUnsupportedQueryParametersFromDocs(OpenApi $openApi): void
+    private function pruneUnsupportedQueryParametersFromDocs(OpenApi $openApi): void
     {
         foreach ($openApi->paths as $path) {
             foreach ($path->operations as $operation) {
-                $documentedFilterAliases = self::documentedFilterAliases($operation);
+                $documentedFilterAliases = $this->documentedFilterAliases($operation);
 
                 $operation->parameters = array_values(array_filter(
                     $operation->parameters,
-                    static function ($parameter) use ($documentedFilterAliases): bool {
+                    static function (Parameter|Reference $parameter) use ($documentedFilterAliases): bool {
                         $resolvedParameter = $parameter instanceof Reference ? $parameter->resolve() : $parameter;
 
                         if (! $resolvedParameter instanceof Parameter || $resolvedParameter->in !== 'query') {
@@ -294,7 +311,7 @@ class AppServiceProvider extends ServiceProvider
     /**
      * @return array<int, string>
      */
-    private static function documentedFilterAliases(Operation $operation): array
+    private function documentedFilterAliases(Operation $operation): array
     {
         return collect($operation->parameters)
             ->map(static fn ($parameter) => $parameter instanceof Reference ? $parameter->resolve() : $parameter)
@@ -316,44 +333,34 @@ class AppServiceProvider extends ServiceProvider
             ->all();
     }
 
-    private static function registerSharedPublicApiErrorResponses(Components $components): void
+    private function registerSharedPublicApiErrorResponses(Components $components): void
     {
         if (! $components->hasSchema('PublicApiErrorEnvelope')) {
-            $components->addSchema('PublicApiErrorEnvelope', self::makePublicApiErrorEnvelopeSchema());
+            $components->addSchema('PublicApiErrorEnvelope', $this->makePublicApiErrorEnvelopeSchema());
         }
 
         if (! $components->hasSchema('PublicApiValidationErrorEnvelope')) {
-            $components->addSchema('PublicApiValidationErrorEnvelope', self::makePublicApiValidationErrorEnvelopeSchema());
+            $components->addSchema('PublicApiValidationErrorEnvelope', $this->makePublicApiValidationErrorEnvelopeSchema());
         }
 
-        foreach (self::publicApiErrorResponseDefinitions() as $definition) {
+        foreach ($this->publicApiErrorResponseDefinitions() as $definition) {
             if (! $components->hasSchema($definition['schema'])) {
                 $components->addSchema(
                     $definition['schema'],
                     $definition['status'] === SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY
-                        ? self::makePublicApiValidationErrorEnvelopeSchema()
-                        : self::makePublicApiErrorEnvelopeSchema(
-                            messageExample: $definition['message'],
-                            codeExample: $definition['code'],
-                            metaExample: $definition['meta'],
-                        )
+                        ? $this->makePublicApiValidationErrorEnvelopeSchema()
+                        : $this->makePublicApiErrorEnvelopeSchema(messageExample: $definition['message'], codeExample: $definition['code'], metaExample: $definition['meta'])
                 );
             }
 
-            self::registerSharedPublicApiErrorResponse(
-                $components,
-                $definition['response'],
-                $definition['status'],
-                $definition['description'],
-                $definition['schema'],
-            );
+            $this->registerSharedPublicApiErrorResponse($components, $definition['response'], $definition['status'], $definition['description'], $definition['schema']);
         }
     }
 
     /**
      * @return array<int, array{response: string, schema: string, status: int, description: string, message: string, code: string, meta: array<string, mixed>}>
      */
-    private static function publicApiErrorResponseDefinitions(): array
+    private function publicApiErrorResponseDefinitions(): array
     {
         return [
             [
@@ -449,7 +456,7 @@ class AppServiceProvider extends ServiceProvider
         ];
     }
 
-    private static function registerSharedPublicApiErrorResponse(Components $components, string $name, int $status, string $description, string $schemaName): void
+    private function registerSharedPublicApiErrorResponse(Components $components, string $name, int $status, string $description, string $schemaName): void
     {
         if (array_key_exists($name, $components->responses)) {
             return;
@@ -460,9 +467,9 @@ class AppServiceProvider extends ServiceProvider
             ->setContent('application/json', new Reference('schemas', $schemaName, $components));
     }
 
-    private static function ensureSharedPublicApiErrorResponse(Operation $operation, Components $components, int $status): void
+    private function ensureSharedPublicApiErrorResponse(Operation $operation, Components $components, int $status): void
     {
-        if (self::operationHasResponseCode($operation, $status)) {
+        if ($this->operationHasResponseCode($operation, $status)) {
             return;
         }
 
@@ -476,7 +483,7 @@ class AppServiceProvider extends ServiceProvider
         $operation->responses[] = new Reference('responses', $responseName, $components);
     }
 
-    private static function operationHasResponseCode(Operation $operation, int $status): bool
+    private function operationHasResponseCode(Operation $operation, int $status): bool
     {
         return collect($operation->responses ?? [])->contains(static function ($response) use ($status): bool {
             $resolvedResponse = $response instanceof Reference ? $response->resolve() : $response;
@@ -485,27 +492,10 @@ class AppServiceProvider extends ServiceProvider
         });
     }
 
-    private static function publicApiErrorResponseName(int $status): ?string
-    {
-        return match ($status) {
-            400 => 'PublicBadRequestError',
-            401 => 'PublicUnauthenticatedError',
-            403 => 'PublicForbiddenError',
-            404 => 'PublicNotFoundError',
-            405 => 'PublicMethodNotAllowedError',
-            409 => 'PublicConflictError',
-            422 => 'PublicValidationError',
-            429 => 'PublicRateLimitError',
-            500 => 'PublicInternalServerError',
-            503 => 'PublicServiceUnavailableError',
-            default => null,
-        };
-    }
-
     /**
      * @param  array<string,mixed>  $metaExample
      */
-    private static function makePublicApiErrorEnvelopeSchema(
+    private function makePublicApiErrorEnvelopeSchema(
         string $messageExample = 'Resource not found.',
         string $codeExample = 'not_found',
         array $metaExample = [],
@@ -517,7 +507,7 @@ class AppServiceProvider extends ServiceProvider
 
         $meta = (new ObjectType)
             ->setDescription('Structured error context when available.')
-            ->example($metaExample === [] ? [] : $metaExample);
+            ->example($metaExample);
 
         return Schema::fromType(
             (new ObjectType)
@@ -530,12 +520,12 @@ class AppServiceProvider extends ServiceProvider
                     'message' => $messageExample,
                     'code' => $codeExample,
                     'errors' => [],
-                    'meta' => $metaExample === [] ? [] : $metaExample,
+                    'meta' => $metaExample,
                 ])
         );
     }
 
-    private static function makePublicApiValidationErrorEnvelopeSchema(): Schema
+    private function makePublicApiValidationErrorEnvelopeSchema(): Schema
     {
         $validationErrors = (new ObjectType)
             ->setDescription('Field-level validation details keyed by input name.')

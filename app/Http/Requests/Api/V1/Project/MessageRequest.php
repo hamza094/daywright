@@ -50,7 +50,7 @@ class MessageRequest extends FormRequest
             if (json_last_error() === JSON_ERROR_NONE) {
                 $payload['users'] = $decoded;
             } else {
-                $payload['users'] = array_map('trim', explode(',', $payload['users']));
+                $payload['users'] = array_map(trim(...), explode(',', $payload['users']));
             }
         }
 

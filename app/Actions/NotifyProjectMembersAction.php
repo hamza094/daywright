@@ -21,6 +21,6 @@ final class NotifyProjectMembersAction
 
     private function isActor(User $user, ?User $actor): bool
     {
-        return $actor !== null && $user->is($actor);
+        return $actor instanceof User && $user->is($actor);
     }
 }

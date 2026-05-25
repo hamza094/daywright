@@ -103,8 +103,8 @@ final class ProjectInsightsService
     private function buildInsights(ProjectMetricsDto $metrics, array $sections, ?Project $project = null): array
     {
         return collect($this->insightBuilders)
-            ->filter(fn ($builder, $section): bool => $this->shouldIncludeInsight($section, $sections))
-            ->filter(fn ($builder, $section): bool => $this->hasData($metrics, $section))
+            ->filter(fn ($builder, string $section): bool => $this->shouldIncludeInsight($section, $sections))
+            ->filter(fn ($builder, string $section): bool => $this->hasData($metrics, $section))
             ->map(fn ($builder): mixed => $builder($metrics, $project))
             ->values()
             ->toArray();

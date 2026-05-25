@@ -49,7 +49,6 @@ class ProjectsTest extends TestCase
         $user = $this->createUser();
         Sanctum::actingAs($user);
 
-        /** @var Project $project */
         $project = $this->createProject();
 
         $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [$project->id]])
@@ -75,7 +74,6 @@ class ProjectsTest extends TestCase
     #[Test]
     public function admin_project_index_serializes_stage_and_owner_with_explicit_resources(): void
     {
-        /** @var User $owner */
         $owner = $this->createUser([
             'name' => 'Owner Person',
             'username' => 'owner-person',
@@ -242,9 +240,7 @@ class ProjectsTest extends TestCase
     #[Test]
     public function search_filter_does_not_leak_across_other_filters(): void
     {
-        /** @var User $matchingUser */
         $matchingUser = $this->createUser(['name' => 'SearchableUser']);
-        /** @var Project $activeProject */
         $activeProject = $this->createProject([
             'name' => 'Unrelated',
             'user_id' => $matchingUser->id,
@@ -354,7 +350,6 @@ class ProjectsTest extends TestCase
     #[Test]
     public function bulk_delete_can_delete_trashed_projects(): void
     {
-        /** @var Project $project */
         $project = $this->createProject();
         $project->delete();
 
@@ -367,7 +362,6 @@ class ProjectsTest extends TestCase
     #[Test]
     public function bulk_delete_does_not_force_delete_active_projects(): void
     {
-        /** @var Project $activeProject */
         $activeProject = $this->createProject();
 
         $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [$activeProject->id]])
@@ -388,7 +382,6 @@ class ProjectsTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('project_ids.0');
 
-        /** @var Project $project */
         $project = $this->createProject();
 
         $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), [

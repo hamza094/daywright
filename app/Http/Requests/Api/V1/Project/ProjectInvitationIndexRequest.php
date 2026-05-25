@@ -48,6 +48,7 @@ class ProjectInvitationIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRe
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['filter'];

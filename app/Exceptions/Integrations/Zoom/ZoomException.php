@@ -6,6 +6,7 @@ namespace App\Exceptions\Integrations\Zoom;
 
 use App\Exceptions\ApiException;
 use Illuminate\Http\Request;
+use Override;
 use Symfony\Component\HttpFoundation\Response;
 
 class ZoomException extends ApiException
@@ -20,6 +21,7 @@ class ZoomException extends ApiException
         return 'zoom_unavailable';
     }
 
+    #[Override]
     public function publicMessage(): string
     {
         return $this->defaultMessage();
@@ -28,6 +30,7 @@ class ZoomException extends ApiException
     /**
      * @return array<string, mixed>
      */
+    #[Override]
     public function meta(Request $request): array
     {
         return [
@@ -35,6 +38,7 @@ class ZoomException extends ApiException
         ];
     }
 
+    #[Override]
     protected function defaultMessage(): string
     {
         return 'Zoom service is temporarily unavailable.';

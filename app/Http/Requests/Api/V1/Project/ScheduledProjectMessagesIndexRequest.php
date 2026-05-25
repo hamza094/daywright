@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Project;
 
 use App\Http\Requests\Api\V1\ApiQueryRequest;
+use Override;
 
 class ScheduledProjectMessagesIndexRequest extends ApiQueryRequest
 {
@@ -33,6 +34,7 @@ class ScheduledProjectMessagesIndexRequest extends ApiQueryRequest
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['page', 'per_page'];

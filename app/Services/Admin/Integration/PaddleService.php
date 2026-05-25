@@ -25,7 +25,7 @@ final class PaddleService implements PaddleApi
                 ->send(new SubscriptionUsersList($listData))
                 ->collect();
         } catch (Throwable $exception) {
-            throw new PaddleRequestException(previous: $exception);
+            throw new PaddleRequestException(message: $exception->getMessage());
         }
 
         /** @var array<int, array<string,mixed>> $subscriptionsArray */

@@ -18,8 +18,6 @@ class UserMentioned extends Notification implements ShouldBroadcast, ShouldQueue
 
     /**
      * Create a new notification instance.
-     *
-     * @return void
      */
     public function __construct(
         protected string $projectName,

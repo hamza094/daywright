@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exceptions;
 
 use Illuminate\Contracts\Debug\ShouldntReport;
+use Override;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ArchivedResourceException extends ApiException implements ShouldntReport
@@ -39,6 +40,7 @@ final class ArchivedResourceException extends ApiException implements ShouldntRe
         return Response::HTTP_CONFLICT;
     }
 
+    #[Override]
     protected function defaultMessage(): string
     {
         return sprintf('%s is archived. Restore it before performing this action.', ucfirst($this->resourceType));

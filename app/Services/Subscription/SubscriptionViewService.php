@@ -73,7 +73,7 @@ final readonly class SubscriptionViewService
     ): array {
         $createdAt = null;
         // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
-        if ($isBillingSubscribed && $subscription !== null) {
+        if ($isBillingSubscribed && $subscription instanceof PaddleSubscription) {
             $createdAt = $subscription->created_at;
         }
 

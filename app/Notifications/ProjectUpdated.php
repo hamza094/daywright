@@ -18,8 +18,6 @@ class ProjectUpdated extends Notification implements ShouldBroadcast, ShouldQueu
 
     /**
      * Create a new notification instance.
-     *
-     * @return void
      */
     public function __construct(
         protected string $projectName,

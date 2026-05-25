@@ -10,9 +10,9 @@ use App\Models\Project;
 use App\Models\User;
 use App\Notifications\ProjectUpdated;
 
-final class SendProjectUpdatedNotificationAction
+final readonly class SendProjectUpdatedNotificationAction
 {
-    public function __construct(private readonly NotifyProjectMembersAction $notifyProjectMembersAction) {}
+    public function __construct(private NotifyProjectMembersAction $notifyProjectMembersAction) {}
 
     public function execute(Project $project, User $actor): void
     {

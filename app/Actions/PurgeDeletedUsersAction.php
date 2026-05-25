@@ -18,7 +18,7 @@ final class PurgeDeletedUsersAction
         User::onlyTrashed()
             ->where('deleted_at', '<=', now()->subDays(15))
             ->get()
-            ->each(fn ($user) => DB::transaction(fn () => $this->handleUserProjects($user)));
+            ->each(fn (User $user) => DB::transaction(fn () => $this->handleUserProjects($user)));
     }
 
     private function handleUserProjects(User $user): void

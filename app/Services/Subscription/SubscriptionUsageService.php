@@ -15,8 +15,8 @@ use App\Models\User;
 final readonly class SubscriptionUsageService
 {
     public function __construct(
-        private readonly PlanLimitService $planLimitService,
-        private readonly PlanUsageCountResolver $planUsageCountResolver
+        private PlanLimitService $planLimitService,
+        private PlanUsageCountResolver $planUsageCountResolver
     ) {}
 
     /**

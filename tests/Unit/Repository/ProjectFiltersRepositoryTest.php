@@ -101,7 +101,7 @@ class ProjectFiltersRepositoryTest extends TestCase
      * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, Project>  $projects
      * @return list<int>
      */
-    private function projectIds($projects): array
+    private function projectIds(\Illuminate\Contracts\Pagination\LengthAwarePaginator $projects): array
     {
         return collect($projects->items())
             ->pluck('id')

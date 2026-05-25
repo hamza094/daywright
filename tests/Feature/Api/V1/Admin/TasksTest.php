@@ -50,7 +50,6 @@ class TasksTest extends TestCase
         $user = $this->createUser();
         Sanctum::actingAs($user);
 
-        /** @var Task $task */
         $task = $this->createTask();
 
         $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => [$task->id]])
@@ -90,7 +89,6 @@ class TasksTest extends TestCase
     #[Test]
     public function can_search_tasks_by_project_name(): void
     {
-        /** @var Project $project */
         $project = $this->createProject(['name' => 'Unique Searchable Project']);
         $this->createTask(['project_id' => $project->id]);
         $this->createTask(); // different project
@@ -105,11 +103,9 @@ class TasksTest extends TestCase
     #[Test]
     public function task_search_treats_sql_wildcards_as_literals(): void
     {
-        /** @var Project $literalProject */
         $literalProject = $this->createProject(['name' => 'Client% Migration']);
         $this->createTask(['project_id' => $literalProject->id]);
 
-        /** @var Project $wildcardProject */
         $wildcardProject = $this->createProject(['name' => 'ClientX Migration']);
         $this->createTask(['project_id' => $wildcardProject->id]);
 
@@ -289,9 +285,7 @@ class TasksTest extends TestCase
     #[Test]
     public function bulk_delete_detaches_assignees_before_deleting(): void
     {
-        /** @var Task $task */
         $task = $this->createTask();
-        /** @var User $assignee */
         $assignee = $this->createUser();
         $task->assignee()->attach($assignee->id);
 
@@ -320,7 +314,6 @@ class TasksTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('task_ids.0');
 
-        /** @var Task $task */
         $task = $this->createTask();
 
         $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), [

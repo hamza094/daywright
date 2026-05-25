@@ -8,6 +8,7 @@ use App\Rules\Iso8601Timestamp;
 use Closure;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 #[SchemaName('ApiTokenStoreRequestData')]
 class UserTokenRequest extends FormRequest
@@ -55,6 +56,7 @@ class UserTokenRequest extends FormRequest
         ];
     }
 
+    #[Override]
     protected function prepareForValidation(): void
     {
         if (! $this->filled('expires_at')) {

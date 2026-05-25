@@ -22,8 +22,8 @@ final readonly class PlanLimitService
     private const int TRANSACTION_RETRY_ATTEMPTS = 5;
 
     public function __construct(
-        private readonly PlanLimitExceededExceptionFactory $planLimitExceededExceptionFactory,
-        private readonly PlanUsageCountResolver $planUsageCountResolver,
+        private PlanLimitExceededExceptionFactory $planLimitExceededExceptionFactory,
+        private PlanUsageCountResolver $planUsageCountResolver,
     ) {}
 
     /**

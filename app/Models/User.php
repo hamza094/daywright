@@ -259,9 +259,9 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
 
     public function isConnectedToZoom(): bool
     {
-        return (bool) ($this->zoom_access_token
+        return $this->zoom_access_token
             && $this->zoom_refresh_token
-            && $this->zoom_expires_at);
+            && $this->zoom_expires_at;
     }
 
     /**

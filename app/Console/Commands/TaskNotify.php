@@ -46,7 +46,7 @@ class TaskNotify extends Command
      *
      * @param  \Illuminate\Database\Eloquent\Collection<int, Task>  $tasks
      */
-    private function processTasks($tasks): void
+    private function processTasks(\Illuminate\Support\Collection $tasks): void
     {
         foreach ($tasks as $task) {
             try {

@@ -16,6 +16,7 @@ class DashboardProjectRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
     /**
      * @return array<int, string>
      */
+    #[Override]
     public static function defaultSorts(): array
     {
         return ['-created_at'];
@@ -86,6 +87,7 @@ class DashboardProjectRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['filter', 'sort', 'page', 'per_page'];

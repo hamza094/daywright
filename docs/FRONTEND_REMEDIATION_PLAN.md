@@ -1,39 +1,71 @@
-# Frontend Production Remediation Plan
+# Frontend Production Readiness Plan
 
-Created: 2026-05-01
+Updated: 2026-05-24
 
-This plan converts the frontend architecture audit into a phased execution roadmap.
-Work through the phases in order. Do not start broad refactors before the earlier stability phases are complete.
+This plan is based on a fresh review of the current frontend codebase, not only the earlier audit snapshot.
+It is organized in phases so you can work through it one phase at a time.
 
-## Production Gate Summary
+## Current Review Summary
 
-| Phase | Focus                                         | Priority | Production Gate                        |
+### What improved since the earlier audit
+
+- Response normalization is moving in the right direction through utility helpers such as auth, task, dashboard, and notification response parsers.
+- Some low-level frontend tests now exist under `resources/js/utils/` and `resources/js/services/`.
+- The production build currently completes successfully.
+- Some store and API parsing code is cleaner than before, especially in `currentUser`, `task`, and `notifications`.
+
+### What is still holding the frontend back
+
+- HTTP transport and CSRF/session configuration are still fragile.
+- The app still persists the entire Vuex store to browser storage.
+- Several important defects are runtime-only and are not caught by the current build.
+- Routing is still eager-loaded.
+- Large smart components still mix transport, state mutation, view logic, and side effects.
+- The current test work is not yet wired into a full frontend test workflow or release gate.
+- Event bus and global mixin coupling are still present.
+
+### Important note from this review
+
+`npm run build` passes today.
+That means the highest-risk remaining issues are not simple compile-time failures.
+They are runtime correctness, state integrity, and maintainability problems that can still hurt production behavior.
+
+## Priority Overview
+
+| Phase | Focus                                         | Priority | Ship status                            |
 | ----- | --------------------------------------------- | -------- | -------------------------------------- |
-| 1     | Transport and runtime stabilization           | Critical | Must finish before production          |
+| 1     | Runtime transport and auth correctness        | Critical | Must finish before production          |
 | 2     | State integrity and persistence hardening     | Critical | Must finish before production          |
-| 3     | Critical flow test coverage and release gates | Critical | Must finish before production          |
+| 3     | Runtime safety nets and release validation    | Critical | Must finish before production          |
 | 4     | API layer consolidation                       | High     | Strongly recommended before production |
 | 5     | Component decomposition and route performance | High     | Strongly recommended before production |
-| 6     | Hidden coupling cleanup and polish            | Medium   | Can follow after launch                |
+| 6     | Hidden coupling cleanup and frontend polish   | Medium   | Can follow after launch                |
 
-## Phase 1 - Transport and Runtime Stabilization
+## Must Fix Before Production
+
+These phases are production gates.
+Do not ship until they are complete.
+
+## Phase 1 - Runtime Transport and Auth Correctness
 
 Priority: Critical  
-Production gate: Must finish before production
+Ship status: Must finish before production
 
-Why this phase comes first:
+### Why this phase is first
 
-- It removes auth and session fragility.
-- It fixes runtime hazards that can break the app even if the code compiles.
-- It gives the rest of the refactor a stable HTTP foundation.
+- Authentication and session correctness are foundational.
+- Current issues here are runtime issues, not build issues.
+- If this layer is unreliable, every later frontend improvement is built on unstable behavior.
 
-Main audit findings covered:
+### Verified current issues
 
-- Fragile CSRF and session axios configuration
-- Runtime import and global dependency issues
-- Dashboard chart runtime risk
+- `resources/js/bootstrap.js` still uses one global axios client for everything.
+- `xsrfCookieName` and `xsrfHeaderName` are still configured as booleans instead of header names.
+- The auth store still mixes session-oriented requests with the API-base setup.
+- `Register.vue` and `ResetPassword.vue` still call `swal.fire(...)` without explicit imports.
+- `ProjectChart.vue` still calls `new Chart(...)` without importing `Chart`.
 
-Files likely involved:
+### Primary files
 
 - `resources/js/bootstrap.js`
 - `resources/js/app.js`
@@ -45,134 +77,139 @@ Files likely involved:
 - `resources/js/components/Profile/TwoFactorAuth.vue`
 - `resources/js/components/Dashboard/ProjectChart.vue`
 
-Step-by-step tasks:
+### Step-by-step work
 
-- [ ] Create dedicated HTTP clients instead of one global axios setup.
-- [ ] Add an `apiClient` for `/api/v1` requests.
-- [ ] Add a `sessionClient` or root client for `/sanctum/csrf-cookie` and `/api/v1/session/*` flows.
-- [ ] Stop relying on base URL concatenation for cross-scope requests.
-- [ ] Fix XSRF configuration in `bootstrap.js` so cookie and header names are valid strings, not booleans.
-- [ ] Move shared interceptors into a reusable setup function so both clients can use consistent progress and error handling.
-- [ ] Normalize auth and session calls in the auth store and auth components to use the correct client.
-- [ ] Fix `ProjectChart.vue` so it uses Chart.js through one clear path only.
-- [ ] Import `Swal` explicitly where `swal.fire(...)` is called, or replace those direct calls with the shared alert helper.
-- [ ] Fix or remove the broken global component registration for `ProfilePge.vue` in `app.js`.
-- [ ] Run manual smoke tests for login, logout, password reset, 2FA setup, 2FA login confirm, and dashboard chart rendering.
+- [ ] Split frontend HTTP usage into explicit clients instead of relying on one global axios configuration.
+- [ ] Keep one client for `/api/v1` traffic.
+- [ ] Keep one session-aware client or root-scope client for `/sanctum/csrf-cookie` and `/api/v1/session/*` flows.
+- [ ] Fix XSRF config values in `bootstrap.js` so they use real cookie and header names.
+- [ ] Move shared interceptors into reusable setup code instead of attaching everything directly to the global axios instance.
+- [ ] Normalize login, logout, session bootstrap, and 2FA requests so their URLs and transport layer are intentionally scoped.
+- [ ] Replace direct `swal.fire(...)` usage with imported `Swal` or route those flows through the shared alert helper.
+- [ ] Fix `ProjectChart.vue` so chart creation uses one clear implementation path with explicit imports.
+- [ ] Verify password reset, login, logout, 2FA login confirm, and dashboard chart behavior manually after transport cleanup.
 
-Exit criteria:
+### Exit criteria
 
-- Authentication works consistently with cookies and CSRF in local and production-like environments.
-- No unresolved import errors remain in auth or dashboard entry flows.
-- Dashboard chart renders without depending on an undeclared global.
-- `npm run build` completes cleanly.
+- Auth and session flows work without relying on accidental axios defaults.
+- CSRF behavior is explicitly configured and stable.
+- Auth-related screens do not depend on undeclared global browser variables.
+- Dashboard chart rendering no longer depends on undeclared globals.
 
 ## Phase 2 - State Integrity and Persistence Hardening
 
 Priority: Critical  
-Production gate: Must finish before production
+Ship status: Must finish before production
 
-Why this phase comes second:
+### Why this phase is second
 
-- It removes stale and unsafe client-side state behavior.
-- It restores Vuex predictability before larger refactors start.
-- It reduces the chance of hidden regressions in project, task, and notification flows.
+- The current store is functional but still too loose for production-grade predictability.
+- Whole-store persistence and direct component-driven state mutation will create stale data and debugging problems.
+- This phase reduces hidden state corruption before broader refactors begin.
 
-Main audit findings covered:
+### Verified current issues
 
-- Whole-store persistence to localStorage
-- Direct mutation of mapped Vuex state inside components
-- Broken and inconsistent Vuex module contracts
+- `createPersistedState()` still persists the entire Vuex store.
+- `SingleTask.setForm` still writes into `state.task` instead of `state.form`.
+- `notifications.js` still is not namespaced while most other modules are.
+- `ProjectPage.vue` still mutates mapped state directly for realtime activity updates.
+- The router still reads 2FA state from localStorage directly.
 
-Files likely involved:
+### Primary files
 
 - `resources/js/store/index.js`
+- `resources/js/store/currentUser`
 - `resources/js/store/project`
 - `resources/js/store/task`
 - `resources/js/store/SingleTask`
 - `resources/js/store/notifications.js`
 - `resources/js/components/Project/ProjectPage.vue`
-- `resources/js/components/Project/Panel/TaskDetailModal.vue`
 - `resources/js/components/Notification.vue`
 - `resources/js/components/UserNotification.vue`
+- `resources/js/router.js`
 
-Step-by-step tasks:
+### Step-by-step work
 
-- [ ] Remove blanket `createPersistedState()` usage or restrict it to a strict whitelist of safe UI-only keys.
-- [ ] Ensure persisted state is cleared on logout.
-- [ ] Fix `SingleTask.setForm` so it writes to `state.form`, not `state.task`.
-- [ ] Remove Vuex actions that call component-only helpers such as `this.handleErrorResponse(...)`.
-- [ ] Standardize every Vuex module to use `namespaced: true`.
-- [ ] Add missing getters for read-heavy state instead of direct `$store.state` access everywhere.
-- [ ] Replace direct store-object mutation in `ProjectPage.vue` with explicit mutations or actions.
-- [ ] Search for and remove any remaining `push`, `splice`, `unshift`, or property assignment against mapped store state from components.
-- [ ] Normalize notification store access so components dispatch namespaced actions and commits consistently.
-- [ ] Verify logout, project activity updates, archived task flows, task detail updates, and notifications after store cleanup.
+- [ ] Remove blanket Vuex persistence or reduce it to a strict allowlist of safe UI-only values.
+- [ ] Ensure logout clears any persisted frontend state that should not survive a session.
+- [ ] Fix `SingleTask.setForm` to write to `state.form`.
+- [ ] Standardize all store modules to use `namespaced: true` unless there is a very strong reason not to.
+- [ ] Add getters/selectors for frequently accessed state instead of depending on direct `$store.state` lookups everywhere.
+- [ ] Replace direct mutations in `ProjectPage.vue` with explicit `project` store mutations or actions.
+- [ ] Audit all components for direct mutation of mapped store objects and remove those patterns.
+- [ ] Normalize notification actions, commits, and selectors under a consistent store contract.
+- [ ] Re-evaluate whether the 2FA pending marker belongs in localStorage or should become a more controlled session-state mechanism.
 
-Exit criteria:
+### Exit criteria
 
-- Sensitive or stale data is not persisted broadly in localStorage.
-- Components no longer mutate Vuex state directly.
-- Core store modules expose predictable contracts with namespaces, actions, mutations, and getters.
-- Project and notification flows still work after refactoring.
+- Sensitive or stale state is no longer broadly persisted.
+- Store writes happen through mutations and actions, not ad-hoc component mutation.
+- Store module contracts are predictable and consistent.
+- Realtime project and notification flows remain correct after the cleanup.
 
-## Phase 3 - Critical Flow Test Coverage and Release Gates
+## Phase 3 - Runtime Safety Nets and Release Validation
 
 Priority: Critical  
-Production gate: Must finish before production
+Ship status: Must finish before production
 
-Why this phase is still pre-production:
+### Why this phase is still pre-production
 
-- The current frontend has effectively no test safety net.
-- Earlier phases will touch auth, state, and routing, which are high-risk areas.
-- Shipping without tests means every later frontend change will stay expensive and risky.
+- The codebase now has some test files, but they are not enough to protect critical flows.
+- There is still no complete frontend release gate tied to runtime-sensitive behavior.
+- Current high-risk defects can pass the build and still fail in production.
 
-Main audit findings covered:
+### Verified current issues
 
-- No frontend unit or component tests
-- Runtime hazards not being caught before release
+- `package.json` still has no frontend test script.
+- There is no obvious wired test runner in the frontend toolchain.
+- Existing test files are mostly utility/service-focused and do not yet protect auth, router, or key UI flows.
+- Build success today does not catch runtime-only defects like undeclared globals.
 
-Files likely involved:
+### Primary files
 
 - `package.json`
 - frontend test config files to be added
-- critical stores and critical page components
+- critical stores and auth/router components
 
-Step-by-step tasks:
+### Step-by-step work
 
-- [ ] Choose and install a Vue 2-compatible frontend test stack.
-- [ ] Add test support for Vuex stores, router guards, and Vue components.
-- [ ] Add tests for `currentUser` bootstrap, login, logout, and 2FA flows.
-- [ ] Add tests for router guards in `router.js`.
-- [ ] Add tests for notification store behavior and project activity store mutations.
-- [ ] Add a smoke test for `ProjectChart.vue` so chart regressions are caught.
-- [ ] Add CI commands for lint, test, and build.
-- [ ] Fail CI on unresolved imports and build errors.
-- [ ] Define a release checklist for frontend verification before each deploy.
+- [ ] Choose and install a Vue 2-compatible frontend test runner and component test stack.
+- [ ] Add a `test` script and any supporting watch or CI variants to `package.json`.
+- [ ] Keep the existing utility tests, but wire them into the official frontend test workflow.
+- [ ] Add tests for auth response parsing, session bootstrap, login flow branching, and 2FA handling.
+- [ ] Add tests for router guard behavior.
+- [ ] Add tests for project activity mutations and notification store behavior.
+- [ ] Add at least one runtime safety smoke test around dashboard chart rendering.
+- [ ] Add release-gate commands for lint, tests, and production build.
+- [ ] Document a minimal manual smoke checklist for login, dashboard, subscriptions, project detail, and notifications.
 
-Exit criteria:
+### Exit criteria
 
-- Critical auth and state flows have automated coverage.
-- Lint, test, and build are all part of the release gate.
-- Runtime breakages like missing imports are caught before deployment.
+- Frontend tests run through a documented command in `package.json`.
+- Critical flows have automated coverage, not only utility helper tests.
+- Lint, tests, and build are part of the release gate.
+
+## Strongly Recommended Before Production
+
+These are not as immediately blocking as the first three phases, but shipping without them will keep the frontend expensive to maintain and slower to evolve.
 
 ## Phase 4 - API Layer Consolidation
 
 Priority: High  
-Production gate: Strongly recommended before production
+Ship status: Strongly recommended before production
 
-Why this phase matters:
+### Why this phase matters
 
-- API logic is currently scattered across UI components.
-- Endpoint changes will remain expensive until transport is centralized.
-- It is the main step needed to keep the codebase maintainable after launch.
+- Some response parsing has improved, but API orchestration is still spread across many components.
+- The codebase will remain hard to change safely until transport is centralized by domain.
 
-Main audit findings covered:
+### Verified current issues
 
-- Raw axios calls scattered across components
-- Tight coupling between views and backend response shapes
-- Inconsistent error and loading behavior
+- Components still call axios directly for many domain operations.
+- UI components still own too much payload shaping, success handling, and error branching.
+- Response parser utilities exist, but the service layer is still inconsistent across domains.
 
-Files likely involved:
+### Primary files
 
 - `resources/js/services/`
 - `resources/js/store/`
@@ -183,138 +220,135 @@ Files likely involved:
 - `resources/js/components/Admin/Users.vue`
 - `resources/js/components/Notification.vue`
 
-Step-by-step tasks:
+### Step-by-step work
 
-- [ ] Establish a standard service pattern using `ProjectInsightsService.js` as the reference direction.
-- [ ] Create service modules for auth, subscriptions, dashboard, notifications, projects, tasks, and 2FA.
-- [ ] Move endpoint URLs, payload shaping, and response normalization into those services.
-- [ ] Keep components responsible only for presentation, orchestration, and emitting UI events.
-- [ ] Move API calls in page-level components either into Vuex actions or dedicated service calls wrapped by page containers.
-- [ ] Standardize error mapping so UI code never branches on raw backend message text.
-- [ ] Standardize async state shape for all major flows: `idle`, `loading`, `success`, `error`.
-- [ ] Replace duplicated toast and progress handling with shared utilities.
+- [ ] Define a consistent service-layer pattern and document it.
+- [ ] Use existing parser utilities as part of service-layer response normalization instead of leaving parsing inside components.
+- [ ] Create or complete service modules for auth, dashboard, subscriptions, notifications, projects, tasks, and 2FA.
+- [ ] Move endpoint paths and payload formatting into those services or into the store actions that use them.
+- [ ] Keep page components focused on orchestration and view state only.
+- [ ] Standardize async state handling for loading, success, empty, and error states.
+- [ ] Remove UI behavior that depends on backend message text where structured response data should be used instead.
 
-Exit criteria:
+### Exit criteria
 
-- Most domain API traffic is no longer issued directly from view components.
-- Endpoint and payload changes can be made in a single domain layer.
-- Loading and error UX follow one consistent pattern.
+- Domain API behavior is mostly centralized.
+- Endpoint changes no longer require editing many unrelated components.
+- Error and loading behavior are more consistent across the app.
 
 ## Phase 5 - Component Decomposition and Route Performance
 
 Priority: High  
-Production gate: Strongly recommended before production
+Ship status: Strongly recommended before production
 
-Why this phase matters:
+### Why this phase matters
 
-- Several major pages are too large and mix too many concerns.
-- Large eager-loaded route bundles will slow initial load.
-- This is the phase that turns the codebase from workable to scalable.
+- The current app still has several high-complexity components.
+- Routing is still eager-loaded, which is avoidable in a Vue 2 SPA with this size.
+- This phase improves scalability and lowers regression risk for future work.
 
-Main audit findings covered:
+### Verified current issues
 
-- God components
-- Weak separation of container and presentational responsibilities
-- Eager route loading
-- Inconsistent form handling and reused UI primitives
+- `router.js` still imports every route component eagerly.
+- `ProjectPage.vue` still mixes realtime, store coordination, view state, and transport logic.
+- `Subscription.vue` and `TwoFactorAuth.vue` remain broad smart components.
+- Reusable form and layout patterns exist, but they are not yet applied consistently.
 
-Files likely involved:
+### Primary files
 
+- `resources/js/router.js`
 - `resources/js/components/Project/ProjectPage.vue`
 - `resources/js/components/Subscription.vue`
 - `resources/js/components/Profile/TwoFactorAuth.vue`
 - `resources/js/components/Dashboard/Dashboard.vue`
 - `resources/js/components/ProjectForm.vue`
-- `resources/js/router.js`
 
-Step-by-step tasks:
+### Step-by-step work
 
-- [ ] Split `ProjectPage.vue` into a thin container plus focused child sections for summary, activity, meeting, side panel, and realtime wiring.
-- [ ] Split `Subscription.vue` into overview, billing actions, usage display, receipts, and payment modal pieces.
-- [ ] Split `TwoFactorAuth.vue` into status display, recovery-code management, setup form, and modal actions.
-- [ ] Move permission calculation and repeated derived state into selectors or helpers.
-- [ ] Expand use of reusable form and field components beyond `Profile/Edit.vue`.
-- [ ] Standardize empty, loading, and error states across pages.
-- [ ] Convert route components in `router.js` to lazy-loaded imports.
-- [ ] Group admin routes and heavy project routes into separate chunks.
+- [ ] Convert route components to lazy-loaded imports grouped by feature area.
+- [ ] Split `ProjectPage.vue` into a page container and focused child sections.
+- [ ] Split `Subscription.vue` into plan overview, billing actions, payment modal, receipts, and usage sections.
+- [ ] Split `TwoFactorAuth.vue` into status, recovery-code management, setup flow, and destructive actions.
+- [ ] Move repeated permission and derived-state logic into helpers or selectors.
+- [ ] Expand reusable form primitives where the same validation and field markup repeats.
+- [ ] Standardize loading, empty, and error states across major views.
 
-Exit criteria:
+### Exit criteria
 
-- Large components are decomposed into maintainable units.
-- Container components own data-fetching and orchestration; presentational components receive props and emit events.
-- Initial route bundle size is reduced through code splitting.
+- Route loading is no longer fully eager.
+- Large smart components have clearer ownership boundaries.
+- Presentation components receive props and emit events instead of owning domain logic.
 
-## Phase 6 - Hidden Coupling Cleanup and Polish
+## Can Follow After Launch
+
+## Phase 6 - Hidden Coupling Cleanup and Frontend Polish
 
 Priority: Medium  
-Production gate: Can follow after launch
+Ship status: Can follow after launch
 
-Why this phase is later:
+### Why this phase is later
 
-- It improves long-term maintainability more than immediate release stability.
-- Earlier phases should first stop the real production blockers.
+- These issues matter, but they are less urgent than auth, state, and release safety.
+- They should be cleaned up once the production gates are closed.
 
-Main audit findings covered:
+### Verified current issues
 
-- Heavy reliance on global mixins
-- Event bus coupling
-- Direct browser global usage and DOM access
-- Naming and cleanup issues
+- Global mixins are still attached app-wide.
+- The event bus is still used across meetings, project panels, and modal coordination.
+- Direct browser globals and DOM lookups still exist in router and component logic.
+- There is still some dead or low-confidence bootstrap code, such as the `ProfilePge.vue` registration path in `app.js`.
 
-Files likely involved:
+### Primary files
 
 - `resources/js/app.js`
 - `resources/js/mixins/alertNotice.js`
 - `resources/js/mixins/conversation.js`
-- meeting, project, and modal components using `$bus`
+- project, meeting, notification, and modal components using `$bus`
 
-Step-by-step tasks:
+### Step-by-step work
 
-- [ ] Remove app-wide global mixins where explicit imports are clearer and safer.
-- [ ] Replace `$bus`-based cross-component flows with Vuex actions, parent-child events, or dedicated controllers.
-- [ ] Replace direct `window`, `document`, and manual DOM lookup usage with isolated utilities or component refs.
-- [ ] Remove dead code, typos, broken naming, and stale comments.
-- [ ] Audit `console.*` usage and keep debug logging behind development guards only.
-- [ ] Review whether any remaining large collections should be normalized instead of stored as nested raw API objects.
+- [ ] Replace global mixins with explicit imports where practical.
+- [ ] Reduce `$bus` usage in favor of parent-child events, store actions, or feature-level controllers.
+- [ ] Replace direct DOM queries with refs or dedicated utilities.
+- [ ] Remove dead registrations, typos, stale code paths, and low-value bootstrap coupling.
+- [ ] Review remaining `console.*` usage and keep debug logging behind development guards.
 
-Exit criteria:
+### Exit criteria
 
-- Cross-component communication is explicit and traceable.
-- Hidden global dependencies are reduced.
-- The codebase is easier to reason about for future contributors.
+- Cross-component behavior is easier to trace.
+- The frontend has fewer hidden globals and less implicit coupling.
+- Bootstrap and shared infrastructure become easier to reason about.
 
-## Recommended Execution Order Inside Each Phase
+## Recommended Working Order
 
-For every phase, use this order:
+Work through the plan in this order:
 
-1. Stabilize the shared foundation first.
-2. Refactor one domain at a time.
-3. Validate immediately after each domain change.
-4. Merge only when lint, build, and the relevant tests pass.
+1. Finish Phase 1 completely.
+2. Finish Phase 2 completely.
+3. Add the release safety net in Phase 3.
+4. Then move into the strongly recommended architecture work in Phase 4 and Phase 5.
+5. Leave Phase 6 for cleanup once the app is already stable.
 
-## Validation Checklist Per Phase
-
-Repeat this checklist at the end of every phase:
+## Validation Checklist For Every Phase
 
 - [ ] `npm run lint`
 - [ ] `npm run build`
 - [ ] Run the smallest relevant frontend test subset
-- [ ] Manually smoke-test the changed flow in the browser
-- [ ] Confirm there are no new console errors for that flow
+- [ ] Manual smoke test the touched user flow
+- [ ] Confirm there are no new console errors in that flow
 
-## Minimum Pre-Production Stop Line
+## Minimum Shipping Checklist
 
-Do not ship before all of the following are true:
+Do not ship until all of these are true:
 
 - [ ] Phase 1 is complete
 - [ ] Phase 2 is complete
 - [ ] Phase 3 is complete
-- [ ] Authentication, 2FA, notifications, project detail, tasks, and subscriptions have passed manual smoke testing
-- [ ] Frontend lint, test, and build are part of the release gate
+- [ ] Login, logout, password reset, 2FA, dashboard, subscriptions, project detail, and notifications are manually smoke-tested
+- [ ] Frontend lint, tests, and production build are all part of the release gate
 
-## Suggested Working Strategy
+## Notes From This Review
 
-- Finish and merge one phase at a time.
-- Do not combine Phase 1 and Phase 5 work in the same branch.
-- Keep Phase 1 through Phase 3 focused on stability, not visual redesign.
-- Start the broader architecture cleanup only after the release blockers are closed.
+- No uncommitted frontend file changes were detected when this plan was updated.
+- The current build succeeds, so do not mistake build success for production readiness.
+- The highest-risk remaining work is now runtime correctness and frontend architecture discipline.

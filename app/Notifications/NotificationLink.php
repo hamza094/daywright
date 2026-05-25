@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\URL;
 
 final class NotificationLink
 {
-    private const DEFAULT_VERSION = 'v1';
+    private const string DEFAULT_VERSION = 'v1';
 
     public static function project(string $projectSlug, bool $absolute = false, ?string $version = null): string
     {

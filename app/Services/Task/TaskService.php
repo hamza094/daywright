@@ -43,7 +43,6 @@ class TaskService
      */
     public function getTasksData(Project $project, bool $isArchived, int $perPage, int $page): LengthAwarePaginator
     {
-        /** @var TaskQueryBuilder $query */
         $query = $this->getTasks($project, $isArchived);
 
         return $query->paginate($perPage, ['*'], 'page', $page)->withQueryString();

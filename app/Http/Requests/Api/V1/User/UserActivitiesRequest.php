@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\User;
 
 use App\Http\Requests\Api\V1\ApiQueryRequest;
 use Carbon\Carbon;
+use Override;
 
 class UserActivitiesRequest extends ApiQueryRequest
 {
@@ -60,6 +61,7 @@ class UserActivitiesRequest extends ApiQueryRequest
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['start_date', 'end_date'];

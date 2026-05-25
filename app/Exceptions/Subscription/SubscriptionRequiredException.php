@@ -7,6 +7,7 @@ namespace App\Exceptions\Subscription;
 use App\Exceptions\ApiException;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Http\Request;
+use Override;
 use Symfony\Component\HttpFoundation\Response;
 
 final class SubscriptionRequiredException extends ApiException implements ShouldntReport
@@ -41,13 +42,15 @@ final class SubscriptionRequiredException extends ApiException implements Should
     /**
      * @return array<string, mixed>
      */
+    #[Override]
     public function meta(Request $request): array
     {
         return [
-            'upgrade_required' => $this->upgradeRequired(),
+            'upgrade_required' => $this->upgradeRequired,
         ];
     }
 
+    #[Override]
     protected function defaultMessage(): string
     {
         return 'Access denied. An active subscription is required to perform this action.';

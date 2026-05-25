@@ -63,7 +63,7 @@ class ConversationResource extends JsonResource
             /**
              * Route links related to the conversation.
              */
-            'links' => $this->whenLoaded('project', fn () => [
+            'links' => $this->whenLoaded('project', fn (): array => [
                 'project' => ApiResourceLink::project($this->project),
             ]),
         ];

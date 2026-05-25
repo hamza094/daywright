@@ -44,6 +44,7 @@ class InvitationUserSearchRequest extends \App\Http\Requests\Api\V1\ApiQueryRequ
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['search'];

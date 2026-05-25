@@ -9,7 +9,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 
 final class MessageRepository
 {
-    private const MESSAGE_RESOURCE_RELATIONS = ['users:id,uuid,name,username,avatar_path'];
+    private const array MESSAGE_RESOURCE_RELATIONS = ['users:id,uuid,name,username,avatar_path'];
 
     /**
      * @return LengthAwarePaginator<int, \App\Models\Message>

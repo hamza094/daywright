@@ -28,7 +28,6 @@ class DeleteMeetingWebhook implements ShouldQueue
 
     /**
      * @param  array<string, mixed>  $data
-     * @return void
      */
     public function __construct(array $data)
     {
@@ -58,7 +57,7 @@ class DeleteMeetingWebhook implements ShouldQueue
             $meeting->delete();
 
             Log::channel('webhook')->info('Meeting deleted successfully', ['meeting_id' => $this->meeting_id]);
-        } catch (ModelNotFoundException $e) {
+        } catch (ModelNotFoundException) {
             Log::channel('webhook')->info('Meeting not available in database', ['meeting_id' => $this->meeting_id]);
 
             return;

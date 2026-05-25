@@ -6,10 +6,11 @@ namespace App\Http\Requests\Api\V1\Project;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Override;
 
 class ProjectInsightsRequest extends FormRequest
 {
-    private const ALLOWED_SECTIONS = [
+    private const array ALLOWED_SECTIONS = [
         'health',
         'task-health',
         'collaboration',
@@ -40,13 +41,14 @@ class ProjectInsightsRequest extends FormRequest
     {
         $sections = $this->validated('sections', []);
 
-        if (! is_array($sections) || empty($sections)) {
+        if (! is_array($sections) || $sections === []) {
             return self::ALLOWED_SECTIONS;
         }
 
         return $sections;
     }
 
+    #[Override]
     protected function prepareForValidation(): void
     {
         $sections = $this->input('sections', []);

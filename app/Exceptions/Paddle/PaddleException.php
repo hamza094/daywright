@@ -6,6 +6,7 @@ namespace App\Exceptions\Paddle;
 
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use Illuminate\Http\Request;
+use Override;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -19,6 +20,7 @@ class PaddleException extends ExternalServiceUnavailableException
         parent::__construct($message, $status, $previous);
     }
 
+    #[Override]
     public function errorCode(): string
     {
         return 'payment_error';
@@ -27,6 +29,7 @@ class PaddleException extends ExternalServiceUnavailableException
     /**
      * @return array<string, mixed>
      */
+    #[Override]
     public function meta(Request $request): array
     {
         return [
@@ -34,6 +37,7 @@ class PaddleException extends ExternalServiceUnavailableException
         ];
     }
 
+    #[Override]
     protected function defaultMessage(): string
     {
         return 'Payment request could not be completed.';

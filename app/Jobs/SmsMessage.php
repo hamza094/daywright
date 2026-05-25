@@ -18,22 +18,15 @@ class SmsMessage implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * The project instance.
-     *
-     * @var Project
-     */
-    private $project;
     // private $user;
-
     /**
      * Create a new job instance.
-     *
-     * @return void
      */
-    public function __construct(Project $project, private Message $message)
+    public function __construct(/**
+     * The project instance.
+     */
+        private Project $project, private Message $message)
     {
-        $this->project = $project;
         // $this->user=$user;
     }
 

@@ -57,8 +57,8 @@ final class AssignTaskMembersAction
         $attached = collect($attachedRaw);
 
         return $attached
-            ->map(fn ($id) => (int) $id)
-            ->reject(fn (int $id) => $id === $actorId)
+            ->map(fn ($id): int => (int) $id)
+            ->reject(fn (int $id): bool => $id === $actorId)
             ->values()
             ->all();
     }

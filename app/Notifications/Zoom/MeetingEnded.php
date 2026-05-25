@@ -20,7 +20,6 @@ class MeetingEnded extends Notification implements ShouldBroadcast
      * Create a new notification instance.
      *
      * @param  array<string, mixed>  $data
-     * @return void
      */
     public function __construct(protected array $data) {}
 

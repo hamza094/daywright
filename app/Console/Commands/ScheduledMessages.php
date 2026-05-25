@@ -25,16 +25,6 @@ class ScheduledMessages extends Command
     protected $description = 'Send Scheduled project messages to users';
 
     /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
-    public function __construct()
-    {
-        parent::__construct();
-    }
-
-    /**
      * Execute the console command.
      */
     public function handle(MessageService $service): void

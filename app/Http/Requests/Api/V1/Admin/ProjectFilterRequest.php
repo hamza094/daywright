@@ -75,6 +75,7 @@ class ProjectFilterRequest extends ApiQueryRequest
     /**
      * @return array<int, string>
      */
+    #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
         return ['filter', 'sort', 'page', 'per_page'];

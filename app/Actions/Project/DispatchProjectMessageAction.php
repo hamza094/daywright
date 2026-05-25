@@ -50,7 +50,7 @@ final class DispatchProjectMessageAction
     {
         $claimedMessage = $this->findClaimedMessage($messageId, $claimToken);
 
-        if ($claimedMessage === null) {
+        if (! $claimedMessage instanceof Message) {
             return;
         }
 
