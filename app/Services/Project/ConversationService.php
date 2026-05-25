@@ -56,7 +56,7 @@ class ConversationService
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return null;
+            throw $e;
         }
     }
 

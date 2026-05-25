@@ -108,7 +108,7 @@ final class ZoomServiceFake implements Zoom
      * @param  array<string, mixed>  $validated
      */
     #[Override]
-    public function updateMeeting(array $validated, User $user): \Illuminate\Http\JsonResponse
+    public function updateMeeting(array $validated, User $user): mixed
     {
         if ($this->failureException instanceof ZoomException) {
             throw $this->failureException;
@@ -118,7 +118,7 @@ final class ZoomServiceFake implements Zoom
     }
 
     #[Override]
-    public function deleteMeeting(int $meetingId, User $user): \Illuminate\Http\JsonResponse
+    public function deleteMeeting(int $meetingId, User $user): mixed
     {
         if ($this->failureException instanceof ZoomException) {
             throw $this->failureException;

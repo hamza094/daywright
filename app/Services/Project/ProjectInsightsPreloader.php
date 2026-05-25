@@ -15,7 +15,7 @@ use LogicException;
 class ProjectInsightsPreloader
 {
     /** @var array<string,mixed>|null */
-    private static ?array $cachedWindowConfig = null;
+    private ?array $cachedWindowConfig = null;
 
     /**
      * @param  array<string>  $sections
@@ -117,11 +117,11 @@ class ProjectInsightsPreloader
      */
     private function loadConfigWindowValues(): array
     {
-        if (self::$cachedWindowConfig !== null) {
-            return self::$cachedWindowConfig;
+        if ($this->cachedWindowConfig !== null) {
+            return $this->cachedWindowConfig;
         }
 
-        return self::$cachedWindowConfig = [
+        return $this->cachedWindowConfig = [
             'conversationLookbackDays' => $this->getConfigValue('time_periods.conversation_lookback_days', (int) config('insights.time_periods.conversation_lookback_days', 14)),
             'meetingLookbackDays' => $this->getConfigValue('time_periods.meeting_lookback_days', (int) config('insights.time_periods.meeting_lookback_days', 14)),
             'collaborationActivityLookbackDays' => $this->getConfigValue('time_periods.collaboration_activity_days', (int) config('insights.time_periods.collaboration_activity_days', 30)),

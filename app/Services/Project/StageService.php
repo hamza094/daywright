@@ -14,6 +14,6 @@ class StageService
      */
     public function all(): Collection
     {
-        return Stage::query()->get();
+        return (new \App\Services\Admin\StageService)->all();
     }
 }

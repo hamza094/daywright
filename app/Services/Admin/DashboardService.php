@@ -29,8 +29,9 @@ class DashboardService
         $data = [];
         $result = $this->dashboardRepository->fetchDataForMonths($startDate, $endDate);
 
+        // Index by month to avoid repeated array searches (O(n^2)).
         foreach ($result['projectsData'] as $project) {
-            $data[] = [
+            $data[$project->month] = [
                 'month' => $project->month,
                 'projects_count' => $project->total_projects,
                 'active_projects' => $project->active_projects,
@@ -42,14 +43,12 @@ class DashboardService
         }
 
         foreach ($result['tasksData'] as $task) {
-            $monthIndex = array_search($task->month, array_column($data, 'month'));
-
-            if ($monthIndex !== false) {
-                $data[$monthIndex]['active_tasks'] = $task->active_tasks;
-                $data[$monthIndex]['trashed_tasks'] = $task->trashed_tasks;
-                $data[$monthIndex]['tasks_count'] = $task->total_tasks;
+            if (isset($data[$task->month])) {
+                $data[$task->month]['active_tasks'] = $task->active_tasks;
+                $data[$task->month]['trashed_tasks'] = $task->trashed_tasks;
+                $data[$task->month]['tasks_count'] = $task->total_tasks;
             } else {
-                $data[] = [
+                $data[$task->month] = [
                     'month' => $task->month,
                     'active_projects' => 0,
                     'trashed_projects' => 0,
@@ -60,6 +59,6 @@ class DashboardService
             }
         }
 
-        return $data;
+        return array_values($data);
     }
 }

@@ -7,10 +7,11 @@ namespace App\Services\PaddleApi;
 use App\Collections\Paddle\DataCollection;
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
 use App\Interfaces\Paddle;
+use App\Interfaces\PaddleApi;
 use App\Models\User;
 use Override;
 
-class FakePaddleService implements Paddle
+class FakePaddleService implements Paddle, PaddleApi
 {
     #[Override]
     public function subscribe(User $user, string $plan): mixed

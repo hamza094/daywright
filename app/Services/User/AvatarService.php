@@ -26,7 +26,7 @@ final readonly class AvatarService
             return false;
         }
 
-        $this->fileService->deleteFile($user);
+        $this->fileService->deleteAvatar($user);
 
         return true;
     }

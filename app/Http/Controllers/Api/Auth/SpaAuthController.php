@@ -32,11 +32,11 @@ class SpaAuthController extends ApiController
     )]
     public function loginSpa(LoginUserRequest $request): JsonResponse
     {
-        $result = $this->loginUserService->startLoginFlow($request->email);
+        $result = $this->loginUserService->startLoginFlow($request->email, $request);
 
         $user = $result->user;
 
-        if (($response = $this->loginUserService->twoFactorStateResponse($result)) instanceof JsonResponse) {
+        if (($response = $this->loginUserService->twoFactorStateResponse($result, $request)) instanceof JsonResponse) {
             return $response;
         }
 

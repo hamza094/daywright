@@ -26,7 +26,7 @@ class LoginController extends ApiController
      */
     public function login(LoginUserRequest $request): JsonResponse
     {
-        $result = $this->loginUserService->startLoginFlow($request->email);
+        $result = $this->loginUserService->startLoginFlow($request->email, $request);
 
         $user = $result->user;
 

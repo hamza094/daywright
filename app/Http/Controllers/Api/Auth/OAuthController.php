@@ -70,10 +70,10 @@ class OAuthController extends ApiController
                 event(new Registered($user));
             }
 
-            $result = $this->loginUserService->startLoginFlow($user->email);
+            $result = $this->loginUserService->startLoginFlow($user->email, $request);
 
             if ($result->twoFactor) {
-                return $this->loginUserService->buildTwoFactorRequiredResponse();
+                return $this->loginUserService->buildTwoFactorRequiredResponse($request);
             }
 
             $payload = $this->loginUserService->performSessionLogin($user, $request);

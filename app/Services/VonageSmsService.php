@@ -23,11 +23,19 @@ class VonageSmsService
 
     public function send(\App\Models\Project $project, \App\Models\Message $message): string
     {
+        $recipient = $message->users()->pluck('mobile')->filter()->first();
+
+        if (! $recipient) {
+            return 'No recipient available';
+        }
+
+        $body = $message->message."\n project link:\n".config('app.url').'/project/'.$project->slug;
+
         $response = $this->client->sms()->send(
             new \Vonage\SMS\Message\SMS(
-                '923096802966',
+                $recipient,
                 config('services.vonage.from'),
-                $message->message.'\n'.' project link:'.'\n'.config('app.url').'/project/'.$project->slug
+                $body
             )
         );
 

@@ -71,6 +71,16 @@ class FileService
         });
     }
 
+    /**
+     * Explicit helper to delete the avatar file for a given user.
+     *
+     * Kept as a thin wrapper for backward compatibility.
+     */
+    public function deleteAvatar(User $user): void
+    {
+        $this->deleteFile($user);
+    }
+
     /* Returns the appropriate folder name for the file type. */
     private function getFolderName(string $fileType): string
     {

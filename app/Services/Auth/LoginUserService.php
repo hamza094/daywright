@@ -13,6 +13,7 @@ use App\Services\TwoFactor\TwoFactorStateManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class LoginUserService
@@ -22,12 +23,17 @@ class LoginUserService
     /**
      * Start the login flow shared by different controllers.
      */
-    public function startLoginFlow(string $email): LoginResult
+    public function startLoginFlow(string $email, ?Request $request = null): LoginResult
     {
         $user = User::where('email', $email)->first();
+
+        if (! $user instanceof User) {
+            throw ValidationException::withMessages(['email' => __('auth.failed')]);
+        }
+
         $twoFactor = $this->initializeTwoFactorState($user);
 
-        $clientPublicIp = $this->detectPublicRequestIp();
+        $clientPublicIp = $this->detectPublicRequestIp($request);
 
         $this->dispatchTimezoneIfNeeded($user, $clientPublicIp);
 
@@ -69,10 +75,10 @@ class LoginUserService
     /**
      * Return the standardized two-factor response when required.
      */
-    public function twoFactorStateResponse(LoginResult $result): ?JsonResponse
+    public function twoFactorStateResponse(LoginResult $result, ?Request $request = null): ?JsonResponse
     {
         if ($result->twoFactor) {
-            return $this->buildTwoFactorRequiredResponse();
+            return $this->buildTwoFactorRequiredResponse($request);
         }
 
         return null;
@@ -125,19 +131,21 @@ class LoginUserService
     /**
      * Standardized 2FA required response used across controllers.
      */
-    public function buildTwoFactorRequiredResponse(): JsonResponse
+    public function buildTwoFactorRequiredResponse(?Request $request = null): JsonResponse
     {
+        $r = $request ?? request();
+
         return response()->json([
-            'data' => (new TwoFactorChallengeResource)->resolve(request()),
+            'data' => (new TwoFactorChallengeResource)->resolve($r),
         ], Response::HTTP_OK);
     }
 
     /**
      * Return the request's public IP or null when the IP is private/invalid.
      */
-    private function detectPublicRequestIp(): ?string
+    private function detectPublicRequestIp(?Request $request = null): ?string
     {
-        $ip = request()->ip();
+        $ip = $request?->ip() ?? null;
 
         if (! $ip) {
             return null;
