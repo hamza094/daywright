@@ -73,13 +73,19 @@ class UserProjectListingService
      */
     private function filterProjectsQuery(User $user, DashboardProjectFilters $filters, string $sort): Builder
     {
-        $query = $filters->member
-            ? $user->activeMembers()->getQuery()
-            : $user->projects()->getQuery();
+        $projects = $filters->member
+            ? $user->activeMembers()
+            : $user->projects();
+
+        if ($filters->abandoned) {
+            $projects->withTrashed();
+        }
+
+        $query = $projects->getQuery();
 
         return $query
             ->with(self::PROJECT_LIST_RELATIONS)
-            ->when($filters->abandoned, fn (Builder $query) => $query->whereNotNull('deleted_at'))
+            ->when($filters->abandoned, fn (Builder $query): Builder => $query->onlyTrashed())
             ->when($filters->search, function (Builder $query, string $value): Builder {
                 /** @var \App\QueryBuilder\ProjectQueryBuilder $query */
                 $query->search($value);

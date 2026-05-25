@@ -21,7 +21,6 @@ use App\Models\User;
 use App\Notifications\ProjectTask;
 use App\QueryBuilder\TaskQueryBuilder;
 use App\Services\Subscription\PlanLimitService;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 
@@ -138,13 +137,15 @@ class TaskService
 
     private function getTasks(Project $project, bool $isArchived): TaskQueryBuilder
     {
-        return $project->tasks()
-            ->with('project:id,slug')
-            ->orderBy('id')
-            ->when(
-                $isArchived,
-                fn (Builder $query) => $query->archived(),
-                fn (Builder $query) => $query->active()
-            );
+        /** @var TaskQueryBuilder $tasks */
+        $tasks = $project->tasks()->getQuery();
+
+        $tasks->with('project:id,slug')->orderBy('id');
+
+        if ($isArchived) {
+            return $tasks->archived();
+        }
+
+        return $tasks->active();
     }
 }

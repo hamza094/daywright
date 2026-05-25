@@ -34,7 +34,7 @@ class TaskNotify extends Command
                 'assignee:id,name',
                 'project:id,name,slug',
             ])
-            ->chunk(50, fn ($tasks) => $this->processTasks($tasks));
+            ->chunk(50, fn (\Illuminate\Support\Collection $tasks) => $this->processTasks($tasks));
 
         $this->info('Task notifications sent successfully.');
 

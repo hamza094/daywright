@@ -24,6 +24,7 @@ use Dedoc\Scramble\Support\Generator\Schema;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Dedoc\Scramble\Support\Generator\Tag;
 use Dedoc\Scramble\Support\Generator\Types\ArrayType;
+use Dedoc\Scramble\Support\Generator\Types\IntegerType;
 use Dedoc\Scramble\Support\Generator\Types\ObjectType;
 use Dedoc\Scramble\Support\Generator\Types\StringType;
 use Dedoc\Scramble\Support\RouteInfo;
@@ -165,10 +166,27 @@ class AppServiceProvider extends ServiceProvider
         };
     }
 
+    private static function publicApiErrorResponseName(int $status): ?string
+    {
+        return match ($status) {
+            400 => 'PublicBadRequestError',
+            401 => 'PublicUnauthenticatedError',
+            403 => 'PublicForbiddenError',
+            404 => 'PublicNotFoundError',
+            405 => 'PublicMethodNotAllowedError',
+            409 => 'PublicConflictError',
+            422 => 'PublicValidationError',
+            429 => 'PublicRateLimitError',
+            500 => 'PublicInternalServerError',
+            503 => 'PublicServiceUnavailableError',
+            default => null,
+        };
+    }
+
     /**
      * @return array<string, array{description: string, weight: int}>
      */
-    private static function publicApiTagDefinitions(): array
+    private function publicApiTagDefinitions(): array
     {
         return [
             'Authentication' => [
@@ -218,23 +236,6 @@ class AppServiceProvider extends ServiceProvider
         ];
     }
 
-    private static function publicApiErrorResponseName(int $status): ?string
-    {
-        return match ($status) {
-            400 => 'PublicBadRequestError',
-            401 => 'PublicUnauthenticatedError',
-            403 => 'PublicForbiddenError',
-            404 => 'PublicNotFoundError',
-            405 => 'PublicMethodNotAllowedError',
-            409 => 'PublicConflictError',
-            422 => 'PublicValidationError',
-            429 => 'PublicRateLimitError',
-            500 => 'PublicInternalServerError',
-            503 => 'PublicServiceUnavailableError',
-            default => null,
-        };
-    }
-
     private function applyPublicApiTagMetadata(OpenApi $openApi): void
     {
         $usedTags = collect($openApi->paths)
@@ -243,7 +244,7 @@ class AppServiceProvider extends ServiceProvider
             ->unique()
             ->values();
 
-        $openApi->tags = collect(self::publicApiTagDefinitions())
+        $openApi->tags = collect($this->publicApiTagDefinitions())
             ->filter(static fn (array $metadata, string $tag): bool => $usedTags->contains($tag))
             ->map(static function (array $metadata, string $tag): Tag {
                 $tagDefinition = new Tag($tag, $metadata['description']);
@@ -304,8 +305,63 @@ class AppServiceProvider extends ServiceProvider
                         return ! in_array($resolvedParameter->name, $documentedFilterAliases, true);
                     },
                 ));
+
+                $documentedQueryParameters = collect($operation->parameters)
+                    ->map(static fn ($parameter) => $parameter instanceof Reference ? $parameter->resolve() : $parameter)
+                    ->filter(static fn ($parameter): bool => $parameter instanceof Parameter && $parameter->in === 'query')
+                    ->map(static fn (Parameter $parameter): string => $parameter->name)
+                    ->values()
+                    ->all();
+
+                foreach ($this->requiredPublicApiQueryParameters($path->path, $operation->method) as $requiredParameter) {
+                    if (in_array($requiredParameter->name, $documentedQueryParameters, true)) {
+                        continue;
+                    }
+
+                    $operation->parameters[] = $requiredParameter;
+                    $documentedQueryParameters[] = $requiredParameter->name;
+                }
             }
         }
+    }
+
+    /**
+     * @return array<int, Parameter>
+     */
+    private function requiredPublicApiQueryParameters(string $path, string $method): array
+    {
+        if ($method !== 'get') {
+            return [];
+        }
+
+        $normalizedPath = trim($path, '/');
+        $normalizedPath = Str::replaceStart('api/', '', $normalizedPath);
+
+        return match ($normalizedPath) {
+            'v1/dashboard/chart-data', 'dashboard/chart-data' => [
+                $this->makeQueryParameter('year', new IntegerType),
+                $this->makeQueryParameter('month', new IntegerType),
+            ],
+            'v1/dashboard/activities', 'dashboard/activities' => [
+                $this->makeQueryParameter('start_date', new StringType),
+                $this->makeQueryParameter('end_date', new StringType),
+            ],
+            'v1/notifications', 'notifications' => [
+                $this->makeQueryParameter('page', new IntegerType),
+                $this->makeQueryParameter('per_page', new IntegerType),
+            ],
+            'v1/projects/{project}/tasks', 'projects/{project}/tasks' => [
+                $this->makeQueryParameter('page', new IntegerType),
+                $this->makeQueryParameter('per_page', new IntegerType),
+            ],
+            default => [],
+        };
+    }
+
+    private function makeQueryParameter(string $name, IntegerType|StringType $type): Parameter
+    {
+        return Parameter::make($name, 'query')
+            ->setSchema(Schema::fromType($type));
     }
 
     /**

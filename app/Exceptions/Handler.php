@@ -77,7 +77,7 @@ class Handler extends ExceptionHandler
     #[Override]
     public function register(): void
     {
-        $this->renderable(fn (ApiException $e, Request $request) => ApiErrorFormatter::response(
+        $this->renderable(fn (ApiException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             $e->publicMessage(),
             $e->status(),
             $e->errorCode(),
@@ -85,25 +85,25 @@ class Handler extends ExceptionHandler
             $e->meta($request),
         ));
 
-        $this->renderable(fn (NotFoundHttpException $e, $request) => ApiErrorFormatter::response(
+        $this->renderable(fn (NotFoundHttpException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             ApiErrorFormatter::publicMessage($e->getMessage(), 'Resource not found.'),
             Response::HTTP_NOT_FOUND,
             'not_found',
         ));
 
-        $this->renderable(fn (AuthenticationException $e, $request) => ApiErrorFormatter::response(
+        $this->renderable(fn (AuthenticationException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Authentication is required.',
             Response::HTTP_UNAUTHORIZED,
             'unauthenticated',
         ));
 
-        $this->renderable(fn (AuthorizationException $e, $request) => ApiErrorFormatter::response(
+        $this->renderable(fn (AuthorizationException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             ApiErrorFormatter::publicMessage($e->getMessage(), 'You are not authorized to perform this action.'),
             Response::HTTP_FORBIDDEN,
             'forbidden',
         ));
 
-        $this->renderable(fn (MethodNotAllowedHttpException $e, $request) => ApiErrorFormatter::response(
+        $this->renderable(fn (MethodNotAllowedHttpException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Method not allowed.',
             Response::HTTP_METHOD_NOT_ALLOWED,
             'method_not_allowed',
@@ -127,14 +127,14 @@ class Handler extends ExceptionHandler
             );
         });
 
-        $this->renderable(fn (ValidationException $e, $request) => ApiErrorFormatter::response(
+        $this->renderable(fn (ValidationException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Validation failed.',
             Response::HTTP_UNPROCESSABLE_ENTITY,
             'validation_error',
             $e->errors(),
         ));
 
-        $this->renderable(fn (RateLimitReachedException $e, $request) => ApiErrorFormatter::response(
+        $this->renderable(fn (RateLimitReachedException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Too many requests. Please try again later.',
             Response::HTTP_TOO_MANY_REQUESTS,
             'rate_limited',
@@ -143,7 +143,7 @@ class Handler extends ExceptionHandler
             ],
         ));
 
-        $this->renderable(fn (S3Exception $e, $request) => ApiErrorFormatter::response(
+        $this->renderable(fn (S3Exception $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Storage request could not be completed.',
             Response::HTTP_INTERNAL_SERVER_ERROR,
             'storage_error',
@@ -152,7 +152,7 @@ class Handler extends ExceptionHandler
             ],
         ));
 
-        $this->renderable(fn (Throwable $e, $request) => ApiErrorFormatter::response(
+        $this->renderable(fn (Throwable $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'An unexpected server error occurred.',
             Response::HTTP_INTERNAL_SERVER_ERROR,
             'internal_server_error',
