@@ -6,7 +6,7 @@ namespace App\Actions\ProjectMetrics;
 
 use App\Models\Project;
 
-class TeamCollaborationMetricAction
+final class TeamCollaborationMetricAction
 {
     public function execute(Project $project): float
     {

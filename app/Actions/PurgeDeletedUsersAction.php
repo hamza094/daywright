@@ -17,25 +17,30 @@ final class PurgeDeletedUsersAction
     {
         User::onlyTrashed()
             ->where('deleted_at', '<=', now()->subDays(15))
-            ->get()
-            ->each(fn (User $user) => DB::transaction(fn () => $this->handleUserProjects($user)));
+            ->chunkById(50, function ($users): void {
+                foreach ($users as $user) {
+                    DB::transaction(fn () => $this->handleUserProjects($user));
+                }
+            });
     }
 
     private function handleUserProjects(User $user): void
     {
-        $user->projects()->withTrashed()->get()->each(function ($project) use ($user): void {
-            if ($this->permanentDeleteProject($project)) {
-                return;
+        $user->projects()->withTrashed()->chunkById(50, function ($projects) use ($user): void {
+            foreach ($projects as $project) {
+                if ($this->permanentDeleteProject($project)) {
+                    continue;
+                }
+
+                $admin = $this->findAdminForProject($project, $user->id);
+
+                if ($admin instanceof User) {
+                    $project->user_id = $admin->id;
+                    $project->save();
+                }
+
+                $project->delete();
             }
-
-            $admin = $this->findAdminForProject($project, $user->id);
-
-            if ($admin instanceof User) {
-                $project->user_id = $admin->id;
-                $project->save();
-            }
-
-            $project->delete();
         });
 
         $user->forceDelete();

@@ -85,7 +85,7 @@ final readonly class PlanLimitExceededExceptionFactory
     private function resolveLimitReason(User $user, SubscriptionPlan $plan): string
     {
         if ($plan === SubscriptionPlan::Free && (! $user->hasSubscriptionRecord()
-            && ($user->hasExpiredTrial() || $user->hasExpiredTrial($user->subscriptionName())))) {
+            && $user->hasExpiredTrial())) {
             return PlanLimitExceededException::REASON_TRIAL_EXPIRED;
         }
 

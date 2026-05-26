@@ -6,7 +6,7 @@ namespace App\Actions\ProjectMetrics;
 
 use App\Models\Project;
 
-class TaskHealthMetricAction
+final class TaskHealthMetricAction
 {
     public function execute(Project $project): float
     {
@@ -22,11 +22,7 @@ class TaskHealthMetricAction
         $overdueRate = $this->computeOverdueRate($activeTasks, $completedCount, $overdueCount);
         $abandonmentRate = $this->computeAbandonmentRate($totalTasks, $abandonedCount);
 
-        $weights = [
-            'completion' => 0.5,
-            'overdue' => 0.3,
-            'abandonment' => 0.2,
-        ];
+        $weights = $this->weights();
 
         $taskHealth =
             ($completionRate * $weights['completion']) +
@@ -123,5 +119,33 @@ class TaskHealthMetricAction
         }
 
         return ($abandonedCount / $totalTasks) * 100;
+    }
+
+    /**
+     * Return normalized weight fractions for task metric components.
+     *
+     * @return array{completion: float, overdue: float, abandonment: float}
+     */
+    private function weights(): array
+    {
+        $cfg = (array) config('project-metrics.health.tasks.weights', []);
+        $completion = (float) ($cfg['completion'] ?? 50);
+        $overdue = (float) ($cfg['overdue'] ?? 30);
+        $abandonment = (float) ($cfg['abandonment'] ?? 20);
+        $sum = $completion + $overdue + $abandonment;
+
+        if ($sum <= 0.0) {
+            return [
+                'completion' => 0.5,
+                'overdue' => 0.3,
+                'abandonment' => 0.2,
+            ];
+        }
+
+        return [
+            'completion' => $completion / $sum,
+            'overdue' => $overdue / $sum,
+            'abandonment' => $abandonment / $sum,
+        ];
     }
 }

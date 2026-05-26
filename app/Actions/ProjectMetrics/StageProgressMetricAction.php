@@ -7,7 +7,7 @@ namespace App\Actions\ProjectMetrics;
 use App\Enums\ProjectStage;
 use App\Models\Project;
 
-class StageProgressMetricAction
+final class StageProgressMetricAction
 {
     /**
      * @return array{

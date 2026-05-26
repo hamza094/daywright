@@ -67,9 +67,6 @@ final class AssignTaskMembersAction
      * Fetch minimal user records for notification.
      *
      * @param  array<int>  $ids
-     */
-    /**
-     * @param  array<int>  $ids
      * @return \Illuminate\Database\Eloquent\Collection<int, User>
      */
     private function fetchUsersForNotification(array $ids): \Illuminate\Database\Eloquent\Collection

@@ -18,7 +18,7 @@ use App\Models\Project;
  *
  * Weights are read from config('project-metrics.health.weights').
  */
-class ProjectHealthMetricAction
+final class ProjectHealthMetricAction
 {
     public function __construct(
         private readonly TaskHealthMetricAction $taskHealthAction,

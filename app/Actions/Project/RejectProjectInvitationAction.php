@@ -11,6 +11,7 @@ final class RejectProjectInvitationAction
 {
     public function execute(Project $project, User $user): void
     {
-        $project->members()->detach($user);
+        // Delegate to CancelProjectInvitationAction to avoid duplicated logic.
+        (new CancelProjectInvitationAction)->execute($project, $user);
     }
 }

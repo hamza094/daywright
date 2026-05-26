@@ -70,8 +70,8 @@ final class BuildAdminProjectAppliedFiltersAction
     private function sortLabel(string $sort): string
     {
         return match ($sort) {
-            'created_at', 'asc' => 'Sort by oldest',
-            '-created_at', 'desc' => 'Sort by newest',
+            'created_at' => 'Sort by oldest',
+            '-created_at' => 'Sort by newest',
             'name' => 'Sort by name (A-Z)',
             '-name' => 'Sort by name (Z-A)',
             'health_score' => 'Sort by health score (low-high)',

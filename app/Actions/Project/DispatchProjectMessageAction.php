@@ -11,6 +11,7 @@ use App\Models\Project;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -78,7 +79,12 @@ final class DispatchProjectMessageAction
                     ->whereKey($message->getKey())
                     ->update(['delivered' => true]);
             })
-            ->catch(function (Batch $batch, Throwable $throwable): void {})
+            ->catch(function (Batch $batch, Throwable $throwable): void {
+                Log::error('Message batch failed', [
+                    'batch_id' => $batch->id,
+                    'exception' => $throwable,
+                ]);
+            })
             ->dispatch();
     }
 
