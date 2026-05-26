@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\Auth\Zoom;
 
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
@@ -16,7 +17,7 @@ class ZoomOAuthRedirectTest extends TestCase
     use LazilyRefreshDatabase;
     use ProjectSetup;
 
-    /** @test */
+    #[Test]
     public function user_is_redirected_to_zoom(): void
     {
         $this->fakeZoom()->buildAuthorizationUrlUsing(
@@ -25,14 +26,11 @@ class ZoomOAuthRedirectTest extends TestCase
             codeVerifier: 'dummy-code-verifier',
         );
 
-        $this->get(route('api.v1.oauth.zoom.redirect'));
+        $this->get(route('api.v1.oauth.zoom.redirect'))
+            ->assertOk()
+            ->assertJsonPath('data.redirect_url', 'https://dummy-redirect-url.com');
 
-        // Retrieve the cached values from the cache
-        $oauthZoomState = session()->get('oauth_zoom_state');
-
-        $oauthZoomCodeVerifier = session()->get('oauth_zoom_code_verifier');
-
-        $this->assertEquals('dummy-state', $oauthZoomState);
-        $this->assertEquals('dummy-code-verifier', $oauthZoomCodeVerifier);
+        $this->assertTrue(Cache::has('oauth:zoom:dummy-state'));
+        $this->assertSame('dummy-code-verifier', Cache::get('oauth:zoom:dummy-state'));
     }
 }

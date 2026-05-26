@@ -12,7 +12,7 @@ use App\Services\Auth\RegisterUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class RegisterController extends ApiController
 {
@@ -41,7 +41,7 @@ class RegisterController extends ApiController
             $user = $registerUserService->register($request->registerUserData());
 
             return $this->respondCreated(new AuthenticatedUserResource($user));
-        } catch (Throwable $e) {
+        } catch (TransportExceptionInterface $e) {
             Log::error('User registration failed', ['exception' => $e]);
 
             throw new ExternalServiceUnavailableException('User registration failed.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);

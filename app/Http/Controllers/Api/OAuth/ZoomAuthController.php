@@ -19,9 +19,11 @@ final class ZoomAuthController extends ApiController
     {
         $redirectDetails = $this->zoom->getAuthRedirectDetails();
 
-        session()->put('oauth_zoom_state', $redirectDetails->state);
-
-        session()->put('oauth_zoom_code_verifier', $redirectDetails->codeVerifier);
+        // Store the PKCE code verifier in cache keyed by the OAuth state so
+        // stateless clients (mobile, SPA) that don't persist sessions can still
+        // complete the callback flow.
+        $cacheKey = 'oauth:zoom:'.$redirectDetails->state;
+        cache()->put($cacheKey, $redirectDetails->codeVerifier, now()->addMinutes(10));
 
         return $this->respondWithData(['redirect_url' => $redirectDetails->authorizationUrl]);
 
@@ -33,9 +35,10 @@ final class ZoomAuthController extends ApiController
             abort(Response::HTTP_BAD_REQUEST, 'Zoom account connection denied');
         }
 
-        $hasRequiredFields = $request->filled(['code', 'state'])
-          && session()->has('oauth_zoom_state')
-          && session()->has('oauth_zoom_code_verifier');
+        $state = (string) $request->string('state')->trim();
+        $cacheKey = 'oauth:zoom:'.$state;
+
+        $hasRequiredFields = $request->filled(['code', 'state']) && cache()->has($cacheKey);
 
         if (! $hasRequiredFields) {
             abort(Response::HTTP_BAD_REQUEST, 'Missing required fields');
@@ -43,9 +46,9 @@ final class ZoomAuthController extends ApiController
 
         $callbackDetails = new AuthorizationCallbackDetails(
             authorizationCode: (string) $request->string('code')->trim(),
-            expectedState: session()->pull('oauth_zoom_state'),
-            state: (string) $request->string('state')->trim(),
-            codeVerifier: session()->pull('oauth_zoom_code_verifier'),
+            expectedState: $state,
+            state: $state,
+            codeVerifier: cache()->pull($cacheKey),
         );
 
         $accessDetails = $this->zoom->authorize($callbackDetails);

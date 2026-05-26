@@ -59,6 +59,6 @@ class LoginController extends ApiController
             $currentToken->delete();
         }
 
-        return $this->respondWithMessage('User logout successfully');
+        return $this->respondWithMessage('User logged out successfully.');
     }
 }

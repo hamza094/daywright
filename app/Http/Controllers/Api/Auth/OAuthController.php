@@ -11,13 +11,13 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
+use GuzzleHttp\Exception\GuzzleException;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 class OAuthController extends ApiController
 {
@@ -79,7 +79,7 @@ class OAuthController extends ApiController
             $payload = $this->loginUserService->performSessionLogin($user, $request);
 
             return $this->respondWithData(new AuthenticatedSessionResource($payload->user));
-        } catch (Throwable $e) {
+        } catch (GuzzleException $e) {
             Log::error('OAuth callback failed', [
                 'provider' => $provider->value,
                 'message' => $e->getMessage(),
@@ -87,6 +87,5 @@ class OAuthController extends ApiController
 
             throw new ExternalServiceUnavailableException('Error processing user data.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
-
     }
 }

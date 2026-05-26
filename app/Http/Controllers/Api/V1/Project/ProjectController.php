@@ -45,8 +45,8 @@ class ProjectController extends ApiController
      * Create a new project.
      *
      * This endpoint allows authenticated users to create a new project. The request must include
-    the project's basic details, such as the name, about information, stage, and optional notes and tasks.
-    The response will include the newly created project's information along with related resources.
+     * the project's basic details, such as the name, about information, stage, and optional notes and tasks.
+     * The response will include the newly created project's information along with related resources.
      */
     public function store(ProjectStoreRequest $request): JsonResponse
     {
@@ -57,26 +57,29 @@ class ProjectController extends ApiController
         );
     }
 
-    /** Retrieve a specific project
+    /**
+     * Retrieve a specific project.
      *
-     *
-     * Returns detailed information about a project including its members, conversations, and activities
+     * Returns detailed information about a project including its members, conversations, and activities.
      */
-    public function show(Project $project): ProjectResource
+    public function show(Project $project): JsonResponse
     {
         $this->authorize('access', $project);
 
         $project = $this->projectService->loadForDetails($project);
 
-        return new ProjectResource($project, $this->projectService->projectLimits($project, $this->authenticatedUser()));
+        return $this->respondWithData(
+            new ProjectResource($project, $this->projectService->projectLimits($project, $this->authenticatedUser()))
+        );
     }
 
     /**
-     *  Update Project Fields
+     * Update Project Fields
      *
-     *  This endpoint allows you to update the details of an existing project.
-     * It requires the project's slug and the updated fields (name, about, notes) when they are present in the request body and returns the updated resource.
-     *     */
+     * This endpoint allows you to update the details of an existing project.
+     * It requires the project's slug and the updated fields (name, about, notes) when they are present
+     * in the request body and returns the updated resource.
+     */
     public function update(Project $project, ProjectUpdateRequest $request): JsonResponse
     {
         $this->authorize('access', $project);

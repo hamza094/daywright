@@ -24,6 +24,7 @@ class WebhookRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'payload.object' => 'required|array',
             'payload.object.id' => 'required',
         ];
     }

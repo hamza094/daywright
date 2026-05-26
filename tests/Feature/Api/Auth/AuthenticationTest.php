@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Override;
-use RuntimeException;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 use Torann\GeoIP\Facades\GeoIP;
 use Torann\GeoIP\Location;
@@ -271,7 +271,7 @@ class AuthenticationTest extends TestCase
         $this->mock(LoginUserService::class, function ($mock): void {
             $mock->shouldReceive('dispatchTimezoneIfNeeded')
                 ->once()
-                ->andThrow(new RuntimeException('Registration infrastructure failed'));
+                ->andThrow(new TransportException('Registration infrastructure failed'));
         });
 
         $this->postJson(route('api.v1.auth.register'), [

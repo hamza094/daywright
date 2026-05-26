@@ -59,6 +59,6 @@ class SpaAuthController extends ApiController
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return $this->respondWithMessage('User logout successfully');
+        return $this->respondWithMessage('User logged out successfully.');
     }
 }

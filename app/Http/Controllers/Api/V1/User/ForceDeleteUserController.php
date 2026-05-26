@@ -19,8 +19,9 @@ final class ForceDeleteUserController extends ApiController
     {
         $this->authorize('owner', $user);
 
-        $trashedUser = User::withTrashed()->findOrFail($user->id);
-        $trashedUser->forceDelete();
+        // The route for this controller is registered with `withTrashed()`,
+        // so `$user` is already the trashed model. Force delete directly.
+        $user->forceDelete();
 
         return $this->respondWithMessage('User data permanently deleted.');
     }

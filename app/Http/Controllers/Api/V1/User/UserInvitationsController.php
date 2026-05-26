@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\User;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\User\UserInvitationsIndexRequest;
 use App\Http\Resources\Api\V1\Project\ProjectInvitationResource;
+use App\Services\Project\InvitationService;
 use Illuminate\Http\JsonResponse;
 
 class UserInvitationsController extends ApiController
@@ -16,14 +17,15 @@ class UserInvitationsController extends ApiController
      *
      * Returns a paginated list of the authenticated user's pending project invitations.
      */
-    public function myInvitations(UserInvitationsIndexRequest $request): JsonResponse
+    public function myInvitations(UserInvitationsIndexRequest $request, InvitationService $invitationService): JsonResponse
     {
         $user = $this->authenticatedUser();
-        $pendingInvitations = $user->inactiveMembers()
-            ->with('user')
-            ->orderByPivot('created_at')
-            ->paginate($request->perPage(), ['*'], 'page', $request->pageNumber())
-            ->withQueryString();
+
+        $pendingInvitations = $invitationService->pendingForUser(
+            $user,
+            $request->perPage(),
+            $request->pageNumber(),
+        );
 
         return ProjectInvitationResource::collection($pendingInvitations)->response();
     }

@@ -20,9 +20,7 @@ final class ProjectMessageController extends ApiController
 
     public function destroy(Project $project, Message $message, MessageService $messageService): JsonResponse
     {
-        if ((int) $message->project_id !== (int) $project->id) {
-            abort(404);
-        }
+        $this->authorize('manage', $project);
 
         $messageService->deleteScheduledMessage($message);
 

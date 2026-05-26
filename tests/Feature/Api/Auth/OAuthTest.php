@@ -7,11 +7,12 @@ namespace Tests\Feature\Api\Auth;
 use App\Enums\OAuthProvider;
 use App\Models\User;
 use Carbon\Carbon;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Psr7\Request as Psr7Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 use Mockery as m;
-use RuntimeException;
 use Tests\TestCase;
 
 class OAuthTest extends TestCase
@@ -146,7 +147,7 @@ class OAuthTest extends TestCase
 
         Socialite::shouldReceive('user')
             ->once()
-            ->andThrow(new RuntimeException('OAuth provider failed'));
+            ->andThrow(new ConnectException('OAuth provider failed', new Psr7Request('GET', 'https://github.com/login/oauth/access_token')));
 
         $this->getJson(route('api.v1.oauth.callback', ['provider' => 'github']))
             ->assertStatus(500)

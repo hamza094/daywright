@@ -12,6 +12,7 @@ use App\Actions\Project\SendProjectInvitationAction;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class InvitationService
 {
@@ -61,6 +62,18 @@ class InvitationService
             ->select('uuid', 'name', 'email')
             ->limit(5)
             ->get();
+    }
+
+    /**
+     * Paginate pending invitations for the given user.
+     */
+    public function pendingForUser(User $user, int $perPage, int $page): LengthAwarePaginator
+    {
+        return $user->inactiveMembers()
+            ->with('user')
+            ->orderByPivot('created_at')
+            ->paginate($perPage, ['*'], 'page', $page)
+            ->withQueryString();
     }
 
     /**

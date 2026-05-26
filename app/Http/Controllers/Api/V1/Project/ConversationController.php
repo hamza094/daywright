@@ -48,6 +48,10 @@ class ConversationController extends ApiController
             $request->file('file'),
         );
 
+        if ($conversation === null) {
+            abort(500, 'Failed to create conversation.');
+        }
+
         return $this->respondCreated(new ConversationResource($conversation));
     }
 

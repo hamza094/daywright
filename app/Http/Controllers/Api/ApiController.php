@@ -8,9 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Contracts\Support\Arrayable;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Foundation\Bus\DispatchesJobs;
-use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,8 +17,6 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ApiController extends Controller
 {
-    use AuthorizesRequests, DispatchesJobs, ValidatesRequests;
-
     /**
      * @param  array<int|string,mixed>|Arrayable<int,mixed>|JsonSerializable  $data
      * @param  array<string,mixed>  $meta

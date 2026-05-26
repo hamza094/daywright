@@ -16,7 +16,8 @@ class ZoomWebhookController extends ApiController
 {
     public function update(WebhookRequest $request): JsonResponse
     {
-        $object = $request->input('payload.object');
+        $validated = $request->validated();
+        $object = $validated['payload']['object'];
 
         /** @var array<string, mixed> $object */
         UpdateMeetingWebhook::dispatch([
@@ -29,7 +30,8 @@ class ZoomWebhookController extends ApiController
 
     public function delete(WebhookRequest $request): JsonResponse
     {
-        $object = $request->input('payload.object');
+        $validated = $request->validated();
+        $object = $validated['payload']['object'];
 
         DeleteMeetingWebhook::dispatch([
             'meeting_id' => $object['id'],
@@ -40,7 +42,8 @@ class ZoomWebhookController extends ApiController
 
     public function start(WebhookRequest $request): JsonResponse
     {
-        $object = $request->input('payload.object');
+        $validated = $request->validated();
+        $object = $validated['payload']['object'];
 
         StartMeetingWebhook::dispatchAfterResponse([
             'meeting_id' => $object['id'],
@@ -52,7 +55,8 @@ class ZoomWebhookController extends ApiController
 
     public function ended(WebhookRequest $request): JsonResponse
     {
-        $object = $request->input('payload.object');
+        $validated = $request->validated();
+        $object = $validated['payload']['object'];
 
         MeetingEndsWebhook::dispatchAfterResponse([
             'meeting_id' => $object['id'],
