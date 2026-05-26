@@ -58,6 +58,20 @@ class UserActivitiesRequest extends ApiQueryRequest
         ];
     }
 
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $start = $this->input('start_date');
+            $end = $this->input('end_date');
+
+            if ($start && $end) {
+                if (Carbon::parse($start)->diffInDays(Carbon::parse($end)) > 365) {
+                    $validator->errors()->add('end_date', 'The date range may not exceed 365 days.');
+                }
+            }
+        });
+    }
+
     /**
      * @return array<int, string>
      */

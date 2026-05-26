@@ -28,4 +28,13 @@ class InvitationUsersRequest extends FormRequest
             'emails.*' => ['required', 'email'],
         ];
     }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if (! $this->has('email') && ! $this->has('emails')) {
+                $validator->errors()->add('email', 'Provide at least one email address to invite.');
+            }
+        });
+    }
 }

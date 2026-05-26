@@ -73,9 +73,9 @@ class ConfirmTwoFactorRequest extends FormRequest
             return;
         }
 
-        // Validate the 2FA code
-        if ($user && ! $user->hasTwoFactorEnabled() && ! $user->confirmTwoFactorAuth($this->code)) {
-            $validator->errors()->add('code', 'Invalid code provided.');
-        }
+        // Note: Do not perform the actual confirmation here as it may
+        // have side-effects (persisting state). The controller will
+        // perform the confirmation action; here we only validate format
+        // and that 2FA isn't already enabled.
     }
 }

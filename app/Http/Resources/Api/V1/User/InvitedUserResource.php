@@ -58,7 +58,7 @@ class InvitedUserResource extends JsonResource
              * @example 2025-07-09T14:00:00+00:00
              */
             'invitation_sent_at' => $this->when(
-                $request->routeIs('api.v1.project.pending.invitation') && isset($this->resource->pivot),
+                isset($this->resource->pivot) && isset($this->resource->pivot->created_at),
                 fn (): string => $this->resource->pivot->created_at->toIso8601String()
             ),
             /**

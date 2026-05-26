@@ -10,6 +10,7 @@ use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Override;
 
@@ -24,8 +25,12 @@ class ActivityResource extends JsonResource
     #[Override]
     public function toArray($request): array
     {
+        $description = method_exists($this, $this->description)
+            ? $this->{$this->description}()
+            : $this->description;
+
         return [
-            'description' => $this->{$this->description}(),
+            'description' => $description,
             'time' => $this->created_at?->toIso8601String(),
             'subject' => $this->getSubjectDetails(),
             'user' => $this->whenLoaded(
@@ -52,7 +57,6 @@ class ActivityResource extends JsonResource
     protected function updated_project(): string
     {
         $changes = Arr::get($this->changes, 'after', []);
-
         $updatedKey = key($changes);
 
         if (! $updatedKey) {
@@ -60,10 +64,7 @@ class ActivityResource extends JsonResource
         }
 
         if ($updatedKey === 'stage_id') {
-
-            static $stages = null;
-
-            $stages ??= Stage::pluck('name', 'id');
+            $stages = Cache::remember('stages_map', 300, fn () => Stage::pluck('name', 'id')->toArray());
 
             $newStage = $stages[$changes['stage_id']] ?? 'Unknown';
 
@@ -97,6 +98,10 @@ class ActivityResource extends JsonResource
 
     protected function updated_task(): string
     {
+        if (! $this->subject) {
+            return 'Task updated';
+        }
+
         $taskTitle = Str::limit($this->subject->title, 17, '...');
 
         $changes = Arr::get($this->changes, 'after', []);
@@ -108,11 +113,7 @@ class ActivityResource extends JsonResource
         }
 
         if ($updatedKey === 'status_id') {
-
-            // Fetch all statuses once and cache them
-            static $statuses = null;
-
-            $statuses ??= TaskStatus::pluck('label', 'id');
+            $statuses = Cache::remember('task_statuses_map', 300, fn () => TaskStatus::pluck('label', 'id')->toArray());
 
             $newStatus = $statuses[$changes['status_id']] ?? 'Unknown';
 
@@ -164,13 +165,12 @@ class ActivityResource extends JsonResource
 
     protected function created_meeting(): string
     {
-        return "Meeting {$this->subject->topic} created";
-
+        return 'Meeting '.($this->subject?->topic ?? '').' created';
     }
 
     protected function updated_meeting(): string
     {
-        return "Meeting {$this->subject->topic} updated";
+        return 'Meeting '.($this->subject?->topic ?? '').' updated';
     }
 
     protected function deleted_meeting(): string

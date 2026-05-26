@@ -35,7 +35,7 @@ class MeetingIndexRequest extends ApiQueryRequest
 
     public function isPrevious(): bool
     {
-        return $this->validated('request') === 'previous' || $this->query('request') === 'previous';
+        return $this->validated('request') === 'previous';
     }
 
     public function perPage(): int

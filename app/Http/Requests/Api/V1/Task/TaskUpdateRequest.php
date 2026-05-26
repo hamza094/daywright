@@ -51,7 +51,7 @@ class TaskUpdateRequest extends FormRequest
                 'sometimes',
                 'required',
                 'max:55',
-                Rule::unique('tasks')/* ->ignore($this->task) */ ->where(fn ($query) => $query->where('project_id', $project->id)),
+                Rule::unique('tasks')->ignore($this->task)->where(fn ($query) => $query->where('project_id', $project->id)),
             ],
             /**
              * Optional task description.
@@ -78,7 +78,7 @@ class TaskUpdateRequest extends FormRequest
              *
              * @example 1
              */
-            'status_id' => 'required|int|max:4|sometimes',
+            'status_id' => 'sometimes|required|integer|max:4',
             /**
              * Notification strategy used for due-date reminders.
              *

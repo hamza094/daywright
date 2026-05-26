@@ -7,6 +7,7 @@ namespace App\Http\Resources\Api\V1\Admin;
 use App\Http\Resources\Api\V1\Admin\User\AdminUserSummaryResource;
 use App\Http\Resources\Api\V1\Task\TaskStatusResource;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 use JsonSerializable;
 use Override;
 
@@ -24,7 +25,7 @@ class TaskResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'description' => str_limit($this->description, 50),
+            'description' => Str::limit($this->description, 50),
             'status_id' => $this->status_id,
             'status' => new TaskStatusResource($this->whenLoaded('status')),
             'project' => new TaskProjectResource($this->whenLoaded('project')),

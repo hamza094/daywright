@@ -34,7 +34,10 @@ class ProjectStageResource extends JsonResource
             /**
              * Project Stage Resource
              */
-            'stage' => new StageResource($this->stage),
+            'stage' => $this->whenLoaded(
+                'stage',
+                fn (): StageResource => new StageResource($this->stage),
+            ),
 
             /**
              * project postponed reason if any

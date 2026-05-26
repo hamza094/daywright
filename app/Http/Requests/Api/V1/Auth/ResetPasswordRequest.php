@@ -45,12 +45,12 @@ class ResetPasswordRequest extends FormRequest
              * @example Berry@04
              */
             'password' => RegisterUserRequest::passwordRules(),
-            /**
-             * Confirmation matching the new password.
-             *
-             * @example Berry@04
-             */
-            'password_confirmation' => 'required_with:password|string',
+        /**
+         * Confirmation matching the new password.
+         *
+         * @example Berry@04
+         */
+            // `password` rules already include `confirmed` via RegisterUserRequest::passwordRules()
         ];
     }
 }

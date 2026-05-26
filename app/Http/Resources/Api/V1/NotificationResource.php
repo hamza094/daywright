@@ -51,7 +51,10 @@ class NotificationResource extends JsonResource
             /**
              * User summary for the actor that triggered the notification, when available.
              */
-            'notifier' => new InvitedUserResource((object) ($payload->notifier?->toArray() ?? [])),
+            'notifier' => $this->when(
+                $payload->notifier !== null,
+                fn () => new InvitedUserResource((object) $payload->notifier->toArray())
+            ),
             /**
              * Read timestamp in UTC ISO 8601 format, or null when unread.
              *

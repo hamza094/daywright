@@ -59,7 +59,7 @@ class UserTasksResource extends JsonResource
              *
              * @example assigned
              */
-            'state' => $this->when($this->user_id !== auth()->id(), 'assigned', 'created'),
+            'state' => $this->when($this->user_id !== $request->user()?->id, 'assigned', 'created'),
             /**
              * Task creation timestamp in UTC ISO 8601 format.
              *

@@ -8,6 +8,7 @@ use App\Http\Resources\Api\V1\Admin\User\AdminUserSummaryResource;
 use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\StageResource;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 use Override;
 
 /**
@@ -27,7 +28,7 @@ class ProjectResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'about' => str_limit($this->about, 50),
+            'about' => Str::limit($this->about, 50),
             'slug' => $this->slug,
             'state' => $this->state(),
             'stage' => $this->whenLoaded(

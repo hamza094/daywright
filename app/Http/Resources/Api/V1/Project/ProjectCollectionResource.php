@@ -57,7 +57,10 @@ class ProjectCollectionResource extends JsonResource
             /**
              * Details of the current stage of the project.
              */
-            'stage' => new StageResource($this->stage),
+            'stage' => $this->whenLoaded(
+                'stage',
+                fn (): StageResource => new StageResource($this->stage),
+            ),
 
             /**
              * Project creation timestamp in UTC ISO 8601 format.

@@ -29,7 +29,7 @@ class MeetingUpdateRequest extends FormRequest
             'meeting_id' => 'integer|required',
             'topic' => 'string|max:200|sometimes',
             'agenda' => 'string|sometimes|max:2000',
-            'duration' => 'integer|sometimes',
+            'duration' => 'integer|min:1|sometimes',
             'start_time' => [
                 'sometimes',
                 'bail',

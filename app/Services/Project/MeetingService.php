@@ -26,7 +26,7 @@ class MeetingService
 
     private const int OPERATION_LOCK_WAIT_SECONDS = 10;
 
-    private const array MEETING_RESOURCE_RELATIONS = ['user'];
+    private const array MEETING_RESOURCE_RELATIONS = ['project', 'user'];
 
     public function __construct(private readonly PlanLimitService $planLimitService) {}
 

@@ -24,8 +24,16 @@ class JwtTokenRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => 'required|integer',
-            'meetingId' => 'required|integer',
+            'role' => 'required|in:0,1',
+            'meeting_id' => 'required|integer',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        // Accept legacy camelCase `meetingId` but normalize to snake_case
+        if ($this->has('meetingId') && ! $this->has('meeting_id')) {
+            $this->merge(['meeting_id' => $this->input('meetingId')]);
+        }
     }
 }

@@ -9,7 +9,6 @@ use App\Models\Project;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Override;
 
 #[SchemaName('TaskStoreRequestData')]
@@ -70,16 +69,12 @@ class TaskRequest extends FormRequest
         ];
     }
 
-    #[Override]
-    protected function prepareForValidation(): void
+    public function withValidator($validator): void
     {
-
-        /** @var Project|null $project */
-        $project = $this->route('project');
-
-        throw_if($project->tasksReachedItsLimit(),
-            ValidationException::withMessages(
-                ['tasks' => 'Project tasks reached their limit'])
-        );
+        $validator->after(function ($validator): void {
+            if ($this->route('project')?->tasksReachedItsLimit()) {
+                $validator->errors()->add('tasks', 'Project tasks reached their limit.');
+            }
+        });
     }
 }

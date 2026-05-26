@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1\Meetings;
 
 use App\Models\Meeting;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
@@ -17,7 +18,11 @@ class MeetingReadTest extends TestCase
     /** @test */
     public function it_can_show_a_meeting(): void
     {
-        $meeting = Meeting::factory()->for($this->project)->for($this->user)->create();
+        $meeting = Meeting::factory()->for($this->project)->for($this->user)->create([
+            'join_url' => 'https://zoom.us/j/owner-join',
+            'start_url' => 'https://zoom.us/s/owner-start',
+            'password' => 'owner-password',
+        ]);
 
         $this->actingAs($this->user);
 
@@ -31,7 +36,32 @@ class MeetingReadTest extends TestCase
                 ],
             ])
             ->assertJsonPath('data.start_time', Carbon::parse($meeting->start_time)->setTimezone('UTC')->toIso8601String())
-            ->assertJsonPath('data.created_at', $meeting->created_at?->setTimezone('UTC')->toIso8601String());
+            ->assertJsonPath('data.created_at', $meeting->created_at?->setTimezone('UTC')->toIso8601String())
+            ->assertJsonPath('data.join_url', 'https://zoom.us/j/owner-join')
+            ->assertJsonPath('data.start_url', 'https://zoom.us/s/owner-start')
+            ->assertJsonPath('data.password', 'owner-password');
+    }
+
+    /** @test */
+    public function active_project_members_can_view_join_details_but_not_start_url(): void
+    {
+        $member = User::factory()->create();
+        $this->project->members()->attach($member->id, ['active' => true]);
+
+        $meeting = Meeting::factory()->for($this->project)->for($this->user)->create([
+            'join_url' => 'https://zoom.us/j/member-join',
+            'start_url' => 'https://zoom.us/s/owner-only',
+            'password' => 'member-password',
+        ]);
+
+        $this->actingAs($member);
+
+        $response = $this->getJson($this->apiV1Route('meetings.show', ['project' => $this->project, 'meeting' => $meeting]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.join_url', 'https://zoom.us/j/member-join')
+            ->assertJsonPath('data.password', 'member-password')
+            ->assertJsonMissingPath('data.start_url');
     }
 
     /** @test */

@@ -7,6 +7,7 @@ namespace App\Http\Requests\Api\V1\User;
 use App\DataTransferObjects\User\UpdateUserData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Override;
 
@@ -48,13 +49,13 @@ class UserRequest extends FormRequest
              *
              * @example john.doe@example.com
              */
-            'email' => ['sometimes', 'required', 'email', 'max:100'],
+            'email' => ['sometimes', 'required', 'email', 'max:100', Rule::unique('users')->ignore($this->user())],
             /**
              * Updated public username.
              *
              * @example john_doe
              */
-            'username' => ['sometimes', 'required', 'alpha_dash:ascii', 'max:30'],
+            'username' => ['sometimes', 'required', 'alpha_dash:ascii', 'max:30', Rule::unique('users')->ignore($this->user())],
             /**
              * Optional mobile number.
              *
@@ -100,7 +101,7 @@ class UserRequest extends FormRequest
              *
              * @example Password4!
              */
-            'password' => ['sometimes', 'required_with:current_password', Password::default()],
+            'password' => ['sometimes', 'required_with:current_password', Password::default(), 'confirmed'],
         ];
     }
 

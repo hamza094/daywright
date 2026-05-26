@@ -35,10 +35,10 @@ class ProjectStoreRequest extends FormRequest
         return [
             'name' => 'required|string|max:150|min:4',
             'about' => 'required|min:15',
-            'stage_id' => 'required|int|between:1,5',
+            'stage_id' => 'required|integer|between:1,5',
             'notes' => 'sometimes|max:250',
             'tasks' => 'sometimes|array|max:3',
-            'tasks.*.title' => 'required|string|min:5|max:55',
+            'tasks.*.title' => 'required|string|distinct|min:5|max:55',
         ];
     }
 }

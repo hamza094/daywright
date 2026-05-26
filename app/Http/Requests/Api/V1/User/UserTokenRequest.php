@@ -47,7 +47,7 @@ class UserTokenRequest extends FormRequest
                 function (string $attribute, mixed $value, Closure $fail): void {
                     if ($value) {
                         $maxDate = now()->addDays(180);
-                        if (now()->parse($value)->gt($maxDate)) {
+                        if (\Carbon\Carbon::parse($value)->gt($maxDate)) {
                             $fail('The '.$attribute.' may not be more than 180 days from now.');
                         }
                     }

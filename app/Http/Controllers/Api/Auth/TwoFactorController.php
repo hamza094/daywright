@@ -14,6 +14,7 @@ use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Two-Factor Authentication Controller
@@ -83,6 +84,10 @@ class TwoFactorController extends ApiController
     public function confirmTwoFactor(ConfirmTwoFactorRequest $request): JsonResponse
     {
         $user = $request->user();
+
+        if (! $user->confirmTwoFactorAuth($request->input('code'))) {
+            throw ValidationException::withMessages(['code' => 'Invalid code provided.']);
+        }
 
         return $this->respondWithData([
             'recovery_codes' => $user->getRecoveryCodes(),

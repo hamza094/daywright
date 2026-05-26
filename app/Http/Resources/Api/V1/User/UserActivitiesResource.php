@@ -37,9 +37,7 @@ class UserActivitiesResource extends JsonResource
              *
              * @example Task 'Finalize copy..' status updated in Website Refresh
              */
-            'description' => method_exists($this, $this->description)
-              ? $this->{$this->description}()
-              : $this->description,
+            'description' => $description = (method_exists($this, $this->description) ? $this->{$this->description}() : $this->description),
             /**
              * Related project summary, including soft-deleted projects when the activity still references them.
              */
@@ -61,7 +59,7 @@ class UserActivitiesResource extends JsonResource
              *
              * @example yellow
              */
-            'color' => $this->color(),
+            'color' => $this->colorFromDescription($description),
             /**
              * Identifier of the user who triggered the activity.
              *
@@ -223,9 +221,8 @@ class UserActivitiesResource extends JsonResource
         return "Meeting deleted from project {$projectName}";
     }
 
-    protected function color(): string
+    protected function colorFromDescription(string $desc): string
     {
-        $desc = method_exists($this, $this->description) ? $this->{$this->description}() : '';
         if (Str::startsWith($desc, 'Project')) {
             return 'purple';
         }
@@ -237,6 +234,5 @@ class UserActivitiesResource extends JsonResource
         }
 
         return 'green';
-
     }
 }

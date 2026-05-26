@@ -28,7 +28,7 @@ class MeetingStoreRequest extends FormRequest
         return [
             'topic' => 'required|max:200|string',
             'agenda' => 'required|max:2000|string',
-            'duration' => 'required|integer',
+            'duration' => 'required|integer|min:1',
             'start_time' => [
                 'required',
                 'bail',
