@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Project;
 
+use InvalidArgumentException;
+
 final readonly class CreateConversationData
 {
     public function __construct(
@@ -19,9 +21,16 @@ final readonly class CreateConversationData
         $message = $payload['message'] ?? null;
         $file = $payload['file'] ?? null;
 
+        $normalizedMessage = is_string($message) && $message !== '' ? $message : null;
+        $normalizedFile = is_string($file) && $file !== '' ? $file : null;
+
+        if ($normalizedMessage === null && $normalizedFile === null) {
+            throw new InvalidArgumentException('A conversation must have a message or a file.');
+        }
+
         return new self(
-            message: is_string($message) && $message !== '' ? $message : null,
-            file: is_string($file) && $file !== '' ? $file : null,
+            message: $normalizedMessage,
+            file: $normalizedFile,
         );
     }
 

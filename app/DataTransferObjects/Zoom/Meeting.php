@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\DataTransferObjects\Zoom;
 
 use Carbon\Carbon;
+use Throwable;
 
-final class Meeting
+final readonly class Meeting
 {
     public function __construct(
         public int $meeting_id,
@@ -21,7 +22,6 @@ final class Meeting
         public string $timezone,
         public string $password,
         public bool $join_before_host,
-
     ) {}
 
     /**
@@ -30,18 +30,55 @@ final class Meeting
     public static function fromResponse(array $response): static
     {
         return new self(
-            meeting_id: $response['id'],
-            topic: $response['topic'],
-            agenda: $response['agenda'],
-            created_at: Carbon::parse($response['created_at'])->utc()->toDateTimeString(),
-            duration: $response['duration'],
-            start_time: Carbon::parse($response['start_time'])->utc()->toDateTimeString(),
-            start_url: $response['start_url'],
-            join_url: $response['start_url'],
-            status: $response['status'],
-            timezone: $response['timezone'],
-            password: $response['password'],
-            join_before_host: $response['join_before_host'] ?? false,
+            meeting_id: self::intValue($response, 'id'),
+            topic: self::stringValue($response, 'topic'),
+            agenda: self::stringValue($response, 'agenda'),
+            created_at: self::parseUtcDateTime($response['created_at'] ?? null),
+            duration: self::intValue($response, 'duration'),
+            start_time: self::parseUtcDateTime($response['start_time'] ?? null),
+            start_url: self::stringValue($response, 'start_url'),
+            join_url: self::stringValue($response, 'join_url'),
+            status: self::stringValue($response, 'status'),
+            timezone: self::stringValue($response, 'timezone'),
+            password: self::stringValue($response, 'password'),
+            join_before_host: self::boolValue($response, 'join_before_host'),
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    private static function intValue(array $response, string $key): int
+    {
+        return isset($response[$key]) ? (int) $response[$key] : 0;
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    private static function stringValue(array $response, string $key): string
+    {
+        return (string) ($response[$key] ?? '');
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    private static function boolValue(array $response, string $key): bool
+    {
+        return isset($response[$key]) ? (bool) $response[$key] : false;
+    }
+
+    private static function parseUtcDateTime(mixed $value): string
+    {
+        if (! is_string($value) || $value === '') {
+            return '';
+        }
+
+        try {
+            return Carbon::parse($value)->utc()->toDateTimeString();
+        } catch (Throwable) {
+            return '';
+        }
     }
 }

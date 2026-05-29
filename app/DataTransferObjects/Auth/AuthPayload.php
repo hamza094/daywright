@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Auth;
 
-use App\Http\Resources\Api\V1\User\AuthenticatedUserResource;
 use App\Models\User;
 
 final class AuthPayload
@@ -22,7 +21,8 @@ final class AuthPayload
     public function toArray(): array
     {
         $data = [
-            'user' => (new AuthenticatedUserResource($this->user))->resolve(),
+            // Return plain data — resource resolution belongs in the controller/response layer
+            'user' => $this->user,
         ];
 
         if ($this->accessToken !== null) {

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Admin\Integration;
 
 use App\Collections\Paddle\DataCollection;
-use App\DataTransferObjects\Paddle\Data;
+use App\DataTransferObjects\Paddle\PaddleSubscriptionData as Data;
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
 use App\Exceptions\Paddle\PaddleRequestException;
 use App\Http\Integrations\Paddle\PaddleConnector;

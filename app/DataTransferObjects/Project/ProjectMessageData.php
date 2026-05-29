@@ -7,7 +7,7 @@ namespace App\DataTransferObjects\Project;
 final readonly class ProjectMessageData
 {
     /**
-     * @param  array<int, int|string>  $recipientIds
+     * @param  array<int, int>  $recipientIds
      */
     public function __construct(
         public string $message,
@@ -36,7 +36,7 @@ final readonly class ProjectMessageData
     }
 
     /**
-     * @return array{message: string, subject: string|null, mail: bool, sms: bool, delivered_at: string|null, recipient_ids: array<int, int|string>}
+     * @return array{message: string, subject: string|null, mail: bool, sms: bool, delivered_at: string|null, recipient_ids: array<int, int>}
      */
     public function toArray(): array
     {
@@ -51,25 +51,36 @@ final readonly class ProjectMessageData
     }
 
     /**
-     * @return array<int, int|string>
+     * @return array<int, int>
      */
     private static function extractRecipientIds(mixed $users): array
     {
-        /** @phpstan-ignore-next-line */
+        if (! is_iterable($users)) {
+            return [];
+        }
+
         return collect($users)
-            ->map(function (mixed $user): int|string|null {
-                if (is_array($user)) {
-                    return $user['user_id'] ?? $user['id'] ?? null;
-                }
-
-                if (is_object($user)) {
-                    return $user->user_id ?? $user->id ?? null;
-                }
-
-                return is_scalar($user) && $user !== '' ? $user : null;
-            })
-            ->filter(fn (mixed $userId): bool => ! in_array($userId, [null, 0, '', '0'], true))
+            ->map(fn (mixed $user): ?int => self::extractRecipientId($user))
+            ->filter()
             ->values()
             ->all();
+    }
+
+    private static function extractRecipientId(mixed $user): ?int
+    {
+        $recipientId = match (true) {
+            is_array($user) => $user['user_id'] ?? $user['id'] ?? null,
+            is_object($user) => $user->user_id ?? $user->id ?? null,
+            is_scalar($user) && $user !== '' => $user,
+            default => null,
+        };
+
+        if ($recipientId === null) {
+            return null;
+        }
+
+        $normalizedRecipientId = (int) $recipientId;
+
+        return $normalizedRecipientId > 0 ? $normalizedRecipientId : null;
     }
 }

@@ -35,7 +35,7 @@ final class ProjectMessageDataTest extends TestCase
             'mail' => true,
             'sms' => false,
             'delivered_at' => '2026-05-01T07:30:00+00:00',
-            'recipient_ids' => [5, 8, 13, '21'],
+            'recipient_ids' => [5, 8, 13, 21],
         ], $data->toArray());
     }
 }

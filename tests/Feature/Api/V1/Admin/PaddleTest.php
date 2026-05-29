@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1\Admin;
 
 use App\Collections\Paddle\DataCollection;
-use App\DataTransferObjects\Paddle\Data;
+use App\DataTransferObjects\Paddle\PaddleSubscriptionData as Data;
 use App\Interfaces\PaddleApi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;

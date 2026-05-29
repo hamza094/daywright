@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Project;
 
+use InvalidArgumentException;
+
 final readonly class ProjectStageUpdateData
 {
     public function __construct(
@@ -16,8 +18,12 @@ final readonly class ProjectStageUpdateData
      */
     public static function fromArray(array $payload): self
     {
+        if (! isset($payload['stage'])) {
+            throw new InvalidArgumentException('stage is required');
+        }
+
         return new self(
-            stageId: (int) ($payload['stage'] ?? 0),
+            stageId: (int) $payload['stage'],
             postponedReason: array_key_exists('postponed_reason', $payload)
                 ? (string) ($payload['postponed_reason'] ?? '')
                 : null,

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Integrations\Paddle\Requests;
 
-use App\DataTransferObjects\Paddle\Data;
+use App\DataTransferObjects\Paddle\PaddleSubscriptionData as Data;
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
 use Override;
 use Saloon\Contracts\Body\HasBody;

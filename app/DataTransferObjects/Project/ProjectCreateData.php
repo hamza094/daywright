@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Project;
 
+use InvalidArgumentException;
+
 final readonly class ProjectCreateData
 {
+    private bool $hasNotes;
+
     /**
      * @param  array<int, array{title: string}>  $tasks
      */
@@ -15,21 +19,25 @@ final readonly class ProjectCreateData
         public int $stageId,
         public ?string $notes,
         private array $tasks,
-        private bool $hasNotes,
-    ) {}
+    ) {
+        $this->hasNotes = $this->notes !== null;
+    }
 
     /**
      * @param  array<string, mixed>  $payload
      */
     public static function fromArray(array $payload): self
     {
+        if (! isset($payload['stage_id'])) {
+            throw new InvalidArgumentException('stage_id is required');
+        }
+
         return new self(
             name: (string) ($payload['name'] ?? ''),
             about: (string) ($payload['about'] ?? ''),
-            stageId: (int) ($payload['stage_id'] ?? 0),
+            stageId: (int) $payload['stage_id'],
             notes: array_key_exists('notes', $payload) ? (string) ($payload['notes'] ?? '') : null,
             tasks: self::normalizeTasks($payload['tasks'] ?? []),
-            hasNotes: array_key_exists('notes', $payload),
         );
     }
 
