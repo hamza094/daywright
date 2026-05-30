@@ -50,7 +50,11 @@ class MessageTest extends TestCase
     /** @test */
     public function message_can_be_scheduled_with_iso_delivered_at(): void
     {
-        $deliveredAt = Carbon::create(2026, 5, 1, 12, 30, 0, 'Asia/Karachi')->toIso8601String();
+        $deliveredAt = now()
+            ->setTimezone('Asia/Karachi')
+            ->addDay()
+            ->setTime(12, 30, 0)
+            ->toIso8601String();
 
         $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is project message',

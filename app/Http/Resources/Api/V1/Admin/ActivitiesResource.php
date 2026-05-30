@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1\Admin;
 
 use App\Http\Resources\Api\V1\Admin\User\AdminUserSummaryResource;
+use App\Models\Activity;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use JsonSerializable;
 use Override;
 
+/**
+ * @mixin Activity
+ */
 class ActivitiesResource extends JsonResource
 {
     /**
@@ -22,15 +26,16 @@ class ActivitiesResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
-        $description = method_exists($this, $this->description)
-            ? $this->{$this->description}()
-            : $this->description;
+        $descriptionKey = (string) data_get($this->resource, 'description', '');
+        $description = method_exists($this, $descriptionKey)
+            ? $this->{$descriptionKey}()
+            : $descriptionKey;
 
         return [
             'description' => $description,
-            'project' => $this->whenLoaded('project', fn () => new ProjectsResource($this->project)),
+            'project' => $this->whenLoaded('project', fn (): ProjectsResource => new ProjectsResource($this->project)),
             'time' => $this->created_at?->toIso8601String(),
-            'subject_id' => $this->subject_type === \App\Models\Task::class ? ($this->subject ? $this->subject->id : null) : $this->subject_type,
+            'subject_id' => $this->subject_type === \App\Models\Task::class ? data_get($this->subject, 'id') : $this->subject_type,
             'user' => $this->whenLoaded('user', fn (): AdminUserSummaryResource => new AdminUserSummaryResource($this->user)),
         ];
     }
@@ -74,8 +79,10 @@ class ActivitiesResource extends JsonResource
 
     protected function created_task(): string
     {
-        if ($this->subject && property_exists($this->subject, 'title') && $this->subject->title) {
-            return 'Added new task  '.Str::limit($this->subject->title, 7, '..').' '.'in';
+        $title = (string) data_get($this->subject, 'title', '');
+
+        if ($title !== '') {
+            return 'Added new task  '.Str::limit($title, 7, '..').' '.'in';
         }
 
         return 'Added new Task in';
@@ -86,7 +93,7 @@ class ActivitiesResource extends JsonResource
         $task = $this->subject;
         $changesAfter = Arr::get($this->changes, 'after', []);
         $updatedKey = key($changesAfter);
-        $taskName = $task && property_exists($task, 'title') ? Str::limit($task->title, 17, '..') : '(deleted)';
+        $taskName = $task ? Str::limit((string) data_get($task, 'title', '(deleted)'), 17, '..') : '(deleted)';
 
         if ($updatedKey === 'completed') {
             return "Updated Task '$taskName' status in";
@@ -102,7 +109,7 @@ class ActivitiesResource extends JsonResource
 
     protected function updated_taskstatus(): string
     {
-        $label = $this->subject?->label ?? '';
+        $label = (string) data_get($this->subject, 'label', '');
 
         return $label !== '' ? "Updated Task Status with label '$label'" : 'Updated Task Status';
     }
@@ -119,7 +126,7 @@ class ActivitiesResource extends JsonResource
 
     protected function updated_stage(): string
     {
-        $name = $this->subject->name;
+        $name = (string) data_get($this->subject, 'name', '');
 
         return "Updated Stage with name '$name'";
     }
@@ -140,9 +147,9 @@ class ActivitiesResource extends JsonResource
             return 'Message status unknown';
         }
 
-        $status = $this->subject->delivered_at === null ? 'scheduled' : 'sent';
+        $status = data_get($this->subject, 'delivered_at') === null ? 'scheduled' : 'sent';
 
-        return $status.' '.Str::limit((string) $this->subject->message, 17, '..').' Message in';
+        return $status.' '.Str::limit((string) data_get($this->subject, 'message', ''), 17, '..').' Message in';
     }
 
     protected function sent_invitation_member(): string

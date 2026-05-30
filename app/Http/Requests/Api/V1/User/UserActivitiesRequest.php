@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\User;
 
 use App\Http\Requests\Api\V1\ApiQueryRequest;
 use Carbon\Carbon;
+use Illuminate\Validation\Validator;
 use Override;
 
 class UserActivitiesRequest extends ApiQueryRequest
@@ -58,16 +59,21 @@ class UserActivitiesRequest extends ApiQueryRequest
         ];
     }
 
-    public function withValidator($validator): void
+    #[Override]
+    protected function withValidator(Validator $validator): void
     {
+        parent::withValidator($validator);
+
         $validator->after(function ($validator): void {
+            if ($validator->errors()->has('start_date') || $validator->errors()->has('end_date')) {
+                return;
+            }
+
             $start = $this->input('start_date');
             $end = $this->input('end_date');
 
-            if ($start && $end) {
-                if (Carbon::parse($start)->diffInDays(Carbon::parse($end)) > 365) {
-                    $validator->errors()->add('end_date', 'The date range may not exceed 365 days.');
-                }
+            if ($start && $end && Carbon::parse($start)->diffInDays(Carbon::parse($end)) > 365) {
+                $validator->errors()->add('end_date', 'The date range may not exceed 365 days.');
             }
         });
     }

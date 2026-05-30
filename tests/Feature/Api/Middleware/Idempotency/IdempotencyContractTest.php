@@ -17,6 +17,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Mockery\MockInterface;
@@ -396,7 +397,7 @@ final class IdempotencyContractTest extends TestCase
             flags: JSON_THROW_ON_ERROR,
         );
 
-        $headers = $this->zoomWebhookHeaders($payload, 'phase-seven-zoom-update-813');
+        $headers = $this->zoomWebhookHeaders($payload, 'phase-seven-zoom-update-'.Str::uuid());
 
         $this->postJson(route('api.v1.webhooks.meetings.update'), $payload, $headers)
             ->assertOk();

@@ -13,33 +13,26 @@ use App\Actions\ProjectMetrics\TeamCollaborationMetricAction;
 use App\Actions\ProjectMetrics\UpcomingRiskMetricAction;
 use App\Enums\ProjectStage;
 use App\Models\Project;
-use Mockery;
-use Override;
 use Tests\TestCase;
 
 class ProjectInsightsCalculationsTest extends TestCase
 {
-    #[Override]
-    protected function tearDown(): void
-    {
-        Mockery::close();
-        parent::tearDown();
-    }
-
     /** @test */
     public function calculate_project_health_combines_all_health_metrics(): void
     {
-        // Arrange
-        $taskHealth = Mockery::mock(TaskHealthMetricAction::class);
-        $collaborationHealth = Mockery::mock(TeamCollaborationMetricAction::class);
-        $stageProgress = Mockery::mock(StageProgressMetricAction::class);
-        $communicationHealth = Mockery::mock(CommunicationHealthMetricAction::class);
-        $activityHealth = Mockery::mock(ActivityHealthMetricAction::class);
-
-        // Use a real Project instance for attribute assignments to avoid Mockery setAttribute errors
         $project = new Project;
+        $project->tasks_count = 10;
+        $project->active_tasks_count = 10;
+        $project->completed_tasks_count = 8;
+        $project->overdue_tasks_count = 1;
+        $project->abandoned_tasks_count = 0;
+        $project->active_members_count = 4;
+        $project->recent_meetings_count = 2;
+        $project->recent_participants_count = 3;
+        $project->recent_conversations_count = 7;
+        $project->recent_activities_count = 5;
+        $project->stage_id = ProjectStage::Testing->value;
 
-        // Mock config
         config(['project-metrics.health.weights' => [
             'tasks' => 0.3,
             'communication' => 0.2,
@@ -48,19 +41,11 @@ class ProjectInsightsCalculationsTest extends TestCase
             'activity' => 0.1,
         ]]);
 
-        // Mock method calls
-        $taskHealth->shouldReceive('execute')->with($project)->once()->andReturn(80.0);
-        $collaborationHealth->shouldReceive('execute')->with($project)->once()->andReturn(60.0);
-        $stageProgress->shouldReceive('execute')->with($project)->once()->andReturn([
-            'percentage' => 75,
-            'current_stage' => 'Development',
-            'status' => 'active',
-            'stage_id' => 3,
-        ]);
-
-        // Communication and Activity health are delegated; mock their results
-        $communicationHealth->shouldReceive('execute')->with($project)->once()->andReturn(70.0);
-        $activityHealth->shouldReceive('execute')->with($project)->once()->andReturn(33.3);
+        $taskHealth = new TaskHealthMetricAction;
+        $collaborationHealth = new TeamCollaborationMetricAction;
+        $stageProgress = new StageProgressMetricAction;
+        $communicationHealth = new CommunicationHealthMetricAction;
+        $activityHealth = new ActivityHealthMetricAction;
 
         $action = new ProjectHealthMetricAction(
             $taskHealth,
@@ -70,11 +55,18 @@ class ProjectInsightsCalculationsTest extends TestCase
             $activityHealth
         );
 
-        // Act
+        $expected = round(
+            ($taskHealth->execute($project) * 0.3)
+            + ($communicationHealth->execute($project) * 0.2)
+            + ($collaborationHealth->execute($project) * 0.2)
+            + ((float) $stageProgress->execute($project)['percentage'] * 0.2)
+            + ($activityHealth->execute($project) * 0.1),
+            1,
+        );
+
         $result = $action->execute($project);
 
-        // Assert - Expected: (80*0.3) + (70*0.2) + (60*0.2) + (75*0.2) + (33.3*0.1) = 24 + 14 + 12 + 15 + 3.33 = 68.3
-        $this->assertEquals(68.3, $result);
+        $this->assertEquals($expected, $result);
         $this->assertIsFloat($result);
     }
 

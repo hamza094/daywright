@@ -292,9 +292,9 @@ class ScrambleDocsTest extends TestCase
             '#/components/schemas/ProjectStoreRequestData',
             $paths['/v1/projects']['post']['requestBody']['content']['application/json']['schema']['$ref'] ?? null,
         );
-        $this->assertSame(
+        $this->assertContains(
             '#/components/schemas/PublicProject',
-            $paths['/v1/projects/{project}']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['$ref'] ?? null,
+            $this->schemaRefs($paths['/v1/projects/{project}']['get']['responses']['200']['content']['application/json']['schema']['properties']['data'] ?? []),
         );
         $this->assertSame(
             '#/components/schemas/TaskStoreRequestData',

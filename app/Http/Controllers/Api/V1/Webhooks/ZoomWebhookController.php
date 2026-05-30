@@ -16,10 +16,11 @@ class ZoomWebhookController extends ApiController
 {
     public function update(WebhookRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-        $object = $validated['payload']['object'];
+        $request->validated();
 
         /** @var array<string, mixed> $object */
+        $object = (array) $request->input('payload.object', []);
+
         UpdateMeetingWebhook::dispatch([
             'meeting_id' => $object['id'],
             'update_data' => collect($object)->except(['id', 'uuid'])->toArray(),

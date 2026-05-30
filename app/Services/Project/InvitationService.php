@@ -12,6 +12,7 @@ use App\Actions\Project\SendProjectInvitationAction;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class InvitationService
@@ -66,6 +67,8 @@ class InvitationService
 
     /**
      * Paginate pending invitations for the given user.
+     *
+     * @return LengthAwarePaginator<int, Project&object{pivot: Pivot}>
      */
     public function pendingForUser(User $user, int $perPage, int $page): LengthAwarePaginator
     {

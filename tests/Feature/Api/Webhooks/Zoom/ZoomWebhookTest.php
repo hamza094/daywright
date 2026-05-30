@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Override;
 use Tests\TestCase;
 
@@ -57,7 +58,9 @@ class ZoomWebhookTest extends TestCase
         $meetingId = $object['id'];
         $updateData = collect($object)->except(['id', 'uuid'])->toArray();
 
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, $this->zoomWebhookHeaders($postBody, 'zoom-update-813'))
+        $requestId = 'zoom-update-'.Str::uuid();
+
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, $this->zoomWebhookHeaders($postBody, $requestId))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 

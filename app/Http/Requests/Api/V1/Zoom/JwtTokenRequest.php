@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Zoom;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Override;
 
 class JwtTokenRequest extends FormRequest
 {
@@ -29,6 +30,7 @@ class JwtTokenRequest extends FormRequest
         ];
     }
 
+    #[Override]
     protected function prepareForValidation(): void
     {
         // Accept legacy camelCase `meetingId` but normalize to snake_case

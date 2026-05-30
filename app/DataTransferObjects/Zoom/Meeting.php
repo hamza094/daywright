@@ -66,7 +66,7 @@ final readonly class Meeting
      */
     private static function boolValue(array $response, string $key): bool
     {
-        return isset($response[$key]) ? (bool) $response[$key] : false;
+        return isset($response[$key]) && (bool) $response[$key];
     }
 
     private static function parseUtcDateTime(mixed $value): string

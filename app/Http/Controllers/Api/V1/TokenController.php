@@ -40,7 +40,7 @@ class TokenController extends ApiController
         $data = $request->validated();
         try {
             $expiresAt = empty($data['expires_at']) ? null : Carbon::parse($data['expires_at']);
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Invalid expires_at format.');
         }
 

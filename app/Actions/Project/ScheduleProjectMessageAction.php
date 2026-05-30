@@ -15,7 +15,7 @@ final class ScheduleProjectMessageAction
     {
         try {
             $parsed = Carbon::parse($deliveredAt);
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             throw ValidationException::withMessages(['delivered_at' => 'Invalid datetime format.']);
         }
 

@@ -8,7 +8,11 @@ use App\DataTransferObjects\Project\ProjectMessageData;
 use App\Rules\Iso8601Timestamp;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 use Override;
+use Safe\Exceptions\JsonException;
+
+use function Safe\json_decode;
 
 #[SchemaName('ProjectMessageStoreRequestData')]
 class MessageRequest extends FormRequest
@@ -29,8 +33,8 @@ class MessageRequest extends FormRequest
             'users' => ['required', 'array', 'min:1'], // Accept array or JSON string
             'users.*' => ['integer', 'exists:users,id'],
             'subject' => ['nullable', 'string', 'max:255'],
-            'mail' => ['sometimes', 'boolean'],
-            'sms' => ['sometimes', 'boolean'],
+            'mail' => ['sometimes', 'nullable', 'boolean'],
+            'sms' => ['sometimes', 'nullable', 'boolean'],
             'delivered_at' => ['sometimes', 'nullable', 'bail', 'string', new Iso8601Timestamp],
             'date' => ['prohibited'],
             'time' => ['prohibited'],
@@ -42,20 +46,18 @@ class MessageRequest extends FormRequest
      */
     public function messageData(): ProjectMessageData
     {
-        $payload = $this->validated();
+        return ProjectMessageData::fromArray($this->validated());
+    }
 
-        if (isset($payload['users']) && is_string($payload['users'])) {
-            // @phpstan-ignore-next-line - decoding user-provided JSON; fall back to CSV on error
-            $decoded = json_decode($payload['users'], true);
-
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $payload['users'] = $decoded;
-            } else {
-                $payload['users'] = array_map(trim(...), explode(',', $payload['users']));
+    protected function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($this->deliveryOptionSelected()) {
+                return;
             }
-        }
 
-        return ProjectMessageData::fromArray($payload);
+            $validator->errors()->add('option', 'Please choose any options.');
+        });
     }
 
     #[Override]
@@ -65,16 +67,26 @@ class MessageRequest extends FormRequest
         if ($this->has('users') && is_string($this->input('users'))) {
             $raw = $this->input('users');
 
-            $decoded = json_decode($raw, true);
+            try {
+                $decoded = json_decode($raw, true);
+            } catch (JsonException) {
+                $decoded = null;
+            }
 
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            if (is_array($decoded)) {
                 $normalized = $decoded;
             } else {
-                $items = array_map('trim', explode(',', (string) $raw));
-                $normalized = array_values(array_filter($items, fn ($v) => $v !== ''));
+                $items = array_map(trim(...), explode(',', $raw));
+                $normalized = array_values(array_filter($items, fn ($v): bool => $v !== ''));
             }
 
             $this->merge(['users' => $normalized]);
+        }
+
+        if ($this->has('users') && is_array($this->input('users'))) {
+            $this->merge([
+                'users' => $this->normalizeUsers($this->input('users')),
+            ]);
         }
 
         if (! $this->has('delivered_at')) {
@@ -90,5 +102,26 @@ class MessageRequest extends FormRequest
         $this->merge([
             'delivered_at' => $normalizedDeliveredAt,
         ]);
+    }
+
+    private function deliveryOptionSelected(): bool
+    {
+        return filter_var($this->input('mail', false), FILTER_VALIDATE_BOOLEAN)
+            || filter_var($this->input('sms', false), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    /**
+     * @param  array<int, mixed>  $users
+     * @return array<int, int|string>
+     */
+    private function normalizeUsers(array $users): array
+    {
+        return array_values(array_filter(array_map(function (mixed $user): int|string|null {
+            if (is_array($user)) {
+                return $user['user_id'] ?? $user['id'] ?? null;
+            }
+
+            return is_scalar($user) ? $user : null;
+        }, $users), fn (mixed $userId): bool => $userId !== null && $userId !== ''));
     }
 }

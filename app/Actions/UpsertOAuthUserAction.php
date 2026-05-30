@@ -27,13 +27,13 @@ final class UpsertOAuthUserAction
                 'email' => $oAuthUser->getEmail(),
             ],
             [
-                'name' => $user?->name ?? $oAuthUser->getName(),
-                'password' => $user?->password ?? Hash::make(Str::random(50)),
-                'username' => $user?->username ?? ($oAuthUser->getNickname() ?? $oAuthUser->nickname),
+                'name' => $user->name ?? $oAuthUser->getName(),
+                'password' => $user->password ?? Hash::make(Str::random(50)),
+                'username' => $user->username ?? ($oAuthUser->getNickname() ?? $oAuthUser->nickname),
                 'oauth_id' => $oAuthUser->getId(),
                 'oauth_provider' => $provider->value,
-                'email_verified_at' => $user?->email_verified_at ?? Carbon::now(),
-                'avatar_path' => $user?->avatar_path ?? $oAuthUser->getAvatar(),
+                'email_verified_at' => $user->email_verified_at ?? Carbon::now(),
+                'avatar_path' => $user->avatar_path ?? $oAuthUser->getAvatar(),
                 'oauth_token' => $oAuthUser->token,
                 'oauth_refresh_token' => $oAuthUser->refreshToken,
             ]

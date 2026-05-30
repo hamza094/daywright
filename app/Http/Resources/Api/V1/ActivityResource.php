@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1;
 
 use App\Http\Resources\Api\V1\User\UserSummaryResource;
+use App\Models\Activity;
 use App\Models\Stage;
 use App\Models\TaskStatus;
 use App\Models\User;
@@ -14,6 +15,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Override;
 
+/**
+ * @mixin Activity
+ */
 class ActivityResource extends JsonResource
 {
     /**
@@ -25,9 +29,10 @@ class ActivityResource extends JsonResource
     #[Override]
     public function toArray($request): array
     {
-        $description = method_exists($this, $this->description)
-            ? $this->{$this->description}()
-            : $this->description;
+        $descriptionKey = (string) data_get($this->resource, 'description', '');
+        $description = method_exists($this, $descriptionKey)
+            ? $this->{$descriptionKey}()
+            : $descriptionKey;
 
         return [
             'description' => $description,
@@ -91,7 +96,7 @@ class ActivityResource extends JsonResource
         if (! $this->subject) {
             return 'Task not found';
         }
-        $title = Str::limit($this->subject->title, 10, '...');
+        $title = Str::limit((string) data_get($this->subject, 'title', ''), 10, '...');
 
         return 'Task "'.$title.'" added';
     }
@@ -102,7 +107,7 @@ class ActivityResource extends JsonResource
             return 'Task updated';
         }
 
-        $taskTitle = Str::limit($this->subject->title, 17, '...');
+        $taskTitle = Str::limit((string) data_get($this->subject, 'title', ''), 17, '...');
 
         $changes = Arr::get($this->changes, 'after', []);
 
@@ -131,7 +136,7 @@ class ActivityResource extends JsonResource
         if (! $this->subject) {
             return 'One Task has been removed from the project';
         }
-        $taskTitle = Str::limit($this->subject->title, 17, '...');
+        $taskTitle = Str::limit((string) data_get($this->subject, 'title', ''), 17, '...');
 
         return "Task '$taskTitle' archived from the project";
     }
@@ -142,8 +147,8 @@ class ActivityResource extends JsonResource
             return 'Message status unknown';
         }
 
-        $status = $this->subject->delivered_at ? 'sent' : 'scheduled';
-        $messageContent = Str::limit(trim($this->subject->message ?? ''), 17, '..');
+        $status = data_get($this->subject, 'delivered_at') ? 'sent' : 'scheduled';
+        $messageContent = Str::limit(trim((string) data_get($this->subject, 'message', '')), 17, '..');
 
         return "Message '$messageContent' $status";
     }
@@ -165,12 +170,12 @@ class ActivityResource extends JsonResource
 
     protected function created_meeting(): string
     {
-        return 'Meeting '.($this->subject?->topic ?? '').' created';
+        return 'Meeting '.data_get($this->subject, 'topic', '').' created';
     }
 
     protected function updated_meeting(): string
     {
-        return 'Meeting '.($this->subject?->topic ?? '').' updated';
+        return 'Meeting '.data_get($this->subject, 'topic', '').' updated';
     }
 
     protected function deleted_meeting(): string
@@ -180,11 +185,13 @@ class ActivityResource extends JsonResource
 
     protected function loadAffectedUsers(): array
     {
-        if (empty($this->affected_users) || ! is_array($this->affected_users)) {
+        $affectedUsers = data_get($this->resource, 'affected_users');
+
+        if (! is_array($affectedUsers) || $affectedUsers === []) {
             return [];
         }
 
-        $userIds = $this->affected_users;
+        $userIds = $affectedUsers;
 
         // Fetch existing users, only selecting necessary columns
         $users = User::whereIn('id', $userIds)

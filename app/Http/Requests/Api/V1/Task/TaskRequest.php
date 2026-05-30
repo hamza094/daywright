@@ -9,6 +9,7 @@ use App\Models\Project;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 use Override;
 
 #[SchemaName('TaskStoreRequestData')]
@@ -69,9 +70,9 @@ class TaskRequest extends FormRequest
         ];
     }
 
-    public function withValidator($validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator): void {
+        $validator->after(function (Validator $validator): void {
             if ($this->route('project')?->tasksReachedItsLimit()) {
                 $validator->errors()->add('tasks', 'Project tasks reached their limit.');
             }

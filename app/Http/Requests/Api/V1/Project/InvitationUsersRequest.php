@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Project;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class InvitationUsersRequest extends FormRequest
 {
@@ -29,9 +30,9 @@ class InvitationUsersRequest extends FormRequest
         ];
     }
 
-    public function withValidator($validator): void
+    public function withValidator(Validator $validator): void
     {
-        $validator->after(function ($validator): void {
+        $validator->after(function (Validator $validator): void {
             if (! $this->has('email') && ! $this->has('emails')) {
                 $validator->errors()->add('email', 'Provide at least one email address to invite.');
             }

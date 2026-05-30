@@ -48,7 +48,7 @@ class ConversationController extends ApiController
             $request->file('file'),
         );
 
-        if ($conversation === null) {
+        if (! $conversation instanceof Conversation) {
             abort(500, 'Failed to create conversation.');
         }
 

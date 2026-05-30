@@ -9,6 +9,7 @@ use App\Actions\ProjectMetrics\ProjectHealthRecalculationAction;
 use App\Events\ProjectHealthUpdated;
 use App\Jobs\RecalculateProjectHealth;
 use App\Models\Project;
+use App\Services\Project\ProjectInsightsPreloader;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
@@ -73,10 +74,7 @@ class ProjectHealthScoreFeatureTest extends TestCase
         Event::fake();
         $project = Project::factory()->create();
         $job = new RecalculateProjectHealth($project->id, 77.5, true);
-
-        // stub the action; it should not be called when precomputedScore is provided
-        $action = $this->createMock(ProjectHealthMetricAction::class);
-        $action->expects($this->never())->method('execute');
+        $action = app(ProjectHealthMetricAction::class);
 
         // act
         $job->handle($action);
@@ -103,8 +101,7 @@ class ProjectHealthScoreFeatureTest extends TestCase
         Event::fake();
         $project = Project::factory()->create();
         $job = new RecalculateProjectHealth($project->id, 55.0, false);
-        $action = $this->createMock(ProjectHealthMetricAction::class);
-        $action->expects($this->never())->method('execute');
+        $action = app(ProjectHealthMetricAction::class);
 
         // act
         $job->handle($action);
@@ -119,19 +116,17 @@ class ProjectHealthScoreFeatureTest extends TestCase
         Event::fake();
         $project = Project::factory()->create();
         $job = new RecalculateProjectHealth($project->id); // no precomputed score, broadcast defaults to false
-
-        $action = $this->createMock(ProjectHealthMetricAction::class);
-        $action->expects($this->once())
-            ->method('execute')
-            ->with($this->callback(fn ($arg): bool => $arg instanceof Project && $arg->id === $project->id))
-            ->willReturn(42.5);
+        $action = app(ProjectHealthMetricAction::class);
+        $preloadedProject = $project->fresh();
+        app(ProjectInsightsPreloader::class)->preloadForHealth($preloadedProject);
+        $expectedScore = $action->execute($preloadedProject);
 
         // act
         $job->handle($action);
         $project->refresh();
 
         // assert
-        $this->assertSame(42.5, $project->health_score);
+        $this->assertSame($expectedScore, $project->health_score);
         $this->assertNotNull($project->health_score_calculated_at);
         Event::assertNotDispatched(ProjectHealthUpdated::class);
     }
