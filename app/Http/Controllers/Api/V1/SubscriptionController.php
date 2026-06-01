@@ -7,8 +7,10 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\SubscriptionRequest;
 use App\Interfaces\Paddle;
-use App\Services\Api\V1\Subscription\SubscriptionViewService;
+use App\Services\Subscription\SubscriptionViewService;
+use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class SubscriptionController extends ApiController
 {
@@ -17,68 +19,82 @@ class SubscriptionController extends ApiController
     /**
      * Generate a subscription pay link.
      *
-     * @operationId subscribe
+     * Creates the checkout URL for the selected subscription plan.
+     *
+     * @operationId createSubscription
      *
      * @tags Subscription
      */
-    public function subscribe(Paddle $paddle, SubscriptionRequest $request): JsonResponse
+    #[ScrambleResponse(
+        status: 200,
+        description: 'Subscription checkout URL returned for the selected plan.',
+        type: 'array{data: array{paylink: string}}',
+    )]
+    public function store(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $payLink = $paddle->subscribe($this->authenticatedUser(), (string) $request->string('plan')->trim());
 
-        return response()->json([
+        return $this->respondWithData([
             'paylink' => $payLink,
-        ], 200);
+        ], Response::HTTP_OK);
     }
 
     /**
      * Get the authenticated user's subscription details.
      *
-     * @operationId getSubscription
+     * Returns the current subscription snapshot for the authenticated user.
+     *
+     * @operationId showSubscription
      *
      * @tags Subscription
      */
-    public function subscriptions(): JsonResponse
+    public function show(): JsonResponse
     {
         $user = $this->authenticatedUser();
 
-        return response()->json([
-            'subscription' => $this->subscriptionViewService->createFor($user),
-        ], 200);
+        return $this->respondWithData(
+            $this->subscriptionViewService->createFor($user),
+            Response::HTTP_OK,
+        );
     }
 
     /**
      * Swap subscription plan.
      *
-     * @operationId swapSubscription
+     * Changes the authenticated user's subscription to a different supported plan.
+     *
+     * @operationId updateSubscription
      *
      * @tags Subscription
      */
-    public function swap(Paddle $paddle, SubscriptionRequest $request): JsonResponse
+    public function update(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
-        $result = $paddle->swap($user, (string) $request->string('plan')->trim());
+        $paddle->swap($user, (string) $request->string('plan')->trim());
 
-        return response()->json([
-            'message' => $result['message'],
-            'subscription' => $this->subscriptionViewService->createFor($user),
-        ], 200);
+        return $this->respondWithData(
+            $this->subscriptionViewService->createFor($user),
+            Response::HTTP_OK,
+        );
     }
 
     /**
      * Cancel subscription.
      *
+     * Cancels the authenticated user's subscription and returns the updated subscription snapshot.
+     *
      * @operationId cancelSubscription
      *
      * @tags Subscription
      */
-    public function cancel(Paddle $paddle, SubscriptionRequest $request): JsonResponse
+    public function destroy(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
-        $result = $paddle->cancel($user, (string) $request->string('plan')->trim());
+        $paddle->cancel($user, (string) $request->string('plan')->trim());
 
-        return response()->json([
-            'message' => $result['message'],
-            'subscription' => $this->subscriptionViewService->createFor($user),
-        ], 200);
+        return $this->respondWithData(
+            $this->subscriptionViewService->createFor($user),
+            Response::HTTP_OK,
+        );
     }
 }

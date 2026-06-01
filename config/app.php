@@ -175,6 +175,7 @@ return [
          * Application Service Providers...
          */
         App\Providers\AppServiceProvider::class,
+        App\Providers\ScrambleServiceProvider::class,
         App\Providers\AuthServiceProvider::class,
         App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
@@ -242,6 +243,9 @@ return [
         'abandonedLimit' => '90',
         'filters' => '10',
         'items_limit' => '6',
+    ],
+    'activity' => [
+        'items_limit' => '10',
     ],
     'tasks' => [
         'limit' => '20',

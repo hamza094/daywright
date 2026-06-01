@@ -11,9 +11,11 @@ use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Traits\EnablesUserTwoFactor;
 
 class StatusesTest extends TestCase
 {
+    use EnablesUserTwoFactor;
     use RefreshDatabase;
 
     private User $admin;
@@ -32,11 +34,13 @@ class StatusesTest extends TestCase
     #[Test]
     public function can_create_a_status(): void
     {
-        $this->postJson('/api/v1/admin/statuses', [
+        $this->postJson($this->apiV1AdminRoute('statuses.store'), [
             'label' => 'In Progress',
             'color' => '#FF5733',
         ])
-            ->assertCreated();
+            ->assertCreated()
+            ->assertJsonPath('data.label', 'In Progress')
+            ->assertJsonPath('data.color', '#FF5733');
 
         $this->assertDatabaseHas('statuses', ['label' => 'In Progress']);
     }
@@ -53,7 +57,7 @@ class StatusesTest extends TestCase
             ['label' => 'Status 6', 'color' => '#000006'],
         )->create();
 
-        $this->postJson('/api/v1/admin/statuses', [
+        $this->postJson($this->apiV1AdminRoute('statuses.store'), [
             'label' => 'Overflow',
             'color' => '#FFFFFF',
         ])
@@ -73,11 +77,13 @@ class StatusesTest extends TestCase
             ['label' => 'Status 6', 'color' => '#000006'],
         )->create();
 
-        $this->putJson("/api/v1/admin/statuses/{$statuses->first()->id}", [
+        $this->putJson($this->apiV1AdminRoute('statuses.update', ['status' => $statuses->first()]), [
             'label' => 'Renamed',
             'color' => '#AABBCC',
         ])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('data.label', 'Renamed')
+            ->assertJsonPath('data.color', '#AABBCC');
 
         $this->assertDatabaseHas('statuses', [
             'id' => $statuses->first()->id,
@@ -93,10 +99,12 @@ class StatusesTest extends TestCase
             'color' => '#000000',
         ]);
 
-        $this->putJson("/api/v1/admin/statuses/{$status->id}", [
+        $this->putJson($this->apiV1AdminRoute('statuses.update', ['status' => $status]), [
             'color' => '#FF0000',
         ])
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('data.label', 'Active')
+            ->assertJsonPath('data.color', '#FF0000');
 
         $this->assertDatabaseHas('statuses', [
             'id' => $status->id,
@@ -104,14 +112,18 @@ class StatusesTest extends TestCase
         ]);
     }
 
-    private function enableTwoFactorForUser(User $user): void
+    #[Test]
+    public function can_delete_a_status_with_message_response(): void
     {
-        $twoFactor = $user->createTwoFactorAuth();
+        $status = TaskStatus::factory()->create([
+            'label' => 'Active',
+            'color' => '#000000',
+        ]);
 
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
+        $this->deleteJson($this->apiV1AdminRoute('statuses.destroy', ['status' => $status]))
+            ->assertOk()
+            ->assertJsonPath('message', 'Status deleted successfully.');
 
-        $user->enableTwoFactorAuth();
+        $this->assertDatabaseMissing('statuses', ['id' => $status->id]);
     }
 }

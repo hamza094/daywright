@@ -71,7 +71,7 @@ class RecordActivityTest extends TestCase
     {
         $this->project->delete();
 
-        $this->patchJson($this->project->path().'/restore')->assertOk();
+        $this->patchJson($this->apiV1ProjectRoute('projects.restore', $this->project))->assertOk();
 
         $this->project->refresh();
 
@@ -103,7 +103,7 @@ class RecordActivityTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $this->putJson($task->path(), ['title' => 'changed']);
+        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), ['title' => 'changed']);
 
         /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
@@ -136,12 +136,12 @@ class RecordActivityTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $this->deleteJson(route('task.archive', [
+        $this->patchJson(route('api.v1.task.archive', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]));
 
-        $this->deleteJson($task->path().'/remove');
+        $this->deleteJson($this->apiV1ProjectTaskRoute('tasks.destroy', $this->project, $task));
 
         /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
@@ -154,7 +154,7 @@ class RecordActivityTest extends TestCase
         /** @var User $user */
         $user = User::factory()->create();
 
-        $this->postJson($this->project->path().'/invitations', [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
             'email' => $user->email,
         ]);
 
@@ -176,7 +176,7 @@ class RecordActivityTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->getJson($this->project->path().'/accept-invitation');
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project));
 
         /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
@@ -192,7 +192,7 @@ class RecordActivityTest extends TestCase
 
         $this->project->members()->attach($user, ['active' => true]);
 
-        $this->getJson($this->project->path().'/remove/member/'.$user->uuid);
+        $this->deleteJson($this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $user));
 
         /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
@@ -205,7 +205,7 @@ class RecordActivityTest extends TestCase
     {
         $this->user->forceFill(['is_admin' => true])->save();
 
-        $this->postJson($this->project->path().'/message', [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
             'message' => 'this is project message',
             'users' => json_encode([User::first()->id]),
             'subject' => 'this is message subject',

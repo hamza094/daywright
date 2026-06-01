@@ -7,6 +7,8 @@ namespace Tests\Feature\Api\Auth;
 use App\Enums\OAuthProvider;
 use App\Models\User;
 use Carbon\Carbon;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Psr7\Request as Psr7Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -22,10 +24,22 @@ class OAuthTest extends TestCase
     {
         $provider = OAuthProvider::GitHub;
 
-        $response = $this->getJson('/api/v1/auth/redirect/'.$provider->value);
+        $response = $this->getJson($this->apiV1Route('oauth.redirect', ['provider' => $provider->value]));
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['redirect_url']);
+            ->assertJsonStructure(['data' => ['redirect_url']]);
+    }
+
+    /** @test */
+    public function authenticated_user_cannot_request_o_auth_redirect(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'web');
+
+        $this->getJson($this->apiV1Route('oauth.redirect', ['provider' => OAuthProvider::GitHub->value]))
+            ->assertBadRequest()
+            ->assertJsonPath('message', 'User is already authenticated.');
     }
 
     /** @test */
@@ -35,7 +49,7 @@ class OAuthTest extends TestCase
 
         $this->performOAuthCallback();
 
-        $this->get(route('oauth.callback', ['provider' => 'github']));
+        $this->get(route('api.v1.oauth.callback', ['provider' => 'github']));
 
         $this->assertDatabaseHas('users', [
             'name' => $user->name,
@@ -56,10 +70,11 @@ class OAuthTest extends TestCase
     {
         $this->performOAuthCallback();
 
-        $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful()
+        $this->get(route('api.v1.oauth.callback', ['provider' => 'github']))->assertSuccessful()
             ->assertJsonStructure([
-                'user' => ['uuid', 'name', 'email'],
-                'message',
+                'data' => [
+                    'user' => ['uuid', 'name', 'email'],
+                ],
             ]);
 
         $user = User::where('email', 'test@example.com')->first();
@@ -87,7 +102,7 @@ class OAuthTest extends TestCase
         try {
             $this->performOAuthCallback();
 
-            $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful();
+            $this->get(route('api.v1.oauth.callback', ['provider' => 'github']))->assertSuccessful();
 
             $user = User::query()->where('email', 'test@example.com')->firstOrFail();
             /** @var \Laravel\Paddle\Customer|null $customer */
@@ -110,12 +125,33 @@ class OAuthTest extends TestCase
 
         $this->performOAuthCallback();
 
-        $this->get(route('oauth.callback', ['provider' => 'github']))->assertSuccessful();
+        $this->get(route('api.v1.oauth.callback', ['provider' => 'github']))->assertSuccessful();
 
         $this->assertDatabaseMissing('customers', [
             'billable_id' => (string) $user->getKey(),
             'billable_type' => $user->getMorphClass(),
         ]);
+    }
+
+    /** @test */
+    public function callback_returns_standardized_message_when_processing_fails(): void
+    {
+        Socialite::shouldReceive('driver')
+            ->once()
+            ->with('github')
+            ->andReturn(m::self());
+
+        Socialite::shouldReceive('stateless')
+            ->once()
+            ->andReturn(m::self());
+
+        Socialite::shouldReceive('user')
+            ->once()
+            ->andThrow(new ConnectException('OAuth provider failed', new Psr7Request('GET', 'https://github.com/login/oauth/access_token')));
+
+        $this->getJson(route('api.v1.oauth.callback', ['provider' => 'github']))
+            ->assertStatus(500)
+            ->assertJsonPath('message', 'Error processing user data.');
     }
 
     protected function mockSocialite($provider, $user = null)

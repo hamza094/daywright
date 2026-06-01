@@ -67,7 +67,7 @@
                     <p class="content-info">
                       Created On
                       <span class="content-dot"></span>
-                      {{ project.created_at }}
+                      {{ project.created_at | datetime }}
                     </p>
                     <p class="content-info">
                       Created By<span class="content-dot"></span>
@@ -80,7 +80,9 @@
                     <div class="alert alert-danger" role="alert">
                       This project is abandoned to access project features active this project, or it will be deleted
                       automatically after {{ project.days_limit }} days from the abandoned date.
-                      <p>Abandoned on: <b v-text="project.deleted_at"></b></p>
+                      <p>
+                        Abandoned on: <b>{{ project.deleted_at | datetime }}</b>
+                      </p>
                       <a class="btn btn-info" @click.prevent="restore()">Restore Project</a>
                     </div>
                   </div>
@@ -139,11 +141,11 @@
                     </div>
                     <div class="project-info_rec">
                       <span>Score Updated</span>
-                      <p v-text="project.health_score_calculated_at"></p>
+                      <p>{{ project.health_score_calculated_at | datetime }}</p>
                     </div>
                     <div class="project-info_rec">
                       <span>Last modified</span>
-                      <p v-text="project.updated_at"></p>
+                      <p>{{ project.updated_at | datetime }}</p>
                     </div>
                     <div v-if="showProjectLimits" class="project-limits">
                       <div class="project-limits_header">
@@ -279,6 +281,7 @@ import PanelFeatues from './Panel/Features.vue';
 import RecentActivities from './RecentActivities.vue';
 import usageLimitHelpers from '../../mixins/usageLimitHelpers';
 import { permission } from '../../auth';
+import { getObjectData } from '../../utils/apiResponse.js';
 import { mapState, mapMutations, mapActions } from 'vuex';
 
 export default {
@@ -318,7 +321,7 @@ export default {
     ...mapState('project', ['project', 'user', 'getStage', 'tasks']),
 
     permission() {
-      const { access, owner } = permission(this.auth.uuid, this.project.members, this.user.uuid, this.auth.isAdmin);
+      const { access, owner } = permission(this.auth.uuid, this.project.members, this.user.uuid, this.auth.is_admin);
 
       return { access, owner };
     },
@@ -441,10 +444,15 @@ export default {
           name: this.projectname,
         })
         .then((response) => {
-          const { name, slug } = response.data.project;
+          const project = getObjectData(response);
+
           this.$Progress.finish();
-          this.updateNameState(name, slug, response.data.message);
-          this.updateUrl(slug);
+          this.updateNameState(
+            project.name || this.project.name,
+            project.slug || this.project.slug,
+            'Project name updated.',
+          );
+          this.updateUrl(project.slug || this.project.slug);
         })
         .catch((error) => {
           this.$Progress.fail();
@@ -482,11 +490,12 @@ export default {
         })
         .then((response) => {
           this.$Progress.finish();
-          const data = response.data;
-          this.aboutUpdate(data.project.about);
-          this.projectabout = data.project.about;
+          const project = getObjectData(response);
+
+          this.aboutUpdate(project.about);
+          this.projectabout = project.about;
           this.aboutEdit = false;
-          this.$vToastify.success(data.message);
+          this.$vToastify.success('Project details updated.');
         })
         .catch((error) => {
           this.$Progress.fail();

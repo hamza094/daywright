@@ -19,12 +19,19 @@ class WebhookRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, string>
+     * @return array<string, array<int, string>>
      */
     public function rules(): array
     {
         return [
-            'payload.object.id' => 'required',
+            'event' => ['required', 'string'],
+            'event_ts' => ['sometimes', 'integer'],
+            'payload' => ['required', 'array'],
+            'payload.object' => ['required', 'array'],
+            'payload.object.id' => ['required'],
+            'payload.object.start_time' => ['sometimes', 'string'],
+            'payload.object.end_time' => ['sometimes', 'string'],
+            'payload.object.uuid' => ['sometimes', 'string'],
         ];
     }
 }

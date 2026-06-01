@@ -6,24 +6,21 @@ namespace Tests\Feature\Api\V1\Admin;
 
 use App\Models\Project;
 use App\Models\User;
-use App\Services\Api\V1\Admin\DashboardService;
+use App\Services\Admin\DashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\TestCase;
+use Tests\Traits\EnablesUserTwoFactor;
 
 class DashboardTest extends TestCase
 {
+    use EnablesUserTwoFactor;
     use RefreshDatabase;
-
-    private const string ACTIVITIES_ROUTE = '/api/v1/admin/dashboard/activities';
-
-    private const string DATA_ROUTE = '/api/v1/admin/data';
-
-    private const string BACKUP_ROUTE = '/api/v1/admin/backup/database';
 
     private User $admin;
 
@@ -46,7 +43,7 @@ class DashboardTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::ACTIVITIES_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('dashboard.activities'))
             ->assertForbidden();
     }
 
@@ -56,7 +53,7 @@ class DashboardTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::DATA_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('dashboard.data'))
             ->assertForbidden();
     }
 
@@ -68,10 +65,10 @@ class DashboardTest extends TestCase
         // Create a project which auto-records activity via RecordActivity trait
         Project::factory()->create();
 
-        $response = $this->getJson(self::ACTIVITIES_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('dashboard.activities'))
             ->assertOk();
 
-        $this->assertNotEmpty($response->json());
+        $this->assertNotEmpty($response->json('data'));
     }
 
     #[Test]
@@ -80,20 +77,20 @@ class DashboardTest extends TestCase
         // Create more than 15 projects to generate 15+ activities
         Project::factory()->count(20)->create();
 
-        $response = $this->getJson(self::ACTIVITIES_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('dashboard.activities'))
             ->assertOk();
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertLessThanOrEqual(15, count($data));
     }
 
     #[Test]
     public function activities_return_empty_when_none_exist(): void
     {
-        $response = $this->getJson(self::ACTIVITIES_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('dashboard.activities'))
             ->assertOk();
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertEmpty($data);
     }
 
@@ -127,10 +124,10 @@ class DashboardTest extends TestCase
                 ]);
         });
 
-        $response = $this->getJson(self::DATA_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('dashboard.data'))
             ->assertOk();
 
-        $data = $response->json();
+        $data = $response->json('data');
         $this->assertCount(2, $data);
 
         $firstMonth = $data[0];
@@ -151,8 +148,33 @@ class DashboardTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::BACKUP_ROUTE)
+        $this->postJson($this->apiV1AdminRoute('backup.database'))
             ->assertForbidden();
+    }
+
+    #[Test]
+    public function admin_can_trigger_backup_via_post_route(): void
+    {
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('backup:clean');
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('backup:run');
+
+        $this->postJson($this->apiV1AdminRoute('backup.database'))
+            ->assertOk()
+            ->assertJsonPath('message', 'Backup completed successfully.');
+    }
+
+    #[Test]
+    public function backup_route_is_not_exposed_via_get(): void
+    {
+        $this->getJson($this->apiV1AdminRoute('backup.database'))
+            ->assertNotFound()
+            ->assertJsonPath('message', 'Resource not found.')
+            ->assertJsonPath('code', 'not_found');
     }
 
     // Error Handling
@@ -166,19 +188,9 @@ class DashboardTest extends TestCase
                 ->andThrow(new RuntimeException('Database connection lost'));
         });
 
-        $this->getJson(self::DATA_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('dashboard.data'))
             ->assertStatus(500)
-            ->assertJsonPath('message', 'Failed to load dashboard data.');
-    }
-
-    private function enableTwoFactorForUser(User $user): void
-    {
-        $twoFactor = $user->createTwoFactorAuth();
-
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
-
-        $user->enableTwoFactorAuth();
+            ->assertJsonPath('message', 'Failed to load dashboard data.')
+            ->assertJsonPath('code', 'internal_server_error');
     }
 }

@@ -1,3 +1,5 @@
+import { readTaskStatusIndex } from '../utils/taskReadResponse.js';
+
 const state = {
   task:[],
   statuses:[],
@@ -39,10 +41,9 @@ const mutations = {
     state.task.status_id = status.id;
     state.task.status=status;
   },
-  updateTaskDue(state,{ dueAt, notified, dueAtUtc }){
+  updateTaskDue(state,{ dueAt, notified }){
     state.task.due_at = dueAt;
     state.task.notified= notified;
-    state.task.due_at_utc= dueAtUtc;
   },
 
   updateTaskMembers(state,members){
@@ -58,13 +59,16 @@ const mutations = {
 
 const actions = {
   loadStatuses({ commit }) {
-    	return axios.get(`/task/statuses`)
+	    return axios.get(`/task-statuses`)
         .then(response => {
-        commit('setStatuses', response.data.statuses);
-        commit('setDueNotifies', response.data.due_notifies);
+        const { statuses, dueNotifies } = readTaskStatusIndex(response);
+
+        commit('setStatuses', statuses);
+        commit('setDueNotifies', dueNotifies);
         })
-        .catch(error => {
-          this.handleErrorResponse(error);
+        .catch(() => {
+          commit('setStatuses', []);
+          commit('setDueNotifies', []);
         })
       },
 };

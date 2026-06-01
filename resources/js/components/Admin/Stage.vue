@@ -46,7 +46,7 @@
 </template>
 
 <script>
-import { mapState, mapMutations, mapActions } from 'vuex';
+import { mapState, mapActions } from 'vuex';
 
 export default {
   data() {
@@ -70,12 +70,11 @@ export default {
     }
   },
   methods: {
-    ...mapActions('stage', ['loadStages', 'addNewStage']),
-    ...mapMutations('stage', ['stageUpdate', 'stageDelete']),
+    ...mapActions('stage', ['loadStages', 'addNewStage', 'updateExistingStage', 'deleteExistingStage']),
     canMutateAdmin() {
       const user = this.$store.state.currentUser.user || {};
 
-      return !!user.isAdmin && !!user.twoFactorEnabled;
+      return !!user.is_admin && !!user.two_factor_enabled;
     },
     guardAdminMutation() {
       if (this.canMutateAdmin()) {
@@ -124,15 +123,16 @@ export default {
         return;
       }
 
-      axios
-        .put('/admin/stages/' + stage.id, {
+      this.updateExistingStage({
+        stageId: stage.id,
+        stageData: {
           name: this.form.updateName,
-        })
-        .then((response) => {
-          this.stageUpdate(response.data.stage);
+        },
+      })
+        .then(() => {
           this.edit = false;
           this.editStageId = null;
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success('Stage updated successfully.');
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -143,13 +143,9 @@ export default {
         return;
       }
 
-      axios
-        .delete('/admin/stages/' + stageId, {
-          name: this.form.name,
-        })
-        .then((response) => {
-          this.stageDelete(stageId);
-          this.$vToastify.success(response.data.success);
+      this.deleteExistingStage(stageId)
+        .then((message) => {
+          this.$vToastify.success(message || 'Stage deleted successfully.');
         })
         .catch((error) => {
           this.handleErrorResponse(error);

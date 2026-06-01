@@ -7,8 +7,8 @@
       </div>
     </div>
     <div class="panel-top_content">
-      <div v-if="archivedTasks && archivedTasks.length > 0">
-        <div v-for="task in archivedTasks" :key="task.id">
+      <div v-if="archivedTasks.data.length > 0">
+        <div v-for="task in archivedTasks.data" :key="task.id">
           <div class="card task-card_style" @click="openModal(task)">
             <div
               v-if="task.status"

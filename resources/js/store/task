@@ -1,12 +1,11 @@
+import { getPaginatedData, getResponseMessage } from '../utils/apiResponse.js';
+import { buildArchivedTaskParams, createEmptyTaskPage } from '../utils/taskReadResponse.js';
+
 const state = {
   archive:'',
   message:'',
-  tasks:{
-    data: [],
-    links: {},
-    meta: {}
-  },
-  archivedTasks:[],
+  tasks: createEmptyTaskPage(),
+  archivedTasks: createEmptyTaskPage(),
 };
 
 const mutations = {
@@ -30,18 +29,18 @@ setTasks(state,tasks) {
   },
 
   setArchivedTasks(state, archivetasksData) {
-    state.archivedTasks = [...archivetasksData];
+    state.archivedTasks = archivetasksData;
   },
     setArchivedMessage(state, archive) {
     state.archive = archive;
   },
   pushArchivedTask(state, task){
-        state.archivedTasks.unshift(task);
+        state.archivedTasks.data.unshift(task);
   },
   removeArchivedTask(state, taskId){
-    const index = state.archivedTasks.findIndex(task => task.id === taskId);
+    const index = state.archivedTasks.data.findIndex(task => task.id === taskId);
     if (index !== -1) {
-      state.archivedTasks.splice(index, 1);
+      state.archivedTasks.data.splice(index, 1);
     }
   },
 };
@@ -49,28 +48,28 @@ setTasks(state,tasks) {
 const actions = {
 
     fetchTasks({ commit }, { slug, page }) {
-     	return axios.get(`/projects/${slug}/tasks?page=${page}`)
+	    return axios.get(`/projects/${slug}/tasks`, {
+          params: { page },
+        })
         .then(response => {
-          commit('setTasks', response.data.tasksData);
-          commit('setMessage', response.data.message);
+          commit('setTasks', getPaginatedData(response));
+          commit('setMessage', getResponseMessage(response) || 'Project Tasks');
         }).catch(error=>{
-        commit('setTasks', { page, tasks: { data: [], links: {}, meta: {} } });
+        commit('setTasks', createEmptyTaskPage());
         commit('setMessage', 'Failed to load project tasks');
         });
     },
 
       loadArchiveTasks({ commit }, slug) {
      	return axios.get(`/projects/${slug}/tasks`,{
-         params: {
-        request: 'archived'
-      }
+         params: buildArchivedTaskParams()
       }).then(response => { 
-        commit('setArchivedTasks', response.data.tasksData);
-        commit('setMessage', response.data.message);
+        commit('setArchivedTasks', getPaginatedData(response));
+        commit('setMessage', getResponseMessage(response) || 'Archived Tasks');
         })
         .catch(error => {
-        commit('setArchivedTasks', []);
-        commit('setArchiveMessage', 'Failed to load project tasks');
+        commit('setArchivedTasks', createEmptyTaskPage());
+        commit('setMessage', 'Archived Tasks');
         })
       },
 };

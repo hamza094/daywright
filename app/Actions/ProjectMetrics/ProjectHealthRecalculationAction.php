@@ -15,7 +15,7 @@ final class ProjectHealthRecalculationAction
     /**
      * @param  array<int,string>  $sections
      */
-    public function handle(Project $project, array $sections): void
+    public function execute(Project $project, array $sections): void
     {
         if (! in_array('health', $sections, true)) {
             return;
@@ -40,6 +40,5 @@ final class ProjectHealthRecalculationAction
             },
             $decay
         );
-
     }
 }

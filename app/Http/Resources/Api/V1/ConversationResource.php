@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Http\Resources\Api\V1\User\InvitedUserResource;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
@@ -12,6 +14,7 @@ use Override;
  *
  * @property-read string|null $file_url
  */
+#[SchemaName('ProjectConversation')]
 class ConversationResource extends JsonResource
 {
     /**
@@ -26,20 +29,43 @@ class ConversationResource extends JsonResource
         $fileUrl = $this->file_url;
 
         return [
+            /**
+             * Conversation identifier.
+             *
+             * @example 44
+             */
             'id' => $this->id,
 
+            /**
+             * Conversation message body when the message contains text.
+             *
+             * @example Can someone review the latest copy draft?
+             */
             'message' => $this->whenNotNull($this->message),
 
+            /**
+             * Public URL for the uploaded attachment when the conversation contains a file.
+             */
             'file' => $this->when((bool) $fileUrl, fn () => $fileUrl),
 
+            /**
+             * User who sent the conversation message.
+             */
             'user' => new InvitedUserResource($this->whenLoaded('user')),
 
-            'created_at' => $this->created_at
-                ->diffForHumans(),
+            /**
+             * Conversation creation timestamp in UTC ISO 8601 format.
+             *
+             * @example 2025-08-15T09:00:00+00:00
+             */
+            'created_at' => $this->created_at?->toIso8601String(),
 
-            'links' => [
-                'project_link' => $this->project->path(),
-            ],
+            /**
+             * Route links related to the conversation.
+             */
+            'links' => $this->whenLoaded('project', fn (): array => [
+                'project' => ApiResourceLink::project($this->project),
+            ]),
         ];
     }
 

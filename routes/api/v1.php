@@ -1,33 +1,57 @@
 <?php
 
 declare(strict_types=1);
-
+/*
+|--------------------------------------------------------------------------
+| API V1 Routes
+|--------------------------------------------------------------------------
+*/
 use App\Http\Controllers\Api\OAuth\ZoomAuthController;
-use App\Http\Controllers\Api\V1\ActivityController;
-use App\Http\Controllers\Api\V1\AvatarController;
-use App\Http\Controllers\Api\V1\ConversationController;
-use App\Http\Controllers\Api\V1\FeaturesController;
-use App\Http\Controllers\Api\V1\InvitationController;
-use App\Http\Controllers\Api\V1\MessageController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardActivitiesController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardChartDataController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardKpisController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardProjectsController;
+use App\Http\Controllers\Api\V1\Dashboard\DashboardTasksController;
 use App\Http\Controllers\Api\V1\NotificationsController;
-use App\Http\Controllers\Api\V1\ProjectController;
-use App\Http\Controllers\Api\V1\ProjectDashboardController;
-use App\Http\Controllers\Api\V1\ProjectInsightsController;
-use App\Http\Controllers\Api\V1\ProjectLimitsController;
-use App\Http\Controllers\Api\V1\StageController;
+use App\Http\Controllers\Api\V1\Project\AcceptProjectInvitationController;
+use App\Http\Controllers\Api\V1\Project\ActivityController;
+use App\Http\Controllers\Api\V1\Project\ConversationController;
+use App\Http\Controllers\Api\V1\Project\ExportProjectController;
+use App\Http\Controllers\Api\V1\Project\ForceDeleteProjectController;
+use App\Http\Controllers\Api\V1\Project\ProjectController;
+use App\Http\Controllers\Api\V1\Project\ProjectInsightsController;
+use App\Http\Controllers\Api\V1\Project\ProjectInvitationController;
+use App\Http\Controllers\Api\V1\Project\ProjectLimitsController;
+use App\Http\Controllers\Api\V1\Project\ProjectMemberController;
+use App\Http\Controllers\Api\V1\Project\ProjectMessageController;
+use App\Http\Controllers\Api\V1\Project\RejectProjectInvitationController;
+use App\Http\Controllers\Api\V1\Project\RestoreProjectController;
+use App\Http\Controllers\Api\V1\Project\ScheduledProjectMessagesController;
+use App\Http\Controllers\Api\V1\Project\StageController;
+use App\Http\Controllers\Api\V1\Project\UpdateProjectStageController;
+use App\Http\Controllers\Api\V1\Project\ZoomMeetingController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
-use App\Http\Controllers\Api\V1\TaskController;
-use App\Http\Controllers\Api\V1\TaskFeaturesController;
-use App\Http\Controllers\Api\V1\TaskStatusController;
+use App\Http\Controllers\Api\V1\Task\ArchiveTaskController;
+use App\Http\Controllers\Api\V1\Task\AssignTaskMembersController;
+use App\Http\Controllers\Api\V1\Task\RestoreTaskController;
+use App\Http\Controllers\Api\V1\Task\TaskController;
+use App\Http\Controllers\Api\V1\Task\TaskMemberSearchController;
+use App\Http\Controllers\Api\V1\Task\TaskStatusController;
+use App\Http\Controllers\Api\V1\Task\UnassignTaskMemberController;
 use App\Http\Controllers\Api\V1\TokenController;
-use App\Http\Controllers\Api\V1\UserController;
-use App\Http\Controllers\Api\V1\UserInvitationsController;
+use App\Http\Controllers\Api\V1\User\AvatarController;
+use App\Http\Controllers\Api\V1\User\CurrentUserController;
+use App\Http\Controllers\Api\V1\User\ForceDeleteUserController;
+use App\Http\Controllers\Api\V1\User\InvitationUserSearchController;
+use App\Http\Controllers\Api\V1\User\UserController;
+use App\Http\Controllers\Api\V1\User\UserInvitationsController;
 use App\Http\Controllers\Api\V1\Webhooks\ZoomWebhookController;
 use App\Http\Controllers\Api\V1\Zoom\ZoomTokenController;
-use App\Http\Controllers\Api\V1\ZoomMeetingController;
 use App\Http\Middleware\VerifyZoomWebhook;
 use Illuminate\Support\Facades\Route;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
+use WendellAdriel\Idempotency\Enums\IdempotencyScope;
+use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,7 +60,7 @@ use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 
 // Zoom Webhooks
 Route::controller(ZoomWebhookController::class)
-    ->middleware(VerifyZoomWebhook::class)
+    ->middleware([VerifyZoomWebhook::class, Idempotent::using(scope: IdempotencyScope::Global)])
     ->prefix('webhooks/zoom/meetings')
     ->as('webhooks.meetings.')
     ->group(function (): void {
@@ -52,37 +76,42 @@ Route::controller(ZoomWebhookController::class)
 
 Route::middleware(['auth:sanctum'])->group(function (): void {
 
-    Route::get('/me', [UserController::class, 'me'])->name('user.me');
+    Route::prefix('users/me')->name('users.me.')->group(function (): void {
+        Route::get('/', CurrentUserController::class)->name('show');
 
-    Route::get('/user/token', [ZoomTokenController::class, 'getUserToken']);
+        Route::get('zoom-token', [ZoomTokenController::class, 'getUserToken'])->name('zoom-token');
 
-    Route::get('/user/jwt/token', [ZoomTokenController::class, 'getJwtToken']);
+        Route::get('zoom-jwt-token', [ZoomTokenController::class, 'getJwtToken'])->name('zoom-jwt-token');
+
+        Route::get('invitations', [UserInvitationsController::class, 'myInvitations'])->name('invitations.index');
+
+        Route::controller(SubscriptionController::class)->prefix('subscription')->name('subscription.')->group(function (): void {
+            Route::get('/', 'show')->name('show');
+            Route::post('/', 'store')->middleware(Idempotent::using(scope: IdempotencyScope::User))->name('store');
+            Route::patch('/', 'update')->middleware(['subscription', Idempotent::using(scope: IdempotencyScope::User)])->name('update');
+            Route::delete('/', 'destroy')->middleware('subscription')->name('destroy');
+        });
+    });
 
     Route::controller(TokenController::class)
         ->prefix('api-tokens')
         ->name('api-tokens.')
         ->group(function (): void {
             Route::get('/', 'index')->name('index');
-            Route::post('/', 'store')->name('store');
+            Route::post('/', 'store')->middleware(Idempotent::using(scope: IdempotencyScope::User))->name('store');
             Route::delete('/{token}', 'destroy')->name('destroy');
         });
 
-    Route::get('/me/invitations', [UserInvitationsController::class, 'myInvitations'])
-        ->name('user.invitations');
-
-    Route::controller(ProjectDashboardController::class)->group(function (): void {
-        Route::get('dashboard/chart-data', 'chartData')->name('dashboard.chart-data');
-        Route::get('dashboard/insights', 'kpis')
-            ->middleware('subscription')
-            ->name('dashboard.insights');
-        Route::get('/tasksdata', 'tasksData')->name('tasks.data');
-        Route::get('/user/activities', 'activities');
-        Route::get('/user/dashboard-projects', 'dashboardProjects');
-        Route::get('/user/projects', 'userProjects')->name('user.projects');
-    })->middleware(['can:owner', 'user']);
+    Route::get('dashboard/chart-data', DashboardChartDataController::class)->name('dashboard.chart-data');
+    Route::get('dashboard/insights', DashboardKpisController::class)
+        ->middleware('subscription')
+        ->name('dashboard.insights');
+    Route::get('dashboard/tasks', DashboardTasksController::class)->name('tasks.data');
+    Route::get('dashboard/activities', DashboardActivitiesController::class)->name('dashboard.activities');
+    Route::get('dashboard/projects', DashboardProjectsController::class)->name('dashboard.projects');
 
     // Return All Stages
-    Route::get('/stages', [StageController::class, 'index']);
+    Route::get('/stages', [StageController::class, 'index'])->name('stages.index');
 
     // Project Api Resource Routes
     Route::apiResource('/projects', ProjectController::class)->except(['show']);
@@ -95,32 +124,30 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
             Route::get('/insights', [ProjectInsightsController::class, 'index'])->name('projects.insights');
 
-            Route::delete('/force', [ProjectController::class, 'delete'])->withTrashed()->can('manage', 'project');
-            Route::patch('/restore', [ProjectController::class, 'restore'])->withTrashed()->can('manage', 'project');
+            Route::delete('/force', ForceDeleteProjectController::class)->name('projects.force-delete')->withTrashed()->can('manage', 'project');
+            Route::patch('/restore', RestoreProjectController::class)->name('projects.restore')->withTrashed()->can('manage', 'project');
 
             Route::middleware(['can:access,project'])->group(function (): void {
 
-                Route::get('/activities', [ActivityController::class, 'index']);
+                Route::get('/activities', [ActivityController::class, 'index'])->name('projects.activities');
 
-                // Project Feature Routes
-                Route::controller(FeaturesController::class)->group(function (): void {
-                    Route::get('export', 'export')->middleware([
-                        'subscription',
-                        EnsureFeaturesAreActive::using('project-export'),
-                    ]);
-                    Route::patch('stage', 'stage');
+                Route::get('export', ExportProjectController::class)->name('projects.export')->middleware([
+                    'subscription',
+                    EnsureFeaturesAreActive::using('project-export'),
+                ]);
+
+                Route::patch('stage', UpdateProjectStageController::class)->name('projects.stage.update');
+
+                Route::middleware([
+                    'subscription',
+                    EnsureFeaturesAreActive::using('project-messaging'),
+                ])->group(function (): void {
+                    Route::post('messages', [ProjectMessageController::class, 'store'])
+                        ->middleware(Idempotent::using(scope: IdempotencyScope::User))
+                        ->name('projects.messages.store');
+                    Route::get('messages/scheduled', ScheduledProjectMessagesController::class)->name('projects.messages.scheduled');
+                    Route::delete('messages/{message}', [ProjectMessageController::class, 'destroy'])->name('projects.messages.destroy');
                 });
-
-                Route::controller(MessageController::class)
-                    ->middleware([
-                        'subscription',
-                        EnsureFeaturesAreActive::using('project-messaging'),
-                    ])
-                    ->group(function (): void {
-                        Route::post('message', 'message');
-                        Route::get('messages/scheduled', 'scheduled');
-                        Route::delete('messages/{message}/delete', 'delete');
-                    });
 
                 // Chat Conversation Routes
                 Route::apiResource('/conversations', ConversationController::class)
@@ -129,83 +156,80 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
             Route::middleware(['can:access,project'])->group(function (): void {
                 Route::apiResource('/tasks', TaskController::class)
-                    ->except(['destroy'])
-                    ->withTrashed(['show', 'index']);
+                    ->withTrashed(['show', 'index', 'destroy']);
             });
 
-            Route::controller(TaskFeaturesController::class)
-                ->name('task.')
+            Route::name('task.')
                 ->prefix('tasks/{task}')
                 ->group(function (): void {
-
                     Route::middleware(['can:manage,task'])->group(function (): void {
-
-                        Route::patch('assign', 'assign')
+                        Route::patch('assign', AssignTaskMembersController::class)
+                            ->middleware(Idempotent::using(scope: IdempotencyScope::User))
                             ->name('assign');
 
-                        Route::patch('unassign', 'unassign')
+                        Route::patch('unassign', UnassignTaskMemberController::class)
+                            ->middleware(Idempotent::using(scope: IdempotencyScope::User))
                             ->name('unassign');
-
-                        Route::delete('/remove', 'remove')
-                            ->name('remove')
-                            ->withTrashed();
                     });
 
                     Route::middleware(['can:access,task'])->group(function (): void {
-                        Route::delete('archive', 'archive')
+                        Route::patch('archive', ArchiveTaskController::class)
                             ->name('archive');
 
-                        Route::get('unarchive', 'unarchive')
+                        Route::patch('restore', RestoreTaskController::class)
                             ->name('unarchive')
                             ->withTrashed();
 
-                        Route::get('member/search', 'search')
+                        Route::get('members/search', TaskMemberSearchController::class)
                             ->name('members.search');
                     });
                 });
 
-            Route::controller(InvitationController::class)->group(function (): void {
-                Route::post('invitations', 'invite')
-                    ->name('send.invitation')
-                    ->middleware('throttle:invite-actions')
-                    ->can('manage', 'project');
+            Route::post('invitations', [ProjectInvitationController::class, 'store'])
+                ->name('send.invitation')
+                ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'throttle:invite-actions'])
+                ->can('manage', 'project');
 
-                Route::get('accept-invitation', 'accept')
-                    ->name('accept.invitation')
-                    ->can('canAcceptInvitation', 'project');
+            Route::post('invitations/accept', AcceptProjectInvitationController::class)
+                ->middleware(Idempotent::using(scope: IdempotencyScope::User))
+                ->name('accept.invitation')
+                ->can('canAcceptInvitation', 'project');
 
-                Route::get('reject/invitation', 'reject')
-                    ->can('canAcceptInvitation', 'project');
+            Route::post('invitations/reject', RejectProjectInvitationController::class)
+                ->middleware(Idempotent::using(scope: IdempotencyScope::User))
+                ->name('reject.invitation')
+                ->can('canAcceptInvitation', 'project');
 
-                Route::get('cancel/invitation/users/{user}', 'cancel')
-                    ->withoutScopedBindings()
-                    ->name('projects.cancel-invitation');
+            Route::delete('invitations/{user}', [ProjectInvitationController::class, 'destroy'])
+                ->withoutScopedBindings()
+                ->name('projects.cancel-invitation');
 
-                Route::get('remove/member/{user}', 'remove')
-                    ->withoutScopedBindings()
-                    ->can('manage', 'project');
+            Route::delete('members/{user}', ProjectMemberController::class)
+                ->name('projects.members.destroy')
+                ->withoutScopedBindings()
+                ->can('manage', 'project');
 
-                Route::get('pending/invitations', 'pending')
-                    ->can('manage', 'project')
-                    ->name('project.pending.invitation');
-            });
+            Route::get('invitations', [ProjectInvitationController::class, 'index'])
+                ->can('manage', 'project')
+                ->name('project.pending.invitation');
 
-            Route::apiResource('/meetings', ZoomMeetingController::class);
+            Route::apiResource('/meetings', ZoomMeetingController::class)
+                ->middlewareFor(['store', 'update'], Idempotent::using(scope: IdempotencyScope::User));
 
         });
     });
 
-    Route::get('users/search', [InvitationController::class, 'search'])
+    Route::get('users/search', InvitationUserSearchController::class)
         ->name('users.search');
 
     Route::apiResource('/users', UserController::class)->except(['store']);
-    Route::delete('/users/{user}/force', [UserController::class, 'forceDestroy'])->name('users.forceDestroy');
+    Route::delete('/users/{user}/force', ForceDeleteUserController::class)->name('users.forceDestroy')->withTrashed();
 
     Route::group(['prefix' => 'users/{user}'], function (): void {
 
-        Route::patch('/avatar_remove', [AvatarController::class, 'removeAvatar'])->name('user.avatar.remove');
+        Route::delete('/avatar', [AvatarController::class, 'destroy'])->name('user.avatar.remove');
 
-        Route::post('/avatar', [AvatarController::class, 'avatar'])
+        Route::post('/avatar', [AvatarController::class, 'store'])
             ->name('user.avatar');
     });
 
@@ -214,33 +238,11 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
         ->name('notifications.')
         ->group(function (): void {
             Route::get('/', 'index')->name('index');
-            Route::get('/mark-all-read', 'markAllAsRead')->name('markAllAsRead');
+            Route::patch('/read', 'markAllAsRead')->name('markAllAsRead');
             Route::patch('/{notification}/status', 'updateStatus')->name('updateStatus');
             Route::delete('/{notification}', 'destroy')->name('destroy');
         });
-
-    Route::controller(SubscriptionController::class)
-        ->prefix('user')
-        ->group(function (): void {
-
-            Route::get('subscribe/{plan}', 'subscribe')
-                ->name('user.subscribe');
-
-            Route::get('subscriptions', 'subscriptions')
-                ->name('user.subscription');
-
-            Route::middleware(['subscription'])->group(function (): void {
-
-                Route::get('subscription/swap/{plan}', 'swap')
-                    ->name('subscription.swap');
-
-                Route::get('subscription/{plan}/cancel', 'cancel')
-                    ->name('subscription.cancel');
-            });
-
-        });
-
-    Route::get('task/statuses', TaskStatusController::class)
+    Route::get('task-statuses', TaskStatusController::class)
         ->name('task.status');
 
     Route::controller(ZoomAuthController::class)

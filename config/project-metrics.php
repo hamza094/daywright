@@ -17,6 +17,14 @@ return [
             'scale' => 15.0,        // multiplier applied to log growth
             'log_base' => 2.0,      // base for logarithmic growth (must be > 1)
         ],
+        'tasks' => [
+            // Component weights (should sum to 100)
+            'weights' => [
+                'completion' => 50,
+                'overdue' => 30,
+                'abandonment' => 20,
+            ],
+        ],
         'collaboration' => [
             // Component weights (should sum to 100)
             'weights' => [

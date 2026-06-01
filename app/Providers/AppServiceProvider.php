@@ -9,26 +9,20 @@ use App\Interfaces\PaddleApi;
 use App\Interfaces\SendSmsInterface;
 use App\Interfaces\Zoom;
 use App\Models\User;
-use App\Services\Api\V1\Admin\Integration\PaddleService;
-use App\Services\Api\V1\Paddle\SubscriptionService;
-use App\Services\Api\V1\PaginationService;
-use App\Services\Api\V1\SendSmsService;
-use App\Services\Api\V1\Zoom\ZoomService;
+use App\Services\Admin\Integration\PaddleService;
+use App\Services\Paddle\SubscriptionService;
+use App\Services\VonageSmsService;
+use App\Services\Zoom\ZoomService;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
-use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Routing\Route;
-use Illuminate\Support\Collection;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Str;
 use Laravel\Pennant\Feature;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 use Opcodes\LogViewer\Facades\LogViewer;
 use Override;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -38,11 +32,9 @@ class AppServiceProvider extends ServiceProvider
     #[Override]
     public function register(): void
     {
-        JsonResource::withoutWrapping();
-
         $this->app->bind(
             SendSmsInterface::class,
-            SendSmsService::class
+            VonageSmsService::class
         );
 
         $this->app->bind(Paddle::class, SubscriptionService::class);
@@ -65,33 +57,10 @@ class AppServiceProvider extends ServiceProvider
         Feature::define('project-export', fn (User $user): bool => $user->isAdmin());
         Feature::define('project-messaging', fn (User $user): bool => $user->isAdmin());
 
-        EnsureFeaturesAreActive::whenInactive(fn (Request $request, array $features): SymfonyResponse => response()->json([
-            'message' => 'Feature not available.',
-        ], 403));
-
-        Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
-            $openApi->secure(
-                SecurityScheme::http('bearer')
-            );
+        EnsureFeaturesAreActive::whenInactive(function (): SymfonyResponse {
+            throw new HttpException(SymfonyResponse::HTTP_FORBIDDEN, 'Feature not available.');
         });
-
-        Scramble::routes(function (Route $route): bool {
-            $excludedPrefixes = [
-                'api/v1/admin',
-                'api/v1/webhooks',
-                'api/v1/oauth/zoom',
-                'api/v1/user/token',
-                'api/v1/user/jwt/token',
-                'api/v1/users/search',
-                'api/v1/projects/{project}/export',
-                'api/v1/projects/{project}/message',
-                'api/v1/projects/{project}/messages',
-            ];
-
-            return Str::startsWith($route->uri, 'api/v1') &&
-               ! Str::startsWith($route->uri, $excludedPrefixes);
-
-        });
+        // Scramble/OpenAPI generation logic moved to ScrambleServiceProvider
 
         Model::preventLazyLoading(! app()->isProduction());
         // Model::shouldBeStrict(! app()->isProduction());
@@ -102,33 +71,7 @@ class AppServiceProvider extends ServiceProvider
                 'ressie03@example.net',
             ]);
         });*/
-
-        /**
-         * Paginate a standard Laravel Collection.
-         *
-         * @param  int  $perPage
-         * @param  int|null  $total
-         * @param  int|null  $page
-         * @param  string  $pageName
-         * @return PaginationService
-         */
-        Collection::macro('paginate', function ($perPage, $total = null, $page = null, $pageName = 'page'): PaginationService {
-            // Coerce scalar inputs to integers to satisfy strict_types and paginator requirements
-            $perPage = (int) $perPage;
-            $page = $page !== null ? (int) $page : PaginationService::resolveCurrentPage($pageName);
-            $resolvedTotal = $total !== null ? (int) $total : $this->count();
-
-            return new PaginationService(
-                $this->forPage($page, $perPage)->values(),
-                $resolvedTotal,
-                $perPage,
-                $page,
-                [
-                    'path' => PaginationService::resolveCurrentPath(),
-                    'pageName' => $pageName,
-                ]
-            );
-        });
-
     }
+
+    // Scramble/OpenAPI related methods extracted to ScrambleServiceProvider
 }

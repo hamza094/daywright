@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Auth;
 
-use App\Http\Resources\Api\V1\UsersResource;
 use App\Models\User;
 
 final class AuthPayload
@@ -12,8 +11,6 @@ final class AuthPayload
     public function __construct(
         public User $user,
         public ?string $accessToken = null,
-        public string $message = 'User authenticated successfully',
-        public string $status = 'success',
     ) {}
 
     /**
@@ -24,9 +21,8 @@ final class AuthPayload
     public function toArray(): array
     {
         $data = [
-            'message' => $this->message,
-            'user' => new UsersResource($this->user),
-            'status' => $this->status,
+            // Return plain data — resource resolution belongs in the controller/response layer
+            'user' => $this->user,
         ];
 
         if ($this->accessToken !== null) {

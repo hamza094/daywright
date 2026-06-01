@@ -4,62 +4,46 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Http\Resources\Api\V1\Admin\UsersResource;
+use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\Admin\UpdateUserRoleRequest;
+use App\Http\Requests\Api\V1\Admin\UserFilterRequest;
+use App\Http\Resources\Api\V1\Admin\User\AdminUserResource;
 use App\Models\User;
+use App\Repository\Admin\UserRepository;
 use App\Services\Admin\AdminAccessService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-class UserController extends Controller
+class UserController extends ApiController
 {
-    public function __construct(private readonly AdminAccessService $adminAccessService) {}
+    public function __construct(
+        private readonly AdminAccessService $adminAccessService,
+        private readonly UserRepository $userRepository,
+    ) {}
 
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(UserFilterRequest $request): AnonymousResourceCollection
     {
-        $perPage = 7;
+        $users = $this->userRepository->getUsersWithFilters($request);
 
-        $users = User::with([
-            'subscriptions',
-            'adminGrantedBy:id,name',
-            'adminRevokedBy:id,name',
-        ])
-            ->withCount('projects')
-            ->withCount('activeMembers as projects_member_count')
-            ->when($request->search, function ($query) use ($request): void {
-                $query->where('name', 'like', '%'.$request->search.'%')
-                    ->orWhere('username', 'like', '%'.$request->search.'%')
-                    ->orWhere('email', 'like', '%'.$request->search.'%');
-            })
-            ->paginate($perPage);
-
-        return UsersResource::collection($users);
+        return AdminUserResource::collection($users);
     }
 
-    public function grantAdminAccess(Request $request, User $user): JsonResponse
+    public function updateRole(UpdateUserRoleRequest $request, User $user): JsonResponse
     {
-        $this->adminAccessService->grantAdminAccess($user, $request->user());
+        if ($request->boolean('is_admin')) {
+            $this->adminAccessService->grantAdminAccess($user, $request->user());
 
-        return response()->json([
-            'message' => 'Admin access granted successfully.',
-            'user' => new UsersResource($user->fresh([
+            return $this->respondUpdated(new AdminUserResource($user->fresh([
                 'adminGrantedBy:id,name',
                 'adminRevokedBy:id,name',
-            ])),
-        ]);
-    }
+            ])));
+        }
 
-    public function revokeAdminAccess(Request $request, User $user): JsonResponse
-    {
         $this->adminAccessService->revokeAdminAccess($user, $request->user());
 
-        return response()->json([
-            'message' => 'Admin access revoked successfully.',
-            'user' => new UsersResource($user->fresh([
-                'adminGrantedBy:id,name',
-                'adminRevokedBy:id,name',
-            ])),
-        ]);
+        return $this->respondUpdated(new AdminUserResource($user->fresh([
+            'adminGrantedBy:id,name',
+            'adminRevokedBy:id,name',
+        ])));
     }
 }

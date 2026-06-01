@@ -88,6 +88,7 @@
 <script>
 import FormInput from '../FormInput.vue';
 import { mapMutations } from 'vuex';
+import { getObjectData, parseApiError } from '../../utils/apiResponse.js';
 
 export default {
   components: {
@@ -185,12 +186,12 @@ export default {
         .patch(`/users/${this.user.id}`, this.form)
         .then((response) => {
           this.$vToastify.success('Profile Updated Successfully');
-          this.updateUser(response.data.user);
+          this.updateUser(getObjectData(response));
           this.modalClose();
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.errors = error?.response?.data?.errors || {};
+          this.errors = parseApiError(error).errors;
         });
     },
     resetForm() {

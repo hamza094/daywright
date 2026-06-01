@@ -68,7 +68,7 @@
                   </span>
                 </p>
                 <span class="float-right chat-time">
-                  <i>{{ conversation.created_at }}</i>
+                  <i>{{ conversation.created_at | msgTime }}</i>
                 </span>
               </div>
             </li>
@@ -173,6 +173,13 @@ import { Mentionable } from 'vue-mention';
 import { Picker, EmojiIndex } from 'emoji-mart-vue-fast';
 import FeatureDropdown from '../../FeatureDropdown.vue';
 import { debounce } from 'lodash';
+import { getPaginatedData } from '../../../utils/apiResponse.js';
+
+const EMPTY_PAGINATED_CONVERSATIONS = {
+  data: [],
+  links: {},
+  meta: {},
+};
 
 export default {
   components: { Picker, Mentionable, FeatureDropdown },
@@ -221,7 +228,7 @@ export default {
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       ],
       items: [],
-      conversations: { data: [] },
+      conversations: { ...EMPTY_PAGINATED_CONVERSATIONS },
       errors: [],
       users: [...this.members, this.owner],
       openMenuId: null,
@@ -376,19 +383,10 @@ export default {
       return axios
         .get('/projects/' + this.slug + `/conversations`)
         .then((response) => {
-          const payload = response.data;
-          if (payload && Array.isArray(payload.data)) {
-            this.conversations = payload;
-            return;
-          }
-          if (Array.isArray(payload)) {
-            this.conversations = { data: payload };
-            return;
-          }
-          this.conversations = { data: [] };
+          this.conversations = getPaginatedData(response);
         })
         .catch((error) => {
-          this.conversations = { data: [] };
+          this.conversations = { ...EMPTY_PAGINATED_CONVERSATIONS };
           this.handleErrorResponse(error);
         });
     },

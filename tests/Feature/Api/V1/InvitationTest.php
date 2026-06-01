@@ -20,12 +20,12 @@ class InvitationTest extends TestCase
         /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
-        $this->postJson($this->project->path().'/invitations', [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
             'email' => $invitedUser->email,
-        ])->assertOk()
-            ->assertJson([
-                'message' => "Project invitation sent to {$invitedUser->name}",
-            ]);
+        ])->assertCreated()
+            ->assertJsonPath('data.id', $this->project->id)
+            ->assertJsonPath('data.slug', $this->project->slug)
+            ->assertJsonPath('data.links.project', $this->apiV1ProjectRoute('projects.show', $this->project));
 
         $this->assertTrue($this->project->members->contains($invitedUser));
     }
@@ -37,14 +37,20 @@ class InvitationTest extends TestCase
         $invitedUser = User::factory()->create();
         $this->project->invite($invitedUser);
 
-        $this->postJson($this->project->path().'/invitations', [
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project), [
             'email' => $invitedUser->email,
         ])
-            ->assertUnprocessable();
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Validation failed.')
+            ->assertJsonPath('code', 'validation_error')
+            ->assertJsonPath('errors.invitation.0', 'Project invitation already sent to a user.');
 
-        $this->postJson($this->project->path().'/invitations',
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project),
             ['email' => $this->project->user->email])
-            ->assertUnprocessable();
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Validation failed.')
+            ->assertJsonPath('code', 'validation_error')
+            ->assertJsonPath('errors.invitation.0', "Can't send an invitation to the project owner.");
     }
 
     /** @test */
@@ -52,10 +58,10 @@ class InvitationTest extends TestCase
     {
         $user = User::factory()->create(['email' => 'valid@example.com']);
 
-        $response = $this->postJson($this->project->path().'/invitations',
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('send.invitation', $this->project),
             ['email' => $user->email]);
 
-        $response->assertStatus(200);
+        $response->assertCreated();
         $response->assertJsonMissingValidationErrors(['email']);
     }
 
@@ -68,12 +74,12 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($invitedUser);
 
-        $this->getJson($this->project->path().
-            '/accept-invitation')
-            ->assertJson([
-                'message' => 'You have accepted Project invitation',
-                'project' => ['id' => $this->project->id],
-            ]);
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
+            ->assertOk()
+            ->assertJsonPath('data.project.id', $this->project->id)
+            ->assertJsonPath('data.project.slug', $this->project->slug)
+            ->assertJsonPath('data.project.links.self', $this->apiV1ProjectRoute('projects.show', $this->project))
+            ->assertJsonPath('data.invitation_state', 'accepted');
 
         $this->assertDatabaseHas('project_members', [
             'project_id' => $this->project->id,
@@ -89,8 +95,7 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $this->getJson($this->project->path().
-            '/accept-invitation')
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
             ->assertForbidden();
     }
 
@@ -104,11 +109,12 @@ class InvitationTest extends TestCase
 
         Sanctum::actingAs($invitedUser);
 
-        $this->getJson($this->project->path().'/reject/invitation')
-            ->assertJson([
-                'message' => 'You have rejected the invitation to join the project.',
-                'project' => ['id' => $this->project->id],
-            ]);
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('reject.invitation', $this->project))
+            ->assertOk()
+            ->assertJsonPath('data.project.id', $this->project->id)
+            ->assertJsonPath('data.project.slug', $this->project->slug)
+            ->assertJsonPath('data.project.links.self', $this->apiV1ProjectRoute('projects.show', $this->project))
+            ->assertJsonPath('data.invitation_state', 'rejected');
 
         $this->assertDatabaseMissing('project_members', [
             'project_id' => $this->project->id,
@@ -122,25 +128,54 @@ class InvitationTest extends TestCase
         /** @var User $invitedUser */
         $invitedUser = User::factory()->create();
 
-        $this->getJson(route('projects.cancel-invitation',
-            ['project' => $this->project, 'user' => $invitedUser,
-            ]))
-            ->assertForbidden();
+        $route = route('api.v1.projects.cancel-invitation', [
+            'project' => $this->project,
+            'user' => $invitedUser,
+        ]);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => 'You have canceled the invitation for '.$invitedUser->name.' to join the project.',
+            ]);
 
         $this->project->invite($invitedUser);
 
-        $this->getJson(route('projects.cancel-invitation',
-            ['project' => $this->project, 'user' => $invitedUser,
-            ]))
+        $this->deleteJson($route)
             ->assertJson([
                 'message' => 'You have canceled the invitation for '.$invitedUser->name.' to join the project.',
-                'project' => ['id' => $this->project->id],
             ]);
 
         $this->assertDatabaseMissing('project_members', [
             'project_id' => $this->project->id,
             'user_id' => $invitedUser->id,
         ]);
+    }
+
+    /** @test */
+    public function project_owner_can_repeat_invitation_cancellation_without_error(): void
+    {
+        /** @var User $invitedUser */
+        $invitedUser = User::factory()->create();
+
+        $this->project->invite($invitedUser);
+
+        $route = route('api.v1.projects.cancel-invitation', [
+            'project' => $this->project,
+            'user' => $invitedUser,
+        ]);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => 'You have canceled the invitation for '.$invitedUser->name.' to join the project.',
+            ]);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => 'You have canceled the invitation for '.$invitedUser->name.' to join the project.',
+            ]);
     }
 
     /** @test */
@@ -151,7 +186,7 @@ class InvitationTest extends TestCase
 
         $this->project->members()->attach($memberUser, ['active' => true]);
 
-        $this->getJson($this->project->path().'/remove/member/'.$memberUser->uuid)
+        $this->deleteJson($this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $memberUser))
             ->assertJson([
                 'message' => "Member {$memberUser->name} has been removed from the project",
             ]);
@@ -163,6 +198,44 @@ class InvitationTest extends TestCase
     }
 
     /** @test */
+    public function project_owner_can_repeat_member_removal_without_error(): void
+    {
+        /** @var User $memberUser */
+        $memberUser = User::factory()->create();
+
+        $this->project->members()->attach($memberUser, ['active' => true]);
+
+        $route = $this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $memberUser);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => "Member {$memberUser->name} has been removed from the project",
+            ]);
+
+        $this->deleteJson($route)
+            ->assertOk()
+            ->assertJson([
+                'message' => "Member {$memberUser->name} has been removed from the project",
+            ]);
+    }
+
+    /** @test */
+    public function project_owner_cannot_remove_a_pending_invitation_from_members_endpoint(): void
+    {
+        /** @var User $pendingUser */
+        $pendingUser = User::factory()->create();
+
+        $this->project->invite($pendingUser);
+
+        $this->deleteJson($this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $pendingUser))
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'Validation failed.')
+            ->assertJsonPath('code', 'validation_error')
+            ->assertJsonPath('errors.user.0', 'This user is not an active member of the project.');
+    }
+
+    /** @test */
     public function project_owner_can_view_pending_member_invitations(): void
     {
         $pendingUsers = User::factory()->count(3)->create();
@@ -171,12 +244,13 @@ class InvitationTest extends TestCase
             ->members()
             ->attach($pendingUsers, ['active' => false]);
 
-        $response = $this->getJson($this->project->path().'/pending/invitations');
+        $response = $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'filter' => ['status' => 'pending'],
+        ]));
 
         $response->assertStatus(200)
             ->assertJsonStructure([
-                'message',
-                'pending_invitations' => [
+                'data' => [
                     '*' => [
                         'uuid',
                         'name',
@@ -188,13 +262,80 @@ class InvitationTest extends TestCase
                         ],
                     ],
                 ],
-            ])
-            ->assertJson([
-                'message' => 'List of project pending member requests',
             ]);
 
-        // Assert the count of pending invitations
-        $this->assertCount(3, $response->json('pending_invitations'));
+        foreach ($response->json('data') as $invitation) {
+            $this->assertMatchesRegularExpression(
+                '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+00:00$/',
+                $invitation['invitation_sent_at']
+            );
+        }
 
+        // Assert the count of pending invitations
+        $this->assertCount(3, $response->json('data'));
+
+    }
+
+    /** @test */
+    public function project_owner_can_view_pending_member_invitations_with_status_filter(): void
+    {
+        $pendingUsers = User::factory()->count(2)->create();
+
+        $this->project
+            ->members()
+            ->attach($pendingUsers, ['active' => false]);
+
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'filter' => ['status' => 'pending'],
+        ]))
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+    }
+
+    /** @test */
+    public function pending_project_invitations_requires_pending_status_filter(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['filter']);
+
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'filter' => ['status' => 'accepted'],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['filter.status']);
+    }
+
+    /** @test */
+    public function pending_project_invitations_reject_unsupported_top_level_query_parameters(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'filter' => ['status' => 'pending'],
+            'page' => 2,
+            'include' => 'owner',
+            'random' => 'value',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['page', 'include', 'random']);
+    }
+
+    /** @test */
+    public function pending_project_invitations_reject_legacy_top_level_status_alias(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'status' => 'pending',
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+    }
+
+    /** @test */
+    public function pending_project_invitations_reject_unsupported_nested_filter_keys(): void
+    {
+        $this->getJson($this->apiV1ProjectRoute('project.pending.invitation', $this->project, query: [
+            'filter' => ['state' => 'pending'],
+        ]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['filter']);
     }
 }

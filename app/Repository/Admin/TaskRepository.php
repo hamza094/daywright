@@ -7,26 +7,24 @@ namespace App\Repository\Admin;
 use App\Http\Requests\Api\V1\Admin\TaskFilterRequest;
 use App\Models\Task;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class TaskRepository
 {
     /**
      * @return LengthAwarePaginator<int, Task>
      */
-    public function getTasksWithFilter(TaskFilterRequest $request, int $perPage): LengthAwarePaginator
+    public function getTasksWithFilter(TaskFilterRequest $request): LengthAwarePaginator
     {
-        return Task::with('project', 'status', 'assignee', 'owner')
-            ->withTrashed()
-            ->orderByDesc('id')
-            ->when($request->string('filter')->trim()->lower()->exactly('active'), fn ($query) => $query->whereNull('deleted_at'))
-            ->when($request->string('filter')->trim()->lower()->exactly('trashed'), fn ($query) => $query->whereNotNull('deleted_at'))
-            ->when($request->validated('search'), function ($query) use ($request): void {
-                $escaped = str_replace(['%', '_'], ['\\%', '\\_'], $request->validated('search'));
-
-                $query->whereHas('project', function ($subQuery) use ($escaped): void {
-                    $subQuery->where('name', 'like', '%'.$escaped.'%');
-                });
-            })
-            ->paginate($perPage);
+        return QueryBuilder::for(
+            Task::query()
+                ->with('project', 'status', 'assignee', 'owner')
+                ->withTrashed(),
+            $request,
+        )
+            ->allowedFilters(...TaskFilterRequest::allowedFilters())
+            ->allowedSorts(...TaskFilterRequest::allowedSorts())
+            ->defaultSort(...TaskFilterRequest::defaultSorts())
+            ->paginate($request->perPage());
     }
 }

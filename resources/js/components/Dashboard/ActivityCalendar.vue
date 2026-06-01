@@ -51,6 +51,8 @@
 <script>
 import VCalendar from 'v-calendar';
 import moment from 'moment';
+import { getArrayData } from '../../utils/apiResponse.js';
+import { toDateInUserTimezone } from '../../utils/dateTime';
 
 export default {
   name: 'ActivityCalendar',
@@ -70,7 +72,7 @@ export default {
     attributes() {
       return this.activities
         .map((activity) => ({
-          dates: activity.created_at ? moment(activity.created_at).toDate() : null,
+          dates: activity.created_at ? toDateInUserTimezone(activity.created_at) : null,
           bar: { color: activity.color },
           popover: true,
           customData: activity,
@@ -124,12 +126,12 @@ export default {
       }
 
       axios
-        .get('/user/activities', {
+        .get('/dashboard/activities', {
           params: { start_date, end_date },
           cancelToken: this.cancelTokenSource.token,
         })
         .then((response) => {
-          this.activities = response.data && response.data.data ? response.data.data : response.data;
+          this.activities = getArrayData(response);
           this.errorMessage = null;
           this.$emit('loaded', this.activities);
         })

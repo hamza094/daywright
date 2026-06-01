@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Subscription;
 
-use RuntimeException;
+use App\Exceptions\ApiException;
+use Illuminate\Contracts\Debug\ShouldntReport;
+use Illuminate\Http\Request;
+use Override;
+use Symfony\Component\HttpFoundation\Response;
 
-final class PlanLimitExceededException extends RuntimeException
+final class PlanLimitExceededException extends ApiException implements ShouldntReport
 {
     public const string REASON_LIMIT_REACHED = 'limit_reached';
 
@@ -62,5 +66,43 @@ final class PlanLimitExceededException extends RuntimeException
     public function limitOwnerId(): int
     {
         return $this->limitOwnerId;
+    }
+
+    public function status(): int
+    {
+        return Response::HTTP_FORBIDDEN;
+    }
+
+    public function errorCode(): string
+    {
+        return 'plan_limit_exceeded';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    #[Override]
+    public function meta(Request $request): array
+    {
+        $authenticatedUser = $request->user();
+        $canUpgrade = $this->limitScope === self::SCOPE_ACCOUNT
+            || (int) ($authenticatedUser?->getKey() ?? 0) === $this->limitOwnerId;
+
+        return [
+            'reason' => $this->reason,
+            'limit_type' => $this->limitType,
+            'limit_label' => $this->limitLabel,
+            'current_usage' => $this->currentUsage,
+            'max_allowed' => $this->maxAllowed,
+            'limit_scope' => $this->limitScope,
+            'can_upgrade' => $canUpgrade,
+            'upgrade_required' => true,
+        ];
+    }
+
+    #[Override]
+    protected function defaultMessage(): string
+    {
+        return 'Plan limit exceeded.';
     }
 }

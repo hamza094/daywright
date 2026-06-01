@@ -4,17 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\RegisterUserRequest;
-use App\Http\Resources\Api\V1\UsersResource;
-use App\Models\User;
-use App\Providers\RouteServiceProvider;
-use App\Services\Api\V1\Auth\LoginUserService;
-use Illuminate\Auth\Events\Registered;
+use App\Http\Resources\Api\V1\User\AuthenticatedUserResource;
+use App\Services\Auth\RegisterUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Throwable;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class RegisterController extends ApiController
 {
@@ -30,41 +28,23 @@ class RegisterController extends ApiController
     */
 
     /**
-     * Where to redirect users after registration.
+     * Register a new user account.
      *
-     * @var string
-     */
-    protected $redirectTo = RouteServiceProvider::HOME;
-
-    /**
+     * Creates a public user account and returns the created user resource.
+     * This endpoint does not create a session or issue an access token.
+     *
      * @unauthenticated
-     * Register User
-     *
-     * Registers a new user and returns the user API resource.
      */
-    public function register(RegisterUserRequest $request, LoginUserService $loginUserService): JsonResponse
+    public function register(RegisterUserRequest $request, RegisterUserService $registerUserService): JsonResponse
     {
-
-        $validatedData = $request->validated();
-
-        $validatedData['password'] = bcrypt($validatedData['password']);
-
         try {
-            $user = User::create($validatedData);
-            event(new Registered($user));
+            $user = $registerUserService->register($request->registerUserData());
 
-            $loginUserService->dispatchTimezoneIfNeeded($user);
-
-            return response()->json([
-                'message' => 'User Registered Successfully',
-                'user' => new UsersResource($user),
-            ], 201);
-
-        } catch (Throwable $e) {
+            return $this->respondCreated(new AuthenticatedUserResource($user));
+        } catch (TransportExceptionInterface $e) {
             Log::error('User registration failed', ['exception' => $e]);
 
-            return response()->json(['error' => 'User registration failed.'], 500);
+            throw new ExternalServiceUnavailableException('User registration failed.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
-
     }
 }

@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
 /**
  * @mixin \Laravel\Sanctum\PersonalAccessToken
  */
+#[SchemaName('PersonalAccessToken')]
 class TokenResource extends JsonResource
 {
-    private const string DATETIME_FORMAT = 'Y-m-d H:i:s';
-
     /**
      * Transform the resource into an array.
      *
@@ -46,25 +46,25 @@ class TokenResource extends JsonResource
             'abilities' => $this->abilities,
 
             /**
-             * Last time the token was used (Y-m-d H:i:s), or null if never used
+             * Last time the token was used in UTC ISO 8601 format, or null if never used.
              *
-             * @example "2025-07-08 12:34:56"
+             * @example "2025-07-08T12:34:56+00:00"
              */
-            'last_used_at' => $this->last_used_at ? $this->last_used_at->format(self::DATETIME_FORMAT) : null,
+            'last_used_at' => $this->last_used_at?->toIso8601String(),
 
             /**
-             * Token creation date (Y-m-d H:i:s)
+             * Token creation timestamp in UTC ISO 8601 format.
              *
-             * @example "2025-07-01 09:00:00"
+             * @example "2025-07-01T09:00:00+00:00"
              */
-            'created_at' => $this->created_at ? $this->created_at->format(self::DATETIME_FORMAT) : null,
+            'created_at' => $this->created_at?->toIso8601String(),
 
             /**
-             * Token expiration date (Y-m-d H:i:s), or null if does not expire
+             * Token expiration timestamp in UTC ISO 8601 format, or null if it does not expire.
              *
-             * @example "2025-12-31 23:59:59"
+             * @example "2025-12-31T23:59:59+00:00"
              */
-            'expires_at' => $this->expires_at ? $this->expires_at->format(self::DATETIME_FORMAT) : null,
+            'expires_at' => $this->expires_at?->toIso8601String(),
         ];
     }
 }

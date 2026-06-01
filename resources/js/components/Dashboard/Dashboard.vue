@@ -54,7 +54,7 @@
                     Created:
                   </span>
                   <span class="info-value"
-                    ><b>{{ project.created_at }}</b></span
+                    ><b>{{ project.created_at | date }}</b></span
                   >
                 </div>
               </div>
@@ -88,6 +88,8 @@
 import ProjectChart from './ProjectChart.vue';
 import TasksData from './TasksData.vue';
 import ActivityCalendar from './ActivityCalendar.vue';
+import { getResponseMessage } from '../../utils/apiResponse.js';
+import { readDashboardProjects } from '../../utils/dashboardResponse.js';
 
 export default {
   components: {
@@ -116,21 +118,29 @@ export default {
   methods: {
     resendMail() {
       axios
-        .post('/email/resend/' + this.user.uuid, {})
-        .then(() => {
-          this.$vToastify.success('Verification link sent successfully');
+        .post('/email/resend', {})
+        .then((response) => {
+          this.$vToastify.success(getResponseMessage(response) || 'Verification link sent successfully');
         })
         .catch((error) => {
           this.handleErrorResponse(error);
         });
     },
     loadDashboardProjects() {
-      axios.get('/user/dashboard-projects').then(({ data }) => this.getData(data));
+      axios
+        .get('/dashboard/projects')
+        .then((response) => {
+          this.getData(readDashboardProjects(response));
+        })
+        .catch((error) => {
+          this.handleErrorResponse(error);
+          this.getData({ projects: [], total: 0, message: '' });
+        });
     },
 
     getData(data) {
       this.projects = data.projects;
-      this.projectsCount = data.projectsCount;
+      this.projectsCount = data.total;
       this.message = data.message;
     },
     capitalize(value) {

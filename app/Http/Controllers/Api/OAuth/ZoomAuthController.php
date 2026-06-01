@@ -5,61 +5,61 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\OAuth;
 
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
-use App\Exceptions\Integrations\Zoom\ZoomException;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Api\ApiController;
 use App\Interfaces\Zoom;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
-final class ZoomAuthController extends Controller
+final class ZoomAuthController extends ApiController
 {
-    public function redirect(Request $request): JsonResponse
+    public function __construct(private readonly Zoom $zoom) {}
+
+    public function redirect(): JsonResponse
     {
-        $redirectDetails = app(Zoom::class)
-            ->getAuthRedirectDetails();
+        $redirectDetails = $this->zoom->getAuthRedirectDetails();
 
-        session()->put('oauth_zoom_state', $redirectDetails->state);
+        // Store the PKCE code verifier in cache keyed by the OAuth state so
+        // stateless clients (mobile, SPA) that don't persist sessions can still
+        // complete the callback flow.
+        $cacheKey = 'oauth:zoom:'.$redirectDetails->state;
+        cache()->put($cacheKey, $redirectDetails->codeVerifier, now()->addMinutes(10));
 
-        session()->put('oauth_zoom_code_verifier', $redirectDetails->codeVerifier);
-
-        return response()->json(['redirectUrl' => $redirectDetails->authorizationUrl]);
+        return $this->respondWithData(['redirect_url' => $redirectDetails->authorizationUrl]);
 
     }
 
     public function callback(Request $request): JsonResponse
     {
         if ($request->string('error')->trim()->exactly('access_denied')) {
-            return response()->json(['error' => 'Zoom account connection denied'], 400);
+            abort(Response::HTTP_BAD_REQUEST, 'Zoom account connection denied');
         }
 
-        $hasRequiredFields = $request->filled(['code', 'state'])
-          && session()->has('oauth_zoom_state')
-          && session()->has('oauth_zoom_code_verifier');
+        $state = (string) $request->string('state')->trim();
+        $cacheKey = 'oauth:zoom:'.$state;
+
+        $hasRequiredFields = $request->filled(['code', 'state']) && cache()->has($cacheKey);
 
         if (! $hasRequiredFields) {
-            return response()->json(['error' => 'Missing required fields'], 400);
+            abort(Response::HTTP_BAD_REQUEST, 'Missing required fields');
         }
 
         $callbackDetails = new AuthorizationCallbackDetails(
             authorizationCode: (string) $request->string('code')->trim(),
-            expectedState: session()->pull('oauth_zoom_state'),
-            state: (string) $request->string('state')->trim(),
-            codeVerifier: session()->pull('oauth_zoom_code_verifier'),
+            expectedState: $state,
+            state: $state,
+            codeVerifier: cache()->pull($cacheKey),
         );
 
-        try {
-            $accessDetails = app(Zoom::class)->authorize($callbackDetails);
+        $accessDetails = $this->zoom->authorize($callbackDetails);
 
-            auth()->user()->updateZoomOAuthDetails(
-                accessToken: $accessDetails->accessToken,
-                refreshToken: $accessDetails->refreshToken,
-                expiresAt: $accessDetails->expiresAt,
-            );
-        } catch (ZoomException) {
-            return response()->json(['error' => 'Failed to connect to Zoom account'], 400);
-        }
+        $this->authenticatedUser()->updateZoomOAuthDetails(
+            accessToken: $accessDetails->accessToken,
+            refreshToken: $accessDetails->refreshToken,
+            expiresAt: $accessDetails->expiresAt,
+        );
 
-        return response()->json(['success' => 'Zoom account connected successfully']);
+        return $this->respondWithMessage('Zoom account connected successfully');
 
     }
 }

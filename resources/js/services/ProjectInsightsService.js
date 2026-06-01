@@ -1,5 +1,7 @@
 import axios from 'axios';
+import { parseApiError } from '../utils/apiResponse.js';
 import { normalizeSectionsForRequest } from '../utils/insightsSections.js';
+import { parseProjectInsightsResponse } from '../utils/projectInsightsResponse.js';
 const BASE_URL = '';
 
 const AVAILABLE_SECTIONS = [
@@ -13,14 +15,7 @@ const AVAILABLE_SECTIONS = [
 
 // Extract a concise, user-friendly error message from an axios error
 function extractErrorMessage(error) {
-  const resp = error && error.response;
-  if (resp?.status !== 422) {
-    return 'An error occurred. Please try again later.';
-  }
-  const data = resp.data || {};
-  if (data.message) return String(data.message);
-  const first = data.errors && Object.values(data.errors)[0];
-  return (Array.isArray(first) ? first[0] : first) || 'Validation error';
+  return parseApiError(error, 'An error occurred. Please try again later.').message;
 }
 /**
  * Project Insights API Service
@@ -48,29 +43,9 @@ class ProjectInsightsService {
       const query = params ? `?${params.toString()}` : '';
       const url = `${BASE_URL}/projects/${slug}/insights${query}`;
 
-      const { data: resp } = await axios.get(url);
+      const response = await axios.get(url);
 
-      // Expect flattened API response shape from ProjectInsightsResource:
-      // { success, project_id, project_name, insights, generated_at, sections_requested, message }
-      if (resp?.success) {
-        const insights = Array.isArray(resp.insights) ? resp.insights : [];
-        const project_id = resp.project_id ?? null;
-        const project_name = resp.project_name ?? null;
-        const sections_requested = Array.isArray(resp.sections_requested) ? resp.sections_requested : normalized;
-        const generated_at = resp.generated_at ?? null;
-
-        return {
-          success: true,
-          insights,
-          project_id,
-          project_name,
-          sections_requested,
-          generated_at,
-          message: resp.message ?? null,
-        };
-      }
-
-      throw new Error('An error occurred. Please try again later.');
+      return parseProjectInsightsResponse(response, normalized);
     } catch (error) {
       throw new Error(extractErrorMessage(error));
     }

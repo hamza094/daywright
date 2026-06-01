@@ -4,16 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Http\Resources\Api\V1\User\UserSummaryResource;
+use App\Models\Activity;
 use App\Models\Stage;
 use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Override;
 
+/**
+ * @mixin Activity
+ */
 class ActivityResource extends JsonResource
 {
+    private const string UPDATED_SUFFIX = ' updated';
+
     /**
      * Transform the resource into an array.
      *
@@ -23,11 +31,19 @@ class ActivityResource extends JsonResource
     #[Override]
     public function toArray($request): array
     {
+        $descriptionKey = (string) data_get($this->resource, 'description', '');
+        $description = method_exists($this, $descriptionKey)
+            ? $this->{$descriptionKey}()
+            : $descriptionKey;
+
         return [
-            'description' => $this->{$this->description}(),
-            'time' => $this->created_at->format('Y-m-d H:i:s'),
+            'description' => $description,
+            'time' => $this->created_at?->toIso8601String(),
             'subject' => $this->getSubjectDetails(),
-            'user' => $this->user,
+            'user' => $this->whenLoaded(
+                'user',
+                fn (): UserSummaryResource => new UserSummaryResource($this->user),
+            ),
             'affected_users' => $this->when(! empty($this->affected_users), $this->loadAffectedUsers()),
         ];
     }
@@ -48,7 +64,6 @@ class ActivityResource extends JsonResource
     protected function updated_project(): string
     {
         $changes = Arr::get($this->changes, 'after', []);
-
         $updatedKey = key($changes);
 
         if (! $updatedKey) {
@@ -56,10 +71,7 @@ class ActivityResource extends JsonResource
         }
 
         if ($updatedKey === 'stage_id') {
-
-            static $stages = null;
-
-            $stages ??= Stage::pluck('name', 'id');
+            $stages = Cache::remember('stages_map', 300, fn () => Stage::pluck('name', 'id')->toArray());
 
             $newStage = $stages[$changes['stage_id']] ?? 'Unknown';
 
@@ -68,7 +80,7 @@ class ActivityResource extends JsonResource
 
         return $updatedKey === 'deleted_at'
             ? 'Project has been restored'
-            : 'Project '.Str::headline($updatedKey).' updated';
+            : 'Project '.Str::headline($updatedKey).self::UPDATED_SUFFIX;
     }
 
     protected function deleted_project(): string
@@ -86,39 +98,39 @@ class ActivityResource extends JsonResource
         if (! $this->subject) {
             return 'Task not found';
         }
-        $title = Str::limit($this->subject->title, 10, '...');
+        $title = Str::limit((string) data_get($this->subject, 'title', ''), 10, '...');
 
         return 'Task "'.$title.'" added';
     }
 
     protected function updated_task(): string
     {
-        $taskTitle = Str::limit($this->subject->title, 17, '...');
+        if (! $this->subject) {
+            return 'Task updated';
+        }
+
+        $taskTitle = Str::limit((string) data_get($this->subject, 'title', ''), 17, '...');
 
         $changes = Arr::get($this->changes, 'after', []);
 
         $updatedKey = key($changes);
-
-        if (! $updatedKey) {
-            return 'No changes detected';
-        }
+        $description = 'No changes detected';
 
         if ($updatedKey === 'status_id') {
-
-            // Fetch all statuses once and cache them
-            static $statuses = null;
-
-            $statuses ??= TaskStatus::pluck('label', 'id');
+            $statuses = Cache::remember('task_statuses_map', 300, fn () => TaskStatus::pluck('label', 'id')->toArray());
 
             $newStatus = $statuses[$changes['status_id']] ?? 'Unknown';
 
-            return "Task '$taskTitle' status changed to '$newStatus'";
+            $description = "Task '$taskTitle' status changed to '$newStatus'";
+        } elseif (is_string($updatedKey) && $updatedKey !== '') {
+            $description = "Task '$taskTitle' ".Str::headline($updatedKey).self::UPDATED_SUFFIX;
+
+            if ($updatedKey === 'deleted_at') {
+                $description = "Task '$taskTitle' has been restored";
+            }
         }
 
-        return $updatedKey === 'deleted_at'
-            ? "Task '$taskTitle' has been restored"
-            : "Task '$taskTitle' ".Str::headline($updatedKey).' updated';
-
+        return $description;
     }
 
     protected function deleted_task(): string
@@ -126,7 +138,7 @@ class ActivityResource extends JsonResource
         if (! $this->subject) {
             return 'One Task has been removed from the project';
         }
-        $taskTitle = Str::limit($this->subject->title, 17, '...');
+        $taskTitle = Str::limit((string) data_get($this->subject, 'title', ''), 17, '...');
 
         return "Task '$taskTitle' archived from the project";
     }
@@ -137,8 +149,8 @@ class ActivityResource extends JsonResource
             return 'Message status unknown';
         }
 
-        $status = $this->subject->delivered_at ? 'sent' : 'scheduled';
-        $messageContent = Str::limit(trim($this->subject->message ?? ''), 17, '..');
+        $status = data_get($this->subject, 'delivered_at') ? 'sent' : 'scheduled';
+        $messageContent = Str::limit(trim((string) data_get($this->subject, 'message', '')), 17, '..');
 
         return "Message '$messageContent' $status";
     }
@@ -160,13 +172,12 @@ class ActivityResource extends JsonResource
 
     protected function created_meeting(): string
     {
-        return "Meeting {$this->subject->topic} created";
-
+        return 'Meeting '.data_get($this->subject, 'topic', '').' created';
     }
 
     protected function updated_meeting(): string
     {
-        return "Meeting {$this->subject->topic} updated";
+        return 'Meeting '.data_get($this->subject, 'topic', '').self::UPDATED_SUFFIX;
     }
 
     protected function deleted_meeting(): string
@@ -176,11 +187,13 @@ class ActivityResource extends JsonResource
 
     protected function loadAffectedUsers(): array
     {
-        if (empty($this->affected_users) || ! is_array($this->affected_users)) {
+        $affectedUsers = data_get($this->resource, 'affected_users');
+
+        if (! is_array($affectedUsers) || $affectedUsers === []) {
             return [];
         }
 
-        $userIds = $this->affected_users;
+        $userIds = $affectedUsers;
 
         // Fetch existing users, only selecting necessary columns
         $users = User::whereIn('id', $userIds)

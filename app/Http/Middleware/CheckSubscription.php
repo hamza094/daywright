@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Exceptions\Subscription\SubscriptionRequiredException;
 use Closure;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 
 class CheckSubscription
@@ -22,19 +24,13 @@ class CheckSubscription
         $user = $request->user();
 
         if (! $user) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-            ], 401);
+            throw new AuthenticationException('Unauthenticated.');
         }
 
         if ($user->isSubscribed() || $user->isOnTrial()) {
             return $next($request);
         }
 
-        return response()->json([
-            'message' => 'Access denied. An active subscription is required to perform this action.',
-            'error_type' => 'subscription_required',
-            'upgrade_required' => true,
-        ], 403);
+        throw new SubscriptionRequiredException;
     }
 }

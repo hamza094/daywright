@@ -30,6 +30,11 @@ class RouteServiceProvider extends ServiceProvider
     public const HOME = '/dashboard';
 
     /**
+     * @var array<int, string>
+     */
+    private const array API_VERSIONS = ['v1'];
+
+    /**
      * Define your route model bindings, pattern filters, etc.
      */
     #[Override]
@@ -45,11 +50,12 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function map(): void
     {
-        $this->mapApiRoutes();
+        foreach (self::API_VERSIONS as $version) {
+            $this->mapVersionedApiRoutes($version);
+            $this->mapVersionedWebRoutes($version);
+        }
 
         $this->mapWebRoutes();
-
-        $this->mapAuthRoutes();
     }
 
     protected function configureRateLimiting(): void
@@ -109,10 +115,8 @@ class RouteServiceProvider extends ServiceProvider
      * Define the "web" routes for the application.
      *
      * These routes all receive session state, CSRF protection, etc.
-     *
-     * @return void
      */
-    protected function mapWebRoutes()
+    protected function mapWebRoutes(): void
     {
         Route::middleware('web')
             ->namespace($this->namespace)
@@ -120,32 +124,55 @@ class RouteServiceProvider extends ServiceProvider
     }
 
     /**
-     * Define the "api" routes for the application.
-     *
-     * These routes are typically stateless.
-     *
-     * @return void
+     * Define the versioned API routes for the application.
      */
-    protected function mapApiRoutes()
+    protected function mapVersionedApiRoutes(string $version): void
     {
-        Route::prefix('api/v1')
+        $authRoutes = base_path("routes/auth/{$version}.php");
+        $apiRoutes = base_path("routes/api/{$version}.php");
+        $adminRoutes = base_path("routes/api/admin/{$version}.php");
+
+        if (! file_exists($authRoutes) && ! file_exists($apiRoutes) && ! file_exists($adminRoutes)) {
+            return;
+        }
+
+        Route::prefix("api/{$version}")
             ->middleware(['api'])
             ->namespace($this->namespace)
-            ->group(base_path('routes/api.php'));
+            ->group(function () use ($adminRoutes, $apiRoutes, $authRoutes, $version): void {
+                $this->groupIfRouteFileExists($authRoutes, "api.{$version}.");
+                $this->groupIfRouteFileExists($apiRoutes, "api.{$version}.");
+                $this->groupIfRouteFileExists($adminRoutes, "api.{$version}.admin.");
+
+                Route::fallback(fn () => abort(404));
+            });
     }
 
     /**
-     * Define the "auth" routes for the application.
-     *
-     * These routes are typically stateless.
-     *
-     * @return void
+     * Define the versioned web-backed API routes for the application.
      */
-    protected function mapAuthRoutes()
+    protected function mapVersionedWebRoutes(string $version): void
     {
-        Route::prefix('api')
-            ->middleware('api')
+        $webRoutes = base_path("routes/web/{$version}.php");
+
+        if (! file_exists($webRoutes)) {
+            return;
+        }
+
+        Route::prefix("api/{$version}")
+            ->middleware('web')
             ->namespace($this->namespace)
-            ->group(base_path('routes/auth.php'));
+            ->group(function () use ($version, $webRoutes): void {
+                $this->groupIfRouteFileExists($webRoutes, "api.{$version}.");
+            });
+    }
+
+    private function groupIfRouteFileExists(string $filePath, string $namePrefix): void
+    {
+        if (! file_exists($filePath)) {
+            return;
+        }
+
+        Route::name($namePrefix)->group($filePath);
     }
 }

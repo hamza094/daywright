@@ -10,7 +10,7 @@ use App\Enums\TaskStatus as TaskStatusEnum;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\Api\V1\Subscription\SubscriptionUsageService;
+use App\Services\Subscription\SubscriptionUsageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Override;
 use PHPUnit\Framework\Attributes\Test;

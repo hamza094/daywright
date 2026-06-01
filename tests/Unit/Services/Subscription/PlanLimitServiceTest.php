@@ -12,7 +12,7 @@ use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use App\Services\Api\V1\Subscription\PlanLimitService;
+use App\Services\Subscription\PlanLimitService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Override;

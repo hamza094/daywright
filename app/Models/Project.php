@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ProjectHealthStatus;
+use App\Exceptions\ArchivedResourceException;
 use App\QueryBuilder\ProjectQueryBuilder;
 use App\Traits\RecordActivity;
 use Carbon\Carbon;
@@ -18,10 +19,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Collection;
 use Override;
 
-/** @use HasFactory<ProjectFactory> */
+/**
+ * @use HasFactory<ProjectFactory>
+ *
+ * @mixin \App\QueryBuilder\ProjectQueryBuilder
+ */
 class Project extends Model
 {
     use HasFactory;
@@ -41,7 +45,7 @@ class Project extends Model
     /**
      * Accessors to append to model's array/JSON form.
      *
-     * @var array<int,string>
+     * @var list<string>
      */
     protected $appends = ['health_status'];
 
@@ -104,6 +108,42 @@ class Project extends Model
         return 'slug';
     }
 
+    #[Override]
+    public function resolveRouteBinding($value, $field = null): ?Model
+    {
+        $project = parent::resolveRouteBinding($value, $field);
+
+        if ($project !== null) {
+            return $project;
+        }
+
+        $softModel = $this->resolveSoftDeletableRouteBinding($value, $field);
+
+        if ($softModel instanceof Project && $softModel->trashed()) {
+            throw ArchivedResourceException::project();
+        }
+
+        return null;
+    }
+
+    #[Override]
+    public function resolveChildRouteBinding($childType, $value, $field): ?Model
+    {
+        $childModel = parent::resolveChildRouteBinding($childType, $value, $field);
+
+        if ($childModel !== null || $childType !== 'task') {
+            return $childModel;
+        }
+
+        $trashedChildModel = parent::resolveSoftDeletableChildRouteBinding($childType, $value, $field);
+
+        if ($trashedChildModel instanceof Task && $trashedChildModel->trashed()) {
+            throw ArchivedResourceException::task();
+        }
+
+        return null;
+    }
+
     /**
      * Create a new Eloquent query builder for the model.
      */
@@ -111,11 +151,6 @@ class Project extends Model
     public function newEloquentBuilder($query): ProjectQueryBuilder
     {
         return new ProjectQueryBuilder($query);
-    }
-
-    public function path(): string
-    {
-        return "/api/v1/projects/{$this->slug}";
     }
 
     /**
@@ -141,21 +176,29 @@ class Project extends Model
     /**
      * Get tasks releated to the project.
      *
-     * @return HasMany<Task>
+     * @return HasMany<Task, Project>
+     *
+     * @phpstan-return HasMany<Task, static>
      */
     public function tasks(): HasMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasMany(Task::class)->latest();
+
     }
 
     /**
      * Get project messages.
      *
-     * @return HasMany<Message>
+     * @return HasMany<Message, Project>
+     *
+     * @phpstan-return HasMany<Message, static>
      */
     public function messages(): HasMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasMany(Message::class);
+
     }
 
     public function addTask(string $title): Task
@@ -171,7 +214,7 @@ class Project extends Model
      * Add multiple tasks to the project.
      *
      * @param  array<int,array<string,mixed>>  $tasks
-     * @return EloquentCollection<int,Task>
+     * @return EloquentCollection<int, Task>
      */
     public function addTasks(array $tasks): EloquentCollection
     {
@@ -190,10 +233,13 @@ class Project extends Model
     /**
      * Get the project members.
      *
-     * @return BelongsToMany<User>
+     * @return BelongsToMany<User, Project, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function members(): BelongsToMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->belongsToMany(User::class, 'project_members')
             ->withPivot('active')->withTimestamps();
     }
@@ -201,7 +247,9 @@ class Project extends Model
     /**
      * Get project active members.
      *
-     * @return BelongsToMany<User>
+     * @return BelongsToMany<User, Project, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function activeMembers(): BelongsToMany
     {
@@ -213,10 +261,13 @@ class Project extends Model
     /**
      * Get the project active members.
      *
-     * @return BelongsToMany<User>
+     * @return BelongsToMany<User, Project, \Illuminate\Database\Eloquent\Relations\Pivot>
+     *
+     * @phpstan-return BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot>
      */
     public function asignees(): BelongsToMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this
             ->belongsToMany(User::class, 'project_members')
             ->wherePivot('active', true)
@@ -226,10 +277,13 @@ class Project extends Model
     /**
      * Get chat conversations releated to the project.
      *
-     * @return HasMany<Conversation>
+     * @return HasMany<Conversation, Project>
+     *
+     * @phpstan-return HasMany<Conversation, static>
      */
     public function conversations(): HasMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasMany(Conversation::class);
     }
 
@@ -269,23 +323,23 @@ class Project extends Model
     /**
      * Get all scheduled messages releated to project
      *
-     * @return Collection<int, Message>
+     * @return EloquentCollection<int, Message>
      */
-    public function scheduledMessages(): Collection
+    public function scheduledMessages(): EloquentCollection
     {
         return $this
             ->messages()
             ->where('delivered', false)
             ->whereNotNull('delivered_at')
             ->whereDate('delivered_at', '>', Carbon::now())
-            ->with('users:name')
+            ->with('users:id,uuid,name,username,avatar_path')
             ->get();
     }
 
     /**
      * Return a limited activities relation (shallow wrapper).
      *
-     * @return HasMany<Activity>
+     * @return HasMany<Activity, Project>
      */
     public function limitedActivities(): HasMany
     {
@@ -305,10 +359,13 @@ class Project extends Model
     /**
      * Get meetings releated to the project.
      *
-     * @return HasMany<Meeting>
+     * @return HasMany<Meeting, Project>
+     *
+     * @phpstan-return HasMany<Meeting, static>
      */
     public function meetings(): HasMany
     {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasMany(Meeting::class);
     }
 

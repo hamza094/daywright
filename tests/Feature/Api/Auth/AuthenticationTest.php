@@ -6,12 +6,14 @@ namespace Tests\Feature\Api\Auth;
 
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\User;
+use App\Services\Auth\LoginUserService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Override;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 use Torann\GeoIP\Facades\GeoIP;
 use Torann\GeoIP\Location;
@@ -40,12 +42,14 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function register_new_user(): void
     {
-        $this->postJson(route('auth.register'),
+        $this->postJson(route('api.v1.auth.register'),
             ['name' => 'Elvis William',
                 'email' => 'mihupocob@mailinator.com',
                 'password' => 'Password4!',
                 'password_confirmation' => 'Password4!',
-            ])->assertCreated();
+            ])
+            ->assertCreated()
+            ->assertJsonMissingPath('data.access_token');
 
         $this->assertDatabaseHas('users', ['email' => 'mihupocob@mailinator.com']);
     }
@@ -56,7 +60,7 @@ class AuthenticationTest extends TestCase
         $this->travelTo(Carbon::parse('2026-03-16 09:00:00'));
 
         try {
-            $this->postJson(route('auth.register'), [
+            $this->postJson(route('api.v1.auth.register'), [
                 'name' => 'Trial User',
                 'email' => 'trial-user@example.com',
                 'password' => 'Password4!',
@@ -80,14 +84,37 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function api_login_returns_user_and_access_token_after_successful_login(): void
     {
-        $response = $this->postJson(route('auth.login'), [
+        $response = $this->postJson(route('api.v1.auth.login'), [
             'email' => 'johndoe@example.org',
             'password' => self::TEST_PASSWORD,
         ]);
 
         $response->assertOk()
-            ->assertJsonStructure(['user', 'access_token', 'message', 'status'])
-            ->assertJsonFragment(['status' => 'success']);
+            ->assertJsonStructure([
+                'data' => [
+                    'user' => ['uuid', 'name', 'email'],
+                    'access_token',
+                ],
+            ]);
+    }
+
+    /** @test */
+    public function api_token_login_rejects_accounts_with_two_factor_enabled(): void
+    {
+        $user = User::where('email', 'johndoe@example.org')->firstOrFail();
+        $user->createTwoFactorAuth();
+        $user->enableTwoFactorAuth();
+
+        $response = $this->postJson(route('api.v1.auth.login'), [
+            'email' => 'johndoe@example.org',
+            'password' => self::TEST_PASSWORD,
+        ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'API token login is not available for accounts with two-factor authentication enabled. Use the session login flow.')
+            ->assertJsonPath('code', 'forbidden');
+
+        $this->assertFalse(session()->has((string) config('two-factor.login_state.session_key', '2fa_login')));
     }
 
     /** @test */
@@ -102,7 +129,7 @@ class AuthenticationTest extends TestCase
             ->with('8.8.8.8')
             ->andReturn(new Location(['timezone' => 'Europe/London']));
 
-        $response = $this->postJson(route('auth.login'), [
+        $response = $this->postJson(route('api.v1.auth.login'), [
             'email' => 'johndoe@example.org',
             'password' => self::TEST_PASSWORD,
         ]);
@@ -127,7 +154,7 @@ class AuthenticationTest extends TestCase
             ->with('8.8.4.4')
             ->andReturn(new Location(['timezone' => 'Europe/Paris']));
 
-        $this->postJson(route('auth.register'), [
+        $this->postJson(route('api.v1.auth.register'), [
             'name' => 'Elvis William',
             'email' => 'mihupocob@mailinator.com',
             'password' => 'Password4!',
@@ -145,7 +172,7 @@ class AuthenticationTest extends TestCase
     {
         $this->withoutMiddleware(VerifyCsrfToken::class);
 
-        $response = $this->withoutExceptionHandling()->postJson('/api/v1/session/login', [
+        $response = $this->withoutExceptionHandling()->postJson($this->apiV1Route('session.login'), [
             'email' => 'johndoe@example.org',
             'password' => self::TEST_PASSWORD,
         ]);
@@ -154,15 +181,36 @@ class AuthenticationTest extends TestCase
         $this->assertAuthenticatedAs($user, 'web');
 
         $response->assertOk()
-            ->assertJsonStructure(['user', 'message', 'status'])
-            ->assertJsonMissing(['access_token'])
-            ->assertJsonFragment(['status' => 'success']);
+            ->assertJsonStructure([
+                'data' => [
+                    'user' => ['uuid', 'name', 'email'],
+                    'features',
+                ],
+            ])
+            ->assertJsonMissingPath('data.access_token');
+    }
+
+    /** @test */
+    public function authenticated_session_user_cannot_login_again(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $user = User::where('email', 'johndoe@example.org')->firstOrFail();
+
+        $this->actingAs($user, 'web');
+
+        $this->postJson($this->apiV1Route('session.login'), [
+            'email' => 'johndoe@example.org',
+            'password' => self::TEST_PASSWORD,
+        ])
+            ->assertBadRequest()
+            ->assertJsonPath('message', 'Already authenticated.');
     }
 
     /** @test */
     public function show_validation_email_error(): void
     {
-        $response = $this->postJson(route('auth.login'), [
+        $response = $this->postJson(route('api.v1.auth.login'), [
             'email' => 'test@test.com',
             'password' => self::TEST_PASSWORD,
         ]);
@@ -174,7 +222,7 @@ class AuthenticationTest extends TestCase
     /** @test */
     public function show_validation_password_errors(): void
     {
-        $response = $this->postJson(route('auth.register'),
+        $response = $this->postJson(route('api.v1.auth.register'),
             ['name' => 'Elvis William',
                 'email' => 'mihupocob@mailinator.com',
                 'password' => 'password',
@@ -201,19 +249,38 @@ class AuthenticationTest extends TestCase
             User::first(),
         );
 
-        $response = $this->postJson(route('auth.logout'), []);
+        $response = $this->postJson(route('api.v1.auth.logout'), []);
         $response->assertOk();
     }
 
     /** @test */
     public function registration_with_existing_email_not_allowed(): void
     {
-        $this->postJson(route('auth.register'),
+        $this->postJson(route('api.v1.auth.register'),
             ['name' => 'Elvis William',
                 'email' => 'johndoe@example.org',
                 'password' => 'password',
                 'password_confirmation' => 'password',
             ])->assertUnprocessable()
             ->assertJsonValidationErrors(['email']);
+    }
+
+    /** @test */
+    public function registration_failure_returns_standardized_error_message(): void
+    {
+        $this->mock(LoginUserService::class, function ($mock): void {
+            $mock->shouldReceive('dispatchTimezoneIfNeeded')
+                ->once()
+                ->andThrow(new TransportException('Registration infrastructure failed'));
+        });
+
+        $this->postJson(route('api.v1.auth.register'), [
+            'name' => 'Elvis William',
+            'email' => 'failure@example.com',
+            'password' => 'Password4!',
+            'password_confirmation' => 'Password4!',
+        ])
+            ->assertStatus(500)
+            ->assertJsonPath('message', 'User registration failed.');
     }
 }

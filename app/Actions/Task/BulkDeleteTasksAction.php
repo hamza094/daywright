@@ -17,24 +17,24 @@ final class BulkDeleteTasksAction
      *
      * @param  array<int,int>  $taskIds
      */
-    public function handle(array $taskIds): void
+    public function execute(array $taskIds): void
     {
         if ($taskIds === []) {
             return;
         }
 
-        DB::transaction(function () use ($taskIds): void {
-            Task::withTrashed()
-                ->whereIn('id', $taskIds)
-                ->select('id')
-                ->chunkById(self::CHUNK_SIZE, function (Collection $tasks): void {
-                    $chunkTaskIds = $tasks->modelKeys();
+        Task::withTrashed()
+            ->whereIn('id', $taskIds)
+            ->select('id')
+            ->chunkById(self::CHUNK_SIZE, function (Collection $tasks): void {
+                $chunkTaskIds = $tasks->modelKeys();
 
+                DB::transaction(function () use ($chunkTaskIds): void {
                     $this->deleteTaskAssignees($chunkTaskIds);
                     $this->deleteTaskActivities($chunkTaskIds);
                     $this->forceDeleteTasks($chunkTaskIds);
-                }, column: 'id');
-        });
+                });
+            }, column: 'id');
     }
 
     /**

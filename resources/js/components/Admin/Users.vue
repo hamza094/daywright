@@ -55,26 +55,26 @@
                     </td>
                     <td>{{ user.email }}</td>
                     <td>{{ user.timezone }}</td>
-                    <td>{{ user.created_at }}</td>
-                    <td>{{ user.isSubscribed }}</td>
+                    <td>{{ user.created_at | datetime }}</td>
+                    <td>{{ user.is_subscribed }}</td>
                     <td>{{ user.projects_count }}</td>
                     <td>{{ user.projects_member }}</td>
                     <td>
-                      <span class="me-2">{{ user.isAdmin ? 'Yes' : 'No' }}</span>
+                      <span class="me-2">{{ user.is_admin ? 'Yes' : 'No' }}</span>
                       <div class="small text-muted">
                         <div v-if="user.admin_granted_by && user.admin_granted_at">
-                          Granted by {{ user.admin_granted_by }} on {{ user.admin_granted_at }}
+                          Granted by {{ user.admin_granted_by }} on {{ user.admin_granted_at | datetime }}
                         </div>
                         <div v-if="user.admin_revoked_by && user.admin_revoked_at">
-                          Revoked by {{ user.admin_revoked_by }} on {{ user.admin_revoked_at }}
+                          Revoked by {{ user.admin_revoked_by }} on {{ user.admin_revoked_at | datetime }}
                         </div>
                       </div>
                       <button
                         :disabled="adminActionUserId === user.uuid"
                         class="btn btn-sm"
-                        :class="user.isAdmin ? 'btn-outline-danger' : 'btn-outline-success'"
+                        :class="user.is_admin ? 'btn-outline-danger' : 'btn-outline-success'"
                         @click="toggleAdminAccess(user)">
-                        {{ user.isAdmin ? 'Revoke' : 'Grant' }}
+                        {{ user.is_admin ? 'Revoke' : 'Grant' }}
                       </button>
                     </td>
                   </tr>
@@ -95,11 +95,13 @@
 </template>
 <script>
 import { debounce } from 'lodash';
+import { getObjectData, getPaginatedData } from '../../utils/apiResponse.js';
+import { buildAdminUserParams, createEmptyPaginatedState } from '../../utils/adminListResponse.js';
 
 export default {
   data() {
     return {
-      users: [],
+      users: createEmptyPaginatedState(),
       from: 0,
       to: 0,
       total: 0,
@@ -118,7 +120,7 @@ export default {
     canMutateAdmin() {
       const user = this.getCurrentUser();
 
-      return !!user.isAdmin && !!user.twoFactorEnabled;
+      return !!user.is_admin && !!user.two_factor_enabled;
     },
 
     guardAdminMutation() {
@@ -134,24 +136,22 @@ export default {
     },
 
     async getResults(page = 1) {
-      const queryParameters = {
-        page: page,
-        search: this.searchTerm,
-      };
-
-      const filteredParameters = Object.fromEntries(
-        Object.entries(queryParameters).filter(([, value]) => value !== undefined && value !== ''),
-      );
+      const queryParameters = buildAdminUserParams({
+        page,
+        searchTerm: this.searchTerm,
+      });
 
       try {
         const response = await axios.get('/admin/users', {
-          params: filteredParameters,
+          params: queryParameters,
         });
 
-        this.users = response.data || '';
-        this.from = this.users.meta.from || '';
-        this.to = this.users.meta.to || '';
-        this.total = this.users.meta.total || '';
+        const users = getPaginatedData(response);
+
+        this.users = users;
+        this.from = users.meta.from || '';
+        this.to = users.meta.to || '';
+        this.total = users.meta.total || '';
       } catch (error) {
         this.handleErrorResponse(error);
       }
@@ -176,7 +176,7 @@ export default {
     },
 
     isAdminRevokeAction(user) {
-      return Boolean(user.isAdmin);
+      return Boolean(user.is_admin);
     },
 
     getAdminActionLabel(isRevoking) {
@@ -189,12 +189,8 @@ export default {
       return window.confirm(`Are you sure you want to ${actionLabel} ${user.name}?`);
     },
 
-    getAdminMutationEndpoint(user, isRevoking) {
-      if (isRevoking) {
-        return `/admin/users/${user.uuid}/revoke-admin`;
-      }
-
-      return `/admin/users/${user.uuid}/grant-admin`;
+    getAdminMutationEndpoint(user) {
+      return `/admin/users/${user.uuid}/role`;
     },
 
     async refreshCurrentUserIfNeeded(updatedUser) {
@@ -208,7 +204,7 @@ export default {
     },
 
     shouldRedirectAfterSelfRevoke(isRevoking) {
-      return isRevoking && !this.getCurrentUser()?.isAdmin;
+      return isRevoking && !this.getCurrentUser()?.is_admin;
     },
 
     getAdminSuccessMessage(responseMessage, user, isRevoking) {
@@ -241,12 +237,11 @@ export default {
       this.adminActionUserId = user.uuid;
 
       try {
-        const endpoint = this.getAdminMutationEndpoint(user, isRevoking);
+        const endpoint = this.getAdminMutationEndpoint(user);
+        const response = await axios.patch(endpoint, { is_admin: !isRevoking });
+        const updatedUser = getObjectData(response);
 
-        const response = await axios.post(endpoint);
-        const updatedUser = response?.data?.user;
-
-        if (updatedUser) {
+        if (updatedUser.uuid) {
           this.handleUpdateUser(updatedUser);
 
           const refreshedCurrentUser = await this.refreshCurrentUserIfNeeded(updatedUser);
@@ -258,7 +253,7 @@ export default {
           }
         }
 
-        this.$vToastify.success(this.getAdminSuccessMessage(response?.data?.message, user, isRevoking));
+        this.$vToastify.success(this.getAdminSuccessMessage('', user, isRevoking));
       } catch (error) {
         this.handleErrorResponse(error);
       } finally {

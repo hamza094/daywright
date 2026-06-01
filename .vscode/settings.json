@@ -49,14 +49,14 @@
   // Exclude heavy folders from Explorer (they remain on disk)
   "files.exclude": {
     "**/node_modules": true,
-    "vendor": true,
+    //"vendor": true,
     "storage": true,
     "bootstrap/cache": true,
     "public/packages": true,
     ".idea": true,
     ".cursor": true,
     "stubs": true,
-    "config": true,
+    //"config": true,
     //"database": true,
     ".phpstan-cache": true,
     //"app": true,

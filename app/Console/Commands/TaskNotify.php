@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Actions\TaskDueAction;
+use App\Actions\SendTaskDueNotificationAction;
 use App\Models\Task;
 use Exception;
 use Illuminate\Console\Command;
@@ -16,7 +16,7 @@ class TaskNotify extends Command
 
     protected $description = 'Send tasks due notification on scheduled time';
 
-    public function __construct(protected TaskDueAction $taskDueAction)
+    public function __construct(protected SendTaskDueNotificationAction $sendTaskDueNotificationAction)
     {
         parent::__construct();
     }
@@ -34,7 +34,7 @@ class TaskNotify extends Command
                 'assignee:id,name',
                 'project:id,name,slug',
             ])
-            ->chunk(50, fn ($tasks) => $this->processTasks($tasks));
+            ->chunk(50, fn (\Illuminate\Support\Collection $tasks) => $this->processTasks($tasks));
 
         $this->info('Task notifications sent successfully.');
 
@@ -44,15 +44,14 @@ class TaskNotify extends Command
     /**
      * Process each task in the chunk.
      *
-     * @param  \Illuminate\Database\Eloquent\Collection  $tasks
+     * @param  \Illuminate\Database\Eloquent\Collection<int, Task>  $tasks
      */
-    private function processTasks($tasks): void
+    private function processTasks(\Illuminate\Support\Collection $tasks): void
     {
         foreach ($tasks as $task) {
             try {
-                if ($this->taskDueAction->shouldNotify($task)) {
-                    $this->taskDueAction->sendNotification($task);
-                }
+                /** @var Task $task */
+                $this->sendTaskDueNotificationAction->execute($task);
             } catch (Exception $e) {
                 Log::error('Failed to process task notification', [
                     'task_id' => $task->id,

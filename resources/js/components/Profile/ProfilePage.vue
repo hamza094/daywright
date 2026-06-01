@@ -64,15 +64,15 @@
             </p>
 
             <p class="crm-info">
-              <b>Created At</b>: <span> {{ user.created_at }} </span>
+              <b>Created At</b>: <span> {{ user.created_at | datetime }} </span>
             </p>
 
             <p class="crm-info">
-              <b>Updated At</b>: <span> {{ user.updated_at }} </span>
+              <b>Updated At</b>: <span> {{ user.updated_at | datetime }} </span>
             </p>
 
             <p class="crm-info">
-              <b>Last Seen</b>: <span> {{ user.updated_at }} </span>
+              <b>Last Seen</b>: <span> {{ user.updated_at | msgTime }} </span>
             </p>
           </div>
 
@@ -107,6 +107,7 @@ import UserTokens from './UserTokens.vue';
 import TwoFactorAuth from './TwoFactorAuth.vue';
 import FeatureDropdown from '../FeatureDropdown.vue';
 import { mapState, mapMutations } from 'vuex';
+import { getResponseData } from '../../utils/apiResponse.js';
 
 export default {
   components: { EditProfile, UserAvatar, ProjectInvitation, FeatureDropdown, UserTokens, TwoFactorAuth },
@@ -133,7 +134,8 @@ export default {
       axios
         .get('/users/' + encodeURIComponent(this.$route.params.uuid))
         .then((response) => {
-          const user = response.data.user;
+          const user = getResponseData(response);
+
           this.updateUser(user);
           this.updateUserAvatar(user.avatar);
           this.owner = this.user.uuid === this.auth;
@@ -148,7 +150,7 @@ export default {
           this.$vToastify.loader('Please Wait Removing Avatar');
 
           axios
-            .patch('/users/' + this.user.id + '/avatar_remove')
+            .delete('/users/' + this.user.id + '/avatar')
             .then((response) => {
               this.$vToastify.info(response.data.message);
               this.user.avatar = null;

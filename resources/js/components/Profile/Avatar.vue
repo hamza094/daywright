@@ -37,6 +37,7 @@
 <script>
 import VueCropper from 'vue-cropperjs';
 import { mapMutations } from 'vuex';
+import { getObjectData } from '../../utils/apiResponse.js';
 
 const MAX_AVATAR_BYTES = 700 * 1024; // mirrors backend max:700 rule
 const UPLOAD_LOADER_MESSAGE = 'Please Wait Avatar Uploading';
@@ -256,7 +257,7 @@ export default {
 
       try {
         const response = await axios.post('/users/' + this.userId + '/avatar', formData);
-        this.updateUserAvatar(response.data.avatar);
+        this.updateUserAvatar(getObjectData(response).avatar || null);
         this.$vToastify.success('Avatar Updated Successfully');
         this.closeAvatarModal();
       } catch (error) {

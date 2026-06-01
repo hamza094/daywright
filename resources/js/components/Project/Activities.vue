@@ -54,7 +54,7 @@
                   <p class="activity-info mt-1">
                     <span>{{ activity.user.name }}</span>
                     <span class="activity-info_dot mx-2"></span>
-                    <span>{{ activity.time }}</span>
+                    <span>{{ activity.time | msgTime }}</span>
                   </p>
                 </li>
               </ul>

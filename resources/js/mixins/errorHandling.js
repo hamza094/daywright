@@ -1,3 +1,5 @@
+import { parseApiError } from '../utils/apiResponse.js';
+
 function isCanceledRequestError(error) {
   const message = typeof error?.message === 'string' ? error.message : '';
 
@@ -12,14 +14,15 @@ export function logApiError(error) {
   }
 
   const response = error?.response;
-  const data = response?.data;
+  const { payload } = parseApiError(error);
 
   if (import.meta?.env?.DEV) {
     console.debug('API error response', {
       status: response?.status,
-      message: data?.message,
-      error: data?.error,
-      errors: data?.errors,
+      message: payload?.message,
+      code: payload?.code,
+      errors: payload?.errors,
+      meta: payload?.meta,
     });
   }
 }
@@ -38,20 +41,20 @@ function showToastError(toast, message) {
   return true;
 }
 
-function showPlanLimitModal(modal, data) {
+function showPlanLimitModal(modal, message, meta) {
   if (typeof modal?.show !== 'function') {
     return false;
   }
 
   modal.show('PlanLimitModal', {
-    message: data.message,
-    reason: data.reason,
-    limitType: data.limit_type,
-    limitLabel: data.limit_label,
-    currentUsage: data.current_usage,
-    maxAllowed: data.max_allowed,
-    limitScope: data.limit_scope,
-    canUpgrade: data.can_upgrade,
+    message,
+    reason: meta.reason,
+    limitType: meta.limit_type,
+    limitLabel: meta.limit_label,
+    currentUsage: meta.current_usage,
+    maxAllowed: meta.max_allowed,
+    limitScope: meta.limit_scope,
+    canUpgrade: meta.can_upgrade,
   });
 
   return true;
@@ -73,7 +76,7 @@ function redirectToSubscription(router) {
 
 export function handleGlobalApiError(error, { modal, toast, router } = {}) {
   const response = error?.response;
-  const data = response?.data;
+  const { code, message, meta } = parseApiError(error);
 
   if (isCanceledRequestError(error)) {
     markGlobalApiHandled(error);
@@ -93,8 +96,9 @@ export function handleGlobalApiError(error, { modal, toast, router } = {}) {
     return true;
   }
 
-  if (data?.error_type === 'plan_limit_exceeded') {
-    const surfaced = showPlanLimitModal(modal, data) || showToastError(toast, data.message || 'Plan limit reached.');
+  if (code === 'plan_limit_exceeded') {
+    const surfaced =
+      showPlanLimitModal(modal, message, meta) || showToastError(toast, message || 'Plan limit reached.');
 
     if (!surfaced) {
       return false;
@@ -105,11 +109,8 @@ export function handleGlobalApiError(error, { modal, toast, router } = {}) {
     return true;
   }
 
-  if (data?.error_type === 'subscription_required') {
-    const showedToast = showToastError(
-      toast,
-      data.message || 'An active subscription is required to perform this action.',
-    );
+  if (code === 'subscription_required') {
+    const showedToast = showToastError(toast, message || 'An active subscription is required to perform this action.');
     const redirected = redirectToSubscription(router);
     const surfaced = showedToast || redirected;
 
@@ -128,7 +129,7 @@ export function handleGlobalApiError(error, { modal, toast, router } = {}) {
 export default {
   methods: {
     handleErrorResponse(error) {
-      const data = error?.response?.data;
+      const { errors: validationErrors, message } = parseApiError(error);
 
       logApiError(error);
 
@@ -140,12 +141,12 @@ export default {
         return;
       }
 
-      if (data?.errors) {
+      if (Object.keys(validationErrors).length > 0) {
         if (this.errors !== undefined) {
-          this.errors = data.errors;
+          this.errors = validationErrors;
         }
 
-        const firstValidationMessage = Object.values(data.errors)
+        const firstValidationMessage = Object.values(validationErrors)
           .flat()
           .find((message) => typeof message === 'string' && message.trim() !== '');
 
@@ -154,21 +155,16 @@ export default {
           return;
         }
 
-        if (data?.message) {
-          this.$vToastify.error(data.message);
+        if (message) {
+          this.$vToastify.error(message);
           return;
         }
 
         return;
       }
 
-      if (data?.error) {
-        this.$vToastify.error(data.error);
-        return;
-      }
-
-      if (data?.message) {
-        this.$vToastify.error(data.message);
+      if (message) {
+        this.$vToastify.error(message);
         return;
       }
 

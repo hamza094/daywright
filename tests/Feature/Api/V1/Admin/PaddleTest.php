@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1\Admin;
 
 use App\Collections\Paddle\DataCollection;
-use App\DataTransferObjects\Paddle\Data;
+use App\DataTransferObjects\Paddle\PaddleSubscriptionData as Data;
 use App\Interfaces\PaddleApi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,12 +15,12 @@ use Override;
 use PHPUnit\Framework\Attributes\Test;
 use RuntimeException;
 use Tests\TestCase;
+use Tests\Traits\EnablesUserTwoFactor;
 
 class PaddleTest extends TestCase
 {
+    use EnablesUserTwoFactor;
     use RefreshDatabase;
-
-    private const string SUBSCRIPTIONS_ROUTE = '/api/v1/admin/subscriptions/list';
 
     private User $admin;
 
@@ -50,7 +50,7 @@ class PaddleTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $this->getJson(self::SUBSCRIPTIONS_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('subscriptions.list'))
             ->assertForbidden();
     }
 
@@ -84,7 +84,7 @@ class PaddleTest extends TestCase
                 ]));
         });
 
-        $response = $this->getJson(self::SUBSCRIPTIONS_ROUTE)
+        $response = $this->getJson($this->apiV1AdminRoute('subscriptions.list'))
             ->assertOk()
             ->assertJsonStructure([
                 'data' => [[
@@ -115,20 +115,10 @@ class PaddleTest extends TestCase
                 ->andThrow(new RuntimeException('Connection timed out'));
         });
 
-        $this->getJson(self::SUBSCRIPTIONS_ROUTE)
+        $this->getJson($this->apiV1AdminRoute('subscriptions.list'))
             ->assertStatus(500)
-            ->assertJsonStructure(['error'])
-            ->assertJsonPath('error', 'Connection timed out');
-    }
-
-    private function enableTwoFactorForUser(User $user): void
-    {
-        $twoFactor = $user->createTwoFactorAuth();
-
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
-
-        $user->enableTwoFactorAuth();
+            ->assertJsonStructure(['message', 'code', 'errors', 'meta'])
+            ->assertJsonPath('message', 'An unexpected server error occurred.')
+            ->assertJsonPath('code', 'internal_server_error');
     }
 }

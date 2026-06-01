@@ -3,14 +3,15 @@
     <div class="auth-card">
       <div class="row g-0 align-items-stretch">
         <div class="col-lg-6 d-none d-lg-flex auth-visual">
-          <img src="/img/sign_in.svg" alt="Sign in illustration" class="auth-visual_img" />
+          <img :src="illustrationSrc" alt="Sign in illustration" class="auth-visual_img" />
         </div>
         <div class="col-lg-6 col-12 auth-form">
           <div class="auth-logo text-center mb-4">
             <a href="/" aria-label="Back to welcome">
-              <img src="/img/D2.png" alt="DayWright" class="auth-logo_img" />
+              <img :src="logoSrc" alt="DayWright" class="auth-logo_img" />
             </a>
           </div>
+
           <h2 class="auth-title text-center mb-2">Hello again!</h2>
           <p class="auth-subtitle text-center mb-4">Welcome back — sign in to continue.</p>
 
@@ -88,6 +89,7 @@
 
 <script>
 import { mapActions } from 'vuex';
+import { getObjectData } from '../../utils/apiResponse.js';
 
 export default {
   beforeRouteLeave(to, from, next) {
@@ -96,6 +98,8 @@ export default {
   },
   data() {
     return {
+      illustrationSrc: '/img/sign_in.svg',
+      logoSrc: '/img/D2.png',
       user: {
         email: '',
         password: '',
@@ -117,7 +121,7 @@ export default {
       axios
         .get(`/auth/redirect/${provider}`)
         .then((response) => {
-          window.location.href = response.data.redirect_url;
+          globalThis.location.href = getObjectData(response).redirect_url;
         })
         .catch((error) => {
           this.handleErrorResponse(error);

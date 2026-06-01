@@ -33,7 +33,7 @@
             <div class="info-item">
               <span class="info-label">Created:</span>
               <span class="info-value">
-                {{ project.created_at }}
+                {{ project.created_at | date }}
               </span>
             </div>
           </div>

@@ -81,7 +81,7 @@
               </FormGroup>
 
               <FormGroup id="start_time" label="Start Time:" :error="errors.start_time">
-                <datetime type="datetime" v-model="form.start_time" value-zone="local" zone="local"></datetime>
+                <datetime type="datetime" v-model="form.start_time" value-zone="UTC" :zone="displayTimezone"></datetime>
               </FormGroup>
             </div>
 
@@ -102,8 +102,10 @@
 </template>
 
 <script>
-import { mapMutations } from 'vuex';
 import FormGroup from './../FormGroup.vue';
+import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
+import { getDisplayTimezone, toUtcIsoString } from '../../../utils/dateTime';
+import { getObjectData } from '../../../utils/apiResponse.js';
 
 export default {
   components: { FormGroup },
@@ -128,25 +130,39 @@ export default {
     };
   },
 
+  computed: {
+    displayTimezone() {
+      return getDisplayTimezone();
+    },
+  },
+
   mounted() {
+    this.createMeetingRequest = createIdempotentRequest();
     this.$bus.on('open-meeting-modal', this.openMeetingModal);
   },
 
   destroyed() {
+    this.createMeetingRequest?.reset();
     this.$bus.off('open-meeting-modal', this.openMeetingModal);
   },
 
   methods: {
-    ...mapMutations('meeting', ['addMeeting']),
-
     createMeeting() {
       this.initializeMeetingCreation();
 
-      axios
-        .post(`/projects/${this.projectSlug}/meetings`, this.form)
+      const payload = {
+        ...this.form,
+      };
+
+      this.createMeetingRequest
+        .post(`/projects/${this.projectSlug}/meetings`, payload)
         .then((response) => {
+          const meeting = getObjectData(response);
+
           this.$bus.emit('get-results');
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success(
+            meeting.topic ? `Meeting ${meeting.topic} created successfully.` : 'Meeting created successfully.',
+          );
           this.modalClose();
         })
         .catch((error) => {
@@ -160,6 +176,7 @@ export default {
 
     initializeMeetingCreation() {
       this.booleanJoinBeforeHost();
+      this.form.start_time = toUtcIsoString(this.form.start_time) || this.form.start_time;
 
       this.loaderId = this.$vToastify.loader('Creating meeting, please wait...');
 
@@ -180,6 +197,7 @@ export default {
 
     modalClose() {
       this.$modal.hide('MeetingModal');
+      this.createMeetingRequest.reset();
       this.errors = {};
       this.form = Object.assign({}, this.$options.data().form);
     },

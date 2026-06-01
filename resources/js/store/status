@@ -1,3 +1,5 @@
+import { getArrayData, getObjectData, getResponseMessage } from '../utils/apiResponse.js';
+
 const state = {
   statuses:[],
 };
@@ -32,20 +34,44 @@ const actions = {
   loadStatuses({ commit }) {
     	return axios.get(`/admin/statuses`)
         .then(response => {
-        commit('setStatuses', response.data);
+        commit('setStatuses', getArrayData(response));
         })
         .catch(error => {
-          this.handleErrorResponse(error);
+          throw error;
         })
       },
 
     async addNewStatus({ commit }, statusData) {
     try {
       const response = await axios.post('/admin/statuses', statusData);
-      commit('addStatus', response.data.status);
+      commit('addStatus', getObjectData(response));
     } catch (error) {
-      console.error('Error adding status:', error);
       throw error; 
+    }
+  },
+
+    async updateExistingStatus({ commit }, { statusId, statusData }) {
+    try {
+      const response = await axios.put(`/admin/statuses/${statusId}`, statusData);
+      const status = getObjectData(response);
+
+      commit('statusUpdate', status);
+
+      return status;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+    async deleteExistingStatus({ commit }, statusId) {
+    try {
+      const response = await axios.delete(`/admin/statuses/${statusId}`);
+
+      commit('statusDelete', statusId);
+
+      return getResponseMessage(response);
+    } catch (error) {
+      throw error;
     }
   },
 };

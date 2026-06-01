@@ -6,7 +6,7 @@ namespace App\Actions\ProjectMetrics;
 
 use App\Models\Project;
 
-class CommunicationHealthMetricAction
+final class CommunicationHealthMetricAction
 {
     /**
      * Calculate communication health from recent conversations using a
@@ -36,8 +36,7 @@ class CommunicationHealthMetricAction
      * - logBase: logarithm base (> 1 to be valid)
      *
      * Returns an associative array with keys: maxScore, scale, logBase.
-     */
-    /**
+     *
      * @return array{maxScore: float, scale: float, logBase: float}
      */
     private function resolveCommunicationConfig(): array

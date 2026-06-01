@@ -16,7 +16,7 @@ class FeatureFlagsTest extends TestCase
     #[Test]
     public function non_admin_user_cannot_access_project_messaging_routes(): void
     {
-        $this->getJson($this->project->path().'/messages/scheduled')
+        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))
             ->assertForbidden();
     }
 
@@ -25,14 +25,20 @@ class FeatureFlagsTest extends TestCase
     {
         $this->user->forceFill(['is_admin' => true])->save();
 
-        $this->getJson($this->project->path().'/messages/scheduled')
-            ->assertNoContent();
+        $this->getJson($this->apiV1ProjectRoute('projects.messages.scheduled', $this->project))
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonStructure([
+                'data',
+                'links',
+                'meta',
+            ]);
     }
 
     #[Test]
     public function non_admin_user_cannot_access_project_export(): void
     {
-        $this->getJson($this->project->path().'/export')
+        $this->getJson($this->apiV1ProjectRoute('projects.export', $this->project))
             ->assertForbidden();
     }
 
@@ -41,18 +47,16 @@ class FeatureFlagsTest extends TestCase
     {
         $this->user->forceFill(['is_admin' => true])->save();
 
-        $this->getJson($this->project->path().'/export')
+        $this->getJson($this->apiV1ProjectRoute('projects.export', $this->project))
             ->assertOk();
     }
 
     #[Test]
     public function me_response_not_includes_feature_flags_for_non_admin_user_if_not_active(): void
     {
-        $this->getJson('/api/v1/me')
+        $this->getJson($this->apiV1Route('users.me.show'))
             ->assertOk()
-            ->assertJson([
-                'features' => [],
-            ]);
+            ->assertJsonPath('data.features', []);
     }
 
     #[Test]
@@ -60,13 +64,9 @@ class FeatureFlagsTest extends TestCase
     {
         $this->user->forceFill(['is_admin' => true])->save();
 
-        $this->getJson('/api/v1/me')
+        $this->getJson($this->apiV1Route('users.me.show'))
             ->assertOk()
-            ->assertJson([
-                'features' => [
-                    'project_export' => true,
-                    'project_messaging' => true,
-                ],
-            ]);
+            ->assertJsonPath('data.features.project_export', true)
+            ->assertJsonPath('data.features.project_messaging', true);
     }
 }

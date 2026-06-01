@@ -209,14 +209,11 @@
                     <th class="w-1">
                       No.
                       <i
-                        v-if="currentSort === 'asc' || currentSort === ''"
+                        v-if="currentSort === 'created_at'"
                         class="fa-solid fa-angle-up angle-pointer"
-                        @click="toggleSort('asc')"></i>
+                        @click="toggleSort()"></i>
 
-                      <i
-                        v-if="currentSort === 'desc'"
-                        class="fa-solid fa-angle-down angle-pointer"
-                        @click="toggleSort('desc')"></i>
+                      <i v-else class="fa-solid fa-angle-down angle-pointer" @click="toggleSort()"></i>
                     </th>
                     <th>Name</th>
                     <th>Desc</th>
@@ -272,7 +269,7 @@
                         <div>({{ project.owner.username }})</div>
                       </router-link>
                     </td>
-                    <td><span class="text-white badge bg-success me-1"></span> {{ project.created_at }}</td>
+                    <td><span class="text-white badge bg-success me-1"></span> {{ project.created_at | datetime }}</td>
                     <td>{{ project.tasks_count }}</td>
                     <td>{{ project.members_count }}</td>
                   </tr>
@@ -295,17 +292,19 @@
 </template>
 <script>
 import { debounce } from 'lodash';
+import { getArrayData, getPaginatedData, getResponseMessage } from '../../utils/apiResponse.js';
+import { buildAdminProjectParams, createEmptyPaginatedState, toggleSortToken } from '../../utils/adminListResponse.js';
 
 export default {
   data() {
     return {
-      projects: [],
+      projects: createEmptyPaginatedState(),
       stages: [],
       selectedProjects: [],
       selectAll: false,
       appliedFilters: [],
       totalProjects: 0,
-      currentSort: 'asc',
+      currentSort: '-created_at',
       from: 0,
       to: 0,
       total: 0,
@@ -342,7 +341,7 @@ export default {
     canMutateAdmin() {
       const user = this.$store.state.currentUser.user || {};
 
-      return !!user.isAdmin && !!user.twoFactorEnabled;
+      return !!user.is_admin && !!user.two_factor_enabled;
     },
     guardAdminMutation() {
       if (this.canMutateAdmin()) {
@@ -359,7 +358,7 @@ export default {
       axios
         .get('/stages')
         .then((response) => {
-          this.stages = response.data;
+          this.stages = getArrayData(response);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -394,38 +393,29 @@ export default {
     },
 
     getResults(page = 1) {
-      const queryParameters = {
-        page: page,
-        search: this.searchTerm,
-        sort: this.currentSort,
-        filter: this.form.projects,
-        members: this.form.hasMembers ? 'true' : undefined,
-        status: this.form.status,
-        tasks: this.form.activeTasks ? 'true' : undefined,
-        stage: this.form.stage,
-        from: this.form.startdate,
-        to: this.form.enddate,
-      };
-
-      const filteredParameters = Object.fromEntries(
-        Object.entries(queryParameters).filter(([, value]) => value !== undefined && value !== ''),
-      );
+      const queryParameters = buildAdminProjectParams({
+        page,
+        searchTerm: this.searchTerm,
+        currentSort: this.currentSort,
+        filters: this.form,
+      });
 
       this.isLoading = true;
       this.errorMessage = '';
 
       axios
         .get(`/admin/projects`, {
-          params: filteredParameters,
+          params: queryParameters,
         })
         .then((response) => {
-          this.projects = response.data.projects;
-          this.from = this.projects.meta.from || '';
-          this.to = this.projects.meta.to || '';
-          this.total = this.projects.meta.total || '';
+          const projects = getPaginatedData(response);
 
-          this.appliedFilters = response.data.appliedFilters;
-          this.message = this.projects?.data && this.projects.data.length > 0 ? '' : response.data.message || '';
+          this.projects = projects;
+          this.from = projects.meta.from || '';
+          this.to = projects.meta.to || '';
+          this.total = projects.meta.total || '';
+          this.appliedFilters = Array.isArray(projects.meta.applied_filters) ? projects.meta.applied_filters : [];
+          this.message = projects.data.length > 0 ? '' : 'No projects found.';
         })
         .catch((error) => {
           this.errorMessage = 'Failed to load projects. Please try again.';
@@ -436,8 +426,8 @@ export default {
         });
     },
 
-    toggleSort(order) {
-      this.currentSort = this.currentSort === order ? (order === 'asc' ? 'desc' : 'asc') : order;
+    toggleSort() {
+      this.currentSort = toggleSortToken(this.currentSort, 'created_at');
       this.getResults();
     },
 
@@ -460,7 +450,7 @@ export default {
               data: { project_ids: this.selectedProjects },
             })
             .then((response) => {
-              this.$vToastify.success(response.data.message);
+              this.$vToastify.success(getResponseMessage(response) || 'Projects deleted successfully.');
               this.getResults();
             })
             .catch((error) => {

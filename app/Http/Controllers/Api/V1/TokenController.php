@@ -4,83 +4,64 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\Subscription\PlanLimitType;
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\UserTokenRequest;
+use App\Http\Requests\Api\V1\User\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
-use App\Models\User;
-use App\Services\Api\V1\Subscription\PlanLimitService;
+use App\Http\Resources\Api\V1\TokenStoreResource;
+use App\Services\Auth\ApiTokenService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class TokenController extends ApiController
 {
+    public function __construct(private readonly ApiTokenService $apiTokenService) {}
+
     /**
      * List all personal access tokens
      *
-     * This endpoint returns all personal access tokens for the authenticated user.
+     * Returns the authenticated user's existing personal access tokens.
      */
     public function index(): JsonResponse
     {
-        $tokens = $this->authenticatedUser()->tokens;
+        $tokens = $this->apiTokenService->listForUser($this->authenticatedUser());
 
-        return response()->json([
-            'tokens' => TokenResource::collection($tokens),
-        ], 200);
+        return TokenResource::collection($tokens)->response();
     }
 
     /**
      * Create a new personal access token
      *
-     * This endpoint creates a new personal access token for the authenticated user.
+     * Creates a new personal access token for the authenticated user.
      */
-    public function store(UserTokenRequest $request, PlanLimitService $planLimitService): JsonResponse
+    public function store(UserTokenRequest $request): JsonResponse
     {
         $data = $request->validated();
+        try {
+            $expiresAt = empty($data['expires_at']) ? null : Carbon::parse($data['expires_at']);
+        } catch (Throwable) {
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Invalid expires_at format.');
+        }
 
-        $token = $planLimitService->executeWithinAccountLimit(
-            PlanLimitType::ApiTokens,
-            $this->authenticatedUser(),
-            fn (User $user) => $user->createToken(
-                $data['name'],
-                ['*'],
-                Carbon::parse($data['expires_at'] ?? null)
-            )
+        $token = $this->apiTokenService->createForUser($this->authenticatedUser(), $data['name'], $expiresAt);
+
+        return $this->respondWithData(
+            new TokenStoreResource($token->plainTextToken, $token->accessToken),
+            Response::HTTP_CREATED,
         );
-
-        return response()->json([
-            'token' => $token->plainTextToken,
-            'token_resource' => new TokenResource($token->accessToken),
-            'message' => 'Token created successfully.',
-        ], 201);
     }
 
     /**
      * Delete a personal access token
      *
-     * This endpoint deletes a personal access token by ID for the authenticated user. Cannot delete the current session token via this route.
+     * Deletes a personal access token by ID for the authenticated user.
+     * The current token used for this request cannot be deleted through this route.
      */
-    public function destroy(int $tokenId): JsonResponse
+    public function destroy(int $token): JsonResponse
     {
-        $user = $this->authenticatedUser();
-        $currentToken = $user->currentAccessToken();
+        $this->apiTokenService->deleteForUser($this->authenticatedUser(), $token);
 
-        // @phpstan-ignore-next-line
-        if (! $currentToken) {
-            return response()->json(['message' => 'No current access token found.'], 403);
-        }
-
-        /** @var \Laravel\Sanctum\PersonalAccessToken $currentToken */
-        if ($currentToken->id === $tokenId) {
-            return response()->json([
-                'message' => 'Cannot delete the current session token via this route.',
-            ], 403);
-        }
-
-        $deleted = $user->tokens()->where('id', $tokenId)->delete();
-
-        return $deleted
-            ? response()->json(['message' => 'Token deleted.'], 200)
-            : response()->json(['message' => 'Token not found.'], 404);
+        return $this->respondWithMessage('Token deleted successfully.');
     }
 }

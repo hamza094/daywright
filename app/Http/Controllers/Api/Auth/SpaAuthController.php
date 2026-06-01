@@ -6,7 +6,9 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Auth\LoginUserRequest;
-use App\Services\Api\V1\Auth\LoginUserService;
+use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
+use App\Services\Auth\LoginUserService;
+use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,24 +18,31 @@ class SpaAuthController extends ApiController
     public function __construct(protected LoginUserService $loginUserService) {}
 
     /**
-     * @unauthenticated
-     * SPA session login (cookie-based via Sanctum stateful).
+     * Sign in a browser session.
      *
-     * Establishes a session for first-party SPA clients.
+     * Establishes a Sanctum-backed session for first-party browser clients.
+     * When two-factor authentication is enabled, this flow returns the challenge state instead.
+     *
+     * @unauthenticated
      */
+    #[ScrambleResponse(
+        status: 200,
+        description: 'Session created successfully or a two-factor challenge is required.',
+        type: 'array{data: AuthenticatedSessionResource|\App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource}',
+    )]
     public function loginSpa(LoginUserRequest $request): JsonResponse
     {
-        $result = $this->loginUserService->startLoginFlow($request->email);
+        $result = $this->loginUserService->startLoginFlow($request->email, $request);
 
         $user = $result->user;
 
-        if (($response = $this->loginUserService->twoFactorStateResponse($result)) instanceof JsonResponse) {
+        if (($response = $this->loginUserService->twoFactorStateResponse($result, $request)) instanceof JsonResponse) {
             return $response;
         }
 
         $payload = $this->loginUserService->performSessionLogin($user, $request);
 
-        return response()->json($payload->toArray(), 200);
+        return $this->respondWithData(new AuthenticatedSessionResource($payload->user));
     }
 
     /**
@@ -50,6 +59,6 @@ class SpaAuthController extends ApiController
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return response()->json(['message' => 'User logout successfully'], 200);
+        return $this->respondWithMessage('User logged out successfully.');
     }
 }

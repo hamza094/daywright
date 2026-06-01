@@ -163,7 +163,7 @@
             <div class="card-body">
               <div v-for="receipt in subscription.receipts" :key="receipt.id">
                 <p>
-                  <span>{{ receipt.created_at }}</span> -
+                  <span>{{ receipt.created_at | datetime }}</span> -
                   <span>${{ receipt.amount }} {{ receipt.currency }}</span>
                   <span class="float-right">
                     <a class="btn-link" :href="$safeUrl(receipt.receipt_url)" target="_blank" rel="noopener noreferrer"
@@ -203,7 +203,10 @@
 import { mapState, mapMutations, mapGetters } from 'vuex';
 import alertNotice from '../mixins/alertNotice';
 import usageLimitHelpers from '../mixins/usageLimitHelpers';
+import { createIdempotentRequest } from '../services/IdempotencyRequestService';
 import { toastInfo, toastSuccess } from '../utils/toast';
+import { formatInUserTimezone } from '../utils/dateTime';
+import { getObjectData } from '../utils/apiResponse.js';
 
 export default {
   name: 'Subscription',
@@ -265,15 +268,19 @@ export default {
     },
 
     trialEndsAt() {
-      return this.subscription?.trial?.ends_at?.human || null;
+      return this.subscription?.trial?.ends_at
+        ? formatInUserTimezone(this.subscription.trial.ends_at, 'MMM Do YYYY')
+        : null;
     },
 
     gracePeriodEndsAt() {
-      return this.subscription?.grace_period?.ends_at?.human || null;
+      return this.subscription?.grace_period?.ends_at
+        ? formatInUserTimezone(this.subscription.grace_period.ends_at, 'MMM Do YYYY')
+        : null;
     },
 
     subscriptionCreatedAt() {
-      return this.subscription?.created_at?.human || null;
+      return this.subscription?.created_at ? formatInUserTimezone(this.subscription.created_at, 'MMM Do YYYY') : null;
     },
 
     accountUsageItems() {
@@ -300,7 +307,14 @@ export default {
 
   // Lifecycle hook: fetch subscription info on mount
   mounted() {
+    this.subscribeRequest = createIdempotentRequest();
+    this.swapSubscriptionRequest = createIdempotentRequest();
     this.fetchSubscription();
+  },
+
+  beforeDestroy() {
+    this.subscribeRequest?.reset();
+    this.swapSubscriptionRequest?.reset();
   },
 
   // Methods
@@ -318,8 +332,8 @@ export default {
     // Fetch the user's subscription info from the API
     async fetchSubscription() {
       try {
-        const response = await axios.get('/user/subscriptions');
-        this.setSubscription(response.data.subscription);
+        const response = await axios.get('/users/me/subscription');
+        this.setSubscription(getObjectData(response));
       } catch (error) {
         this.showError(error);
       }
@@ -337,8 +351,9 @@ export default {
       }
       this.isOpeningIframe = true;
       try {
-        const response = await axios.get(`/user/subscribe/${encodeURIComponent(plan)}`);
-        this.iframeSrc = response.data.paylink;
+        const payload = { plan };
+        const response = await this.subscribeRequest.post('/users/me/subscription', payload);
+        this.iframeSrc = getObjectData(response).paylink || '';
         this.isIframeOpen = true;
       } catch (error) {
         this.showError(error);
@@ -353,13 +368,10 @@ export default {
       if (result.value) {
         this.$Progress.start();
         try {
-          const response = await axios.get(`/user/subscription/swap/${encodeURIComponent(plan)}`);
-          this.setSubscription(response.data.subscription);
-          toastSuccess(response.data.message);
-          // Wait 5 seconds, then refresh subscription data once
-          setTimeout(() => {
-            this.fetchSubscription();
-          }, 5000);
+          const payload = { plan };
+          const response = await this.swapSubscriptionRequest.patch('/users/me/subscription', payload);
+          this.setSubscription(getObjectData(response));
+          toastSuccess('Subscription updated successfully.');
         } catch (error) {
           this.showError(error);
         } finally {
@@ -380,9 +392,9 @@ export default {
       if (result.value) {
         this.$Progress.start();
         try {
-          const response = await axios.get(`/user/subscription/${encodeURIComponent(plan)}/cancel`);
-          this.setSubscription(response.data.subscription);
-          toastInfo(response.data.message);
+          const response = await axios.delete('/users/me/subscription', { data: { plan } });
+          this.setSubscription(getObjectData(response));
+          toastInfo('Subscription canceled successfully.');
         } catch (error) {
           this.showError(error);
           this.$Progress.fail();

@@ -7,7 +7,7 @@ namespace Tests\Feature\Api\V1;
 use App\Jobs\SmsMessage;
 use App\Mail\ProjectMail;
 use App\Models\Message;
-use App\Services\Api\V1\SendSmsService;
+use App\Services\VonageSmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Mockery\MockInterface;
@@ -59,7 +59,7 @@ class JobsTest extends TestCase
 
         $message->users()->attach($this->user);
 
-        $mock = $this->mock(SendSmsService::class, function (MockInterface $mock): void {
+        $mock = $this->mock(VonageSmsService::class, function (MockInterface $mock): void {
             $mock->shouldReceive('send')
                 ->once()
             // ->with($project,$message)

@@ -1,10 +1,11 @@
 import axios from 'axios';
 import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
+import { getObjectData } from './apiResponse.js';
 
 export async function getToken(url, errorMessage, toastify) {
   try {
     const response = await axios.get(url);
-    return response.data;
+    return getObjectData(response);
   } catch (error) {
     toastify.error(errorMessage);
     throw error;
@@ -13,8 +14,10 @@ export async function getToken(url, errorMessage, toastify) {
 
 export async function fetchTokens(action, role, meetingId, toastify) {
   return await Promise.all([
-    action === 'start' ? getToken('/user/token', 'Unable to generate ZAK token', toastify) : Promise.resolve(null),
-    getToken(`/user/jwt/token?role=${role}&meetingId=${meetingId}`, 'Unable to generate JWT token', toastify),
+    action === 'start'
+      ? getToken('/users/me/zoom-token', 'Unable to generate ZAK token', toastify)
+      : Promise.resolve(null),
+    getToken(`/users/me/zoom-jwt-token?role=${role}&meetingId=${meetingId}`, 'Unable to generate JWT token', toastify),
   ]);
 }
 

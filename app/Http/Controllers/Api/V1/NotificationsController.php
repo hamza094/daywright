@@ -4,71 +4,77 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Enums\NotificationFilter;
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\Notifications\NotificationIndexRequest;
+use App\Http\Requests\Api\V1\Notifications\NotificationStatusUpdateRequest;
 use App\Http\Resources\Api\V1\NotificationResource;
-use App\Models\User;
+use App\Services\UserNotificationService;
+use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 class NotificationsController extends ApiController
 {
     /**
-     * Display a listing of the user's notifications.
+     * Display a paginated listing of the authenticated user's notifications.
+     *
+     * Returns the notification feed using Laravel-style pagination links and metadata.
      */
-    public function index(Request $request): LengthAwarePaginator
-    {
-        $notifications = $this->authenticatedUser()
-            ->notifications()
-            ->latest()
-            ->when($request->filter === NotificationFilter::READ->value, fn ($query) => $query->whereNotNull('read_at'))
-            ->when($request->filter === NotificationFilter::UNREAD->value, fn ($query) => $query->whereNull('read_at'))
-            ->get();
+    #[ScrambleResponse(
+        status: 200,
+        description: 'Paginated notification feed with Laravel-style pagination metadata and links.',
+        type: 'array{data: array<int, NotificationResource>, meta: array{current_page: int, from: int|null, last_page: int, links: array<int, array{url: string|null, label: string, active: bool}>, path: string, per_page: int, to: int|null, total: int}, links: array{first: string|null, last: string|null, prev: string|null, next: string|null}}',
+    )]
+    public function index(
+        NotificationIndexRequest $request,
+        UserNotificationService $userNotificationService,
+    ): JsonResponse {
+        $paginator = $userNotificationService->paginateForUser(
+            $this->authenticatedUser(),
+            $request->statusFilter(),
+            $request->perPage(),
+        );
 
-        return NotificationResource::collection($notifications)->paginate(25);
+        return NotificationResource::collection($paginator)->response();
     }
 
     /**
      * Mark all notifications as read.
+     *
+     * Marks every notification for the authenticated user as read in a single operation.
      */
-    public function markAllAsRead(): JsonResponse
+    public function markAllAsRead(UserNotificationService $userNotificationService): JsonResponse
     {
-        $this->authenticatedUser()->unreadNotifications()->update([
-            'read_at' => now(),
-        ]);
+        $userNotificationService->markAllAsRead($this->authenticatedUser());
 
-        return response()->json([
-            'message' => 'All users notifications marked as read.',
-        ], 200);
+        return $this->respondWithMessage('All users notifications marked as read.');
     }
 
     /**
      * Remove the specified notification.
+     *
+     * Deletes one notification belonging to the authenticated user.
      */
-    public function destroy($notification): JsonResponse
+    public function destroy(string $notification, UserNotificationService $userNotificationService): JsonResponse
     {
-        $this->authenticatedUser()->notifications()
-            ->findOrFail($notification)->delete();
+        $userNotificationService->deleteForUser($this->authenticatedUser(), $notification);
 
-        return response()->json([
-            'message' => 'Notification deleted successfully.',
-        ], 200);
+        return $this->respondWithMessage('Notification deleted successfully.');
     }
 
     /**
      * Update the status of a notification.
+     *
+     * Changes the read state for a single notification belonging to the authenticated user.
      */
-    public function updateStatus(Request $request, $notification): JsonResponse
-    {
-        $data = $request->validate(['status' => 'required|in:read,unread']);
+    public function updateStatus(
+        NotificationStatusUpdateRequest $request,
+        string $notification,
+        UserNotificationService $userNotificationService,
+    ): JsonResponse {
+        $status = $request->validated('status');
 
-        $userNotification = $this->authenticatedUser()->notifications()->findOrFail($notification);
+        $userNotificationService->updateStatus($this->authenticatedUser(), $notification, $status);
 
-        $data['status'] === 'read'
-            ? $userNotification->markAsRead()
-            : $userNotification->update(['read_at' => null]);
-
-        return response()->json(['message' => 'Notification status updated.']);
+        return $this->respondWithMessage('Notification status updated.');
     }
 }

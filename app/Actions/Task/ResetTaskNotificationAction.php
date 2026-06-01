@@ -4,59 +4,46 @@ declare(strict_types=1);
 
 namespace App\Actions\Task;
 
+use App\DataTransferObjects\Task\TaskUpdateData;
 use App\Models\Task;
 
 final class ResetTaskNotificationAction
 {
     /**
      * Apply notification reset rules to the validated payload.
-     *
-     * @param  array<string, mixed>  $validated
-     * @return array<string, mixed>
      */
-    public function apply(Task $task, array $validated): array
+    public function execute(Task $task, TaskUpdateData $data): TaskUpdateData
     {
-        if (! $this->shouldResetNotification($task, $validated)) {
-            return $validated;
+        if (! $this->shouldResetNotification($task, $data)) {
+            return $data;
         }
 
-        $validated['notify_sent'] = false;
-
-        return $validated;
+        return $data->withNotificationReset();
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    private function shouldResetNotification(Task $task, array $validated): bool
+    private function shouldResetNotification(Task $task, TaskUpdateData $data): bool
     {
-        return $this->dueDateChanged($task, $validated)
-            || $this->notifyRuleChanged($task, $validated);
+        return $this->dueDateChanged($task, $data)
+            || $this->notifyRuleChanged($task, $data);
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    private function dueDateChanged(Task $task, array $validated): bool
+    private function dueDateChanged(Task $task, TaskUpdateData $data): bool
     {
-        if (! isset($validated['due_at'])) {
+        if (! $data->hasDueAt()) {
             return false;
         }
 
-        $oldDue = $task->due_at?->format('Y-m-d H:i:s');
+        $oldDue = $task->due_at?->toIso8601String();
 
-        return (string) $validated['due_at'] !== $oldDue;
+        return (string) $data->dueAt() !== $oldDue;
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    private function notifyRuleChanged(Task $task, array $validated): bool
+    private function notifyRuleChanged(Task $task, TaskUpdateData $data): bool
     {
-        if (! array_key_exists('notified', $validated)) {
+        if (! $data->hasNotified()) {
             return false;
         }
 
-        return (string) $validated['notified'] !== (string) $task->notified;
+        return (string) $data->notified() !== (string) $task->notified;
     }
 }

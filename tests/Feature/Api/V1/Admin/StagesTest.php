@@ -11,9 +11,11 @@ use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Traits\EnablesUserTwoFactor;
 
 class StagesTest extends TestCase
 {
+    use EnablesUserTwoFactor;
     use RefreshDatabase;
 
     private User $admin;
@@ -32,8 +34,9 @@ class StagesTest extends TestCase
     #[Test]
     public function can_create_a_stage(): void
     {
-        $this->postJson('/api/v1/admin/stages', ['name' => 'Planning'])
-            ->assertCreated();
+        $this->postJson($this->apiV1AdminRoute('stages.store'), ['name' => 'Planning'])
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'Planning');
 
         $this->assertDatabaseHas('stages', ['name' => 'Planning']);
     }
@@ -43,7 +46,7 @@ class StagesTest extends TestCase
     {
         Stage::factory()->create(['name' => 'Planning']);
 
-        $this->postJson('/api/v1/admin/stages', ['name' => 'Planning'])
+        $this->postJson($this->apiV1AdminRoute('stages.store'), ['name' => 'Planning'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('name');
     }
@@ -53,8 +56,9 @@ class StagesTest extends TestCase
     {
         $stage = Stage::factory()->create(['name' => 'Planning']);
 
-        $this->putJson("/api/v1/admin/stages/{$stage->id}", ['name' => 'Planning'])
-            ->assertOk();
+        $this->putJson($this->apiV1AdminRoute('stages.update', ['stage' => $stage]), ['name' => 'Planning'])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Planning');
     }
 
     #[Test]
@@ -63,7 +67,7 @@ class StagesTest extends TestCase
         Stage::factory()->create(['name' => 'Planning']);
         $stage = Stage::factory()->create(['name' => 'Development']);
 
-        $this->putJson("/api/v1/admin/stages/{$stage->id}", ['name' => 'Planning'])
+        $this->putJson($this->apiV1AdminRoute('stages.update', ['stage' => $stage]), ['name' => 'Planning'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('name');
     }
@@ -79,7 +83,7 @@ class StagesTest extends TestCase
             ['name' => 'Stage 5'],
         )->create();
 
-        $this->postJson('/api/v1/admin/stages', ['name' => 'Stage 6'])
+        $this->postJson($this->apiV1AdminRoute('stages.store'), ['name' => 'Stage 6'])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('name');
     }
@@ -95,18 +99,20 @@ class StagesTest extends TestCase
             ['name' => 'Stage 5'],
         )->create();
 
-        $this->putJson("/api/v1/admin/stages/{$stages->first()->id}", ['name' => 'Renamed Stage'])
-            ->assertOk();
+        $this->putJson($this->apiV1AdminRoute('stages.update', ['stage' => $stages->first()]), ['name' => 'Renamed Stage'])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Renamed Stage');
     }
 
-    private function enableTwoFactorForUser(User $user): void
+    #[Test]
+    public function can_delete_a_stage_with_message_response(): void
     {
-        $twoFactor = $user->createTwoFactorAuth();
+        $stage = Stage::factory()->create(['name' => 'Planning']);
 
-        $twoFactor->forceFill([
-            'label' => "DayWright:{$user->email}",
-        ])->save();
+        $this->deleteJson($this->apiV1AdminRoute('stages.destroy', ['stage' => $stage]))
+            ->assertOk()
+            ->assertJsonPath('message', 'Stage deleted successfully.');
 
-        $user->enableTwoFactorAuth();
+        $this->assertDatabaseMissing('stages', ['id' => $stage->id]);
     }
 }

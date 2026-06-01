@@ -42,7 +42,7 @@
 
             <meeting-detail label="Start Time" :is-editing="isEditing">
               <template v-if="!isEditing">
-                <span>{{ meeting.start_time }}</span>
+                <span>{{ meeting.start_time | datetime }}</span>
               </template>
 
               <template v-else>
@@ -50,8 +50,8 @@
                   type="datetime"
                   :value="meeting.start_time"
                   v-model="form.start_time"
-                  value-zone="local"
-                  zone="local"
+                  value-zone="UTC"
+                  :zone="displayTimezone"
                   format="YYYY-MM-DD HH:mm:ss" />
                 <span class="text-danger font-italic" v-if="errors.start_time" v-text="errors.start_time[0]"></span>
               </template>
@@ -77,7 +77,10 @@
 
             <meeting-detail v-if="!isEditing && meeting.owner" label="Created By" :value="meeting.owner.name" />
 
-            <meeting-detail v-if="!isEditing" label="Created At" :value="meeting.created_at" />
+            <meeting-detail
+              v-if="!isEditing"
+              label="Created At"
+              :value="$options.filters.datetime(meeting.created_at)" />
 
             <meeting-detail label="Timezone" :is-editing="isEditing">
               <template v-if="!isEditing">
@@ -101,7 +104,10 @@
               </template>
             </meeting-detail>
 
-            <meeting-detail v-if="!isEditing" label="Updated At" :value="meeting.updated_at" />
+            <meeting-detail
+              v-if="!isEditing"
+              label="Updated At"
+              :value="$options.filters.datetime(meeting.updated_at)" />
 
             <meeting-detail label="Join Before Host" :is-editing="isEditing">
               <template v-if="!isEditing">
@@ -186,7 +192,10 @@
 <script>
 import { mapMutations } from 'vuex';
 import MeetingDetail from './MeetingDetail.vue';
+import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 import { shouldShowStartButton, shouldShowJoinButton } from '../../../utils/meetingUtils';
+import { getDisplayTimezone, toUtcIsoString } from '../../../utils/dateTime';
+import { getObjectData, getResponseMessage } from '../../../utils/apiResponse.js';
 
 export default {
   name: 'ViewMeetingModal',
@@ -220,11 +229,19 @@ export default {
     };
   },
 
+  computed: {
+    displayTimezone() {
+      return getDisplayTimezone();
+    },
+  },
+
   created() {
+    this.updateMeetingRequest = createIdempotentRequest();
     this.$bus.$on('view-meeting-modal', this.getMeeting);
   },
 
   beforeDestroy() {
+    this.updateMeetingRequest?.reset();
     this.$bus.$off('view-meeting-modal', this.getMeeting);
   },
 
@@ -250,12 +267,16 @@ export default {
     updateMeeting(id) {
       this.initializeUpdateMeeting();
       const filteredForm = this.filterForm();
-      axios
+      this.updateMeetingRequest
         .patch(`/projects/${this.projectSlug}/meetings/${id}`, filteredForm)
         .then((response) => {
-          this.meeting = response.data.meeting;
+          this.meeting = getObjectData(response);
           this.updateMeetingInState(this.meeting);
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success(
+            this.meeting.topic
+              ? `Meeting ${this.meeting.topic} updated successfully.`
+              : 'Meeting updated successfully.',
+          );
           this.meetingEditClose();
         })
         .catch((error) => {
@@ -275,7 +296,7 @@ export default {
         .then((response) => {
           this.meetingModalClose();
           this.removeMeetingFromState(meeting);
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success(getResponseMessage(response) || 'Meeting deleted successfully.');
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -291,7 +312,7 @@ export default {
       axios
         .get(`/projects/${this.projectSlug}/meetings/${meetingId}`)
         .then((response) => {
-          this.meeting = response.data.data;
+          this.meeting = getObjectData(response);
           this.form.agenda = this.meeting.agenda;
           this.$Progress.finish();
           this.$modal.show('ViewMeeting');
@@ -308,6 +329,7 @@ export default {
 
     meetingEditClose() {
       this.isEditing = false;
+      this.updateMeetingRequest.reset();
       this.form = {};
       this.errors = {};
       this.form.agenda = this.meeting.agenda;
@@ -315,6 +337,7 @@ export default {
 
     meetingModalClose() {
       this.$modal.hide('ViewMeeting');
+      this.updateMeetingRequest.reset();
       this.meeting = {};
     },
 
@@ -328,7 +351,7 @@ export default {
 
     initializeUpdateMeeting() {
       this.form.meeting_id = this.meeting.meeting_id;
-      this.form.start_time = this.convertToISO(this.form.start_time);
+      this.form.start_time = toUtcIsoString(this.form.start_time) || this.form.start_time;
       this.errors = {};
       this.loading = true;
       this.setLoading('Updating meeting, please wait...', 'start');
@@ -341,10 +364,6 @@ export default {
         this.$vToastify.stopLoader(this.loaderId);
         this.loaderId = null;
       }
-    },
-
-    convertToISO(date) {
-      return date ? new Date(date).toISOString() : date;
     },
   },
 };

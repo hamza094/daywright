@@ -4,20 +4,26 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Paddle;
 
-use Exception;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use App\Exceptions\ApiException;
+use Illuminate\Contracts\Debug\ShouldntReport;
+use Override;
+use Symfony\Component\HttpFoundation\Response;
 
-class SubscriptionException extends Exception
+class SubscriptionException extends ApiException implements ShouldntReport
 {
-    public function render(Request $request): JsonResponse|bool
+    public function status(): int
     {
-        if ($request->is('api/*')) {
-            return response()->json([
-                'message' => $this->getMessage(),
-            ], 409);
-        }
+        return Response::HTTP_CONFLICT;
+    }
 
-        return false;
+    public function errorCode(): string
+    {
+        return 'subscription_conflict';
+    }
+
+    #[Override]
+    protected function defaultMessage(): string
+    {
+        return 'Subscription request could not be completed.';
     }
 }

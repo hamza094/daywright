@@ -37,7 +37,7 @@
                 <td>
                   <span v-for="user in message.users" :key="user.id || (user.pivot && user.pivot.id) || user.name">
                     <router-link
-                      :to="{ name: 'Profile', params: { uuid: (user.pivot && user.pivot.id) || user.id } }"
+                      :to="{ name: 'Profile', params: { uuid: user.uuid || user.id || (user.pivot && user.pivot.id) } }"
                       class="btn btn-link">
                       {{ user.name }} </router-link
                     ><br />
@@ -64,6 +64,8 @@
 </template>
 
 <script>
+import { getPaginatedData } from '../../../utils/apiResponse.js';
+
 export default {
   props: {
     slug: { type: String, required: true },
@@ -87,7 +89,7 @@ export default {
       axios
         .get('/projects/' + this.slug + '/messages/scheduled')
         .then((response) => {
-          this.messages = response.data;
+          this.messages = getPaginatedData(response).data;
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -95,7 +97,7 @@ export default {
     },
     remove(id) {
       axios
-        .delete('/projects/' + this.slug + '/messages/' + id + '/delete')
+        .delete('/projects/' + this.slug + '/messages/' + id)
         .then(() => {
           this.scheduledMessages();
         })

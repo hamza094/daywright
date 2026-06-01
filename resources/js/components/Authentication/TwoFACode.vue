@@ -4,7 +4,7 @@
       <div class="auth-form">
         <div class="text-center mb-4">
           <a href="/" aria-label="Back to home">
-            <img src="/img/D2.png" alt="DayWright" class="auth-logo_img" />
+            <img :src="logoSrc" alt="DayWright" class="auth-logo_img" />
           </a>
         </div>
 
@@ -46,12 +46,16 @@
 
 <script>
 import { mapActions } from 'vuex';
+import { parseApiError } from '../../utils/apiResponse.js';
+import { parseTwoFactorResponse } from '../../utils/authResponse.js';
+
 export default {
   data() {
     return {
       code: '',
       loading: false,
       error: '',
+      logoSrc: '/img/D2.png',
       status: '',
     };
   },
@@ -68,12 +72,15 @@ export default {
         await this.fetch2FAStatus();
       } catch (e) {
         this.handleErrorResponse(e);
-        if (e.response?.status === 422) {
-          this.error = e.response?.data?.errors?.code?.[0] || 'Invalid code format';
-        } else if (e.response?.status === 401) {
+        const apiError = parseApiError(e, 'Network error. Please try again.');
+        const codeValidationMessage = apiError.errors.code?.[0] || '';
+
+        if (codeValidationMessage) {
+          this.error = codeValidationMessage;
+        } else if (apiError.code === 'unauthenticated') {
           this.error = 'Session expired. Please login again.';
         } else {
-          this.error = 'Network error. Please try again.';
+          this.error = apiError.message;
         }
       } finally {
         this.loading = false;
@@ -82,7 +89,7 @@ export default {
     async fetch2FAStatus() {
       try {
         const res = await this.$axios.get('/twofactor/fetch-user');
-        this.status = res.data.status;
+        this.status = parseTwoFactorResponse(res).state;
       } catch {
         this.status = '';
       }

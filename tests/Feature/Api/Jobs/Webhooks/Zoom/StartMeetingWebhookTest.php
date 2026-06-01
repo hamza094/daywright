@@ -7,7 +7,6 @@ namespace Tests\Feature\Api\Jobs\Webhooks\Zoom;
 use App\Events\MeetingStatusUpdate;
 use App\Jobs\Webhooks\Zoom\StartMeetingWebhook;
 use App\Models\Meeting;
-use App\Models\Project;
 use App\Models\User;
 use App\Notifications\Zoom\MeetingStarted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -15,15 +14,13 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
+use Tests\Traits\ProjectInvitationHelpers;
 use Tests\Traits\ProjectSetup;
 
 class StartMeetingWebhookTest extends TestCase
 {
+    use ProjectInvitationHelpers;
     use ProjectSetup,RefreshDatabase;
-
-    /**
-     * A basic feature test example.
-     */
 
     /** @test */
     public function notifies_project_members_on_meeting_start(): void
@@ -60,15 +57,13 @@ class StartMeetingWebhookTest extends TestCase
         $job->handle();
 
         $this->assertEquals('started', $meeting->fresh()->status);
+        $expectedLink = $this->apiV1Route('projects.show', ['project' => $this->project]);
+        $expectedUrl = route('api.v1.projects.show', ['project' => $this->project]);
 
         Event::assertDispatched(fn (MeetingStatusUpdate $event): bool => $event->meeting->id === $meeting->id);
 
-        Notification::assertSentTo($users, MeetingStarted::class, fn ($notification, $channels): bool => $channels === ['mail', 'database', 'broadcast']);
-    }
-
-    private function inviteAndActivateUser(Project $project, User $user): void
-    {
-        $project->invite($user);
-        $project->members()->updateExistingPivot($user->id, ['active' => true]);
+        Notification::assertSentTo($users, MeetingStarted::class, fn (MeetingStarted $notification, array $channels): bool => $channels === ['mail', 'database', 'broadcast']
+            && $notification->toDatabase($this->user)['link'] === $expectedLink
+            && $notification->toMail($this->user)->viewData['projectLink'] === $expectedUrl);
     }
 }

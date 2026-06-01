@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Paddle;
 
-use App\DataTransferObjects\Paddle\Data;
+use App\DataTransferObjects\Paddle\PaddleSubscriptionData as Data;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Zoom;
 
-use App\Actions\ZoomAction;
+use App\Actions\CreateZoomJwtAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Zoom\JwtTokenRequest;
 use App\Interfaces\Zoom;
 use Dedoc\Scramble\Attributes\ExcludeAllRoutesFromDocs;
 use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 #[ExcludeAllRoutesFromDocs]
 class ZoomTokenController extends ApiController
@@ -18,17 +19,17 @@ class ZoomTokenController extends ApiController
     {
         $token = $zoom->getZakToken($this->authenticatedUser());
 
-        return response()->json(['zak_token' => $token]);
+        return $this->respondWithData(['zak_token' => $token], Response::HTTP_OK);
     }
 
-    public function getJwtToken(JwtTokenRequest $request, ZoomAction $action): JsonResponse
+    public function getJwtToken(JwtTokenRequest $request, CreateZoomJwtAction $action): JsonResponse
     {
-        $role = $request->role;
+        $role = (int) $request->integer('role');
 
-        $meetingId = $request->meetingId;
+        $meetingId = $request->integer('meetingId');
 
-        $token = $action->handle($meetingId, $role);
+        $token = $action->execute($meetingId, $role);
 
-        return response()->json(['jwt_token' => $token]);
+        return $this->respondWithData(['jwt_token' => $token], Response::HTTP_OK);
     }
 }

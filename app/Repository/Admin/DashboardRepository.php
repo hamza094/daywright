@@ -4,11 +4,26 @@ declare(strict_types=1);
 
 namespace App\Repository\Admin;
 
+use App\Models\Activity;
+use DateTimeInterface;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 
 class DashboardRepository
 {
-    public function fetchDataForMonths($startDate, $endDate): array
+    /**
+     * @return EloquentCollection<int, Activity>
+     */
+    public function recentActivities(int $limit = 15): EloquentCollection
+    {
+        return Activity::query()
+            ->with('user', 'subject', 'project')
+            ->latest()
+            ->limit($limit)
+            ->get();
+    }
+
+    public function fetchDataForMonths(DateTimeInterface|string $startDate, DateTimeInterface|string $endDate): array
     {
         $projectsData = DB::table('projects')
             ->selectRaw('

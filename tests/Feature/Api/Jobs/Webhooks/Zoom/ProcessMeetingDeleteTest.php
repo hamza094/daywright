@@ -60,9 +60,11 @@ class ProcessMeetingDeleteTest extends TestCase
             'meeting_id' => 413,
         ]);
 
-        $this->assertThrows(
-            fn () => $job->handle(),
-            \Illuminate\Database\Eloquent\ModelNotFoundException::class
-        );
+        // The job should handle a missing meeting id gracefully and not remove other meetings.
+        $job->handle();
+
+        $this->assertDatabaseHas('meetings', [
+            'meeting_id' => 413,
+        ]);
     }
 }

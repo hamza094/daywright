@@ -14,7 +14,6 @@ import VueBus from 'vue-bus';
 import VTooltip from 'v-tooltip';
 import VueSlideoutPanel from 'vue2-slideout-panel';
 import VModal from 'vue-js-modal';
-import moment from 'moment';
 import momenttz from 'moment-timezone';
 import 'emoji-mart-vue-fast/css/emoji-mart.css';
 import alertNotice from './mixins/alertNotice';
@@ -29,6 +28,7 @@ import PortalVue from 'portal-vue';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import { sanitizeUrl } from '@braintree/sanitize-url';
 import '@tabler/core/dist/js/tabler.min.js';
+import { formatCalendarInUserTimezone, formatInUserTimezone } from './utils/dateTime';
 
 Vue.use(PortalVue);
 Vue.use(Vuex);
@@ -47,7 +47,7 @@ import { VueSpinners } from '@saeris/vue-spinners';
 Vue.use(VueSpinners);
 
 window.momenttz = momenttz;
-window.moment = moment;
+window.moment = momenttz;
 
 import router from './router.js';
 import store from './store';
@@ -57,30 +57,30 @@ Vue.mixin(conversation);
 Vue.mixin(errorHandling);
 
 Vue.filter('time', function (data) {
-  return moment(data).format('h:mm:ss a');
+  return formatInUserTimezone(data, 'h:mm:ss a');
 });
 
 Vue.filter('date', function (data) {
-  return moment(data).format('MMM Do YY');
+  return formatInUserTimezone(data, 'MMM Do YY');
 });
 
 Vue.filter('shortDate', function (value) {
-  return moment(value, 'MMMM Do YYYY, h:mm:ss a').format('MMM Do YY');
+  return formatInUserTimezone(value, 'MMM Do YY');
 });
 
 const receiptDateFilter = function (data) {
-  return moment(data).format('MMM Do YYYY');
+  return formatInUserTimezone(data, 'MMM Do YYYY');
 };
 
 // Correct spelling and keep alias for backwards compatibility
 Vue.filter('receipt_date', receiptDateFilter);
 
 Vue.filter('datetime', function (data) {
-  return moment(data).format('MMM Do YY h:mm:ss a');
+  return formatInUserTimezone(data, 'MMM Do YY h:mm:ss a');
 });
 
 Vue.filter('msgTime', function (data) {
-  return moment(data).calendar();
+  return formatCalendarInUserTimezone(data);
 });
 
 // Provide a clear, explicit helper for templates/components to sanitize URLs

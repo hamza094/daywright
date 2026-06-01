@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
+use App\DataTransferObjects\Notification\NotificationPayloadData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -16,13 +18,11 @@ class ProjectUpdated extends Notification implements ShouldBroadcast, ShouldQueu
 
     /**
      * Create a new notification instance.
-     *
-     * @return void
      */
     public function __construct(
         protected string $projectName,
-        protected string $projectPath,
-        protected array $notifierData
+        protected string $projectSlug,
+        protected NotificationActorData $notifierData
     ) {}
 
     /**
@@ -42,7 +42,7 @@ class ProjectUpdated extends Notification implements ShouldBroadcast, ShouldQueu
      */
     public function toArray(mixed $notifiable): array
     {
-        return $this->notificationData();
+        return $this->payload()->toArray();
     }
 
     /**
@@ -52,22 +52,20 @@ class ProjectUpdated extends Notification implements ShouldBroadcast, ShouldQueu
      */
     public function toBroadcast(mixed $notifiable): BroadcastMessage
     {
-        return new BroadcastMessage(
-            $this->notificationData()
+        return new BroadcastMessage($this->payload()->toArray());
+    }
+
+    private function payload(): NotificationPayloadData
+    {
+        return new NotificationPayloadData(
+            message: 'Updated project '.$this->projectName,
+            notifier: $this->notifierData,
+            link: $this->projectLink(),
         );
     }
 
-    /**
-     * Prepare the notification data.
-     *
-     * @return array<string, mixed> The notification data.
-     */
-    private function notificationData(): array
+    private function projectLink(): string
     {
-        return [
-            'message' => 'Updated project '.$this->projectName,
-            'notifier' => $this->notifierData,
-            'link' => $this->projectPath,
-        ];
+        return NotificationLink::project(projectSlug: $this->projectSlug, absolute: false);
     }
 }

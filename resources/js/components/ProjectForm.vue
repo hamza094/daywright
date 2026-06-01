@@ -103,13 +103,17 @@
   </div>
 </template>
 <script>
+import { getArrayData, getObjectData, parseApiError } from '../utils/apiResponse.js';
+
+const buildInitialForm = () => ({
+  stage_id: 1,
+  tasks: [],
+});
+
 export default {
   data() {
     return {
-      form: {
-        stage_id: 1,
-        tasks: [],
-      },
+      form: buildInitialForm(),
       stages: [],
       errors: {},
       taskError: '',
@@ -123,13 +127,13 @@ export default {
       this.$emit('closePanel', {});
       this.errors = {};
       this.taskError = '';
-      this.form = {};
+      this.form = buildInitialForm();
     },
     loadStages() {
       axios
         .get('/stages')
         .then((response) => {
-          this.stages = response.data;
+          this.stages = getArrayData(response);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -149,19 +153,24 @@ export default {
       axios
         .post('/projects', formData)
         .then((response) => {
+          const project = getObjectData(response);
+
           this.$vToastify.success('New project created');
-          this.form = { stage_id: 1, tasks: [] };
+          this.form = buildInitialForm();
           this.closePanel();
-          setTimeout(() => {
-            this.$router.push('/projects/' + response.data.project.slug);
-          }, 3000);
+
+          if (project.slug) {
+            this.$router.push('/projects/' + project.slug);
+          }
         })
         .catch((error) => {
-          if (error.response.data.message.includes('The tasks.')) {
-            this.taskError = error.response.data.message;
-            this.errors = '';
+          const { errors, message } = parseApiError(error);
+
+          if (message.includes('The tasks.')) {
+            this.taskError = message;
+            this.errors = {};
           } else {
-            this.errors = error.response.data.errors;
+            this.errors = errors;
             this.taskError = '';
           }
           this.handleErrorResponse(error);

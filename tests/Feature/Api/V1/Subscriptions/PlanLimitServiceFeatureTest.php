@@ -88,7 +88,7 @@ class PlanLimitServiceFeatureTest extends TestCase
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('message', 'Project Created Successfully');
+            ->assertJsonPath('data.name', 'Fourth Project');
     }
 
     #[Test]
@@ -187,8 +187,7 @@ class PlanLimitServiceFeatureTest extends TestCase
         $response = $this->createTask(['title' => 'Member Task']);
 
         $response->assertCreated()
-            ->assertJsonPath('message', 'Task added Successfully')
-            ->assertJsonPath('task.title', 'Member Task');
+            ->assertJsonPath('data.title', 'Member Task');
 
         $this->assertDatabaseHas('tasks', [
             'project_id' => $this->project->id,
@@ -286,17 +285,20 @@ class PlanLimitServiceFeatureTest extends TestCase
         $response->assertStatus(403)
             ->assertJson([
                 'message' => $expectedMessage,
-                'error_type' => 'plan_limit_exceeded',
-                'reason' => $reason,
-                'limit_type' => $limitType,
-                'limit_label' => $this->expectedLimitLabel($limitType),
-                'current_usage' => $currentUsage,
-                'max_allowed' => $maxAllowed,
-                'limit_scope' => $expectedLimitScope,
-                'can_upgrade' => $expectedCanUpgrade,
-                'upgrade_required' => true,
+                'code' => 'plan_limit_exceeded',
+                'errors' => [],
+                'meta' => [
+                    'reason' => $reason,
+                    'limit_type' => $limitType,
+                    'limit_label' => $this->expectedLimitLabel($limitType),
+                    'current_usage' => $currentUsage,
+                    'max_allowed' => $maxAllowed,
+                    'limit_scope' => $expectedLimitScope,
+                    'can_upgrade' => $expectedCanUpgrade,
+                    'upgrade_required' => true,
+                ],
             ])
-            ->assertJsonMissingPath('limit_owner_id');
+            ->assertJsonMissingPath('meta.limit_owner_id');
     }
 
     private function expectedLimitLabel(string $limitType): string
@@ -317,7 +319,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createProject(array $payload): TestResponse
     {
-        return $this->postJson(route('projects.store'), $payload);
+        return $this->postJson(route('api.v1.projects.store'), $payload);
     }
 
     /**
@@ -326,7 +328,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createTask(array $payload): TestResponse
     {
-        return $this->postJson(route('tasks.store', $this->project), $payload);
+        return $this->postJson(route('api.v1.tasks.store', $this->project), $payload);
     }
 
     /**
@@ -334,7 +336,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function inviteMember(string $email): TestResponse
     {
-        return $this->postJson(route('send.invitation', $this->project), ['email' => $email]);
+        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.send.invitation', $this->project), ['email' => $email]);
     }
 
     /**
@@ -342,7 +344,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createMeeting(): TestResponse
     {
-        return $this->postJson(route('meetings.store', $this->project), $this->validMeetingPayload());
+        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', $this->project), $this->validMeetingPayload());
     }
 
     /**
@@ -350,7 +352,7 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createApiToken(string $name): TestResponse
     {
-        return $this->postJson(route('api-tokens.store'), ['name' => $name]);
+        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.api-tokens.store'), ['name' => $name]);
     }
 
     private function createActiveTasks(int $count): void
@@ -377,7 +379,7 @@ class PlanLimitServiceFeatureTest extends TestCase
             'topic' => 'Test Meeting',
             'agenda' => 'Test Agenda',
             'duration' => 30,
-            'start_time' => Carbon::now()->addDay()->toDateTimeString(),
+            'start_time' => Carbon::now()->addDay()->toIso8601String(),
             'timezone' => 'UTC',
             'password' => 'abc1234',
             'join_before_host' => false,

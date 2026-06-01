@@ -44,7 +44,7 @@ const admin = (to, from, next) => {
     return next('/login');
   }
 
-  if (store.state.currentUser.user?.isAdmin) {
+  if (store.state.currentUser.user?.is_admin) {
     return next();
   }
 

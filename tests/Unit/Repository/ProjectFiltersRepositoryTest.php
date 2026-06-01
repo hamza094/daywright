@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Repository;
 
+use App\DataTransferObjects\Project\AdminProjectFilters;
 use App\Models\Project;
 use App\Repository\Admin\ProjectFiltersRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,8 +36,8 @@ class ProjectFiltersRepositoryTest extends TestCase
         /** @var Project $coldProject */
         $coldProject = Project::factory()->create(['health_score' => 20]);
 
-        $result = $this->repository->filters(['status' => 'warm'], 50, []);
-        $ids = $this->projectIdsFromResult($result);
+        $projects = $this->repository->filter(AdminProjectFilters::fromArray(['status' => 'warm']), 50);
+        $ids = $this->projectIds($projects);
 
         $this->assertCount(1, $ids);
         $this->assertSame([$warmProject->id], $ids);
@@ -56,8 +57,8 @@ class ProjectFiltersRepositoryTest extends TestCase
         /** @var Project $warmProject */
         $warmProject = Project::factory()->create(['health_score' => 58]);
 
-        $result = $this->repository->filters(['status' => 'cold'], 50, []);
-        $ids = $this->projectIdsFromResult($result);
+        $projects = $this->repository->filter(AdminProjectFilters::fromArray(['status' => 'cold']), 50);
+        $ids = $this->projectIds($projects);
 
         $this->assertCount(2, $ids);
         $this->assertContains($coldProject->id, $ids);
@@ -66,13 +67,43 @@ class ProjectFiltersRepositoryTest extends TestCase
         $this->assertNotContains($warmProject->id, $ids);
     }
 
+    #[Test]
+    public function it_defaults_to_newest_first_when_no_sort_is_provided(): void
+    {
+        /** @var Project $oldProject */
+        $oldProject = Project::factory()->create(['created_at' => now()->subDays(3)]);
+        /** @var Project $newProject */
+        $newProject = Project::factory()->create(['created_at' => now()]);
+
+        $projects = $this->repository->filter(AdminProjectFilters::fromArray([]), 50);
+        $ids = $this->projectIds($projects);
+
+        $this->assertSame($newProject->id, $ids[0]);
+        $this->assertContains($oldProject->id, $ids);
+    }
+
+    #[Test]
+    public function it_sorts_projects_by_descending_health_score_when_requested(): void
+    {
+        /** @var Project $lowHealthProject */
+        $lowHealthProject = Project::factory()->create(['health_score' => 20]);
+        /** @var Project $highHealthProject */
+        $highHealthProject = Project::factory()->create(['health_score' => 85]);
+
+        $projects = $this->repository->filter(AdminProjectFilters::fromArray(['sort' => '-health_score']), 50);
+        $ids = $this->projectIds($projects);
+
+        $this->assertSame($highHealthProject->id, $ids[0]);
+        $this->assertContains($lowHealthProject->id, $ids);
+    }
+
     /**
-     * @param  array{projects: \Illuminate\Contracts\Pagination\LengthAwarePaginator<Project>, appliedFilters: array<int, string>}  $result
+     * @param  \Illuminate\Contracts\Pagination\LengthAwarePaginator<int, Project>  $projects
      * @return list<int>
      */
-    private function projectIdsFromResult(array $result): array
+    private function projectIds(\Illuminate\Contracts\Pagination\LengthAwarePaginator $projects): array
     {
-        return collect($result['projects']->items())
+        return collect($projects->items())
             ->pluck('id')
             ->values()
             ->all();

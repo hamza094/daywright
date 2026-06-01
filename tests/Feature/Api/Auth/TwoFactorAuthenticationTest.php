@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Auth;
 
+use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -50,10 +51,10 @@ class TwoFactorAuthenticationTest extends TestCase
     {
         Sanctum::actingAs($this->user);
 
-        $response = $this->getJson(route('twofactor.fetch-user'));
+        $response = $this->getJson(route('api.v1.twofactor.fetch-user'));
 
         $response->assertOk()
-            ->assertJson(['status' => 'disabled']);
+            ->assertJsonPath('data.two_factor_state', 'disabled');
     }
 
     /** @test */
@@ -72,8 +73,10 @@ class TwoFactorAuthenticationTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJson(['status' => 'in_progress'])
-            ->assertJsonStructure(['qr_code', 'uri', 'string', 'status']);
+            ->assertJsonPath('data.two_factor_state', 'in_progress')
+            ->assertJsonStructure([
+                'data' => ['qr_code', 'uri', 'string', 'two_factor_state'],
+            ]);
 
         // Assert 2FA was created in database
         $this->assertDatabaseHas('two_factor_authentications', [
@@ -98,11 +101,8 @@ class TwoFactorAuthenticationTest extends TestCase
         ]);
 
         $response->assertOk()
-            ->assertJson([
-                'status' => 'enabled',
-                'message' => 'success',
-                'recoveryCodes' => ['abc123', 'xyz789'],
-            ]);
+            ->assertJsonPath('data.two_factor_state', 'enabled')
+            ->assertJsonPath('data.recovery_codes', ['abc123', 'xyz789']);
     }
 
     /** @test */
@@ -115,13 +115,10 @@ class TwoFactorAuthenticationTest extends TestCase
 
         Sanctum::actingAs($mockedUser);
 
-        $response = $this->getJson(route('twofactor.recovery-codes'));
+        $response = $this->getJson(route('api.v1.twofactor.recovery-codes'));
 
         $response->assertOk()
-            ->assertJson([
-                'message' => 'success',
-                'recoveryCodes' => ['abc123', 'xyz789'],
-            ]);
+            ->assertJsonPath('data.recovery_codes', ['abc123', 'xyz789']);
     }
 
     /** @test */
@@ -135,23 +132,22 @@ class TwoFactorAuthenticationTest extends TestCase
         ]);
 
         // Then disable it
-        $response = $this->deleteJson(route('twofactor.disable'));
+        $response = $this->deleteJson(route('api.v1.twofactor.disable'));
 
         $response->assertOk()
-            ->assertJson(['status' => 'disabled']);
+            ->assertJsonPath('data.two_factor_state', 'disabled');
     }
 
     /** @test */
-    public function it_shows_2fa_required_message_during_login_when_enabled(): void
+    public function it_shows_2fa_required_message_during_session_login_when_enabled(): void
     {
         $this->enableTwoFactorState();
 
         [$response] = $this->beginTwoFactorLogin();
 
-        $response->assertJson([
-            'message' => 'Two-factor authentication is enabled. Please provide the verification code.',
-            'status' => '2fa_required',
-        ]);
+        $response->assertJsonPath('data.message', 'Two-factor authentication is enabled. Please provide the verification code.')
+            ->assertJsonPath('data.two_factor_state', '2fa_required')
+            ->assertJsonMissingPath('status');
 
         $encryptedSession = session(self::TWO_FA_SESSION);
         $this->assertIsString($encryptedSession);
@@ -188,7 +184,7 @@ class TwoFactorAuthenticationTest extends TestCase
 
         $sessionData = session()->all();
 
-        $response = $this->withSession($sessionData)->postJson(route('twofactor.login-confirm'), [
+        $response = $this->withSession($sessionData)->postJson(route('api.v1.twofactor.login-confirm'), [
             'code' => '123456',
         ]);
 
@@ -209,14 +205,16 @@ class TwoFactorAuthenticationTest extends TestCase
         $this->user = $this->user->fresh();
         $code = $this->user->makeTwoFactorCode();
 
-        $response = $this->withSession(session()->all())->postJson(route('twofactor.login-confirm'), [
+        $response = $this->withSession(session()->all())->postJson(route('api.v1.twofactor.login-confirm'), [
             'code' => $code,
         ]);
 
         $response->assertOk()
             ->assertJsonStructure([
-                'user' => ['uuid', 'name', 'email'],
-                'message',
+                'data' => [
+                    'user' => ['uuid', 'name', 'email'],
+                    'features',
+                ],
             ]);
 
         $logged = User::where('email', $this->user->email)->first();
@@ -227,7 +225,7 @@ class TwoFactorAuthenticationTest extends TestCase
     /** @test */
     public function it_fails_two_factor_login_with_missing_session(): void
     {
-        $response = $this->postJson(route('twofactor.login-confirm'), [
+        $response = $this->postJson(route('api.v1.twofactor.login-confirm'), [
             'code' => '123456',
         ]);
 
@@ -248,7 +246,7 @@ class TwoFactorAuthenticationTest extends TestCase
             'expires_at' => now()->subMinutes(1), // Expired 1 minute ago
         ]));
 
-        $response = $this->postJson(route('twofactor.login-confirm'), [
+        $response = $this->postJson(route('api.v1.twofactor.login-confirm'), [
             'code' => '123456',
         ]);
 
@@ -334,7 +332,7 @@ class TwoFactorAuthenticationTest extends TestCase
 
     private function twoFactorRoute(string $name): string
     {
-        return route("twofactor.$name");
+        return route("api.v1.twofactor.$name");
     }
 
     /**
@@ -356,7 +354,7 @@ class TwoFactorAuthenticationTest extends TestCase
     }
 
     /**
-     * Start the login flow for a 2FA-enabled user and return the response and state details.
+     * Start the session login flow for a 2FA-enabled user and return the response and state details.
      *
      * @param  array<string,mixed>  $overrides
      * @return array{0:TestResponse<\Symfony\Component\HttpFoundation\Response>,1:string,2:string,3:array<string,mixed>}
@@ -368,10 +366,12 @@ class TwoFactorAuthenticationTest extends TestCase
             'password' => $this->testPassword,
         ], $overrides);
 
-        $response = $this->postJson('/api/v1/login', $payload);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $response = $this->postJson($this->apiV1Route('session.login'), $payload);
 
         $response->assertOk()
-            ->assertJson(['status' => '2fa_required']);
+            ->assertJsonPath('data.two_factor_state', '2fa_required');
 
         $sessionKey = $this->twoFactorSessionKey();
         $this->assertTrue(session()->has($sessionKey), '2FA session entry missing');

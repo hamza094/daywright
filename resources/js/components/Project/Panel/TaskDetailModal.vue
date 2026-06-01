@@ -42,7 +42,7 @@
             <span class="text-danger font-italic" v-if="errors?.member" v-text="errors?.member"></span>
 
             <p v-if="task.due_at">
-              <small><b>Task due: </b> </small> {{ task.due_at }} {{ auth.timezone }}
+              <small><b>Task due: </b> </small> {{ task.due_at | datetime }} {{ displayTimezone }}
             </p>
 
             <p v-if="task.notified">
@@ -54,11 +54,11 @@
             </p>
 
             <p>
-              <small><b>Task Created At:</b> {{ task.created_at }}</small>
+              <small><b>Task Created At:</b> {{ task.created_at | datetime }}</small>
             </p>
 
             <p v-if="task.updated_at">
-              <small><b>Task Updated At:</b> {{ task.updated_at }}</small>
+              <small><b>Task Updated At:</b> {{ task.updated_at | datetime }}</small>
             </p>
           </div>
 
@@ -105,8 +105,8 @@
                     <datetime
                       type="datetime"
                       v-model="form.due_at"
-                      value-zone="local"
-                      zone="local"
+                      value-zone="UTC"
+                      :zone="displayTimezone"
                       :min-datetime="modifiedDate"></datetime>
                   </span>
 
@@ -162,7 +162,10 @@ import { mapMutations, mapActions, mapState } from 'vuex';
 import TopPanel from './Modal/TopArea.vue';
 import TaskDescription from './Modal/TaskDescription.vue';
 import TaskMembers from './Modal/TaskMembers.vue';
+import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 import { modalClose } from '../../../mixins/modalClose';
+import { getDisplayTimezone } from '../../../utils/dateTime';
+import { getObjectData, getResponseMessage, parseApiError } from '../../../utils/apiResponse.js';
 
 export default {
   components: { TopPanel, TaskDescription, TaskMembers },
@@ -196,6 +199,9 @@ export default {
   },
   computed: {
     ...mapState('SingleTask', ['task', 'errors', 'form', 'statuses', 'due_notifies']),
+    displayTimezone() {
+      return getDisplayTimezone();
+    },
     modifiedDate() {
       const modifiedDate = new Date(this.dateTime.getTime() + 30 * 60000);
       return modifiedDate.toISOString();
@@ -205,6 +211,8 @@ export default {
     },
   },
   created() {
+    this.unassignMemberRequest = createIdempotentRequest();
+
     window.addEventListener('beforeunload', this.handleBeforeUnload);
 
     this.$bus.on('close-members-popup', () => {
@@ -213,13 +221,14 @@ export default {
   },
 
   beforeDestroy() {
+    this.unassignMemberRequest?.reset();
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
   },
 
   methods: {
     ...mapMutations('task', ['removeTaskFromState', 'pushArchivedTask', 'removeArchivedTask', 'updateTask']),
 
-    ...mapMutations('SingleTask', ['setErrors', 'updateTaskStatus', 'updateTaskDue', 'unassignTaskMember', 'setForm']),
+    ...mapMutations('SingleTask', ['setErrors', 'updateTaskStatus', 'updateTaskDue', 'updateTaskMembers', 'setForm']),
 
     ...mapActions({ fetchTasks: 'task/fetchTasks', refreshLimits: 'project/refreshLimits' }),
 
@@ -227,15 +236,17 @@ export default {
       axios
         .put(url(this.slug, id), { status_id: statusId }, { useProgress: true })
         .then((response) => {
-          this.$vToastify.success(response.data.message);
-          this.setErrors([]);
-          this.updateTaskStatus(response.data.task.status);
-          this.updateTask(response.data.task);
+          const taskData = getObjectData(response);
+
+          this.$vToastify.success('Task status updated.');
+          this.setErrors({});
+          this.updateTaskStatus(taskData.status);
+          this.updateTask(taskData);
           this.refreshLimits(this.slug);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.setErrors(error?.response?.data?.errors || {});
+          this.setErrors(parseApiError(error).errors);
         });
     },
 
@@ -243,19 +254,20 @@ export default {
       axios
         .put(url(this.slug, id), { due_at: this.form.due_at, notified: this.form.notified }, { useProgress: true })
         .then((response) => {
-          const taskData = response.data.task;
-          this.$vToastify.success(response.data.message);
-          this.setErrors([]);
+          const taskData = getObjectData(response);
+
+          this.$vToastify.success('Task due date updated.');
+          this.setErrors({});
           this.updateTaskDue({
             dueAt: taskData.due_at,
             notified: taskData.notified,
-            dueAtUtc: taskData.due_at_utc,
           });
+          this.updateTask(taskData);
           this.cancelDue();
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.setErrors(error?.response?.data?.errors || {});
+          this.setErrors(parseApiError(error).errors);
         });
     },
 
@@ -266,29 +278,26 @@ export default {
       this.setErrors([]);
     },
     unassignMember(taskId, memberId) {
-      axios
-        .patch(
-          url(this.slug, taskId) + '/unassign',
-          {
-            member: memberId,
-          },
-          { useProgress: true },
-        )
+      this.unassignMemberRequest
+        .patch(url(this.slug, taskId) + '/unassign', { member: memberId }, { useProgress: true })
         .then((response) => {
-          this.unassignTaskMember(response.data.member.id);
-          this.$vToastify.success(response.data.message);
-          this.setErrors([]);
+          const taskData = getObjectData(response);
+
+          this.updateTaskMembers(Array.isArray(taskData.members) ? taskData.members : []);
+          this.updateTask(taskData);
+          this.$vToastify.success(getResponseMessage(response) || 'Task member unassigned.');
+          this.setErrors({});
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.setErrors(error?.response?.data?.errors || {});
+          this.setErrors(parseApiError(error).errors);
         });
     },
     archive(task, taskId) {
       axios
-        .delete(url(this.slug, taskId) + '/archive', { useProgress: true })
+        .patch(url(this.slug, taskId) + '/archive', {}, { useProgress: true })
         .then((response) => {
-          this.$vToastify.warning(response.data.message);
+          this.$vToastify.warning(getResponseMessage(response) || 'Project task archived successfully');
           this.removeTaskFromState(taskId);
           this.pushArchivedTask(task);
           this.$bus.emit('archiveTask', { taskId });
@@ -297,14 +306,14 @@ export default {
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.setErrors(error?.response?.data?.errors || {});
+          this.setErrors(parseApiError(error).errors);
         });
     },
     unArchive(task, taskId) {
       axios
-        .get(url(this.slug, taskId) + '/unarchive', { useProgress: true })
+        .patch(url(this.slug, taskId) + '/restore', {}, { useProgress: true })
         .then((response) => {
-          this.$vToastify.success(response.data.message);
+          this.$vToastify.success(getResponseMessage(response) || 'Project task restored successfully');
           this.removeArchivedTask(taskId);
           this.fetchTasks({ slug: this.$route.params.slug, page: 1 });
           this.refreshLimits(this.slug);
@@ -313,20 +322,20 @@ export default {
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.setErrors(error?.response?.data?.errors || {});
+          this.setErrors(parseApiError(error).errors);
         });
     },
     trash(taskId) {
       axios
-        .delete(url(this.slug, taskId) + '/remove', { useProgress: true })
-        .then(() => {
-          this.$vToastify.success('Task deleted successfully');
+        .delete(url(this.slug, taskId), { useProgress: true })
+        .then((response) => {
+          this.$vToastify.success(getResponseMessage(response) || 'Task deleted successfully.');
           this.removeArchivedTask(taskId);
           modalClose(this);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.setErrors(error?.response?.data?.errors || {});
+          this.setErrors(parseApiError(error).errors);
         });
     },
     toggleMemberPop() {

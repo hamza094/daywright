@@ -6,7 +6,7 @@ namespace App\Actions\ProjectMetrics;
 
 use App\Models\Project;
 
-class UpcomingRiskMetricAction
+final class UpcomingRiskMetricAction
 {
     /**
      * @return array{score: float, at_risk_count: int, due_soon_count: int}

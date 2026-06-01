@@ -6,34 +6,44 @@ namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Auth\LoginUserRequest;
-use App\Services\Api\V1\Auth\LoginUserService;
+use App\Http\Resources\Api\V1\Auth\AuthenticatedTokenResource;
+use App\Services\Auth\LoginUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class LoginController extends ApiController
 {
     public function __construct(protected LoginUserService $loginUserService) {}
 
     /**
-     * @unauthenticated
-     * Token-based login (for mobile/3rd-party clients).
+     * Authenticate with email and password for bearer-token clients.
      *
-     * This method authenticates the user using provided credentials
-     * and returns a personal access token upon successful login.
+     * Returns a Sanctum personal access token for public API clients.
+     * Accounts with two-factor authentication enabled must use the session login flow instead.
+     *
+     * @unauthenticated
      */
     public function login(LoginUserRequest $request): JsonResponse
     {
-        $result = $this->loginUserService->startLoginFlow($request->email);
+        $result = $this->loginUserService->startLoginFlow($request->email, $request);
 
         $user = $result->user;
 
-        if (($response = $this->loginUserService->twoFactorStateResponse($result)) instanceof JsonResponse) {
-            return $response;
+        if ($result->twoFactor) {
+            $this->loginUserService->forgetTwoFactorState();
+
+            abort(
+                Response::HTTP_FORBIDDEN,
+                'API token login is not available for accounts with two-factor authentication enabled. Use the session login flow.',
+            );
         }
 
         $payload = $this->loginUserService->performApiLogin($user);
+        /** @var string $accessToken */
+        $accessToken = $payload->accessToken;
 
-        return response()->json($payload->toArray(), 200);
+        return $this->respondWithData(new AuthenticatedTokenResource($payload->user, $accessToken));
     }
 
     /**
@@ -49,6 +59,6 @@ class LoginController extends ApiController
             $currentToken->delete();
         }
 
-        return response()->json(['message' => 'User logout successfully'], 200);
+        return $this->respondWithMessage('User logged out successfully.');
     }
 }

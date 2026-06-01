@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Task;
 
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
@@ -11,6 +12,7 @@ use Override;
 /**
  * @mixin \App\Models\User
  */
+#[SchemaName('TaskMember')]
 class TaskMemberResource extends JsonResource
 {
     /**
@@ -24,36 +26,42 @@ class TaskMemberResource extends JsonResource
     {
         return [
             /**
-             * User id
+             * User identifier.
              *
-             *  @example 1
-             * */
+             * @example 1
+             */
             'id' => $this->id,
 
             /**
-             * User Uuid
+             * Stable public UUID for the member.
              *
-             *  @example 9b8ea076-6d80-4076-8a01-73b94f4c0bc3
-             * */
+             * @example 9b8ea076-6d80-4076-8a01-73b94f4c0bc3
+             */
             'uuid' => $this->uuid,
 
             /**
-             *  @example berry
-             * */
+             * Member display name.
+             *
+             * @example Berry
+             */
             'name' => $this->name,
 
             /**
-             *  @example berry
-             * */
+             * Public username.
+             *
+             * @example berry
+             */
             'username' => $this->username,
 
             /**
-             *  @example user@example.com
-             * */
+             * Member email address.
+             *
+             * @example user@example.com
+             */
             'email' => $this->email,
 
             /**
-             * User's avatar URL (if exists).
+             * Member avatar URL when present.
              *
              * @example https://eu.ui-avatars.com/api/?name=Berry
              */

@@ -2,15 +2,17 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Paddle;
+namespace App\Services\PaddleApi;
 
 use App\Collections\Paddle\DataCollection;
+use App\DataTransferObjects\Paddle\PaddleSubscriptionData;
 use App\DataTransferObjects\Paddle\UserSubscriptionData;
 use App\Interfaces\Paddle;
+use App\Interfaces\PaddleApi;
 use App\Models\User;
 use Override;
 
-class FakePaddleService implements Paddle
+class FakePaddleService implements Paddle, PaddleApi
 {
     #[Override]
     public function subscribe(User $user, string $plan): mixed
@@ -45,12 +47,15 @@ class FakePaddleService implements Paddle
     {
         // Return a fake DataCollection for testing purposes
         return new DataCollection([
-            [
-                'id' => 1,
-                'name' => 'Test User',
-                'email' => 'testuser@example.com',
-                'plan' => 'monthly',
-            ],
+            new PaddleSubscriptionData(
+                userId: 1,
+                email: 'testuser@example.com',
+                signUpDate: now()->toDateString(),
+                lastPaymentAmount: '0',
+                lastPaymentCurrency: 'USD',
+                lastPaymentDate: now()->toDateString(),
+                nextPaymentDate: now()->addMonth()->toDateString(),
+            ),
         ]);
     }
 }

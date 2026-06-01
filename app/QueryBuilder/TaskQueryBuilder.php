@@ -14,6 +14,19 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class TaskQueryBuilder extends Builder
 {
+    public function sortBy(string $sortBy = '-created_at'): self
+    {
+        return match ($sortBy) {
+            'created_at' => $this->orderBy('created_at', 'asc'),
+            '-created_at' => $this->orderBy('created_at', 'desc'),
+            'title' => $this->orderBy('title', 'asc'),
+            '-title' => $this->orderBy('title', 'desc'),
+            'due_at' => $this->orderBy('due_at', 'asc'),
+            '-due_at' => $this->orderBy('due_at', 'desc'),
+            default => $this->orderBy('created_at', 'desc'),
+        };
+    }
+
     /**
      * Filter completed tasks
      */

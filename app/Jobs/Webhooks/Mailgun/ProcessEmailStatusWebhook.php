@@ -16,8 +16,6 @@ class ProcessEmailStatusWebhook implements ShouldQueue
 
     /**
      * Create a new job instance.
-     *
-     * @return void
      */
     public function __construct()
     {

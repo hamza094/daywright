@@ -10,12 +10,15 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 class UpdateMeetingWebhook implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 3;
 
     /**
      * @var int|string
@@ -29,12 +32,23 @@ class UpdateMeetingWebhook implements ShouldQueue
 
     /**
      * @param  array<string, mixed>  $data
-     * @return void
      */
     public function __construct(array $data)
     {
         $this->meeting_id = $data['meeting_id'];
         $this->update_data = $data['update_data'];
+    }
+
+    /**
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping(key: "zoom-meeting:{$this->meeting_id}", releaseAfter: 5))
+                ->shared()
+                ->expireAfter(120),
+        ];
     }
 
     /**
@@ -61,6 +75,7 @@ class UpdateMeetingWebhook implements ShouldQueue
     public function failed(Exception $exception): void
     {
         Log::channel('webhook')->error('Update Meeting webhook job failed', [
+            'meeting_id' => $this->meeting_id,
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString(),
         ]);

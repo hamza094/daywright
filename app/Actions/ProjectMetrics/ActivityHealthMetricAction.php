@@ -6,7 +6,7 @@ namespace App\Actions\ProjectMetrics;
 
 use App\Models\Project;
 
-class ActivityHealthMetricAction
+final class ActivityHealthMetricAction
 {
     public function execute(Project $project): float
     {

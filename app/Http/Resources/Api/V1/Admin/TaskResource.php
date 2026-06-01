@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\Admin;
 
-use App\Http\Resources\Api\V1\TaskStatusResource;
-use Carbon\Carbon;
+use App\Http\Resources\Api\V1\Admin\User\AdminUserSummaryResource;
+use App\Http\Resources\Api\V1\Task\TaskStatusResource;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Str;
 use JsonSerializable;
 use Override;
-use Timezone;
 
 class TaskResource extends JsonResource
 {
@@ -25,24 +25,18 @@ class TaskResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
-            'description' => str_limit($this->description, 50),
+            'description' => Str::limit($this->description, 50),
             'status_id' => $this->status_id,
             'status' => new TaskStatusResource($this->whenLoaded('status')),
             'project' => new TaskProjectResource($this->whenLoaded('project')),
-            'members' => UserResource::collection($this->whenLoaded('assignee')),
+            'members' => AdminUserSummaryResource::collection($this->whenLoaded('assignee')),
 
-            'due_at_utc' => $this->due_at,
             'notified' => $this->notified,
-            'owner' => new UserResource($this->whenLoaded('owner')),
-            'due_at' => $this->when($this->due_at, fn () => Timezone::convertToLocal(Carbon::parse($this->due_at))),
+            'owner' => new AdminUserSummaryResource($this->whenLoaded('owner')),
+            'due_at' => $this->when($this->due_at, fn (): string => $this->due_at->toIso8601String()),
             'state' => $this->state(),
-            'created_at' => $this->created_at->diffForHumans([
-                'parts' => 3,
-                'short' => true,
-            ]),
-            'updated_at' => $this->updated_at->diffForHumans([
-                'parts' => 2,
-            ]),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

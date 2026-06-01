@@ -44,7 +44,7 @@ class FeatureFlagsResource extends JsonResource
     private function resolveFlags(User $user): array
     {
         $map = collect(FeatureFlag::cases())
-            ->mapWithKeys(fn (FeatureFlag $feature) => [
+            ->mapWithKeys(fn (FeatureFlag $feature): array => [
                 $feature->key() => Feature::for($user)->active($feature->pennantName()),
             ]);
 
@@ -54,7 +54,7 @@ class FeatureFlagsResource extends JsonResource
 
         return collect(FeatureFlag::cases())
             ->filter(fn (FeatureFlag $feature): bool => $feature->visibleToClient() && $map->get($feature->key(), false))
-            ->mapWithKeys(fn (FeatureFlag $feature) => [$feature->key() => true])
+            ->mapWithKeys(fn (FeatureFlag $feature): array => [$feature->key() => true])
             ->toArray();
     }
 }

@@ -322,7 +322,7 @@
                           >
                         </span>
                       </div>
-                      <div class="text-secondary">{{ activity.time }}</div>
+                      <div class="text-secondary">{{ activity.time | msgTime }}</div>
                     </div>
                   </div>
                 </div>
@@ -399,6 +399,7 @@ import Stage from './Stage.vue';
 import TaskStatus from './TaskStatus.vue';
 import Chart from './Chart.vue';
 import { admin } from '../../auth';
+import { getResponseMessage } from '../../utils/apiResponse.js';
 
 export default {
   components: { Stage, TaskStatus, Chart },
@@ -416,7 +417,7 @@ export default {
   },
   computed: {
     admin() {
-      const { access } = admin(this.auth.isAdmin);
+      const { access } = admin(this.auth.is_admin);
       return { access };
     },
   },
@@ -432,10 +433,10 @@ export default {
       this.isBackingUp = true;
 
       axios
-        .get('/admin/backup/database')
+        .post('/admin/backup/database')
         .then((response) => {
           this.$Progress.finish();
-          this.$vToastify.success(response?.data?.message || 'Backup completed successfully.');
+          this.$vToastify.success(getResponseMessage(response) || 'Backup completed successfully.');
         })
         .catch((error) => {
           this.$Progress.fail();

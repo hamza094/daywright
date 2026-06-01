@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Webhooks\Zoom;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
 use App\Enums\MeetingState;
 use App\Events\MeetingStatusUpdate;
 use App\Models\Meeting;
@@ -14,6 +15,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -23,6 +25,8 @@ class MeetingEndsWebhook implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $tries = 3;
+
     public int $meeting_id;
 
     public ?string $start_time;
@@ -31,13 +35,24 @@ class MeetingEndsWebhook implements ShouldQueue
 
     /**
      * @param  array<string, mixed>  $data
-     * @return void
      */
     public function __construct(array $data)
     {
         $this->meeting_id = (int) $data['meeting_id'];
         $this->start_time = $data['start_time'] ?? null;
         $this->end_time = $data['end_time'] ?? null;
+    }
+
+    /**
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new WithoutOverlapping(key: "zoom-meeting:{$this->meeting_id}", releaseAfter: 5))
+                ->shared()
+                ->expireAfter(120),
+        ];
     }
 
     /**
@@ -72,6 +87,14 @@ class MeetingEndsWebhook implements ShouldQueue
         ]);
     }
 
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [5, 30];
+    }
+
     private function getMeeting(): Meeting
     {
         return Meeting::where('meeting_id', $this->meeting_id)->firstOrFail();
@@ -92,12 +115,11 @@ class MeetingEndsWebhook implements ShouldQueue
         $notificationData = [
             'project_name' => $project->name,
             'project_slug' => $project->slug,
-            'project_path' => $project->path(),
             'meeting_topic' => $meeting->topic,
             'meeting_timezone' => $meeting->timezone,
             'start_time' => $this->start_time,
             'end_time' => $this->end_time,
-            'notifier' => $user->getNotifierData(),
+            'notifier' => NotificationActorData::fromUser($user)->toArray(),
         ];
 
         Notification::send($members, new MeetingEnded($notificationData));

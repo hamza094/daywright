@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\DataTransferObjects\Notification\NotificationActorData;
+use App\DataTransferObjects\Notification\NotificationPayloadData;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -19,8 +21,8 @@ class AcceptInvitation extends Notification implements ShouldBroadcast, ShouldQu
      */
     public function __construct(
         protected string $projectName,
-        protected string $projectPath,
-        protected array $notifierData
+        protected string $projectSlug,
+        protected NotificationActorData $notifierData
     ) {}
 
     /**
@@ -40,7 +42,7 @@ class AcceptInvitation extends Notification implements ShouldBroadcast, ShouldQu
      */
     public function toArray(mixed $notifiable): array
     {
-        return $this->notificationData();
+        return $this->payload()->toArray();
     }
 
     /**
@@ -50,20 +52,20 @@ class AcceptInvitation extends Notification implements ShouldBroadcast, ShouldQu
      */
     public function toBroadcast(mixed $notifiable): BroadcastMessage
     {
-        return new BroadcastMessage($this->notificationData());
+        return new BroadcastMessage($this->payload()->toArray());
     }
 
-    /**
-     * Prepare the notification data.
-     *
-     * @return array<string, mixed> The notification data.
-     */
-    private function notificationData(): array
+    private function payload(): NotificationPayloadData
     {
-        return [
-            'message' => 'accepted the invitation of your project '.$this->projectName,
-            'notifier' => $this->notifierData,
-            'link' => $this->projectPath,
-        ];
+        return new NotificationPayloadData(
+            message: 'accepted the invitation of your project '.$this->projectName,
+            notifier: $this->notifierData,
+            link: $this->projectLink(),
+        );
+    }
+
+    private function projectLink(): string
+    {
+        return NotificationLink::project(projectSlug: $this->projectSlug, absolute: false);
     }
 }

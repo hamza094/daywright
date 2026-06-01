@@ -17,8 +17,6 @@ class DeleteConversation implements ShouldBroadcast
 
     /**
      * Create a new event instance.
-     *
-     * @return void
      */
     public function __construct(public int $conversationId, public string $projectSlug) {}
 

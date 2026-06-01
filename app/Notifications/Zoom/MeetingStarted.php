@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Zoom;
 
+use App\Notifications\NotificationLink;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -19,7 +20,6 @@ class MeetingStarted extends Notification implements ShouldBroadcast
      * Create a new notification instance.
      *
      * @param  array<string, mixed>  $data
-     * @return void
      */
     public function __construct(protected array $data) {}
 
@@ -44,7 +44,7 @@ class MeetingStarted extends Notification implements ShouldBroadcast
             ->subject('Meeting Started: '.$this->data['meeting_topic'])
             ->markdown('mail.meeting.started', [
                 'projectName' => $this->data['project_name'],
-                'projectLink' => $this->data['project_slug'],
+                'projectLink' => $this->projectUrl(),
                 'meetingTopic' => $this->data['meeting_topic'],
                 'userName' => $this->data['notifier']['name'],
                 'joinUrl' => $this->data['meeting_join_url'],
@@ -60,7 +60,7 @@ class MeetingStarted extends Notification implements ShouldBroadcast
         return new BroadcastMessage([
             'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' started at '.$formattedStartTime.' '.$this->data['meeting_timezone'],
             'notifier' => $this->data['notifier'],
-            'link' => $this->data['project_path'],
+            'link' => $this->projectPath(),
         ]);
     }
 
@@ -76,8 +76,18 @@ class MeetingStarted extends Notification implements ShouldBroadcast
         return [
             'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' started at '.$formattedStartTime.' '.$this->data['meeting_timezone'],
             'notifier' => $this->data['notifier'],
-            'link' => $this->data['project_path'],
+            'link' => $this->projectPath(),
         ];
+    }
+
+    private function projectPath(): string
+    {
+        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: false);
+    }
+
+    private function projectUrl(): string
+    {
+        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: true);
     }
 
     /**

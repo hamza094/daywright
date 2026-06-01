@@ -57,7 +57,7 @@
                 <span v-if="!notification.read_at" class="notification-unread_dot"></span>
               </p>
             </router-link>
-            <small class="text-muted">{{ notification.created_at }}</small>
+            <small class="text-muted">{{ notification.created_at | msgTime }}</small>
           </div>
         </div>
         <div class="dropdown">

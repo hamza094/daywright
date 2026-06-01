@@ -4,26 +4,22 @@ declare(strict_types=1);
 
 namespace App\Repository\Api\V1;
 
-use App\Http\Resources\Api\V1\ConversationResource;
 use App\Models\Project;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ConversationRepository
 {
-    /**
-     * Fetch all project conversations in an optimized manner.
-     * Uses lazy loading to prevent memory overflow.
-     *
-     * @return Collection<int, ConversationResource>
-     */
-    public function getProjectConversations(Project $project): Collection
-    {
+    private const array CONVERSATION_RESOURCE_RELATIONS = ['user', 'project:id,slug'];
 
+    /**
+     * @return LengthAwarePaginator<int, \App\Models\Conversation>
+     */
+    public function getProjectConversations(Project $project, int $perPage, int $page): LengthAwarePaginator
+    {
         return $project->conversations()
-            ->with(['user', 'project:id,slug'])
+            ->with(self::CONVERSATION_RESOURCE_RELATIONS)
             ->orderBy('id')
-            ->lazyById(100) // Memory efficient
-            ->map(fn ($conversation): ConversationResource => new ConversationResource($conversation))
-            ->collect();
+            ->paginate($perPage, ['*'], 'page', $page)
+            ->withQueryString();
     }
 }

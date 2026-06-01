@@ -48,7 +48,7 @@ class InsightResource extends JsonResource
             /**
              * @example {"value":71.0}
              */
-            'data' => is_array($data) ? $data : (object) [],
+            'data' => is_array($data) ? $data : [],
         ];
     }
 }

@@ -2,7 +2,7 @@
   <div class="card mt-4">
     <div class="card-header d-flex justify-content-between align-items-center">
       <span><i class="fa-solid fa-key"></i> API Tokens</span>
-      <button class="btn btn-sm btn-success" @click="showCreate = !showCreate">
+      <button class="btn btn-sm btn-success" @click="toggleCreateForm">
         <i class="fa-solid fa-plus"></i> New Token
       </button>
     </div>
@@ -32,7 +32,7 @@
             </div>
             <div class="form-group col-md-4 d-flex align-items-end">
               <button type="submit" class="btn btn-primary mr-2">Create</button>
-              <button type="button" class="btn btn-link text-danger" @click="showCreate = false">Cancel</button>
+              <button type="button" class="btn btn-link text-danger" @click="resetCreateTokenForm">Cancel</button>
             </div>
           </div>
         </form>
@@ -75,9 +75,9 @@
             <tbody>
               <tr v-for="token in tokens" :key="token.id">
                 <td>{{ token.name }}</td>
-                <td>{{ token.created_at }}</td>
-                <td>{{ token.last_used_at ? token.last_used_at : 'Never' }}</td>
-                <td>{{ token.expires_at ? token.expires_at : 'Never' }}</td>
+                <td>{{ token.created_at | datetime }}</td>
+                <td>{{ token.last_used_at ? $options.filters.msgTime(token.last_used_at) : 'Never' }}</td>
+                <td>{{ token.expires_at ? $options.filters.datetime(token.expires_at) : 'Never' }}</td>
                 <td>
                   <input
                     :type="showTokenMap[token.id] ? 'text' : 'password'"
@@ -113,6 +113,9 @@
 </template>
 
 <script>
+import { createIdempotentRequest } from '../../services/IdempotencyRequestService';
+import { getArrayData, getObjectData, getResponseMessage } from '../../utils/apiResponse.js';
+
 export default {
   name: 'UserTokens',
   data() {
@@ -142,8 +145,14 @@ export default {
     },
   },
   mounted() {
+    this.createTokenRequest = createIdempotentRequest();
     this.loadTokens();
   },
+
+  beforeDestroy() {
+    this.createTokenRequest?.reset();
+  },
+
   methods: {
     toggleShowToken(tokenId) {
       this.$set(this.showTokenMap, tokenId, !this.showTokenMap[tokenId]);
@@ -159,7 +168,7 @@ export default {
       axios
         .get('/api-tokens')
         .then((res) => {
-          this.tokens = res.data.tokens;
+          this.tokens = getArrayData(res);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
@@ -168,25 +177,45 @@ export default {
           this.loading = false;
         });
     },
+    toggleCreateForm() {
+      if (this.showCreate) {
+        this.resetCreateTokenForm();
+        return;
+      }
+
+      this.showCreate = true;
+    },
+    resetCreateTokenForm(hideForm = true) {
+      this.showCreate = !hideForm;
+      this.form.name = '';
+      this.form.expires_in = null;
+      this.createTokenRequest.reset();
+
+      if (hideForm) {
+        this.newToken = '';
+        this.newTokenId = null;
+        this.showTokenMap = {};
+      }
+    },
     createToken() {
       if (!this.form.name) return;
       this.$Progress.start();
       let payload = { name: this.form.name };
       if (this.form.expires_in) {
-        // Set expires_at as ISO string (now + days)
         const expires = new Date();
         expires.setDate(expires.getDate() + Number(this.form.expires_in));
-        payload.expires_at = expires.toISOString().slice(0, 19).replace('T', ' ');
+        payload.expires_at = expires.toISOString();
       }
-      axios
+      this.createTokenRequest
         .post('/api-tokens', payload)
         .then((res) => {
-          this.$vToastify.success(res.data.message || 'Token created.');
-          this.newToken = res.data.token;
-          this.newTokenId = res.data.token_resource.id;
-          this.showTokenMap = { [this.newTokenId]: false };
-          this.form.name = '';
-          this.form.expires_in = null;
+          const data = getObjectData(res);
+
+          this.$vToastify.success('Token created.');
+          this.newToken = data.token || '';
+          this.newTokenId = data.token_resource?.id || null;
+          this.showTokenMap = this.newTokenId ? { [this.newTokenId]: false } : {};
+          this.resetCreateTokenForm(false);
           this.loadTokens();
         })
         .catch((err) => {
@@ -203,7 +232,7 @@ export default {
           axios
             .delete(`/api-tokens/${id}`)
             .then((res) => {
-              this.$vToastify.success(res.data.message || 'Token deleted.');
+              this.$vToastify.success(getResponseMessage(res) || 'Token deleted.');
               this.loadTokens();
             })
             .catch((err) => {

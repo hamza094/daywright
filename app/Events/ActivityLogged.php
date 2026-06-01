@@ -19,8 +19,6 @@ class ActivityLogged implements ShouldBroadcast
 
     /**
      * Create a new event instance.
-     *
-     * @return void
      */
     public function __construct(public Activity $activity, public int $projectId) {}
 
@@ -40,7 +38,7 @@ class ActivityLogged implements ShouldBroadcast
      */
     public function broadcastWith(): array
     {
-        return (new ActivityResource($this->activity))->resolve();
+        return (new ActivityResource($this->activity->loadMissing(['user', 'subject'])))->resolve();
     }
 
     /**

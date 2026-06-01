@@ -18,14 +18,14 @@ use App\Models\Project;
  *
  * Weights are read from config('project-metrics.health.weights').
  */
-class ProjectHealthMetricAction
+final readonly class ProjectHealthMetricAction
 {
     public function __construct(
-        private readonly TaskHealthMetricAction $taskHealthAction,
-        private readonly TeamCollaborationMetricAction $collaborationHealthAction,
-        private readonly StageProgressMetricAction $stageProgressAction,
-        private readonly CommunicationHealthMetricAction $communicationHealthAction,
-        private readonly ActivityHealthMetricAction $activityHealthAction
+        private TaskHealthMetricAction $taskHealthAction,
+        private TeamCollaborationMetricAction $collaborationHealthAction,
+        private StageProgressMetricAction $stageProgressAction,
+        private CommunicationHealthMetricAction $communicationHealthAction,
+        private ActivityHealthMetricAction $activityHealthAction
     ) {}
 
     public function execute(Project $project): float
@@ -86,10 +86,6 @@ class ProjectHealthMetricAction
 
     private function normalizePercentage(float|int $value): float
     {
-        if (! is_numeric($value)) {
-            return 0.0;
-        }
-
         return max(0.0, min(100.0, (float) $value));
     }
 

@@ -68,7 +68,7 @@ class Conversation extends Model
         // Extract usernames preceded by a non-word boundary to avoid matching emails (name@domain)
         // Allows letters, numbers, underscore, dot and hyphen in usernames
         preg_match_all('/(?<![\w])@([\w.-]+)/', $message, $matches);
-        $usernames = $matches[1] ?? [];
+        $usernames = $matches[1];
 
         // De-duplicate while preserving order
         $seen = [];
@@ -138,7 +138,7 @@ class Conversation extends Model
         $path = $filePath;
         if (str_starts_with($filePath, 'http')) {
             try {
-                $path = ltrim(parse_url($filePath, PHP_URL_PATH) ?: '', '/');
+                $path = ltrim((string) parse_url($filePath, PHP_URL_PATH) ?: '', '/');
             } catch (Throwable $e) {
                 Log::warning('Failed parsing file URL', ['file' => $filePath, 'error' => $e->getMessage()]);
                 $path = '';

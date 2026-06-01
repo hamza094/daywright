@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Models\Task;
+use App\Models\User;
+use App\Notifications\NotificationLink;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\Rules\Password;
 
 class AuthServiceProvider extends ServiceProvider
@@ -20,9 +21,8 @@ class AuthServiceProvider extends ServiceProvider
      * @var array<class-string, class-string>
      */
     protected $policies = [
-        'App\Model' => 'App\Policies\ModelPolicy',
         \App\Models\Project::class => \App\Policies\ProjectsPolicy::class,
-        \App\Models\User::class => \App\Policies\UsersPolicy::class,
+        User::class => \App\Policies\UsersPolicy::class,
         Task::class => \App\Policies\TasksPolicy::class,
         \App\Models\Conversation::class => \App\Policies\ConversationPolicy::class,
 
@@ -48,14 +48,9 @@ class AuthServiceProvider extends ServiceProvider
             ->line('Click the button below to verify your email address.This link will expire after 60 minutes.Please Remember you must be login to get your account verified')
             ->action('Verify Email Address', $url));
 
-        VerifyEmail::$createUrlCallback = fn ($notifiable) => URL::temporarySignedRoute(
-            'verification.verify',
-            Carbon::now()->addMinutes(60),
-            [
-                'user' => $notifiable->uuid,
-                // sha1 is expected by Laravel's verification flow; the URL itself is HMAC-signed via temporarySignedRoute. NOSONAR
-                'hash' => sha1((string) $notifiable->getEmailForVerification()),
-            ]
+        VerifyEmail::$createUrlCallback = fn (User $notifiable): string => NotificationLink::verification(
+            user: $notifiable,
+            expiration: Carbon::now()->addMinutes(60),
         );
 
     }

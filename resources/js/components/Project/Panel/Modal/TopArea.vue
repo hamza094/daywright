@@ -28,6 +28,7 @@
 import { mapMutations, mapState } from 'vuex';
 import { url } from '../../../../utils/TaskUtils';
 import { modalClose } from '../../../../mixins/modalClose';
+import { getObjectData, parseApiError } from '../../../../utils/apiResponse.js';
 
 export default {
   props: {
@@ -71,15 +72,17 @@ export default {
       axios
         .put(url(this.slug, id), { title: this.form.title }, { useProgress: true })
         .then((response) => {
-          this.$vToastify.success(response.data.message);
+          const taskData = getObjectData(response);
+
+          this.$vToastify.success('Task title updated.');
           this.editing = false;
-          this.setErrors([]);
-          this.updateTaskTitle(response.data.task.title);
-          this.updateTask(response.data.task);
+          this.setErrors({});
+          this.updateTaskTitle(taskData.title);
+          this.updateTask(taskData);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
-          this.setErrors(error?.response?.data?.errors || {});
+          this.setErrors(parseApiError(error).errors);
         });
     },
 

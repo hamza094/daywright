@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Controllers\Controller;
-use App\Http\Requests\Api\V1\Auth\RegisterUserRequest;
+use App\Http\Requests\Api\V1\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Api\V1\Auth\ResetPasswordRequest;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ResetPasswordController extends ApiController
 {
@@ -30,12 +31,15 @@ class ResetPasswordController extends ApiController
     */
 
     /**
+     * Send a password reset link.
+     *
+     * Sends a password reset email when the address belongs to an existing account.
+     * The response message is intentionally generic.
+     *
      * @unauthenticated
-     *  Send Reset Link */
-    public function sendResetLink(Request $request): JsonResponse
+     */
+    public function sendResetLink(ForgotPasswordRequest $request): JsonResponse
     {
-        $request->validate(['email' => 'required|email']);
-
         $status = Password::sendResetLink(
             $request->only('email')
         );
@@ -43,26 +47,22 @@ class ResetPasswordController extends ApiController
         if ($status !== Password::RESET_LINK_SENT) {
             Log::warning('Password reset link request failed', [
                 'status' => $status,
-                'user_id' => optional(User::whereEmail($request->input('email'))->select('uuid')->first())->uuid,
+                'user_id' => User::whereEmail($request->input('email'))->select('uuid')->first()?->uuid,
             ]);
         }
 
-        return response()->json([
-            'message' => 'If your email exists in our system, you will receive a password reset link shortly.',
-        ], 200);
+        return $this->respondWithMessage('If your email exists in our system, you will receive a password reset link shortly.');
     }
 
     /**
+     * Reset a password with a valid reset token.
+     *
+     * Completes the password reset flow for a guest user and invalidates the reset token.
+     *
      * @unauthenticated
-     * Reset User's Password */
-    public function resetPassword(Request $request): JsonResponse
+     */
+    public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
-        $request->validate([
-            'token' => 'required',
-            'email' => 'required|email',
-            'password' => RegisterUserRequest::passwordRules(),
-        ]);
-
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user, string $password): void {
@@ -77,18 +77,14 @@ class ResetPasswordController extends ApiController
         );
 
         if ($status === Password::PASSWORD_RESET) {
-            return response()->json([
-                'message' => 'Password reset successfully.',
-            ], 200);
+            return $this->respondWithMessage('Password reset successfully.');
         }
 
         Log::warning('Password reset attempt failed', [
             'status' => $status,
-            'user_id' => optional(User::whereEmail($request->input('email'))->select('uuid')->first())->uuid,
+            'user_id' => User::whereEmail($request->input('email'))->select('uuid')->first()?->uuid,
         ]);
 
-        return response()->json([
-            'message' => 'Unable to reset password with the provided information.',
-        ], 400);
+        throw new HttpException(HttpResponse::HTTP_BAD_REQUEST, 'Unable to reset password with the provided information.');
     }
 }

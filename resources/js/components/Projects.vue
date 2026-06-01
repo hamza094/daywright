@@ -93,6 +93,7 @@
 import Pagination from 'laravel-vue-pagination';
 import SearchFilterSection from './Projects/SearchFilterSection.vue';
 import ProjectsGrid from './Projects/ProjectsGrid.vue';
+import { buildProjectListParams, readProjectList } from '../utils/projectListResponse.js';
 
 /**
  * Tab configuration for different project types
@@ -155,7 +156,7 @@ export default {
     return {
       currentTab: 'active',
       searchQuery: '',
-      sortBy: 'latest',
+      sortBy: '-created_at',
       loading: false,
       searchTimeout: null,
       tabData: { ...INITIAL_TAB_DATA },
@@ -239,18 +240,14 @@ export default {
      * @returns {Object} Request parameters
      */
     buildRequestParams(type, page) {
-      const params = {
+      const extra = this.tabs.find((t) => t.key === type).extraParam || {};
+
+      return buildProjectListParams({
         page,
         search: this.searchQuery,
         sort: this.sortBy,
-      };
-
-      const extra = this.tabs.find((t) => t.key === type).extraParam;
-      if (extra) {
-        Object.assign(params, extra);
-      }
-
-      return params;
+        extraFilters: extra,
+      });
     },
 
     /**
@@ -259,7 +256,7 @@ export default {
      * @returns {Promise} API response
      */
     async makeApiRequest(params) {
-      return axios.get('/user/projects', { params });
+      return axios.get('/projects', { params });
     },
 
     /**
@@ -268,10 +265,11 @@ export default {
      * @param {string} type - Tab type
      */
     handleApiSuccess(response, type) {
-      const data = response.data;
-      this.tabData[type].list = data.projects.data;
-      this.tabData[type].count = data.projectsCount;
-      this.tabData[type].pagination = data.projects;
+      const { projects, pagination, total } = readProjectList(response);
+
+      this.tabData[type].list = projects;
+      this.tabData[type].count = total;
+      this.tabData[type].pagination = pagination;
     },
 
     /**

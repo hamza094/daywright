@@ -11,7 +11,6 @@ import SingleTask from './SingleTask';
 import stage from './stage';
 import status from './status';
 import meeting from './meeting';
-import conversations from './conversations';
 import notifications from './notifications';
 
 Vue.use(Vuex);
@@ -28,7 +27,6 @@ export default new Vuex.Store({
     stage,
     status,
     meeting,
-    conversations,
     notifications,
   },
 });
