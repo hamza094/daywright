@@ -3,6 +3,12 @@ import test from 'node:test';
 
 import { createIdempotentRequest } from './IdempotencyRequestService.js';
 
+const makeSimpleClient = (calls) => async (config) => {
+  calls.push(config);
+
+  return { data: { ok: true } };
+};
+
 test('createIdempotentRequest uses Web Crypto bytes when randomUUID is unavailable', async () => {
   const calls = [];
   const originalCryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
@@ -27,11 +33,7 @@ test('createIdempotentRequest uses Web Crypto bytes when randomUUID is unavailab
   Date.now = () => 1234567890;
 
   try {
-    const client = async (config) => {
-      calls.push(config);
-
-      return { data: { ok: true } };
-    };
+    const client = makeSimpleClient(calls);
 
     const request = createIdempotentRequest(client);
 
@@ -52,11 +54,7 @@ test('createIdempotentRequest uses Web Crypto bytes when randomUUID is unavailab
 
 test('createIdempotentRequest adds an idempotency key and rotates it after success', async () => {
   const calls = [];
-  const client = async (config) => {
-    calls.push(config);
-
-    return { data: { ok: true } };
-  };
+  const client = makeSimpleClient(calls);
 
   const request = createIdempotentRequest(client);
 
@@ -127,10 +125,7 @@ test('createIdempotentRequest keeps the same key for 409 retries but clears it f
 
 test('createIdempotentRequest reset clears the active key immediately', async () => {
   const calls = [];
-  const client = async (config) => {
-    calls.push(config);
-    return { data: { ok: true } };
-  };
+  const client = makeSimpleClient(calls);
 
   const request = createIdempotentRequest(client);
 
