@@ -22,6 +22,7 @@ use Dedoc\Scramble\Support\RouteInfo;
 use Illuminate\Routing\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Override;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 final class ScrambleServiceProvider extends ServiceProvider
@@ -30,6 +31,7 @@ final class ScrambleServiceProvider extends ServiceProvider
 
     private const string VALIDATION_FAILED_MESSAGE = 'Validation failed.';
 
+    #[Override]
     public function register(): void
     {
         // No bindings here; this provider configures Scramble/OpenAPI behavior.
@@ -37,9 +39,7 @@ final class ScrambleServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Scramble::resolveTagsUsing(function (RouteInfo $routeInfo): array {
-            return [$this->resolvePublicApiTag($routeInfo)];
-        });
+        Scramble::resolveTagsUsing(fn (RouteInfo $routeInfo): array => [$this->resolvePublicApiTag($routeInfo)]);
 
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
             $openApi->secure(SecurityScheme::http('bearer'));

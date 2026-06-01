@@ -26,10 +26,6 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AppServiceProvider extends ServiceProvider
 {
-    private const array UNSUPPORTED_PUBLIC_API_QUERY_PARAMETERS = ['include', 'fields', 'append'];
-
-    private const string VALIDATION_FAILED_MESSAGE = 'Validation failed.';
-
     /**
      * Register any application services.
      */
