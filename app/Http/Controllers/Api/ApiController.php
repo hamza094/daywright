@@ -117,6 +117,14 @@ class ApiController extends Controller
             return $data->resolve();
         }
 
+        return $this->normalizeNonResourceResponseData($data);
+    }
+
+    /**
+     * @param  array<int|string,mixed>|Arrayable<int,mixed>|JsonSerializable  $data
+     */
+    private function normalizeNonResourceResponseData(array|Arrayable|JsonSerializable $data): mixed
+    {
         if ($data instanceof Arrayable) {
             return $data->toArray();
         }

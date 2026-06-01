@@ -93,8 +93,6 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
         });
     });
 
-    $userScopedIdempotent = Idempotent::using(scope: IdempotencyScope::User);
-
     Route::controller(TokenController::class)
         ->prefix('api-tokens')
         ->name('api-tokens.')

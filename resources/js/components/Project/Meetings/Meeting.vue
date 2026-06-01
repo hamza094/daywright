@@ -218,7 +218,7 @@ export default {
         .then((response) => {
           const payload = getObjectData(response);
 
-          window.location.href = payload.redirect_url;
+          globalThis.location.href = payload.redirect_url;
         })
         .catch((error) => {
           this.handleErrorResponse(error);

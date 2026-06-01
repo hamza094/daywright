@@ -13,7 +13,7 @@ return [
     | Number of seconds an idempotency key should remain valid.
     |
     */
-    'ttl' => env('IDEMPOTENCY_TTL', 3600),
+    'ttl' => (int) env('IDEMPOTENCY_TTL', 3600),
 
     /*
     |--------------------------------------------------------------------------

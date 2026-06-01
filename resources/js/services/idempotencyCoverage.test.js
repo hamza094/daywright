@@ -121,7 +121,7 @@ test('Idempotency-Key is only set by the shared idempotent request helper', () =
   const headerWriters = files
     .filter((filePath) => !filePath.endsWith('.test.js'))
     .filter((filePath) => readFileSync(filePath, 'utf8').includes('Idempotency-Key'))
-    .map((filePath) => relative(repoRoot, filePath).replace(/\\/g, '/'))
+    .map((filePath) => relative(repoRoot, filePath).replaceAll('\\', '/'))
     .sort();
 
   assert.deepEqual(headerWriters, ['resources/js/services/IdempotencyRequestService.js']);

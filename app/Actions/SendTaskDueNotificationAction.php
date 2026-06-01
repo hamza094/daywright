@@ -76,12 +76,10 @@ final class SendTaskDueNotificationAction
 
     private function lockTask(Task $task): Task
     {
-        /** @var Task $lockedTask */
-        $lockedTask = Task::query()
+        return Task::query()
             ->whereKey($task->getKey())
             ->lockForUpdate()
             ->firstOrFail();
 
-        return $lockedTask;
     }
 }

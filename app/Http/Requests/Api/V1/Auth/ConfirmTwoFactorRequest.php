@@ -69,13 +69,6 @@ class ConfirmTwoFactorRequest extends FormRequest
                 'two_factor',
                 'Two-factor is already confirmed.'
             );
-
-            return;
         }
-
-        // Note: Do not perform the actual confirmation here as it may
-        // have side-effects (persisting state). The controller will
-        // perform the confirmation action; here we only validate format
-        // and that 2FA isn't already enabled.
     }
 }

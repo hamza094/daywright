@@ -43,6 +43,25 @@ class VerificationTest extends TestCase
     }
 
     /** @test */
+    public function can_verify_email_with_a_legacy_sha1_link(): void
+    {
+        $user = User::factory()->create([
+            'email_verified_at' => null,
+        ]);
+
+        Sanctum::actingAs($user);
+
+        Event::fake();
+
+        $this->postJson($this->verificationUrl($user, 'sha1'))
+            ->assertSuccessful()
+            ->assertJsonPath('data.verified', true)
+            ->assertJsonMissingPath('status');
+
+        Event::assertDispatched(Verified::class, fn (Verified $event) => $event->user->is($user));
+    }
+
+    /** @test */
     public function can_not_verify_if_signature_is_invalid(): void
     {
         $user = User::factory()->create([
@@ -137,7 +156,7 @@ class VerificationTest extends TestCase
 
         $expectedUrl = URL::temporarySignedRoute('api.v1.verification.verify', $now->copy()->addMinutes(60), [
             'user' => $user->uuid,
-            'hash' => sha1((string) $user->getEmailForVerification()),
+            'hash' => hash('sha256', (string) $user->getEmailForVerification()),
         ]);
 
         Notification::assertSentTo($user, VerifyEmail::class, fn (VerifyEmail $notification): bool => $notification->toMail($user)->actionUrl === $expectedUrl);
@@ -182,11 +201,11 @@ class VerificationTest extends TestCase
             ->assertJsonPath('code', 'method_not_allowed');
     }
 
-    private function verificationUrl(User $user): string
+    private function verificationUrl(User $user, string $algorithm = 'sha256'): string
     {
         return URL::temporarySignedRoute('api.v1.verification.verify', now()->addMinutes(60), [
             'user' => $user->uuid,
-            'hash' => sha1((string) $user->getEmailForVerification()),
+            'hash' => hash($algorithm, (string) $user->getEmailForVerification()),
         ]);
     }
 }

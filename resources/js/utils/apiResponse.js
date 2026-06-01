@@ -47,7 +47,7 @@ const findFirstValidationMessage = (errors) => {
 export const getResponseData = (response) => {
   const payload = getResponsePayload(response);
 
-  return Object.prototype.hasOwnProperty.call(payload, 'data') ? payload.data : null;
+  return Object.hasOwn(payload, 'data') ? payload.data : null;
 };
 
 export const getObjectData = (response) => {

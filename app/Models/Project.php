@@ -182,10 +182,9 @@ class Project extends Model
      */
     public function tasks(): HasMany
     {
-        /** @var HasMany<Task, static> $relation */
-        $relation = $this->hasMany(Task::class)->latest();
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
+        return $this->hasMany(Task::class)->latest();
 
-        return $relation;
     }
 
     /**
@@ -197,10 +196,9 @@ class Project extends Model
      */
     public function messages(): HasMany
     {
-        /** @var HasMany<Message, static> $relation */
-        $relation = $this->hasMany(Message::class);
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
+        return $this->hasMany(Message::class);
 
-        return $relation;
     }
 
     public function addTask(string $title): Task
@@ -241,11 +239,9 @@ class Project extends Model
      */
     public function members(): BelongsToMany
     {
-        /** @var BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot> $relation */
-        $relation = $this->belongsToMany(User::class, 'project_members')
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
+        return $this->belongsToMany(User::class, 'project_members')
             ->withPivot('active')->withTimestamps();
-
-        return $relation;
     }
 
     /**
@@ -257,12 +253,9 @@ class Project extends Model
      */
     public function activeMembers(): BelongsToMany
     {
-        /** @var BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot> $relation */
-        $relation = $this
+        return $this
             ->members()
             ->wherePivot('active', true);
-
-        return $relation;
     }
 
     /**
@@ -274,13 +267,11 @@ class Project extends Model
      */
     public function asignees(): BelongsToMany
     {
-        /** @var BelongsToMany<User, static, \Illuminate\Database\Eloquent\Relations\Pivot> $relation */
-        $relation = $this
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
+        return $this
             ->belongsToMany(User::class, 'project_members')
             ->wherePivot('active', true)
             ->select(['users.id', 'users.name', 'users.email']);
-
-        return $relation;
     }
 
     /**
@@ -292,10 +283,8 @@ class Project extends Model
      */
     public function conversations(): HasMany
     {
-        /** @var HasMany<Conversation, static> $relation */
-        $relation = $this->hasMany(Conversation::class);
-
-        return $relation;
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
+        return $this->hasMany(Conversation::class);
     }
 
     public function tasksReachedItsLimit(): bool
@@ -376,10 +365,8 @@ class Project extends Model
      */
     public function meetings(): HasMany
     {
-        /** @var HasMany<Meeting, static> $relation */
-        $relation = $this->hasMany(Meeting::class);
-
-        return $relation;
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
+        return $this->hasMany(Meeting::class);
     }
 
     /**

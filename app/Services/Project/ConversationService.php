@@ -132,9 +132,12 @@ class ConversationService
             return;
         }
 
-        $path = str_starts_with($filePath, 'http')
-            ? ltrim((string) parse_url($filePath, PHP_URL_PATH) ?: '', '/')
-            : $filePath;
+        $path = $filePath;
+
+        if (str_starts_with($filePath, 'http')) {
+            $parsedPath = (string) (parse_url($filePath, PHP_URL_PATH) ?: '');
+            $path = ltrim($parsedPath, '/');
+        }
 
         if ($path === '') {
             return;

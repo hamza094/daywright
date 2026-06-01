@@ -2,12 +2,24 @@ import axios from 'axios';
 
 const IDEMPOTENCY_RETRY_STATUS = 409;
 
+function createRandomHex(bytesLength = 16) {
+  const randomBytes = new Uint8Array(bytesLength);
+
+  globalThis.crypto?.getRandomValues(randomBytes);
+
+  return Array.from(randomBytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 function createIdempotencyKey() {
   if (globalThis.crypto?.randomUUID) {
     return globalThis.crypto.randomUUID();
   }
 
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  if (globalThis.crypto?.getRandomValues) {
+    return `${Date.now()}-${createRandomHex()}`;
+  }
+
+  throw new Error('Secure random source unavailable for idempotency key generation.');
 }
 
 function shouldReuseKey(error) {
@@ -60,7 +72,7 @@ export function createIdempotentRequest(client = axios) {
         url,
         data,
         headers: {
-          ...(config.headers || {}),
+          ...(config.headers ?? {}),
           'Idempotency-Key': idempotencyKey,
         },
       });

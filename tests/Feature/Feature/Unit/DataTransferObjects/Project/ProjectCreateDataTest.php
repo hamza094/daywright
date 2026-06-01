@@ -43,4 +43,23 @@ final class ProjectCreateDataTest extends TestCase
             'notes' => '',
         ], $data->projectAttributes());
     }
+
+    #[Test]
+    public function it_ignores_task_entries_without_titles(): void
+    {
+        $data = ProjectCreateData::fromArray([
+            'name' => 'Launch Board',
+            'about' => 'Track launch work across the team.',
+            'stage_id' => '4',
+            'tasks' => [
+                ['title' => 'Create checklist'],
+                ['name' => 'Missing title'],
+                (object) [],
+            ],
+        ]);
+
+        $this->assertSame([
+            ['title' => 'Create checklist'],
+        ], $data->starterTasks());
+    }
 }

@@ -164,22 +164,17 @@ class MeetingService
 
     private function findMeetingOrFail(Meeting $meeting): Meeting
     {
-        /** @var Meeting $currentMeeting */
-        $currentMeeting = Meeting::query()
+        return Meeting::query()
             ->whereKey($meeting->getKey())
             ->firstOrFail();
-
-        return $currentMeeting;
     }
 
     private function lockMeeting(Meeting $meeting): Meeting
     {
-        /** @var Meeting $lockedMeeting */
-        $lockedMeeting = Meeting::query()
+        return Meeting::query()
             ->whereKey($meeting->getKey())
             ->lockForUpdate()
             ->firstOrFail();
 
-        return $lockedMeeting;
     }
 }

@@ -121,7 +121,7 @@ export default {
       axios
         .get(`/auth/redirect/${provider}`)
         .then((response) => {
-          window.location.href = getObjectData(response).redirect_url;
+          globalThis.location.href = getObjectData(response).redirect_url;
         })
         .catch((error) => {
           this.handleErrorResponse(error);

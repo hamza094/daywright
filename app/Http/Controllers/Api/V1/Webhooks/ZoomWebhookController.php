@@ -14,6 +14,8 @@ use Illuminate\Http\JsonResponse;
 
 class ZoomWebhookController extends ApiController
 {
+    private const string WEBHOOK_ACCEPTED_MESSAGE = 'Webhook accepted.';
+
     public function update(WebhookRequest $request): JsonResponse
     {
         $request->validated();
@@ -26,7 +28,7 @@ class ZoomWebhookController extends ApiController
             'update_data' => collect($object)->except(['id', 'uuid'])->toArray(),
         ]);
 
-        return $this->respondWithMessage('Webhook accepted.');
+        return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
     public function delete(WebhookRequest $request): JsonResponse
@@ -38,7 +40,7 @@ class ZoomWebhookController extends ApiController
             'meeting_id' => $object['id'],
         ]);
 
-        return $this->respondWithMessage('Webhook accepted.');
+        return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
     public function start(WebhookRequest $request): JsonResponse
@@ -51,7 +53,7 @@ class ZoomWebhookController extends ApiController
             'start_time' => $object['start_time'] ?? null,
         ]);
 
-        return $this->respondWithMessage('Webhook accepted.');
+        return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
     public function ended(WebhookRequest $request): JsonResponse
@@ -65,6 +67,6 @@ class ZoomWebhookController extends ApiController
             'end_time' => $object['end_time'] ?? null,
         ]);
 
-        return $this->respondWithMessage('Webhook accepted.');
+        return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 }

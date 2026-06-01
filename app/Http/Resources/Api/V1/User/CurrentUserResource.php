@@ -14,11 +14,6 @@ use Override;
 #[SchemaName('CurrentUser')]
 class CurrentUserResource extends JsonResource
 {
-    public function __construct(private readonly User $user)
-    {
-        parent::__construct($user);
-    }
-
     /**
      * Transform the resource into an array.
      *
@@ -31,11 +26,11 @@ class CurrentUserResource extends JsonResource
             /**
              * Fully authenticated user payload for the current account.
              */
-            'user' => new AuthenticatedUserResource($this->user),
+            'user' => new AuthenticatedUserResource($this->resource),
             /**
              * Client-visible feature flags for the authenticated user.
              */
-            'features' => new FeatureFlagsResource($this->user),
+            'features' => new FeatureFlagsResource($this->resource),
         ];
     }
 }

@@ -29,7 +29,6 @@ use Dedoc\Scramble\Support\Generator\Types\ObjectType;
 use Dedoc\Scramble\Support\Generator\Types\StringType;
 use Dedoc\Scramble\Support\RouteInfo;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -42,6 +41,10 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class AppServiceProvider extends ServiceProvider
 {
+    private const array UNSUPPORTED_PUBLIC_API_QUERY_PARAMETERS = ['include', 'fields', 'append'];
+
+    private const string VALIDATION_FAILED_MESSAGE = 'Validation failed.';
+
     /**
      * Register any application services.
      */
@@ -73,7 +76,7 @@ class AppServiceProvider extends ServiceProvider
         Feature::define('project-export', fn (User $user): bool => $user->isAdmin());
         Feature::define('project-messaging', fn (User $user): bool => $user->isAdmin());
 
-        EnsureFeaturesAreActive::whenInactive(function (Request $request, array $features): SymfonyResponse {
+        EnsureFeaturesAreActive::whenInactive(function (): SymfonyResponse {
             throw new HttpException(SymfonyResponse::HTTP_FORBIDDEN, 'Feature not available.');
         });
 
@@ -166,7 +169,7 @@ class AppServiceProvider extends ServiceProvider
         };
     }
 
-    private static function publicApiErrorResponseName(int $status): ?string
+    private function publicApiErrorResponseName(int $status): ?string
     {
         return match ($status) {
             400 => 'PublicBadRequestError',
@@ -263,21 +266,7 @@ class AppServiceProvider extends ServiceProvider
 
         foreach ($openApi->paths as $path) {
             foreach ($path->operations as $operation) {
-                $operation->responses = array_values(array_map(
-                    static function ($response) use ($openApi): Reference|\Dedoc\Scramble\Support\Generator\Response {
-                        $resolvedResponse = $response instanceof Reference ? $response->resolve() : $response;
-                        $responseCode = is_numeric($resolvedResponse->code) ? (int) $resolvedResponse->code : null;
-                        $responseName = $responseCode ? self::publicApiErrorResponseName($responseCode) : null;
-
-                        if ($responseName === null) {
-                            return $response;
-                        }
-
-                        return new Reference('responses', $responseName, $openApi->components);
-                    },
-                    $operation->responses,
-                ));
-
+                $this->replaceOperationErrorResponsesWithSharedReferences($operation, $openApi->components);
                 $this->ensureSharedPublicApiErrorResponse($operation, $openApi->components, 500);
             }
         }
@@ -287,42 +276,87 @@ class AppServiceProvider extends ServiceProvider
     {
         foreach ($openApi->paths as $path) {
             foreach ($path->operations as $operation) {
-                $documentedFilterAliases = $this->documentedFilterAliases($operation);
-
-                $operation->parameters = array_values(array_filter(
-                    $operation->parameters,
-                    static function (Parameter|Reference $parameter) use ($documentedFilterAliases): bool {
-                        $resolvedParameter = $parameter instanceof Reference ? $parameter->resolve() : $parameter;
-
-                        if (! $resolvedParameter instanceof Parameter || $resolvedParameter->in !== 'query') {
-                            return true;
-                        }
-
-                        if (in_array($resolvedParameter->name, ['include', 'fields', 'append'], true)) {
-                            return false;
-                        }
-
-                        return ! in_array($resolvedParameter->name, $documentedFilterAliases, true);
-                    },
-                ));
-
-                $documentedQueryParameters = collect($operation->parameters)
-                    ->map(static fn ($parameter) => $parameter instanceof Reference ? $parameter->resolve() : $parameter)
-                    ->filter(static fn ($parameter): bool => $parameter instanceof Parameter && $parameter->in === 'query')
-                    ->map(static fn (Parameter $parameter): string => $parameter->name)
-                    ->values()
-                    ->all();
-
-                foreach ($this->requiredPublicApiQueryParameters($path->path, $operation->method) as $requiredParameter) {
-                    if (in_array($requiredParameter->name, $documentedQueryParameters, true)) {
-                        continue;
-                    }
-
-                    $operation->parameters[] = $requiredParameter;
-                    $documentedQueryParameters[] = $requiredParameter->name;
-                }
+                $this->pruneUnsupportedOperationQueryParameters($path->path, $operation);
             }
         }
+    }
+
+    private function replaceOperationErrorResponsesWithSharedReferences(Operation $operation, Components $components): void
+    {
+        $operation->responses = array_values(array_map(
+            fn (Reference|Response $response): Reference|Response => $this->sharedPublicApiErrorResponseReference($response, $components) ?? $response,
+            $operation->responses,
+        ));
+    }
+
+    private function sharedPublicApiErrorResponseReference(Reference|Response $response, Components $components): ?Reference
+    {
+        $resolvedResponse = $response instanceof Reference ? $response->resolve() : $response;
+        $responseCode = is_numeric($resolvedResponse->code) ? (int) $resolvedResponse->code : null;
+        $responseName = $responseCode ? $this->publicApiErrorResponseName($responseCode) : null;
+
+        if ($responseName === null) {
+            return null;
+        }
+
+        return new Reference('responses', $responseName, $components);
+    }
+
+    private function pruneUnsupportedOperationQueryParameters(string $path, Operation $operation): void
+    {
+        $documentedFilterAliases = $this->documentedFilterAliases($operation);
+
+        $operation->parameters = array_values(array_filter(
+            $operation->parameters,
+            fn (Parameter|Reference $parameter): bool => $this->shouldKeepPublicApiQueryParameter($parameter, $documentedFilterAliases),
+        ));
+
+        $this->appendMissingRequiredPublicApiQueryParameters($path, $operation);
+    }
+
+    /**
+     * @param  array<int, string>  $documentedFilterAliases
+     */
+    private function shouldKeepPublicApiQueryParameter(Parameter|Reference $parameter, array $documentedFilterAliases): bool
+    {
+        $resolvedParameter = $parameter instanceof Reference ? $parameter->resolve() : $parameter;
+
+        if (! $resolvedParameter instanceof Parameter || $resolvedParameter->in !== 'query') {
+            return true;
+        }
+
+        if (in_array($resolvedParameter->name, self::UNSUPPORTED_PUBLIC_API_QUERY_PARAMETERS, true)) {
+            return false;
+        }
+
+        return ! in_array($resolvedParameter->name, $documentedFilterAliases, true);
+    }
+
+    private function appendMissingRequiredPublicApiQueryParameters(string $path, Operation $operation): void
+    {
+        $documentedQueryParameters = $this->documentedQueryParameterNames($operation);
+
+        foreach ($this->requiredPublicApiQueryParameters($path, $operation->method) as $requiredParameter) {
+            if (in_array($requiredParameter->name, $documentedQueryParameters, true)) {
+                continue;
+            }
+
+            $operation->parameters[] = $requiredParameter;
+            $documentedQueryParameters[] = $requiredParameter->name;
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function documentedQueryParameterNames(Operation $operation): array
+    {
+        return collect($operation->parameters)
+            ->map(static fn ($parameter) => $parameter instanceof Reference ? $parameter->resolve() : $parameter)
+            ->filter(static fn ($parameter): bool => $parameter instanceof Parameter && $parameter->in === 'query')
+            ->map(static fn (Parameter $parameter): string => $parameter->name)
+            ->values()
+            ->all();
     }
 
     /**
@@ -478,7 +512,7 @@ class AppServiceProvider extends ServiceProvider
                 'schema' => 'PublicApiValidationErrorEnvelope',
                 'status' => SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY,
                 'description' => 'Validation error',
-                'message' => 'Validation failed.',
+                'message' => self::VALIDATION_FAILED_MESSAGE,
                 'code' => 'validation_error',
                 'meta' => [],
             ],
@@ -529,7 +563,7 @@ class AppServiceProvider extends ServiceProvider
             return;
         }
 
-        $responseName = self::publicApiErrorResponseName($status);
+        $responseName = $this->publicApiErrorResponseName($status);
 
         if ($responseName === null) {
             return;
@@ -595,13 +629,13 @@ class AppServiceProvider extends ServiceProvider
 
         return Schema::fromType(
             (new ObjectType)
-                ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example('Validation failed.'))
+                ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example(self::VALIDATION_FAILED_MESSAGE))
                 ->addProperty('code', (new StringType)->setDescription('Stable machine-readable error code.')->example('validation_error'))
                 ->addProperty('errors', $validationErrors)
                 ->addProperty('meta', $meta->example([]))
                 ->setRequired(['message', 'code', 'errors', 'meta'])
                 ->example([
-                    'message' => 'Validation failed.',
+                    'message' => self::VALIDATION_FAILED_MESSAGE,
                     'code' => 'validation_error',
                     'errors' => [
                         'email' => ['The provided credentials are incorrect.'],

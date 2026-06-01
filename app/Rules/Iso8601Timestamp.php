@@ -36,8 +36,10 @@ final class Iso8601Timestamp implements ValidationRule
     {
         // @phpstan-ignore-next-line - using preg_match for strict ISO pattern matching
         $matched = preg_match(self::ISO_8601_PATTERN, $value, $matches);
+        $dateTime = null;
+
         if ($matched !== 1) {
-            return null;
+            return $dateTime;
         }
 
         $timezone = $matches['timezone'] === 'Z' ? '+00:00' : $matches['timezone'];
@@ -51,15 +53,11 @@ final class Iso8601Timestamp implements ValidationRule
             $format = '!Y-m-d\TH:i:sP';
         }
 
-        $dateTime = DateTimeImmutable::createFromFormat($format, $normalizedValue);
+        $parsedDateTime = DateTimeImmutable::createFromFormat($format, $normalizedValue);
         $errors = DateTimeImmutable::getLastErrors();
 
-        if ($dateTime === false) {
-            return null;
-        }
-
-        if (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0)) {
-            return null;
+        if ($parsedDateTime !== false && ! (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+            $dateTime = $parsedDateTime;
         }
 
         return $dateTime;

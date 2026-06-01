@@ -20,6 +20,8 @@ use Override;
  */
 class ActivityResource extends JsonResource
 {
+    private const string UPDATED_SUFFIX = ' updated';
+
     /**
      * Transform the resource into an array.
      *
@@ -78,7 +80,7 @@ class ActivityResource extends JsonResource
 
         return $updatedKey === 'deleted_at'
             ? 'Project has been restored'
-            : 'Project '.Str::headline($updatedKey).' updated';
+            : 'Project '.Str::headline($updatedKey).self::UPDATED_SUFFIX;
     }
 
     protected function deleted_project(): string
@@ -112,23 +114,23 @@ class ActivityResource extends JsonResource
         $changes = Arr::get($this->changes, 'after', []);
 
         $updatedKey = key($changes);
-
-        if (! $updatedKey) {
-            return 'No changes detected';
-        }
+        $description = 'No changes detected';
 
         if ($updatedKey === 'status_id') {
             $statuses = Cache::remember('task_statuses_map', 300, fn () => TaskStatus::pluck('label', 'id')->toArray());
 
             $newStatus = $statuses[$changes['status_id']] ?? 'Unknown';
 
-            return "Task '$taskTitle' status changed to '$newStatus'";
+            $description = "Task '$taskTitle' status changed to '$newStatus'";
+        } elseif (is_string($updatedKey) && $updatedKey !== '') {
+            $description = "Task '$taskTitle' ".Str::headline($updatedKey).self::UPDATED_SUFFIX;
+
+            if ($updatedKey === 'deleted_at') {
+                $description = "Task '$taskTitle' has been restored";
+            }
         }
 
-        return $updatedKey === 'deleted_at'
-            ? "Task '$taskTitle' has been restored"
-            : "Task '$taskTitle' ".Str::headline($updatedKey).' updated';
-
+        return $description;
     }
 
     protected function deleted_task(): string
@@ -175,7 +177,7 @@ class ActivityResource extends JsonResource
 
     protected function updated_meeting(): string
     {
-        return 'Meeting '.data_get($this->subject, 'topic', '').' updated';
+        return 'Meeting '.data_get($this->subject, 'topic', '').self::UPDATED_SUFFIX;
     }
 
     protected function deleted_meeting(): string

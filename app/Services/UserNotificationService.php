@@ -47,10 +47,7 @@ class UserNotificationService
 
     private function findUserNotification(User $user, string $notificationId): DatabaseNotification
     {
-        /** @var DatabaseNotification $notification */
-        $notification = $user->notifications()->findOrFail($notificationId);
-
-        return $notification;
+        return $user->notifications()->findOrFail($notificationId);
     }
 
     private function applyStatusFilter(mixed $query, ?string $status): void

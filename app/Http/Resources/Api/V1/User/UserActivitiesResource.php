@@ -223,16 +223,16 @@ class UserActivitiesResource extends JsonResource
 
     protected function colorFromDescription(string $desc): string
     {
+        $color = 'green';
+
         if (Str::startsWith($desc, 'Project')) {
-            return 'purple';
-        }
-        if (Str::startsWith($desc, 'Task')) {
-            return 'yellow';
-        }
-        if (Str::startsWith($desc, 'Meeting')) {
-            return 'red';
+            $color = 'purple';
+        } elseif (Str::startsWith($desc, 'Task')) {
+            $color = 'yellow';
+        } elseif (Str::startsWith($desc, 'Meeting')) {
+            $color = 'red';
         }
 
-        return 'green';
+        return $color;
     }
 }

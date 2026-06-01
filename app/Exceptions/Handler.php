@@ -109,7 +109,7 @@ class Handler extends ExceptionHandler
             'method_not_allowed',
         ));
 
-        $this->renderable(function (HttpException $e, $request): \Illuminate\Http\JsonResponse {
+        $this->renderable(function (HttpException $e): \Illuminate\Http\JsonResponse {
             $status = $e->getStatusCode();
             $defaultMessage = ApiErrorFormatter::defaultMessageForStatus($status);
             $message = $e->getMessage() !== ''

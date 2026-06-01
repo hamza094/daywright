@@ -151,12 +151,10 @@ final readonly class PlanLimitService
 
     private function lockProject(Project $project): Project
     {
-        /** @var Project $lockedProject */
-        $lockedProject = Project::query()
+        /** @var Project */
+        return Project::query()
             ->whereKey($project->getKey())
             ->lockForUpdate()
             ->firstOrFail();
-
-        return $lockedProject;
     }
 }

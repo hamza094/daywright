@@ -16,7 +16,7 @@ final class VerifyEmailService
     {
         if (! $hasValidSignature
             || ! $authenticatedUser->is($user)
-            || ! hash_equals(sha1((string) $user->getEmailForVerification()), $hash)) {
+            || ! $this->matchesVerificationHash($user, $hash)) {
             throw new HttpException(Response::HTTP_BAD_REQUEST, trans('verification.invalid'));
         }
 
@@ -46,5 +46,21 @@ final class VerifyEmailService
         }
 
         $user->sendEmailVerificationNotification();
+    }
+
+    private function matchesVerificationHash(User $user, string $hash): bool
+    {
+        return hash_equals($this->verificationHash($user), $hash)
+            || hash_equals($this->legacyVerificationHash($user), $hash);
+    }
+
+    private function verificationHash(User $user): string
+    {
+        return hash('sha256', (string) $user->getEmailForVerification());
+    }
+
+    private function legacyVerificationHash(User $user): string
+    {
+        return sha1((string) $user->getEmailForVerification()); // NOSONAR - support previously issued signed verification links.
     }
 }

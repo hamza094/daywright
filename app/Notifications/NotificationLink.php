@@ -12,6 +12,8 @@ final class NotificationLink
 {
     private const string DEFAULT_VERSION = 'v1';
 
+    private const string VERIFICATION_HASH_ALGORITHM = 'sha256';
+
     public static function project(string $projectSlug, bool $absolute = false, ?string $version = null): string
     {
         return route(self::routeName('projects.show', $version), ['project' => $projectSlug], $absolute);
@@ -24,8 +26,7 @@ final class NotificationLink
             $expiration,
             [
                 'user' => $user->uuid,
-                // sha1 is expected by Laravel's verification flow; the URL itself is HMAC-signed via temporarySignedRoute. NOSONAR
-                'hash' => sha1((string) $user->getEmailForVerification()),
+                'hash' => hash(self::VERIFICATION_HASH_ALGORITHM, (string) $user->getEmailForVerification()),
             ]
         );
     }

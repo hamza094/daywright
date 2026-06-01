@@ -1,7 +1,7 @@
 import moment from 'moment';
 
 export function calculateRemainingTime(task, currentDate) {
-  if (!task || !task.due_at) {
+  if (!task?.due_at) {
     return '';
   }
 

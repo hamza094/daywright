@@ -3,6 +3,53 @@ import test from 'node:test';
 
 import { createIdempotentRequest } from './IdempotencyRequestService.js';
 
+test('createIdempotentRequest uses Web Crypto bytes when randomUUID is unavailable', async () => {
+  const calls = [];
+  const originalCryptoDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+  const originalDateNow = Date.now;
+  let seed = 0;
+
+  Object.defineProperty(globalThis, 'crypto', {
+    configurable: true,
+    value: {
+      getRandomValues(array) {
+        seed += 1;
+
+        for (let index = 0; index < array.length; index += 1) {
+          array[index] = (seed + index) % 256;
+        }
+
+        return array;
+      },
+    },
+  });
+
+  Date.now = () => 1234567890;
+
+  try {
+    const client = async (config) => {
+      calls.push(config);
+
+      return { data: { ok: true } };
+    };
+
+    const request = createIdempotentRequest(client);
+
+    await request.post('/api-tokens', { name: 'Token' });
+
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].headers['Idempotency-Key'], /^1234567890-[0-9a-f]{32}$/);
+  } finally {
+    Date.now = originalDateNow;
+
+    if (originalCryptoDescriptor) {
+      Object.defineProperty(globalThis, 'crypto', originalCryptoDescriptor);
+    } else {
+      delete globalThis.crypto;
+    }
+  }
+});
+
 test('createIdempotentRequest adds an idempotency key and rotates it after success', async () => {
   const calls = [];
   const client = async (config) => {

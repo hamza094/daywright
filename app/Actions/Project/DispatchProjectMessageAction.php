@@ -125,12 +125,10 @@ final class DispatchProjectMessageAction
 
     private function lockMessage(Message $message): Message
     {
-        /** @var Message $lockedMessage */
-        $lockedMessage = Message::query()
+        return Message::query()
             ->whereKey($message->getKey())
             ->lockForUpdate()
             ->firstOrFail();
 
-        return $lockedMessage;
     }
 }

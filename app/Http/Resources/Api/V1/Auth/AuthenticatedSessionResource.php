@@ -6,7 +6,6 @@ namespace App\Http\Resources\Api\V1\Auth;
 
 use App\Http\Resources\Api\V1\FeatureFlagsResource;
 use App\Http\Resources\Api\V1\User\AuthenticatedUserResource;
-use App\Models\User;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -15,11 +14,6 @@ use Override;
 #[SchemaName('AuthenticatedSession')]
 class AuthenticatedSessionResource extends JsonResource
 {
-    public function __construct(private readonly User $user)
-    {
-        parent::__construct($user);
-    }
-
     /**
      * Transform the resource into an array.
      *
@@ -29,8 +23,8 @@ class AuthenticatedSessionResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'user' => new AuthenticatedUserResource($this->user),
-            'features' => new FeatureFlagsResource($this->user),
+            'user' => new AuthenticatedUserResource($this->resource),
+            'features' => new FeatureFlagsResource($this->resource),
         ];
     }
 }

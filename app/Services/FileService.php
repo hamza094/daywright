@@ -129,13 +129,10 @@ class FileService
 
     private function lockUser(User $user): User
     {
-        /** @var User $lockedUser */
-        $lockedUser = User::query()
+        return User::query()
             ->whereKey($user->getKey())
             ->lockForUpdate()
             ->firstOrFail();
-
-        return $lockedUser;
     }
 
     private function extractStoragePath(?string $url): ?string
