@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Zoom;
 
+use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Http\Integrations\Zoom\Requests\CreateMeeting;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use App\Models\User;
@@ -57,12 +58,35 @@ class ZoomMeetingCreateTest extends TestCase
             ]),
             'users/me/meetings' => $this->mockMeetingResponse(),
         ]);
-        (new ZoomService)->createMeeting($this->meetingData, $expiredUser);
+        app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser);
         Saloon::assertSent(GetRefreshTokenRequest::class);
         $expiredUser->refresh();
         $this->assertEquals('new-access-token-here', $expiredUser->zoom_access_token);
         $this->assertEquals('new-refresh-token-here', $expiredUser->zoom_refresh_token);
         $this->assertTrue(now()->addHour()->equalTo($expiredUser->zoom_expires_at));
+    }
+
+    /** @test */
+    public function it_clears_zoom_credentials_when_the_refresh_token_is_rejected(): void
+    {
+        $expiredUser = $this->createZoomUser(now()->subWeek());
+
+        Saloon::fake([
+            GetRefreshTokenRequest::class => MockResponse::make(body: 'Forbidden', status: 403),
+        ]);
+
+        try {
+            app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser);
+            $this->fail('Expected ZoomUserErrorException was not thrown.');
+        } catch (ZoomUserErrorException $exception) {
+            $this->assertSame('Zoom account connection needs to be re-authorized.', $exception->getMessage());
+        }
+
+        $expiredUser->refresh();
+
+        $this->assertNull($expiredUser->zoom_access_token);
+        $this->assertNull($expiredUser->zoom_refresh_token);
+        $this->assertNull($expiredUser->zoom_expires_at);
     }
 
     /** @test */
@@ -103,7 +127,7 @@ class ZoomMeetingCreateTest extends TestCase
         $this->createAndAssertMeeting($this->meetingData, $this->user);
         $this->createAndAssertMeeting($this->meetingData, $this->user);
         $this->expectException(RateLimitReachedException::class);
-        (new ZoomService)->createMeeting($this->meetingData, $this->user);
+        app(ZoomService::class)->createMeeting($this->meetingData, $this->user);
     }
 
     private function mockMeetingResponse(): MockResponse
@@ -125,7 +149,7 @@ class ZoomMeetingCreateTest extends TestCase
 
     private function createAndAssertMeeting(array $meetingData, User $user): void
     {
-        $meeting = (new ZoomService)->createMeeting($meetingData, $user);
+        $meeting = app(ZoomService::class)->createMeeting($meetingData, $user);
         $expectedAttributes = [
             'meeting_id' => 124,
             'topic' => $meetingData['topic'],

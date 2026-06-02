@@ -86,6 +86,18 @@ class ZoomOAuthCallbackTest extends TestCase
     }
 
     #[Test]
+    public function error_is_returned_if_the_cached_verifier_is_missing_or_expired(): void
+    {
+        $this->fakeZoom();
+
+        $this->getJson(route('api.v1.oauth.zoom.callback').'?code=dummy-code&state=dummy-state')
+            ->assertBadRequest()
+            ->assertJsonPath('message', 'Zoom authorization session is invalid or expired.');
+
+        $this->assertUserWasNotUpdated($this->user->fresh());
+    }
+
+    #[Test]
     public function error_is_returned_if_the_code_is_missing_from_the_request(): void
     {
         $this->fakeZoom();
@@ -99,6 +111,38 @@ class ZoomOAuthCallbackTest extends TestCase
         $this->assertTrue(Cache::has('oauth:zoom:dummy-state'));
 
         $this->assertUserWasNotUpdated($this->user);
+    }
+
+    #[Test]
+    public function error_is_returned_if_the_callback_is_replayed(): void
+    {
+        $this->freezeSecond();
+
+        $this->fakeZoom();
+
+        Cache::put('oauth:zoom:dummy-state', 'dummy-code-verifier', now()->addMinutes(10));
+
+        $this->getJson(route('api.v1.oauth.zoom.callback').'?code=dummy-code&state=dummy-state')
+            ->assertOk()
+            ->assertJsonPath('message', 'Zoom account connected successfully');
+
+        $this->getJson(route('api.v1.oauth.zoom.callback').'?code=dummy-code&state=dummy-state')
+            ->assertBadRequest()
+            ->assertJsonPath('message', 'Zoom authorization session is invalid or expired.');
+
+        $this->assertFalse(Cache::has('oauth:zoom:dummy-state'));
+    }
+
+    #[Test]
+    public function error_is_returned_if_the_user_denies_the_zoom_connection(): void
+    {
+        $this->fakeZoom();
+
+        $this->getJson(route('api.v1.oauth.zoom.callback').'?error=access_denied')
+            ->assertBadRequest()
+            ->assertJsonPath('message', 'Zoom account connection denied');
+
+        $this->assertUserWasNotUpdated($this->user->fresh());
     }
 
     private function assertUserWasNotUpdated(User $user): void

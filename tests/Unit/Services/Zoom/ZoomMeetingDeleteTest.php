@@ -30,7 +30,7 @@ class ZoomMeetingDeleteTest extends TestCase
 
         $user = $this->createZoomUser(now()->addWeek());
 
-        (new ZoomService)->deleteMeeting($meetingId, $user);
+        app(ZoomService::class)->deleteMeeting($meetingId, $user);
 
         Saloon::assertNotSent(GetRefreshTokenRequest::class);
 

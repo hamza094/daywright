@@ -235,6 +235,10 @@ Exit criteria:
 Priority: Critical  
 Gate: Must finish before high-concurrency usage
 
+Status:
+
+- Implemented in the OAuth controller, Zoom service refresh path, user Zoom credential helpers, and focused OAuth/service tests.
+
 Why this phase comes fourth:
 
 - A webhook-safe integration can still fail badly if token rotation or refresh is unsafe.
@@ -253,13 +257,13 @@ Files likely involved:
 
 Step-by-step tasks:
 
-- [ ] Protect per-user token refresh with a lock so only one request refreshes at a time.
-- [ ] Reload the latest user token state after the refresh lock is acquired.
-- [ ] Persist rotated access and refresh tokens atomically.
-- [ ] Decide how unauthorized or revoked Zoom accounts should be cleared or flagged locally.
-- [ ] Keep PKCE verifier and OAuth state handling explicit and time-bounded.
-- [ ] Verify callback behavior when state is missing, expired, replayed, or denied by the user.
-- [ ] Define a clear policy for what happens when Zoom returns an expired or unusable refresh token.
+- [x] Protect per-user token refresh with a lock so only one request refreshes at a time.
+- [x] Reload the latest user token state after the refresh lock is acquired.
+- [x] Persist rotated access and refresh tokens atomically.
+- [x] Decide how unauthorized or revoked Zoom accounts should be cleared or flagged locally.
+- [x] Keep PKCE verifier and OAuth state handling explicit and time-bounded.
+- [x] Verify callback behavior when state is missing, expired, replayed, or denied by the user.
+- [x] Define a clear policy for what happens when Zoom returns an expired or unusable refresh token.
 
 Recommended tests:
 

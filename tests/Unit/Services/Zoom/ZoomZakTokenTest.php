@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Zoom;
 
+use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use App\Http\Integrations\Zoom\Requests\GetZakToken;
+use App\Models\User;
 use App\Services\Zoom\ZoomService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Saloon\Enums\Method;
@@ -29,8 +31,32 @@ class ZoomZakTokenTest extends TestCase
 
         $user = $this->createZoomUser(now()->addWeek());
 
-        (new ZoomService)->getZakToken($user);
+        app(ZoomService::class)->getZakToken($user);
 
+        Saloon::assertSent(static fn (GetZakToken $request): bool => $request->resolveEndpoint() === 'users/me/token?type=zak' && $request->getMethod() === Method::GET);
+    }
+
+    /** @test */
+    public function it_reloads_latest_tokens_before_refreshing_an_expired_user(): void
+    {
+        Saloon::fake([
+            'users/me/token?type=zak' => MockResponse::make([
+                'token' => 'zak token',
+            ]),
+        ]);
+
+        $staleUser = $this->createZoomUser(now()->subMinute());
+
+        $freshUser = User::query()->findOrFail($staleUser->id);
+        $freshUser->updateZoomOAuthDetails(
+            'fresh-access-token-here',
+            'fresh-refresh-token-here',
+            now()->addHour()->toDateTimeImmutable(),
+        );
+
+        app(ZoomService::class)->getZakToken($staleUser);
+
+        Saloon::assertNotSent(GetRefreshTokenRequest::class);
         Saloon::assertSent(static fn (GetZakToken $request): bool => $request->resolveEndpoint() === 'users/me/token?type=zak' && $request->getMethod() === Method::GET);
     }
 }

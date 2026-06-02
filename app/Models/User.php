@@ -251,9 +251,23 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         string $refreshToken,
         DateTimeImmutable $expiresAt
     ): void {
-        $this->zoom_access_token = $accessToken;
-        $this->zoom_refresh_token = $refreshToken;
-        $this->zoom_expires_at = $expiresAt;
+        $this->forceFill([
+            'zoom_access_token' => $accessToken,
+            'zoom_refresh_token' => $refreshToken,
+            'zoom_expires_at' => $expiresAt,
+        ]);
+
+        $this->save();
+    }
+
+    public function clearZoomOAuthDetails(): void
+    {
+        $this->forceFill([
+            'zoom_access_token' => null,
+            'zoom_refresh_token' => null,
+            'zoom_expires_at' => null,
+        ]);
+
         $this->save();
     }
 

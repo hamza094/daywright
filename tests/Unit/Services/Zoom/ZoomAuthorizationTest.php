@@ -39,7 +39,7 @@ class ZoomAuthorizationTest extends TestCase
             codeVerifier: 'dummy-code-verifier',
         );
 
-        $zoomService = new ZoomService;
+        $zoomService = app(ZoomService::class);
 
         $authDetails = $zoomService->authorize($callbackDetails);
 
