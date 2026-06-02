@@ -284,6 +284,10 @@ Exit criteria:
 Priority: High  
 Gate: Must finish before using this as a reusable provider template
 
+Status:
+
+- Implemented in the Zoom connector, request classes, meeting DTO parsing, service contract, Saloon config, and direct transport/unit tests.
+
 Why this phase comes fifth:
 
 - The current Saloon structure is a good foundation, but some contracts are still too loose for long-term maintenance.
@@ -302,13 +306,13 @@ Files likely involved:
 
 Step-by-step tasks:
 
-- [ ] Replace mixed transport return types with explicit domain results for update and delete operations.
-- [ ] Keep provider response mapping strict enough to fail loudly on malformed critical payloads.
-- [ ] Remove direct dependence on `auth()->id()` from Saloon request classes and pass provider-aware limiter identity explicitly.
-- [ ] Review whether request-level rate limits should be centralized or kept per request.
-- [ ] Standardize connector exception taxonomy for unauthorized, not found, rate-limited, user-correctable, and upstream-failure cases.
-- [ ] Add transport-level tests for endpoint resolution, request body normalization, headers, and exception mapping.
-- [ ] Fix cross-platform configuration assumptions such as the integrations path casing in `config/saloon.php`.
+- [x] Replace mixed transport return types with explicit domain results for update and delete operations.
+- [x] Keep provider response mapping strict enough to fail loudly on malformed critical payloads.
+- [x] Remove direct dependence on `auth()->id()` from Saloon request classes and pass provider-aware limiter identity explicitly.
+- [x] Review whether request-level rate limits should be centralized or kept per request.
+- [x] Standardize connector exception taxonomy for unauthorized, not found, rate-limited, user-correctable, and upstream-failure cases.
+- [x] Add transport-level tests for endpoint resolution, request body normalization, headers, and exception mapping.
+- [x] Fix cross-platform configuration assumptions such as the integrations path casing in `config/saloon.php`.
 
 Recommended tests:
 

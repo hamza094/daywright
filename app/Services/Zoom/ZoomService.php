@@ -8,6 +8,7 @@ use App\DataTransferObjects\Zoom\AccessTokenDetails;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
+use App\DataTransferObjects\Zoom\MeetingOperationResult;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Http\Integrations\Zoom\Requests\CreateMeeting;
 use App\Http\Integrations\Zoom\Requests\DeleteMeeting;
@@ -20,7 +21,6 @@ use App\Models\User;
 use Closure;
 use Illuminate\Support\Str;
 use Override;
-use Saloon\Http\Response as SaloonResponse;
 
 final class ZoomService implements Zoom
 {
@@ -76,7 +76,7 @@ final class ZoomService implements Zoom
     public function createMeeting(array $validated, User $user): Meeting
     {
         return $this->connectedConnector($user)
-            ->send(new CreateMeeting($validated))
+            ->send(new CreateMeeting($validated, $this->limiterKey($user)))
             ->dtoOrFail();
     }
 
@@ -84,19 +84,24 @@ final class ZoomService implements Zoom
      * @param  array<string, mixed>  $validated
      */
     #[Override]
-    public function updateMeeting(array $validated, User $user): SaloonResponse
+    public function updateMeeting(array $validated, User $user): MeetingOperationResult
     {
-        return $this->connectedConnector($user)
-            ->send(new UpdateMeeting($validated))
+        $meetingId = (int) $validated['meeting_id'];
+        $response = $this->connectedConnector($user)
+            ->send(new UpdateMeeting($validated, $this->limiterKey($user)))
             ->throw();
+
+        return MeetingOperationResult::updated($meetingId, $response->status());
     }
 
     #[Override]
-    public function deleteMeeting(int $meetingId, User $user): SaloonResponse
+    public function deleteMeeting(int $meetingId, User $user): MeetingOperationResult
     {
-        return $this->connectedConnector($user)
-            ->send(new DeleteMeeting($meetingId))
+        $response = $this->connectedConnector($user)
+            ->send(new DeleteMeeting($meetingId, $this->limiterKey($user)))
             ->throw();
+
+        return MeetingOperationResult::deleted($meetingId, $response->status());
     }
 
     #[Override]
@@ -128,6 +133,11 @@ final class ZoomService implements Zoom
         $hashedVerifier = hash('sha256', $codeVerifier, true);
 
         return trim(strtr(base64_encode($hashedVerifier), '+/', '-_'), '=');
+    }
+
+    private function limiterKey(User $user): string
+    {
+        return ZoomLimiter::forUser($user);
     }
 
     /**

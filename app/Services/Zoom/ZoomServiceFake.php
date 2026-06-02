@@ -8,6 +8,7 @@ use App\DataTransferObjects\Zoom\AccessTokenDetails;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
+use App\DataTransferObjects\Zoom\MeetingOperationResult;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Interfaces\Zoom;
 use App\Models\User;
@@ -108,25 +109,23 @@ final class ZoomServiceFake implements Zoom
      * @param  array<string, mixed>  $validated
      */
     #[Override]
-    public function updateMeeting(array $validated, User $user): mixed
+    public function updateMeeting(array $validated, User $user): MeetingOperationResult
     {
         if ($this->failureException instanceof ZoomException) {
             throw $this->failureException;
         }
 
-        return response()->json(204);
+        return MeetingOperationResult::updated((int) ($validated['meeting_id'] ?? 0), 204);
     }
 
     #[Override]
-    public function deleteMeeting(int $meetingId, User $user): mixed
+    public function deleteMeeting(int $meetingId, User $user): MeetingOperationResult
     {
         if ($this->failureException instanceof ZoomException) {
             throw $this->failureException;
         }
 
-        // Simulate a successful deletion: return an empty JSON response with 204 No Content.
-
-        return response()->json(null, 204);
+        return MeetingOperationResult::deleted($meetingId, 204);
     }
 
     #[Override]
