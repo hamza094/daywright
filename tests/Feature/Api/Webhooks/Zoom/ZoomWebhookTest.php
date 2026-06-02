@@ -53,10 +53,14 @@ class ZoomWebhookTest extends TestCase
             path: base_path('tests/Fixtures/Webhooks/Zoom/meeting_update.json'),
             flags: JSON_THROW_ON_ERROR,
         );
+        $postBody['payload']['object']['host_id'] = 'provider-host-id';
+        $postBody['payload']['object']['settings'] = ['waiting_room' => true];
 
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
-        $updateData = collect($object)->except(['id', 'uuid'])->toArray();
+        $updateData = [
+            'topic' => $object['topic'],
+        ];
 
         $requestId = 'zoom-update-'.Str::uuid();
 
@@ -64,7 +68,7 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId && $job->update_data === $updateData);
+        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === (int) $meetingId && $job->update_data === $updateData);
     }
 
     /** @test */
@@ -147,6 +151,31 @@ class ZoomWebhookTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    /** @test */
+    public function endpoint_validation_is_handled_before_webhook_validation_and_dispatch(): void
+    {
+        $plainToken = 'zoom-endpoint-validation-token';
+        $payload = [
+            'event' => 'endpoint.url_validation',
+            'payload' => [
+                'plainToken' => $plainToken,
+            ],
+        ];
+
+        $this->postJson(
+            route('api.v1.webhooks.meetings.update'),
+            $payload,
+            $this->zoomWebhookHeaders($payload, 'zoom-endpoint-validation')
+        )
+            ->assertOk()
+            ->assertExactJson([
+                'plainToken' => $plainToken,
+                'encryptedToken' => hash_hmac('sha256', $plainToken, 'secret'),
+            ]);
+
+        Queue::assertNothingPushed();
+    }
+
     /**
      * @param  array<string, mixed>  $payload
      * @return array<string, string>
@@ -154,20 +183,18 @@ class ZoomWebhookTest extends TestCase
     private function zoomWebhookHeaders(array $payload, string $requestId): array
     {
         $timestamp = (string) time();
+        $rawPayload = json_encode($payload);
 
         return [
             'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $this->buildSignature($timestamp, $payload),
+            'x-zm-signature' => $this->buildSignature($timestamp, $rawPayload),
             'x-zm-request-id' => $requestId,
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function buildSignature(string $timestamp, array $payload): string
+    private function buildSignature(string $timestamp, string $payload): string
     {
-        $message = 'v0:'.$timestamp.':'.json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $message = 'v0:'.$timestamp.':'.$payload;
 
         return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
     }

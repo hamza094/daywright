@@ -66,4 +66,77 @@ class EndedMeetingWebhookTest extends TestCase
             && $notification->toArray($this->user)['link'] === $expectedLink
             && $notification->toMail($this->user)->viewData['projectLink'] === $expectedUrl);
     }
+
+    /** @test */
+    public function allows_missing_optional_timestamps_without_failing(): void
+    {
+        Notification::fake();
+        Event::fake();
+
+        $meeting = Meeting::factory()->create([
+            'meeting_id' => 813,
+            'project_id' => $this->project->id,
+            'user_id' => $this->user->id,
+            'status' => 'waiting',
+        ]);
+
+        $users = User::factory()->count(2)->create()->each(fn (User $user) => $this->inviteAndActivateUser($this->project, $user)
+        );
+
+        $job = new MeetingEndsWebhook([
+            'meeting_id' => 813,
+            'start_time' => null,
+            'end_time' => null,
+        ]);
+
+        $job->handle();
+
+        $this->assertEquals('ended', $meeting->fresh()->status);
+        Event::assertDispatched(fn (MeetingStatusUpdate $event): bool => $event->meeting->id === $meeting->id);
+        Notification::assertSentTo($users, MeetingEnded::class);
+    }
+
+    /** @test */
+    public function ignores_missing_meeting_without_failing(): void
+    {
+        Notification::fake();
+        Event::fake([MeetingStatusUpdate::class]);
+
+        $job = new MeetingEndsWebhook([
+            'meeting_id' => 999999,
+            'start_time' => null,
+            'end_time' => null,
+        ]);
+
+        $job->handle();
+
+        Notification::assertNothingSent();
+        Event::assertNotDispatched(MeetingStatusUpdate::class);
+    }
+
+    /** @test */
+    public function does_not_send_duplicate_notifications_when_meeting_is_already_ended(): void
+    {
+        Notification::fake();
+        Event::fake([MeetingStatusUpdate::class]);
+
+        $meeting = Meeting::factory()->create([
+            'meeting_id' => 813,
+            'project_id' => $this->project->id,
+            'user_id' => $this->user->id,
+            'status' => 'ended',
+        ]);
+
+        $job = new MeetingEndsWebhook([
+            'meeting_id' => 813,
+            'start_time' => '2024-06-24T11:00:00Z',
+            'end_time' => '2024-06-24T12:00:00Z',
+        ]);
+
+        $job->handle();
+
+        $this->assertEquals('ended', $meeting->fresh()->status);
+        Notification::assertNothingSent();
+        Event::assertNotDispatched(MeetingStatusUpdate::class);
+    }
 }

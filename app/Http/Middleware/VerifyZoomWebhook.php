@@ -6,12 +6,13 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Symfony\Component\HttpFoundation\Response;
-
-use function Safe\json_encode;
 
 class VerifyZoomWebhook
 {
+    private const string ENDPOINT_VALIDATION_EVENT = 'endpoint.url_validation';
+
     private const string REQUEST_ID_HEADER = 'x-zm-request-id';
 
     private const string SIGNATURE_HEADER = 'x-zm-signature';
@@ -38,6 +39,10 @@ class VerifyZoomWebhook
         }
 
         $request->headers->set((string) config('idempotency.header'), $zoomRequestId);
+
+        if ($this->isEndpointValidationRequest($request)) {
+            return response()->json($this->endpointValidationPayload($request));
+        }
 
         return $next($request);
     }
@@ -86,8 +91,30 @@ class VerifyZoomWebhook
 
     private function generateSignature(string $timestamp, Request $request): string
     {
-        $message = 'v0:'.$timestamp.':'.json_encode($request->all(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $message = 'v0:'.$timestamp.':'.$request->getContent();
 
         return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
+    }
+
+    private function isEndpointValidationRequest(Request $request): bool
+    {
+        return $request->input('event') === self::ENDPOINT_VALIDATION_EVENT;
+    }
+
+    /**
+     * @return array{plainToken: string, encryptedToken: string}
+     */
+    private function endpointValidationPayload(Request $request): array
+    {
+        $plainToken = trim((string) Arr::get($request->input('payload', []), 'plainToken', ''));
+
+        if ($plainToken === '') {
+            abort(Response::HTTP_BAD_REQUEST, 'Missing required Zoom webhook payload field: payload.plainToken.');
+        }
+
+        return [
+            'plainToken' => $plainToken,
+            'encryptedToken' => hash_hmac('sha256', $plainToken, (string) config('services.zoom.webhook_secret')),
+        ];
     }
 }

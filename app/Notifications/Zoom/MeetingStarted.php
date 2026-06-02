@@ -95,6 +95,6 @@ class MeetingStarted extends Notification implements ShouldBroadcast
      */
     private function formattedStartTime(): string
     {
-        return Carbon::parse($this->data['start_time'])->format('d F \\a\\t H:i:s');
+        return $this->data['start_time'] ? Carbon::parse($this->data['start_time'])->format('d F \\a\\t H:i:s') : 'an unknown time';
     }
 }

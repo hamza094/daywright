@@ -12,7 +12,6 @@ use App\Notifications\Zoom\MeetingStarted;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
@@ -29,7 +28,7 @@ class StartMeetingWebhook implements ShouldQueue
 
     public int $meeting_id;
 
-    public string $start_time;
+    public ?string $start_time;
 
     /**
      * @param  array<string, mixed>  $data
@@ -37,7 +36,7 @@ class StartMeetingWebhook implements ShouldQueue
     public function __construct(array $data)
     {
         $this->meeting_id = (int) $data['meeting_id'];
-        $this->start_time = $data['start_time'];
+        $this->start_time = $data['start_time'] ?? null;
     }
 
     /**
@@ -58,20 +57,21 @@ class StartMeetingWebhook implements ShouldQueue
     public function handle(): void
     {
         try {
-
             $meeting = $this->getMeeting();
 
-            if (! $this->validateStatus($meeting)) {
+            if (! $meeting instanceof Meeting) {
+                Log::channel('webhook')->info('Meeting not found for start webhook', ['meeting_id' => $this->meeting_id]);
+
+                return;
+            }
+
+            if (! $this->shouldStartMeeting($meeting)) {
                 return;
             }
 
             $this->updateMeetingStatus($meeting);
 
             $this->sendNotifications($meeting);
-
-        } catch (ModelNotFoundException $e) {
-            Log::channel('webhook')->error("Meeting with ID {$this->meeting_id} not found in the database.");
-            throw $e;
         } catch (Exception $e) {
             Log::channel('webhook')->error('Error processing meeting starting webhook: '.$e->getMessage(), ['exception' => $e]);
             throw $e;
@@ -95,9 +95,9 @@ class StartMeetingWebhook implements ShouldQueue
         return [5, 30];
     }
 
-    private function getMeeting(): Meeting
+    private function getMeeting(): ?Meeting
     {
-        return Meeting::where('meeting_id', $this->meeting_id)->firstOrFail();
+        return Meeting::where('meeting_id', $this->meeting_id)->first();
     }
 
     private function updateMeetingStatus(Meeting $meeting): void
@@ -126,10 +126,16 @@ class StartMeetingWebhook implements ShouldQueue
         Notification::send($members, new MeetingStarted($notificationData));
     }
 
-    private function validateStatus(Meeting $meeting): bool
+    private function shouldStartMeeting(Meeting $meeting): bool
     {
         if ($meeting->status === MeetingState::START->value) {
             Log::channel('webhook')->info("Meeting already started for meeting_id: {$this->meeting_id}");
+
+            return false;
+        }
+
+        if ($meeting->status === MeetingState::ENDS->value) {
+            Log::channel('webhook')->info("Ignoring stale started event for ended meeting_id: {$this->meeting_id}");
 
             return false;
         }

@@ -12,7 +12,6 @@ use App\Notifications\Zoom\MeetingEnded;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
@@ -63,15 +62,18 @@ class MeetingEndsWebhook implements ShouldQueue
         try {
             $meeting = $this->getMeeting();
 
-            if (! $this->validateStatus($meeting)) {
+            if (! $meeting instanceof Meeting) {
+                Log::channel('webhook')->info('Meeting not found for ended webhook', ['meeting_id' => $this->meeting_id]);
+
+                return;
+            }
+
+            if (! $this->shouldEndMeeting($meeting)) {
                 return;
             }
 
             $this->updateMeetingStatus($meeting);
             $this->sendNotifications($meeting);
-        } catch (ModelNotFoundException $e) {
-            Log::channel('webhook')->error("Meeting with ID {$this->meeting_id} not found in the database.");
-            throw $e;
         } catch (Exception $e) {
             Log::channel('webhook')->error('Error processing meeting ending webhook: '.$e->getMessage(), ['exception' => $e]);
             throw $e;
@@ -95,9 +97,9 @@ class MeetingEndsWebhook implements ShouldQueue
         return [5, 30];
     }
 
-    private function getMeeting(): Meeting
+    private function getMeeting(): ?Meeting
     {
-        return Meeting::where('meeting_id', $this->meeting_id)->firstOrFail();
+        return Meeting::where('meeting_id', $this->meeting_id)->first();
     }
 
     private function updateMeetingStatus(Meeting $meeting): void
@@ -125,7 +127,7 @@ class MeetingEndsWebhook implements ShouldQueue
         Notification::send($members, new MeetingEnded($notificationData));
     }
 
-    private function validateStatus(Meeting $meeting): bool
+    private function shouldEndMeeting(Meeting $meeting): bool
     {
         if ($meeting->status === MeetingState::ENDS->value) {
             Log::channel('webhook')->info("Meeting already ended for meeting_id: {$this->meeting_id}");

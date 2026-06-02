@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Webhooks\Zoom;
 
+use App\DataTransferObjects\Zoom\MeetingWebhookUpdateData;
 use App\Models\Meeting;
 use Exception;
 use Illuminate\Bus\Queueable;
@@ -20,10 +21,7 @@ class UpdateMeetingWebhook implements ShouldQueue
 
     public int $tries = 3;
 
-    /**
-     * @var int|string
-     */
-    public $meeting_id;
+    public int $meeting_id;
 
     /**
      * @var array<string, mixed>
@@ -35,8 +33,8 @@ class UpdateMeetingWebhook implements ShouldQueue
      */
     public function __construct(array $data)
     {
-        $this->meeting_id = $data['meeting_id'];
-        $this->update_data = $data['update_data'];
+        $this->meeting_id = (int) $data['meeting_id'];
+        $this->update_data = MeetingWebhookUpdateData::normalizeChanges((array) ($data['update_data'] ?? []));
     }
 
     /**
@@ -59,7 +57,7 @@ class UpdateMeetingWebhook implements ShouldQueue
         $meeting = Meeting::where('meeting_id', $this->meeting_id)->first();
 
         if (! $meeting) {
-            Log::channel('webhook')->warning('Meeting not found', ['meeting_id' => $this->meeting_id]);
+            Log::channel('webhook')->info('Meeting not found for update webhook', ['meeting_id' => $this->meeting_id]);
 
             return;
         }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Webhooks;
 
+use App\DataTransferObjects\Zoom\MeetingWebhookUpdateData;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Zoom\WebhookRequest;
 use App\Jobs\Webhooks\Zoom\DeleteMeetingWebhook;
@@ -22,10 +23,11 @@ class ZoomWebhookController extends ApiController
 
         /** @var array<string, mixed> $object */
         $object = (array) $request->input('payload.object', []);
+        $updateData = MeetingWebhookUpdateData::fromPayloadObject($object);
 
         UpdateMeetingWebhook::dispatch([
-            'meeting_id' => $object['id'],
-            'update_data' => collect($object)->except(['id', 'uuid'])->toArray(),
+            'meeting_id' => $updateData->meetingId,
+            'update_data' => $updateData->changes,
         ]);
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
