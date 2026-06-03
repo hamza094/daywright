@@ -69,7 +69,9 @@ class ZoomOAuthCallbackTest extends TestCase
     public function service_unavailable_is_returned_if_zoom_authorization_has_an_upstream_failure(): void
     {
         $this->fakeZoom()->shouldFailWithException(
-            new ZoomExternalFailureException,
+            (new ZoomExternalFailureException(code: 429))->withContext([
+                'retry_after_seconds' => 30,
+            ]),
         );
 
         Cache::put('oauth:zoom:dummy-state', 'dummy-code-verifier', now()->addMinutes(10));
@@ -78,7 +80,8 @@ class ZoomOAuthCallbackTest extends TestCase
 
         $response->assertStatus(503)
             ->assertJsonPath('message', 'Zoom service is temporarily unavailable.')
-            ->assertJsonPath('code', 'zoom_unavailable');
+            ->assertJsonPath('code', 'zoom_unavailable')
+            ->assertJsonPath('meta.retry_after_seconds', 30);
 
         $this->assertFalse(Cache::has('oauth:zoom:dummy-state'));
 

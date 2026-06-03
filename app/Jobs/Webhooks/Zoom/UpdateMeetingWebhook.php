@@ -5,23 +5,27 @@ declare(strict_types=1);
 namespace App\Jobs\Webhooks\Zoom;
 
 use App\DataTransferObjects\Zoom\MeetingWebhookUpdateData;
+use App\Jobs\Webhooks\Zoom\Concerns\InteractsWithZoomWebhookLogging;
 use App\Models\Meeting;
-use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class UpdateMeetingWebhook implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, InteractsWithZoomWebhookLogging, Queueable, SerializesModels;
+
+    private const string OPERATION = 'zoom.webhook.meeting.updated';
 
     public int $tries = 3;
 
     public int $meeting_id;
+
+    public ?string $request_id;
 
     /**
      * @var array<string, mixed>
@@ -35,6 +39,9 @@ class UpdateMeetingWebhook implements ShouldQueue
     {
         $this->meeting_id = (int) $data['meeting_id'];
         $this->update_data = MeetingWebhookUpdateData::normalizeChanges((array) ($data['update_data'] ?? []));
+        $this->request_id = isset($data['request_id']) && is_string($data['request_id']) && $data['request_id'] !== ''
+            ? $data['request_id']
+            : null;
     }
 
     /**
@@ -54,29 +61,52 @@ class UpdateMeetingWebhook implements ShouldQueue
      */
     public function handle(): void
     {
-        $meeting = Meeting::where('meeting_id', $this->meeting_id)->first();
+        $meeting = null;
 
-        if (! $meeting) {
-            Log::channel('webhook')->info('Meeting not found for update webhook', ['meeting_id' => $this->meeting_id]);
+        try {
+            $meeting = Meeting::where('meeting_id', $this->meeting_id)->first();
 
-            return;
-        }
+            if (! $meeting) {
+                $this->logWebhookIgnored(self::OPERATION, 'meeting_missing');
 
-        if ($this->isMeetingUpdated($meeting, $this->update_data)) {
+                return;
+            }
+
+            $userUuid = $meeting->user()->value('uuid') ?: null;
+
+            if (! $this->isMeetingUpdated($meeting, $this->update_data)) {
+                $this->logWebhookIgnored(self::OPERATION, 'no_changes', $userUuid);
+
+                return;
+            }
+
             $meeting->update($this->update_data);
-            Log::channel('webhook')->info('Meeting updated via webhook', ['meeting_id' => $this->meeting_id]);
-        } else {
-            Log::channel('webhook')->info('Same data nothing to update', ['meeting_id' => $this->meeting_id]);
+
+            $this->logWebhookProcessed(self::OPERATION, $userUuid);
+        } catch (Throwable $exception) {
+            $userUuid = null;
+
+            if ($meeting !== null) {
+                $userUuid = $meeting->user()->value('uuid') ?: null;
+            }
+
+            $this->logWebhookRetryScheduled(self::OPERATION, $exception, $userUuid);
+
+            throw $exception;
         }
     }
 
-    public function failed(Exception $exception): void
+    public function failed(Throwable $exception): void
     {
-        Log::channel('webhook')->error('Update Meeting webhook job failed', [
-            'meeting_id' => $this->meeting_id,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
+        $meeting = Meeting::query()->where('meeting_id', $this->meeting_id)->first();
+
+        $userUuid = null;
+
+        if ($meeting !== null) {
+            $userUuid = $meeting->user()->value('uuid') ?: null;
+        }
+
+        $this->logWebhookFailed(self::OPERATION, $exception, $userUuid);
     }
 
     /**
@@ -85,6 +115,14 @@ class UpdateMeetingWebhook implements ShouldQueue
     public function backoff(): array
     {
         return [5, 30];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function tags(): array
+    {
+        return $this->zoomWebhookTags(self::OPERATION);
     }
 
     /**

@@ -114,7 +114,7 @@ return [
         'zoom' => [
             'driver' => 'single',
             'path' => storage_path('logs/zoom.log'),
-            'level' => 'warning',
+            'level' => env('LOG_ZOOM_LEVEL', 'info'),
         ],
 
         'exception_metrics' => [

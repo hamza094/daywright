@@ -332,6 +332,10 @@ Exit criteria:
 Priority: High  
 Gate: Must finish before release gate
 
+Status:
+
+- Implemented in the exception handler, Zoom connector exception context, webhook job logging/retry metadata, queue job tags, focused observability tests, and `docs/ZOOM_OPERATOR_RUNBOOK.md`.
+
 Why this phase comes sixth:
 
 - Production readiness depends on diagnosis speed, not only code correctness.
@@ -349,12 +353,12 @@ Files likely involved:
 
 Step-by-step tasks:
 
-- [ ] Standardize structured logs for Zoom request failures, webhook ignores, retries, and final job failures.
-- [ ] Ensure provider, operation name, meeting id, request id, and user id are available in relevant log contexts.
-- [ ] Decide whether ignored stale events should be logged at `info` or `warning` and keep that policy consistent.
-- [ ] Make queue retry and terminal failure behavior explicit for each Zoom webhook job.
-- [ ] Review whether rate-limit failures should expose retry-after metadata to clients or operators.
-- [ ] Add an operator checklist for reconnecting revoked Zoom accounts and replaying failed webhook jobs.
+- [x] Standardize structured logs for Zoom request failures, webhook ignores, retries, and final job failures.
+- [x] Ensure provider, operation name, meeting id, request id, and user id are available in relevant log contexts.
+- [x] Decide whether ignored stale events should be logged at `info` or `warning` and keep that policy consistent.
+- [x] Make queue retry and terminal failure behavior explicit for each Zoom webhook job.
+- [x] Review whether rate-limit failures should expose retry-after metadata to clients or operators.
+- [x] Add an operator checklist for reconnecting revoked Zoom accounts and replaying failed webhook jobs.
 
 Exit criteria:
 
@@ -367,6 +371,12 @@ Exit criteria:
 Priority: Critical  
 Gate: Final go or no-go decision
 
+Status:
+
+- Completed on 2026-06-03 with a passing focused Zoom release-gate suite and clean `vendor/bin/pint --dirty` run.
+- Release decision: Go for production rollout.
+- Residual follow-up: PHPUnit 11 emits doc-comment metadata deprecation warnings across the focused suite; these are not Zoom blockers but should be migrated to attributes before PHPUnit 12.
+
 Why this phase comes last:
 
 - A hardening plan is only complete when it ends with a strict release gate.
@@ -375,14 +385,24 @@ Why this phase comes last:
 
 Validation checklist:
 
-- [ ] Run the focused Zoom feature tests.
-- [ ] Run the focused Zoom service and transport tests.
-- [ ] Run the webhook middleware tests.
-- [ ] Run formatting on dirty PHP files.
-- [ ] Confirm no webhook code path persists unsupported provider fields.
-- [ ] Confirm token refresh remains safe under concurrent access assumptions.
-- [ ] Confirm meeting CRUD, OAuth connect, token retrieval, and webhook processing all use the documented contract.
-- [ ] Review logs and failure messages for operator usefulness.
+- [x] Run the focused Zoom feature tests.
+- [x] Run the focused Zoom service and transport tests.
+- [x] Run the webhook middleware tests.
+- [x] Run formatting on dirty PHP files.
+- [x] Confirm no webhook code path persists unsupported provider fields.
+- [x] Confirm token refresh remains safe under concurrent access assumptions.
+- [x] Confirm meeting CRUD, OAuth connect, token retrieval, and webhook processing all use the documented contract.
+- [x] Review logs and failure messages for operator usefulness.
+
+Validation result:
+
+- Ran the focused Zoom release-gate suite:
+  `php artisan test --compact tests/Feature/Api/V1/Meetings tests/Feature/Api/Webhooks/Zoom/ZoomWebhookTest.php tests/Feature/Api/Middleware/Zoom/VerifyWebhookTest.php tests/Feature/Api/Auth/Zoom tests/Feature/Api/V1/Users/UserZoomTokenTest.php tests/Feature/Api/Actions/ZoomActionTest.php tests/Feature/Api/Jobs/Webhooks/Zoom tests/Feature/Exceptions/HandlerReportingTest.php tests/Unit/Services/Zoom tests/Unit/Http/Integrations/Zoom tests/Unit/Jobs/Webhooks/ZoomWebhookMiddlewareTest.php`
+- Result: 77 tests passed, 346 assertions.
+- Ran formatting: `vendor/bin/pint --dirty`
+- Unsupported webhook fields remain blocked from persistence by `App\DataTransferObjects\Zoom\MeetingWebhookUpdateData::fromPayloadObject()` and are covered by `Tests\Feature\Api\Webhooks\Zoom\ZoomWebhookTest` and `Tests\Feature\Api\Jobs\Webhooks\Zoom\ProcessMeetingUpdateWebhookTest`.
+- Token refresh concurrency remains covered by the focused Zoom service tests, including refresh-lock and reload-before-refresh behavior.
+- Operator-facing logging and retry visibility remain covered by the structured logging tests and `docs/ZOOM_OPERATOR_RUNBOOK.md`.
 
 Suggested validation commands:
 

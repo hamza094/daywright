@@ -13,6 +13,7 @@ use App\Exceptions\Paddle\PaddleRequestException;
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Exceptions\Subscription\SubscriptionRequiredException;
+use App\Models\User;
 use Aws\Command;
 use Aws\S3\Exception\S3Exception;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -119,6 +120,66 @@ class HandlerReportingTest extends TestCase
             );
 
         $handler->report(new SubscriptionRequiredException);
+    }
+
+    #[Test]
+    public function zoom_user_errors_are_logged_with_structured_zoom_context(): void
+    {
+        $handler = $this->app->make(Handler::class);
+        $user = User::factory()->make([
+            'id' => 77,
+            'uuid' => '00000000-0000-4000-8000-000000000077',
+        ]);
+
+        $request = Request::create('/api/v1/oauth/zoom/callback', 'GET');
+        $this->app->instance('request', $request);
+        $request->setUserResolver(static fn () => $user);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom')
+            ->andReturnSelf();
+
+        Log::shouldReceive('warning')
+            ->once()
+            ->with(
+                'zoom_request_failed',
+                Mockery::on(fn (array $context): bool => $context['provider'] === 'zoom'
+                    && isset($context['operation'])
+                    && $context['operation'] !== ''
+                    && isset($context['user_uuid'])
+                    && is_string($context['user_uuid'])
+                    && $context['user_uuid'] === $user->uuid
+                    && $context['path'] === 'api/v1/oauth/zoom/callback'
+                    && $context['method'] === 'GET'
+                    && $context['code'] === 'zoom_error'
+                    && $context['status'] === 400
+                    && $context['provider_status_code'] === 429
+                    && $context['retry_after_seconds'] === 30)
+            );
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('exception_metrics')
+            ->andReturnSelf();
+
+        Log::shouldReceive('info')
+            ->once()
+            ->with(
+                'api_exception_metric',
+                Mockery::on(fn (array $context): bool => $context['exception'] === ZoomUserErrorException::class
+                    && $context['code'] === 'zoom_error'
+                    && $context['status'] === 400
+                    && $context['message'] === 'Zoom request failed.'
+                    && $context['path'] === 'api/v1/oauth/zoom/callback'
+                    && $context['method'] === 'GET')
+            );
+
+        $handler->report(
+            (new ZoomUserErrorException('Zoom request failed.', 429))->withContext([
+                'retry_after_seconds' => 30,
+            ]),
+        );
     }
 
     #[Test]

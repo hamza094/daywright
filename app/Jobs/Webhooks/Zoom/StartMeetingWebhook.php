@@ -7,28 +7,31 @@ namespace App\Jobs\Webhooks\Zoom;
 use App\DataTransferObjects\Notification\NotificationActorData;
 use App\Enums\MeetingState;
 use App\Events\MeetingStatusUpdate;
+use App\Jobs\Webhooks\Zoom\Concerns\InteractsWithZoomWebhookLogging;
 use App\Models\Meeting;
 use App\Notifications\Zoom\MeetingStarted;
-use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Throwable;
 
 class StartMeetingWebhook implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, InteractsWithZoomWebhookLogging, Queueable, SerializesModels;
+
+    private const string OPERATION = 'zoom.webhook.meeting.started';
 
     public int $tries = 3;
 
     public int $meeting_id;
 
     public ?string $start_time;
+
+    public ?string $request_id;
 
     /**
      * @param  array<string, mixed>  $data
@@ -37,6 +40,9 @@ class StartMeetingWebhook implements ShouldQueue
     {
         $this->meeting_id = (int) $data['meeting_id'];
         $this->start_time = $data['start_time'] ?? null;
+        $this->request_id = isset($data['request_id']) && is_string($data['request_id']) && $data['request_id'] !== ''
+            ? $data['request_id']
+            : null;
     }
 
     /**
@@ -56,14 +62,18 @@ class StartMeetingWebhook implements ShouldQueue
      */
     public function handle(): void
     {
+        $meeting = null;
+
         try {
             $meeting = $this->getMeeting();
 
             if (! $meeting instanceof Meeting) {
-                Log::channel('webhook')->info('Meeting not found for start webhook', ['meeting_id' => $this->meeting_id]);
+                $this->logWebhookIgnored(self::OPERATION, 'meeting_missing');
 
                 return;
             }
+
+            $userUuid = $meeting->user()->value('uuid') ?: null;
 
             if (! $this->shouldStartMeeting($meeting)) {
                 return;
@@ -72,19 +82,32 @@ class StartMeetingWebhook implements ShouldQueue
             $this->updateMeetingStatus($meeting);
 
             $this->sendNotifications($meeting);
-        } catch (Exception $e) {
-            Log::channel('webhook')->error('Error processing meeting starting webhook: '.$e->getMessage(), ['exception' => $e]);
-            throw $e;
+
+            $this->logWebhookProcessed(self::OPERATION, $userUuid);
+        } catch (Throwable $exception) {
+            $userUuid = null;
+
+            if ($meeting !== null) {
+                $userUuid = $meeting->user()->value('uuid') ?: null;
+            }
+
+            $this->logWebhookRetryScheduled(self::OPERATION, $exception, $userUuid);
+
+            throw $exception;
         }
     }
 
     public function failed(Throwable $exception): void
     {
-        Log::error('Meeting Started webhook job failed', [
-            'meeting_id' => $this->meeting_id,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
+        $meeting = Meeting::query()->where('meeting_id', $this->meeting_id)->first();
+
+        $userUuid = null;
+
+        if ($meeting !== null) {
+            $userUuid = $meeting->user()->value('uuid') ?: null;
+        }
+
+        $this->logWebhookFailed(self::OPERATION, $exception, $userUuid);
     }
 
     /**
@@ -93,6 +116,14 @@ class StartMeetingWebhook implements ShouldQueue
     public function backoff(): array
     {
         return [5, 30];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function tags(): array
+    {
+        return $this->zoomWebhookTags(self::OPERATION);
     }
 
     private function getMeeting(): ?Meeting
@@ -128,14 +159,17 @@ class StartMeetingWebhook implements ShouldQueue
 
     private function shouldStartMeeting(Meeting $meeting): bool
     {
+
+        $userUuid = $meeting->user()->value('uuid') ?: null;
+
         if ($meeting->status === MeetingState::START->value) {
-            Log::channel('webhook')->info("Meeting already started for meeting_id: {$this->meeting_id}");
+            $this->logWebhookIgnored(self::OPERATION, 'already_started', $userUuid);
 
             return false;
         }
 
         if ($meeting->status === MeetingState::ENDS->value) {
-            Log::channel('webhook')->info("Ignoring stale started event for ended meeting_id: {$this->meeting_id}");
+            $this->logWebhookIgnored(self::OPERATION, 'stale_event', $userUuid);
 
             return false;
         }

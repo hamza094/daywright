@@ -28,6 +28,7 @@ class ZoomWebhookController extends ApiController
         UpdateMeetingWebhook::dispatch([
             'meeting_id' => $updateData->meetingId,
             'update_data' => $updateData->changes,
+            'request_id' => $request->header('x-zm-request-id'),
         ]);
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
@@ -40,6 +41,7 @@ class ZoomWebhookController extends ApiController
 
         DeleteMeetingWebhook::dispatch([
             'meeting_id' => $object['id'],
+            'request_id' => $request->header('x-zm-request-id'),
         ]);
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
@@ -53,6 +55,7 @@ class ZoomWebhookController extends ApiController
         StartMeetingWebhook::dispatchAfterResponse([
             'meeting_id' => $object['id'],
             'start_time' => $object['start_time'] ?? null,
+            'request_id' => $request->header('x-zm-request-id'),
         ]);
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
@@ -67,6 +70,7 @@ class ZoomWebhookController extends ApiController
             'meeting_id' => $object['id'],
             'start_time' => $object['start_time'] ?? null,
             'end_time' => $object['end_time'] ?? null,
+            'request_id' => $request->header('x-zm-request-id'),
         ]);
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);

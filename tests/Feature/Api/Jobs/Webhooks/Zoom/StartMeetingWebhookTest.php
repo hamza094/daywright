@@ -12,7 +12,10 @@ use App\Notifications\Zoom\MeetingStarted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Mockery;
+use RuntimeException;
 use Tests\TestCase;
 use Tests\Traits\ProjectInvitationHelpers;
 use Tests\Traits\ProjectSetup;
@@ -128,12 +131,64 @@ class StartMeetingWebhookTest extends TestCase
         $job = new StartMeetingWebhook([
             'meeting_id' => 813,
             'start_time' => '2024-06-24T11:00:00Z',
+            'request_id' => 'zoom-start-duplicate',
         ]);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom')
+            ->andReturnSelf();
+
+        Log::shouldReceive('info')
+            ->once()
+            ->with(
+                'zoom_webhook_ignored',
+                Mockery::on(fn (array $context): bool => $context === [
+                    'provider' => 'zoom',
+                    'operation' => 'zoom.webhook.meeting.started',
+                    'meeting_id' => 813,
+                    'request_id' => 'zoom-start-duplicate',
+                    'user_uuid' => $this->user->uuid,
+                    'reason' => 'already_started',
+                ])
+            );
 
         $job->handle();
 
         $this->assertEquals('started', $meeting->fresh()->status);
         Notification::assertNothingSent();
         Event::assertNotDispatched(MeetingStatusUpdate::class);
+    }
+
+    /** @test */
+    public function terminal_failures_are_logged_with_structured_context(): void
+    {
+        $job = new StartMeetingWebhook([
+            'meeting_id' => 813,
+            'start_time' => '2024-06-24T11:00:00Z',
+            'request_id' => 'zoom-start-failed',
+        ]);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom')
+            ->andReturnSelf();
+
+        Log::shouldReceive('error')
+            ->once()
+            ->with(
+                'zoom_webhook_failed',
+                Mockery::on(fn (array $context): bool => $context === [
+                    'provider' => 'zoom',
+                    'operation' => 'zoom.webhook.meeting.started',
+                    'meeting_id' => 813,
+                    'request_id' => 'zoom-start-failed',
+                    'max_tries' => 3,
+                    'exception' => RuntimeException::class,
+                    'message' => 'Zoom notification send failed.',
+                ])
+            );
+
+        $job->failed(new RuntimeException('Zoom notification send failed.'));
     }
 }

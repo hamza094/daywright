@@ -40,29 +40,30 @@ class ZoomConnector extends Connector
     ): ?Throwable {
         $status = $response->status();
         $message = $response->body();
+        $context = $this->exceptionContext($response);
 
         return match (true) {
-            $status === HttpResponse::HTTP_FORBIDDEN => new UnauthorizedException(
+            $status === HttpResponse::HTTP_FORBIDDEN => (new UnauthorizedException(
                 message: $message,
                 code: $status,
                 previous: $senderException,
-            ),
-            $status === HttpResponse::HTTP_NOT_FOUND => new NotFoundException(
+            ))->withContext($context),
+            $status === HttpResponse::HTTP_NOT_FOUND => (new NotFoundException(
                 message: $message,
                 code: $status,
                 previous: $senderException,
-            ),
+            ))->withContext($context),
             $status === HttpResponse::HTTP_TOO_MANY_REQUESTS,
-            $status >= HttpResponse::HTTP_INTERNAL_SERVER_ERROR => new ZoomExternalFailureException(
+            $status >= HttpResponse::HTTP_INTERNAL_SERVER_ERROR => (new ZoomExternalFailureException(
                 message: $message,
                 code: $status,
                 previous: $senderException,
-            ),
-            default => new ZoomUserErrorException(
+            ))->withContext($context),
+            default => (new ZoomUserErrorException(
                 message: $message,
                 code: $status,
                 previous: $senderException,
-            ),
+            ))->withContext($context),
         };
     }
 
@@ -114,5 +115,21 @@ class ZoomConnector extends Connector
         string $refreshToken
     ): Request {
         return new GetRefreshTokenRequest($oauthConfig, $refreshToken);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function exceptionContext(Response $response): array
+    {
+        $retryAfter = $response->header('Retry-After');
+
+        if (! is_string($retryAfter) || ! is_numeric($retryAfter)) {
+            return [];
+        }
+
+        return [
+            'retry_after_seconds' => (int) $retryAfter,
+        ];
     }
 }

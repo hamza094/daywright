@@ -20,18 +20,22 @@ class ZoomWebhookMiddlewareTest extends TestCase
             new StartMeetingWebhook([
                 'meeting_id' => 813,
                 'start_time' => '2024-06-24T12:00:00Z',
+                'request_id' => 'zoom-start-813',
             ]),
             new MeetingEndsWebhook([
                 'meeting_id' => 813,
                 'start_time' => '2024-06-24T12:00:00Z',
                 'end_time' => '2024-06-24T12:30:00Z',
+                'request_id' => 'zoom-ended-813',
             ]),
             new UpdateMeetingWebhook([
                 'meeting_id' => 813,
                 'update_data' => ['topic' => 'Updated topic'],
+                'request_id' => 'zoom-update-813',
             ]),
             new DeleteMeetingWebhook([
                 'meeting_id' => 813,
+                'request_id' => 'zoom-delete-813',
             ]),
         ];
 
@@ -44,6 +48,10 @@ class ZoomWebhookMiddlewareTest extends TestCase
             $this->assertSame('zoom-meeting:813', $middleware[0]->key);
             $this->assertSame(5, $middleware[0]->releaseAfter);
             $this->assertSame(120, $middleware[0]->expiresAfter);
+            $this->assertSame(3, $job->tries);
+            $this->assertSame([5, 30], $job->backoff());
+            $this->assertSame(120, $job->timeout);
+            $this->assertTrue($job->failOnTimeout);
         }
     }
 
@@ -53,15 +61,34 @@ class ZoomWebhookMiddlewareTest extends TestCase
         $startJob = new StartMeetingWebhook([
             'meeting_id' => 813,
             'start_time' => '2024-06-24T12:00:00Z',
+            'request_id' => 'zoom-start-813',
         ]);
         $updateJob = new UpdateMeetingWebhook([
             'meeting_id' => 813,
             'update_data' => ['topic' => 'Updated topic'],
+            'request_id' => 'zoom-update-813',
         ]);
 
         $startLock = $startJob->middleware()[0];
         $updateLock = $updateJob->middleware()[0];
 
         $this->assertSame($startLock->getLockKey($startJob), $updateLock->getLockKey($updateJob));
+    }
+
+    /** @test */
+    public function zoom_webhook_jobs_expose_operator_friendly_tags(): void
+    {
+        $job = new StartMeetingWebhook([
+            'meeting_id' => 813,
+            'start_time' => '2024-06-24T12:00:00Z',
+            'request_id' => 'zoom-start-813',
+        ]);
+
+        $this->assertSame([
+            'provider:zoom',
+            'zoom_operation:zoom.webhook.meeting.started',
+            'meeting:813',
+            'request:zoom-start-813',
+        ], $job->tags());
     }
 }

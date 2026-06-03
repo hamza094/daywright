@@ -68,7 +68,9 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === (int) $meetingId && $job->update_data === $updateData);
+        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === (int) $meetingId
+            && $job->update_data === $updateData
+            && $job->request_id === $requestId);
     }
 
     /** @test */
@@ -90,7 +92,8 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId);
+        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId
+            && $job->request_id === 'zoom-delete-813');
     }
 
     /** @test */
@@ -113,7 +116,9 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId && $job->start_time === $startTime);
+        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId
+            && $job->start_time === $startTime
+            && $job->request_id === 'zoom-start-813');
     }
 
     /** @test */
@@ -137,7 +142,10 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(MeetingEndsWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId && $job->start_time === $startTime && $job->end_time === $endTime);
+        Queue::assertPushed(MeetingEndsWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId
+            && $job->start_time === $startTime
+            && $job->end_time === $endTime
+            && $job->request_id === 'zoom-ended-813');
 
     }
 
