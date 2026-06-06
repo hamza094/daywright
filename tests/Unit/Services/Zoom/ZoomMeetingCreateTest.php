@@ -61,9 +61,11 @@ class ZoomMeetingCreateTest extends TestCase
         app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser);
         Saloon::assertSent(GetRefreshTokenRequest::class);
         $expiredUser->refresh();
-        $this->assertEquals('new-access-token-here', $expiredUser->zoom_access_token);
-        $this->assertEquals('new-refresh-token-here', $expiredUser->zoom_refresh_token);
-        $this->assertTrue(now()->addHour()->equalTo($expiredUser->zoom_expires_at));
+        $tokens = app(\App\Repository\OAuthConnectionRepository::class)->getTokens($expiredUser, 'zoom');
+        $this->assertNotNull($tokens);
+        $this->assertEquals('new-access-token-here', $tokens->accessToken);
+        $this->assertEquals('new-refresh-token-here', $tokens->refreshToken);
+        $this->assertTrue(now()->addHour()->equalTo($tokens->expiresAt));
     }
 
     /** @test */
@@ -82,11 +84,8 @@ class ZoomMeetingCreateTest extends TestCase
             $this->assertSame('Zoom account connection needs to be re-authorized.', $exception->getMessage());
         }
 
-        $expiredUser->refresh();
-
-        $this->assertNull($expiredUser->zoom_access_token);
-        $this->assertNull($expiredUser->zoom_refresh_token);
-        $this->assertNull($expiredUser->zoom_expires_at);
+        $tokens = app(\App\Repository\OAuthConnectionRepository::class)->getTokens($expiredUser, 'zoom');
+        $this->assertNull($tokens);
     }
 
     /** @test */

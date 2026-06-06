@@ -48,10 +48,14 @@ class ZoomZakTokenTest extends TestCase
         $staleUser = $this->createZoomUser(now()->subMinute());
 
         $freshUser = User::query()->findOrFail($staleUser->id);
-        $freshUser->updateZoomOAuthDetails(
-            'fresh-access-token-here',
-            'fresh-refresh-token-here',
-            now()->addHour()->toDateTimeImmutable(),
+        app(\App\Repository\OAuthConnectionRepository::class)->saveTokens(
+            $freshUser,
+            'zoom',
+            new \App\DataTransferObjects\OAuth\OAuthTokens(
+                accessToken: 'fresh-access-token-here',
+                refreshToken: 'fresh-refresh-token-here',
+                expiresAt: now()->addHour()->toDateTimeImmutable(),
+            )
         );
 
         app(ZoomService::class)->getZakToken($staleUser);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Zoom;
 
-use App\Services\Zoom\ZoomService;
+use App\Services\Zoom\ZoomOAuthService;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -21,7 +21,7 @@ class ZoomAuthRedirectDetailsTest extends TestCase
             'services.zoom.client_id' => 'client-id-here',
         ]);
 
-        $authDetails = app(ZoomService::class)->getAuthRedirectDetails();
+        $authDetails = app(ZoomOAuthService::class)->getAuthRedirectDetails();
 
         // Get the query parameters from the authorization URL.
         $queryParameters = [];

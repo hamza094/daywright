@@ -36,12 +36,11 @@ class ZoomOAuthCallbackTest extends TestCase
         $this->assertFalse(Cache::has('oauth:zoom:dummy-state'));
 
         $this->user->refresh();
-
-        $this->assertEquals('access-token-here', $this->user->zoom_access_token);
-
-        $this->assertEquals('refresh-token-here', $this->user->zoom_refresh_token);
-
-        $this->assertTrue(now()->addWeek()->equalTo($this->user->zoom_expires_at));
+        $tokens = app(\App\Repository\OAuthConnectionRepository::class)->getTokens($this->user, 'zoom');
+        $this->assertNotNull($tokens);
+        $this->assertEquals('access-token-here', $tokens->accessToken);
+        $this->assertEquals('refresh-token-here', $tokens->refreshToken);
+        $this->assertTrue(now()->addWeek()->equalTo($tokens->expiresAt));
 
     }
 
@@ -150,8 +149,7 @@ class ZoomOAuthCallbackTest extends TestCase
 
     private function assertUserWasNotUpdated(User $user): void
     {
-        $this->assertNull($user->zoom_access_token);
-        $this->assertNull($user->zoom_refresh_token);
-        $this->assertNull($user->zoom_expires_at);
+        $tokens = app(\App\Repository\OAuthConnectionRepository::class)->getTokens($user, 'zoom');
+        $this->assertNull($tokens);
     }
 }

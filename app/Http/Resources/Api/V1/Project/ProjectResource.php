@@ -101,7 +101,7 @@ class ProjectResource extends JsonResource
 
             'ownerNotAuthorized' => $this->whenLoaded(
                 'user',
-                fn (): bool => $requestUser && $requestUser->is($this->user) && ! $requestUser->isConnectedToZoom(),
+                fn (): bool => $requestUser && $requestUser->is($this->user) && ! $requestUser->oauthConnections()->where('provider', 'zoom')->exists(),
             ),
 
             'days_limit' => config('app.project.abandonedLimit'),

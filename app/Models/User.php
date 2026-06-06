@@ -10,7 +10,6 @@ use App\Jobs\QueuedVerifyEmailJob;
 use App\Traits\HasAdminAccess;
 use App\Traits\HasSubscription;
 use Database\Factories\UserFactory;
-use DateTimeImmutable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -44,9 +43,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         'remember_token',
         'oauth_token',
         'oauth_refresh_token',
-        'zoom_access_token',
-        'zoom_refresh_token',
-        'zoom_expires_at',
     ];
 
     /**
@@ -62,9 +58,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         'oauth_provider' => OAuthProvider::class,
         'oauth_token' => 'encrypted',
         'oauth_refresh_token' => 'encrypted',
-        'zoom_access_token' => 'encrypted',
-        'zoom_refresh_token' => 'encrypted',
-        'zoom_expires_at' => 'datetime',
     ];
 
     #[Override]
@@ -246,38 +239,6 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
         return $this->belongsToMany(Task::class);
     }
 
-    public function updateZoomOAuthDetails(
-        string $accessToken,
-        string $refreshToken,
-        DateTimeImmutable $expiresAt
-    ): void {
-        $this->forceFill([
-            'zoom_access_token' => $accessToken,
-            'zoom_refresh_token' => $refreshToken,
-            'zoom_expires_at' => $expiresAt,
-        ]);
-
-        $this->save();
-    }
-
-    public function clearZoomOAuthDetails(): void
-    {
-        $this->forceFill([
-            'zoom_access_token' => null,
-            'zoom_refresh_token' => null,
-            'zoom_expires_at' => null,
-        ]);
-
-        $this->save();
-    }
-
-    public function isConnectedToZoom(): bool
-    {
-        return $this->zoom_access_token
-            && $this->zoom_refresh_token
-            && $this->zoom_expires_at;
-    }
-
     /**
      * Get meetings created by user.
      *
@@ -289,6 +250,19 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     {
         // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
         return $this->hasMany(Meeting::class);
+    }
+
+    /**
+     * Get all OAuth connections for the user.
+     *
+     * @return HasMany<OAuthConnection, User>
+     *
+     * @phpstan-return HasMany<OAuthConnection, static>
+     */
+    public function oauthConnections(): HasMany
+    {
+        // @phpstan-ignore-next-line - relation returned has `$this` declaring model; suppress template covariance false-positive
+        return $this->hasMany(OAuthConnection::class);
     }
 
     /**

@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\Project\ActivityController;
 use App\Http\Controllers\Api\V1\Project\ConversationController;
 use App\Http\Controllers\Api\V1\Project\ExportProjectController;
 use App\Http\Controllers\Api\V1\Project\ForceDeleteProjectController;
+use App\Http\Controllers\Api\V1\Project\MeetingsController;
 use App\Http\Controllers\Api\V1\Project\ProjectController;
 use App\Http\Controllers\Api\V1\Project\ProjectInsightsController;
 use App\Http\Controllers\Api\V1\Project\ProjectInvitationController;
@@ -29,7 +30,6 @@ use App\Http\Controllers\Api\V1\Project\RestoreProjectController;
 use App\Http\Controllers\Api\V1\Project\ScheduledProjectMessagesController;
 use App\Http\Controllers\Api\V1\Project\StageController;
 use App\Http\Controllers\Api\V1\Project\UpdateProjectStageController;
-use App\Http\Controllers\Api\V1\Project\ZoomMeetingController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\Task\ArchiveTaskController;
 use App\Http\Controllers\Api\V1\Task\AssignTaskMembersController;
@@ -213,7 +213,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 ->can('manage', 'project')
                 ->name('project.pending.invitation');
 
-            Route::apiResource('/meetings', ZoomMeetingController::class)
+            Route::apiResource('/meetings', MeetingsController::class)
                 ->middlewareFor(['store', 'update'], Idempotent::using(scope: IdempotencyScope::User));
 
         });

@@ -6,7 +6,7 @@ namespace Tests\Unit\Services\Zoom;
 
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\Http\Integrations\Zoom\Requests\GetAccessTokenRequest;
-use App\Services\Zoom\ZoomService;
+use App\Services\Zoom\ZoomOAuthService;
 use PHPUnit\Framework\Attributes\Test;
 use Saloon\Http\Faking\MockResponse;
 use Saloon\Laravel\Facades\Saloon;
@@ -39,7 +39,7 @@ class ZoomAuthorizationTest extends TestCase
             codeVerifier: 'dummy-code-verifier',
         );
 
-        $zoomService = app(ZoomService::class);
+        $zoomService = app(ZoomOAuthService::class);
 
         $authDetails = $zoomService->authorize($callbackDetails);
 

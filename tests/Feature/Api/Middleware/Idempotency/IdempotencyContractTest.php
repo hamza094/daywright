@@ -361,7 +361,7 @@ final class IdempotencyContractTest extends TestCase
                     Mockery::on(fn (array $payload): bool => $payload['meeting_id'] === $meeting->meeting_id && $payload['duration'] === 45),
                     Mockery::type(User::class),
                 )
-                ->andReturn(response()->json(status: 204));
+                ->andReturn(\App\DataTransferObjects\Zoom\MeetingOperationResult::updated($meeting->meeting_id, 204));
         });
 
         $headers = $this->idempotencyHeaders('phase-six-meeting-update');
@@ -478,20 +478,18 @@ final class IdempotencyContractTest extends TestCase
     private function zoomWebhookHeaders(array $payload, string $requestId): array
     {
         $timestamp = (string) time();
+        $rawPayload = json_encode($payload);
 
         return [
             'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $this->buildSignature($timestamp, $payload),
+            'x-zm-signature' => $this->buildSignature($timestamp, $rawPayload),
             'x-zm-request-id' => $requestId,
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function buildSignature(string $timestamp, array $payload): string
+    private function buildSignature(string $timestamp, string $payload): string
     {
-        $message = 'v0:'.$timestamp.':'.json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $message = 'v0:'.$timestamp.':'.$payload;
 
         return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
     }

@@ -21,7 +21,7 @@ use PHPUnit\Framework\Assert;
  * @template TKey of array-key
  * @template TValue
  */
-final class ZoomServiceFake implements Zoom
+final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 {
     /**
      * @var Collection<int, array<string, mixed>>
@@ -38,6 +38,7 @@ final class ZoomServiceFake implements Zoom
 
     public function __construct()
     {
+        parent::__construct(null);
         $this->meetingsToCreate = new Collection;
     }
 

@@ -15,7 +15,7 @@ use App\Models\Project;
 use App\Services\Project\MeetingService;
 use Illuminate\Http\JsonResponse;
 
-class ZoomMeetingController extends ApiController
+class MeetingsController extends ApiController
 {
     public function index(Project $project, MeetingIndexRequest $request, MeetingService $meetingService): JsonResponse
     {

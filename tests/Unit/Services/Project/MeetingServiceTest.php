@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Project;
 
+use App\DataTransferObjects\Zoom\MeetingOperationResult;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\User;
@@ -40,7 +41,7 @@ final class MeetingServiceTest extends TestCase
                 ]),
                 Mockery::on(fn (User $user): bool => $user->is($this->user)),
             )
-            ->andReturnTrue();
+            ->andReturn(MeetingOperationResult::updated(1234, 204));
 
         $service = app(MeetingService::class);
 

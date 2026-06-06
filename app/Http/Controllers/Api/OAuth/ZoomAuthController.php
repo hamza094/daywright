@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\OAuth;
 
+use App\DataTransferObjects\OAuth\OAuthTokens;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\Http\Controllers\Api\ApiController;
-use App\Interfaces\Zoom;
+use App\Repository\OAuthConnectionRepository;
 use App\Services\Zoom\ZoomAuthorizationStateStore;
+use App\Services\Zoom\ZoomOAuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,13 +17,14 @@ use Symfony\Component\HttpFoundation\Response;
 final class ZoomAuthController extends ApiController
 {
     public function __construct(
-        private readonly Zoom $zoom,
+        private readonly ZoomOAuthService $zoomOAuth,
         private readonly ZoomAuthorizationStateStore $authorizationStateStore,
+        private readonly OAuthConnectionRepository $oauthRepository,
     ) {}
 
     public function redirect(): JsonResponse
     {
-        $redirectDetails = $this->zoom->getAuthRedirectDetails();
+        $redirectDetails = $this->zoomOAuth->getAuthRedirectDetails();
 
         $this->authorizationStateStore->storeRedirectDetails($redirectDetails);
 
@@ -34,12 +37,16 @@ final class ZoomAuthController extends ApiController
             abort(Response::HTTP_BAD_REQUEST, 'Zoom account connection denied');
         }
 
-        $accessDetails = $this->zoom->authorize($this->callbackDetails($request));
+        $accessDetails = $this->zoomOAuth->authorize($this->callbackDetails($request));
 
-        $this->authenticatedUser()->updateZoomOAuthDetails(
-            accessToken: $accessDetails->accessToken,
-            refreshToken: $accessDetails->refreshToken,
-            expiresAt: $accessDetails->expiresAt,
+        $this->oauthRepository->saveTokens(
+            $this->authenticatedUser(),
+            'zoom',
+            new OAuthTokens(
+                accessToken: $accessDetails->accessToken,
+                refreshToken: $accessDetails->refreshToken,
+                expiresAt: $accessDetails->expiresAt,
+            ),
         );
 
         return $this->respondWithMessage('Zoom account connected successfully');
