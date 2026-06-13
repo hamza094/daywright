@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
+use function Safe\preg_replace;
+
 final class ZoomWebhookLogger
 {
     /**
@@ -116,7 +118,7 @@ final class ZoomWebhookLogger
         ];
 
         foreach ($patterns as $pattern) {
-            $message = preg_replace($pattern, '[REDACTED]', $message);
+            $message = preg_replace($pattern, '[REDACTED]', (string) $message);
         }
 
         return $message;

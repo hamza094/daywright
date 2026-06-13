@@ -19,7 +19,7 @@ abstract class BaseZoomWebhookAction
     /**
      * @template T
      *
-     * @param  callable(): T  $callback
+     * @param  callable(Meeting, ?string): T  $callback
      * @return T
      */
     protected function executeWithLogging(int|string $meetingId, ?string $requestId, callable $callback): mixed
@@ -29,7 +29,7 @@ abstract class BaseZoomWebhookAction
         try {
             $meeting = $this->getMeeting($meetingId);
 
-            if (! $meeting) {
+            if (! $meeting instanceof Meeting) {
                 $this->logger->logWebhookIgnored($this->operation(), $meetingId, $requestId, 'meeting_missing');
 
                 return null;
@@ -37,7 +37,7 @@ abstract class BaseZoomWebhookAction
 
             return $callback($meeting, $this->userUuid($meeting));
         } catch (Throwable $exception) {
-            $userUuid = $meeting !== null ? $this->userUuid($meeting) : null;
+            $userUuid = $meeting instanceof Meeting ? $this->userUuid($meeting) : null;
             $this->logger->logWebhookRetryScheduled($this->operation(), $meetingId, $requestId, $exception, $userUuid);
             throw $exception;
         }

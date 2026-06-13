@@ -15,14 +15,14 @@ use App\Services\Project\MeetingSyncErrorFormatter;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-final class DeleteProjectMeeting
+final readonly class DeleteProjectMeeting
 {
     use MeetingLockOperations;
 
     public function __construct(
-        private readonly MeetingOperationLock $locks,
-        private readonly MeetingSyncErrorFormatter $errorFormatter,
-        private readonly int $transactionRetryAttempts = 5,
+        private MeetingOperationLock $locks,
+        private MeetingSyncErrorFormatter $errorFormatter,
+        private int $transactionRetryAttempts = 5,
     ) {}
 
     public function handle(Meeting $meeting, User $user, Zoom $zoom): void
@@ -30,9 +30,7 @@ final class DeleteProjectMeeting
         $currentMeeting = $this->locks->block(
             key: $this->meetingLockKey($meeting),
             conflictMessage: 'This meeting is currently being deleted. Please retry.',
-            callback: function () use ($meeting): Meeting {
-                return $this->findMeetingOrFail($meeting);
-            },
+            callback: fn (): Meeting => $this->findMeetingOrFail($meeting),
         );
 
         try {
@@ -59,7 +57,7 @@ final class DeleteProjectMeeting
     {
         try {
             $zoom->deleteMeeting($meeting->meeting_id, $user);
-        } catch (NotFoundException $exception) {
+        } catch (NotFoundException) {
             // Treat 404 as success for delete - meeting already doesn't exist in Zoom
         }
     }

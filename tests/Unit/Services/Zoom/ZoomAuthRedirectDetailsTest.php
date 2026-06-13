@@ -65,7 +65,6 @@ class ZoomAuthRedirectDetailsTest extends TestCase
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('codeChallenge');
-        $method->setAccessible(true);
 
         $actualChallenge = $method->invoke($service, $testVerifier);
 
@@ -79,7 +78,6 @@ class ZoomAuthRedirectDetailsTest extends TestCase
 
         $reflection = new ReflectionClass($service);
         $method = $reflection->getMethod('codeChallenge');
-        $method->setAccessible(true);
 
         $challenge = $method->invoke($service, 'test-verifier');
 

@@ -15,7 +15,7 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Saloon\Http\Auth\AccessTokenAuthenticator;
 
-final class ZoomConnectorManager
+final readonly class ZoomConnectorManager
 {
     private const string PROVIDER = 'zoom';
 
@@ -32,7 +32,7 @@ final class ZoomConnectorManager
     private const int REFRESH_LOCK_WAIT_SECONDS = 5;
 
     public function __construct(
-        private readonly OAuthConnectionRepository $oauthRepository,
+        private OAuthConnectionRepository $oauthRepository,
     ) {}
 
     public function connector(): ZoomConnector
@@ -60,10 +60,7 @@ final class ZoomConnectorManager
                     fn (): AccessTokenAuthenticator => $this->refreshAuthenticatorInsideLock($user),
                 );
         } catch (LockTimeoutException $exception) {
-            throw new ZoomExternalFailureException(
-                self::REFRESH_UNAVAILABLE_MESSAGE,
-                previous: $exception,
-            );
+            throw new ZoomExternalFailureException(self::REFRESH_UNAVAILABLE_MESSAGE, $exception->getCode(), previous: $exception);
         }
     }
 
@@ -89,10 +86,7 @@ final class ZoomConnectorManager
         } catch (UnauthorizedException $exception) {
             $this->oauthRepository->clearTokens($user, self::PROVIDER);
 
-            throw new ZoomUserErrorException(
-                self::USER_RECONNECT_REQUIRED,
-                previous: $exception,
-            );
+            throw new ZoomUserErrorException(self::USER_RECONNECT_REQUIRED, $exception->getCode(), previous: $exception);
         }
 
         $this->oauthRepository->saveTokens(
@@ -116,7 +110,7 @@ final class ZoomConnectorManager
     {
         $tokens = $this->oauthRepository->getTokens($user, self::PROVIDER);
 
-        if (! $tokens) {
+        if (! $tokens instanceof OAuthTokens) {
             throw new ZoomUserErrorException(self::USER_NOT_CONNECTED);
         }
 

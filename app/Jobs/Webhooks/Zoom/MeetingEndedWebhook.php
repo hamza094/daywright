@@ -10,13 +10,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 
 class MeetingEndedWebhook extends ZoomMeetingWebhookJob implements ShouldQueue
 {
-    public MeetingEndedWebhookData $data;
-
-    public function __construct(MeetingEndedWebhookData $data)
+    public function __construct(public MeetingEndedWebhookData $data)
     {
-        $this->data = $data;
-        $this->meeting_id = $data->meetingId;
-        $this->request_id = $data->requestId;
+        $this->meeting_id = $this->data->meetingId;
+        $this->request_id = $this->data->requestId;
     }
 
     /**

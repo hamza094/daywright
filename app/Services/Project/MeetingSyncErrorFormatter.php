@@ -14,8 +14,8 @@ final class MeetingSyncErrorFormatter
             ? $exception->publicMessage()
             : 'Meeting sync failed. Please try again.';
 
-        return mb_strlen($message) > 1000
-            ? mb_substr($message, 0, 1000).'...'
+        return mb_strlen((string) $message) > 1000
+            ? mb_substr((string) $message, 0, 1000).'...'
             : $message;
     }
 }

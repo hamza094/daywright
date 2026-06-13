@@ -103,7 +103,7 @@ trait InteractsWithZoomWebhookLogging
 
     private function currentAttempt(): int
     {
-        return property_exists($this, 'job') && $this->job !== null
+        return $this->job !== null
             ? $this->attempts()
             : 1;
     }

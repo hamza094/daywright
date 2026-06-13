@@ -15,17 +15,13 @@ use App\Http\Integrations\Zoom\Requests\UpdateMeeting;
 use App\Http\Integrations\Zoom\ZoomConnector;
 use App\Interfaces\Zoom;
 use App\Models\User;
-use App\Repository\OAuthConnectionRepository;
 use Override;
 
-final class ZoomService implements Zoom
+final readonly class ZoomService implements Zoom
 {
-    private const string USER_NOT_CONNECTED = 'User is not connected to Zoom.';
-
     public function __construct(
-        private readonly ZoomConnectorManager $connectors,
-        private readonly ZoomOAuthService $oauthService,
-        private readonly OAuthConnectionRepository $oauthRepository,
+        private ZoomConnectorManager $connectors,
+        private ZoomOAuthService $oauthService,
     ) {}
 
     #[Override]
@@ -58,7 +54,6 @@ final class ZoomService implements Zoom
     #[Override]
     public function updateMeeting(array $validated, User $user): void
     {
-        $meetingId = (int) $validated['meeting_id'];
         $this->connectedConnector($user)
             ->send(new UpdateMeeting($validated, $this->limiterKey($user)))
             ->throw();

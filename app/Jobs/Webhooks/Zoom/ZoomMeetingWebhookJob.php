@@ -23,7 +23,7 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
 
     public int|string $meeting_id;
 
-    public ?string $request_id;
+    public ?string $request_id = null;
 
     abstract protected function operation(): string;
 

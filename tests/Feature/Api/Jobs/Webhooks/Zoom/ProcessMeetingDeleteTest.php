@@ -21,7 +21,7 @@ class ProcessMeetingDeleteTest extends TestCase
     /** @test */
     public function zoom_meeting_status_can_be_updated_to_deleted(): void
     {
-        $meeting = Meeting::factory()->create([
+        Meeting::factory()->create([
             'meeting_id' => 813,
         ]);
 
@@ -81,7 +81,7 @@ class ProcessMeetingDeleteTest extends TestCase
     /** @test */
     public function updates_lifecycle_before_deleting(): void
     {
-        $meeting = Meeting::factory()->create([
+        Meeting::factory()->create([
             'meeting_id' => 813,
             'sync_status' => \App\Enums\Meeting\MeetingSyncStatus::Active,
             'sync_error' => 'some error',
@@ -104,7 +104,7 @@ class ProcessMeetingDeleteTest extends TestCase
     /** @test */
     public function handles_duplicate_delete_webhook_safely(): void
     {
-        $meeting = Meeting::factory()->create([
+        Meeting::factory()->create([
             'meeting_id' => 813,
             'sync_status' => \App\Enums\Meeting\MeetingSyncStatus::Deleted,
         ]);

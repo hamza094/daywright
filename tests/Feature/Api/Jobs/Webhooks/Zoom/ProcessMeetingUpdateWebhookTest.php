@@ -19,6 +19,8 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
 {
     use RefreshDatabase;
 
+    public $project;
+
     /**
      * A basic feature test example.
      *

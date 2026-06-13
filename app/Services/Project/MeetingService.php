@@ -17,8 +17,6 @@ class MeetingService
 {
     private const array MEETING_RESOURCE_RELATIONS = ['project', 'user'];
 
-    private const int TRANSACTION_RETRY_ATTEMPTS = 5;
-
     public function __construct(
         private readonly CreateProjectMeeting $createProjectMeeting,
         private readonly UpdateProjectMeeting $updateProjectMeeting,

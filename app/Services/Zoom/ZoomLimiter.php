@@ -8,7 +8,7 @@ use App\Models\User;
 
 final class ZoomLimiter
 {
-    public const PREFIX = 'zoom:user:';
+    public const string PREFIX = 'zoom:user:';
 
     public static function forUser(User $user): string
     {

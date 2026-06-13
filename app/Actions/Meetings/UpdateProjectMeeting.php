@@ -14,14 +14,14 @@ use App\Services\Project\MeetingSyncErrorFormatter;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-final class UpdateProjectMeeting
+final readonly class UpdateProjectMeeting
 {
     use MeetingLockOperations;
 
     public function __construct(
-        private readonly MeetingOperationLock $locks,
-        private readonly MeetingSyncErrorFormatter $errorFormatter,
-        private readonly int $transactionRetryAttempts = 5,
+        private MeetingOperationLock $locks,
+        private MeetingSyncErrorFormatter $errorFormatter,
+        private int $transactionRetryAttempts = 5,
     ) {}
 
     /**
@@ -32,9 +32,7 @@ final class UpdateProjectMeeting
         $currentMeeting = $this->locks->block(
             key: $this->meetingLockKey($meeting),
             conflictMessage: 'This meeting is currently being updated. Please retry.',
-            callback: function () use ($meeting): Meeting {
-                return $this->findMeetingOrFail($meeting);
-            },
+            callback: fn (): Meeting => $this->findMeetingOrFail($meeting),
         );
 
         try {
@@ -72,13 +70,11 @@ final class UpdateProjectMeeting
     private function markMeetingAsUpdated(Meeting $meeting, array $validated): Meeting
     {
         /** @var Meeting $updatedMeeting */
-        $updatedMeeting = DB::transaction(function () use ($meeting, $validated): Meeting {
-            return $this->updateMeetingWithLock($meeting, $validated + [
-                'sync_status' => MeetingSyncStatus::Active,
-                'sync_error' => null,
-                'synced_at' => now(),
-            ]);
-        }, attempts: $this->transactionRetryAttempts);
+        $updatedMeeting = DB::transaction(fn (): Meeting => $this->updateMeetingWithLock($meeting, $validated + [
+            'sync_status' => MeetingSyncStatus::Active,
+            'sync_error' => null,
+            'synced_at' => now(),
+        ]), attempts: $this->transactionRetryAttempts);
 
         return $updatedMeeting;
     }

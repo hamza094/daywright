@@ -131,7 +131,7 @@ class MeetingCreateTest extends TestCase
     /** @test */
     public function it_creates_pending_meeting_before_zoom_call(): void
     {
-        $zoomFake = $this->fakeZoom();
+        $this->fakeZoom();
 
         $postBody = [
             'topic' => 'test-repo',
@@ -154,7 +154,7 @@ class MeetingCreateTest extends TestCase
     /** @test */
     public function it_marks_meeting_active_after_successful_zoom_create(): void
     {
-        $zoomFake = $this->fakeZoom();
+        $this->fakeZoom();
 
         $postBody = [
             'topic' => 'test-repo',
@@ -189,7 +189,7 @@ class MeetingCreateTest extends TestCase
             new ZoomUserErrorException('Test error message')
         );
 
-        $response = $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
+        $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
 
         $this->assertDatabaseHas('meetings', [
             'topic' => $postBody['topic'],
@@ -227,7 +227,7 @@ class MeetingCreateTest extends TestCase
     /** @test */
     public function normal_index_excludes_pending_and_failed_meetings(): void
     {
-        $zoomFake = $this->fakeZoom();
+        $this->fakeZoom();
 
         $postBody = [
             'topic' => 'test-repo',

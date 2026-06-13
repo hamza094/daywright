@@ -18,15 +18,15 @@ use App\Services\Subscription\PlanLimitService;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-final class CreateProjectMeeting
+final readonly class CreateProjectMeeting
 {
     use MeetingLockOperations;
 
     public function __construct(
-        private readonly PlanLimitService $planLimitService,
-        private readonly MeetingOperationLock $locks,
-        private readonly MeetingSyncErrorFormatter $errorFormatter,
-        private readonly int $transactionRetryAttempts = 5,
+        private PlanLimitService $planLimitService,
+        private MeetingOperationLock $locks,
+        private MeetingSyncErrorFormatter $errorFormatter,
+        private int $transactionRetryAttempts = 5,
     ) {}
 
     /**
@@ -37,9 +37,7 @@ final class CreateProjectMeeting
         $lockedUser = $this->locks->block(
             key: $this->meetingCreationLockKey($user),
             conflictMessage: 'A meeting is already being created for this account. Please retry.',
-            callback: function () use ($user): User {
-                return $this->assertCanCreateMeeting($user);
-            },
+            callback: fn (): User => $this->assertCanCreateMeeting($user),
         );
 
         $projectMeeting = $this->createPendingMeeting($project, $lockedUser, $validated);

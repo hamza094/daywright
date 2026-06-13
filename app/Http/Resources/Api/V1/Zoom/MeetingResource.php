@@ -55,7 +55,7 @@ class MeetingResource extends JsonResource
             'status' => $this->status,
             'timezone' => $this->timezone,
             'join_before_host' => (bool) $this->join_before_host,
-            'sync_status' => $this->sync_status?->value,
+            'sync_status' => $this->sync_status->value,
             'links' => $this->whenLoaded('project', fn (): array => [
                 'self' => ApiResourceLink::meeting($this->resource),
             ]),

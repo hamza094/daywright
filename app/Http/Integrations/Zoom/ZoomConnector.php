@@ -125,6 +125,7 @@ class ZoomConnector extends Connector
 
     private function sanitizeExceptionMessage(string $body): string
     {
+        // @phpstan-ignore theCodingMachineSafe.function
         $decoded = json_decode($body, true);
 
         if (! is_array($decoded)) {

@@ -26,13 +26,4 @@ class ZoomWebhookSigner
 
         return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
     }
-
-    private static function normalizePayload(array|string $payload): string
-    {
-        if (is_string($payload)) {
-            return $payload;
-        }
-
-        return json_encode($payload);
-    }
 }

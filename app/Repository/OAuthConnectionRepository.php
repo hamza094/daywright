@@ -12,7 +12,7 @@ final class OAuthConnectionRepository
 {
     public function hasConnection(User $user, string $provider): bool
     {
-        return $this->getTokens($user, $provider) !== null;
+        return $this->getTokens($user, $provider) instanceof OAuthTokens;
     }
 
     public function getTokens(User $user, string $provider): ?OAuthTokens

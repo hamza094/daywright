@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Webhooks\Zoom;
 
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
+use App\DataTransferObjects\Zoom\MeetingWebhookUpdateData;
 use App\Models\Meeting;
 use Carbon\Carbon;
 
@@ -12,18 +13,20 @@ final class HandleMeetingUpdatedWebhook extends BaseZoomWebhookAction
 {
     public function handle(MeetingUpdatedWebhookData $data): void
     {
-        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data) {
+        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
             if (! $this->ensureActiveSyncStatus($meeting, $data->meetingId, $data->requestId, $userUuid)) {
                 return;
             }
 
-            if (! $this->isMeetingUpdated($meeting, $data->changes)) {
+            $safeChanges = MeetingWebhookUpdateData::normalizeChanges($data->changes);
+
+            if (! $this->isMeetingUpdated($meeting, $safeChanges)) {
                 $this->logger->logWebhookIgnored($this->operation(), $data->meetingId, $data->requestId, 'no_changes', $userUuid);
 
                 return;
             }
 
-            $meeting->update($data->changes);
+            $meeting->update($safeChanges);
             $this->logger->logWebhookProcessed($this->operation(), $data->meetingId, $data->requestId, $userUuid);
         });
     }

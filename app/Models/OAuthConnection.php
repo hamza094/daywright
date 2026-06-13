@@ -22,7 +22,7 @@ final class OAuthConnection extends Model
     ];
 
     /**
-     * @return BelongsTo<User, OAuthConnection>
+     * @return BelongsTo<User, $this>
      */
     public function user(): BelongsTo
     {

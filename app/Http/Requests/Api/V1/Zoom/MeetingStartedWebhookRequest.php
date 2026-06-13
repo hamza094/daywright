@@ -20,7 +20,7 @@ class MeetingStartedWebhookRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, array<int, string>>
+     * @return array<string, list<string|\Illuminate\Validation\Rules\In>>
      */
     public function rules(): array
     {

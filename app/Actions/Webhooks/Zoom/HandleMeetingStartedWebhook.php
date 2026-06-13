@@ -16,7 +16,7 @@ final class HandleMeetingStartedWebhook extends BaseZoomWebhookAction
 {
     public function handle(MeetingStartedWebhookData $data): void
     {
-        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data) {
+        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
             if (! $this->ensureActiveSyncStatus($meeting, $data->meetingId, $data->requestId, $userUuid)) {
                 return;
             }

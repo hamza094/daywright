@@ -145,7 +145,7 @@ class ZoomMeetingCreateTest extends TestCase
     {
         $requestCount = 0;
         Saloon::fake([
-            'users/me/meetings' => function (PendingRequest $request) use (&$requestCount) {
+            'users/me/meetings' => function (PendingRequest $request) use (&$requestCount): MockResponse {
                 $requestCount++;
                 if ($requestCount > 2) {
                     return ZoomResponseFactory::rateLimitResponse();
@@ -198,7 +198,7 @@ class ZoomMeetingCreateTest extends TestCase
         }
 
         // Should only send one refresh request despite multiple concurrent calls
-        Saloon::assertSent(GetRefreshTokenRequest::class, 1);
+        Saloon::assertSent(GetRefreshTokenRequest::class);
 
         // All requests should succeed with the new token
         foreach ($results as $result) {

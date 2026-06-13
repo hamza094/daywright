@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 trait RecordActivity
 {
@@ -198,7 +199,25 @@ trait RecordActivity
      */
     private function resolveUserId(): int
     {
-        return auth()->id() ?? ($this->project ?? $this)
-            ->user->id;
+        $authId = auth()->id();
+
+        if ($authId !== null) {
+            return $authId;
+        }
+
+        $relation = ($this->project ?? $this);
+
+        // Try to load the user relationship if not already loaded
+        if (! $relation->relationLoaded('user')) {
+            $relation->load('user');
+        }
+
+        $user = $relation->user;
+
+        if ($user === null) {
+            throw new RuntimeException('Unable to resolve user ID for activity');
+        }
+
+        return $user->id;
     }
 }

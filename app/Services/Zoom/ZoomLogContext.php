@@ -9,6 +9,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
+use function Safe\preg_match;
+
 final class ZoomLogContext
 {
     /**
@@ -22,7 +24,7 @@ final class ZoomLogContext
         $user = $request->user();
 
         if ($user !== null) {
-            if (isset($user->uuid) && is_string($user->uuid) && $user->uuid !== '') {
+            if ($user->uuid !== null && $user->uuid !== '') {
                 $userUuid = $user->uuid;
             } else {
                 $id = $user->getAuthIdentifier();
@@ -71,7 +73,7 @@ final class ZoomLogContext
         if ($userId !== null) {
             if (is_string($userId) && self::looksLikeUuid($userId)) {
                 $userUuid = $userId;
-            } elseif (is_int($userId) || ctype_digit((string) $userId)) {
+            } elseif (is_int($userId) || ctype_digit($userId)) {
                 $userUuid = User::where('id', (int) $userId)->value('uuid') ?: null;
             }
         }
@@ -97,7 +99,7 @@ final class ZoomLogContext
 
     private static function providerStatusCode(ZoomException $exception): ?int
     {
-        return is_int($exception->getCode()) && $exception->getCode() > 0
+        return $exception->getCode() > 0
             ? $exception->getCode()
             : null;
     }
@@ -133,11 +135,11 @@ final class ZoomLogContext
             }
 
             if (is_string($value)) {
-                if (preg_match('/https?:\\/\\/[^\\s]*zoom\\.us\\/j\\//i', $value)) {
+                if (preg_match('/https?:\\/\\/[^\\s]*zoom\\.us\\/j\\//i', $value) !== 0) {
                     return '[REDACTED]';
                 }
 
-                if (preg_match('/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/', $value)) {
+                if (preg_match('/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/', $value) !== 0) {
                     return '[REDACTED]';
                 }
             }
@@ -151,7 +153,7 @@ final class ZoomLogContext
             $isSensitiveKey = false;
 
             foreach ($sensitiveKeyPatterns as $pat) {
-                if (preg_match($pat, (string) $key)) {
+                if (preg_match($pat, (string) $key) !== 0) {
                     $isSensitiveKey = true;
                     break;
                 }

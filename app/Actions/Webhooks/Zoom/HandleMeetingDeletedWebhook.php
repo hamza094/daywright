@@ -12,7 +12,7 @@ final class HandleMeetingDeletedWebhook extends BaseZoomWebhookAction
 {
     public function handle(MeetingDeletedWebhookData $data): void
     {
-        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data) {
+        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
             // If already deleting/deleted, treat as already handled
             if (in_array($meeting->sync_status, [MeetingSyncStatus::Deleting, MeetingSyncStatus::Deleted], true)) {
                 $this->logger->logWebhookIgnored($this->operation(), $data->meetingId, $data->requestId, 'already_deleted', $userUuid);
