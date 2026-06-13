@@ -4,74 +4,61 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Webhooks;
 
-use App\DataTransferObjects\Zoom\MeetingWebhookUpdateData;
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\Zoom\WebhookRequest;
-use App\Jobs\Webhooks\Zoom\DeleteMeetingWebhook;
-use App\Jobs\Webhooks\Zoom\MeetingEndsWebhook;
-use App\Jobs\Webhooks\Zoom\StartMeetingWebhook;
-use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
+use App\Http\Requests\Api\V1\Zoom\MeetingDeletedWebhookRequest;
+use App\Http\Requests\Api\V1\Zoom\MeetingEndedWebhookRequest;
+use App\Http\Requests\Api\V1\Zoom\MeetingStartedWebhookRequest;
+use App\Http\Requests\Api\V1\Zoom\MeetingUpdatedWebhookRequest;
+use App\Services\Webhooks\ZoomWebhookDispatcher;
 use Illuminate\Http\JsonResponse;
 
 class ZoomWebhookController extends ApiController
 {
     private const string WEBHOOK_ACCEPTED_MESSAGE = 'Webhook accepted.';
 
-    public function update(WebhookRequest $request): JsonResponse
+    public function __construct(
+        private readonly ZoomWebhookDispatcher $dispatcher,
+    ) {}
+
+    public function update(MeetingUpdatedWebhookRequest $request): JsonResponse
     {
         $request->validated();
 
         /** @var array<string, mixed> $object */
-        $object = (array) $request->input('payload.object', []);
-        $updateData = MeetingWebhookUpdateData::fromPayloadObject($object);
+        $validated = $request->validated();
+        $object = $validated['payload']['object'];
 
-        UpdateMeetingWebhook::dispatch([
-            'meeting_id' => $updateData->meetingId,
-            'update_data' => $updateData->changes,
-            'request_id' => $request->header('x-zm-request-id'),
-        ]);
+        $this->dispatcher->dispatchUpdate($object, $request->header('x-zm-request-id'));
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
-    public function delete(WebhookRequest $request): JsonResponse
+    public function delete(MeetingDeletedWebhookRequest $request): JsonResponse
     {
         $validated = $request->validated();
         $object = $validated['payload']['object'];
 
-        DeleteMeetingWebhook::dispatch([
-            'meeting_id' => $object['id'],
-            'request_id' => $request->header('x-zm-request-id'),
-        ]);
+        $this->dispatcher->dispatchDelete($object, $request->header('x-zm-request-id'));
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
-    public function start(WebhookRequest $request): JsonResponse
+    public function start(MeetingStartedWebhookRequest $request): JsonResponse
     {
         $validated = $request->validated();
         $object = $validated['payload']['object'];
 
-        StartMeetingWebhook::dispatchAfterResponse([
-            'meeting_id' => $object['id'],
-            'start_time' => $object['start_time'] ?? null,
-            'request_id' => $request->header('x-zm-request-id'),
-        ]);
+        $this->dispatcher->dispatchStart($object, $request->header('x-zm-request-id'));
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
-    public function ended(WebhookRequest $request): JsonResponse
+    public function ended(MeetingEndedWebhookRequest $request): JsonResponse
     {
         $validated = $request->validated();
         $object = $validated['payload']['object'];
 
-        MeetingEndsWebhook::dispatchAfterResponse([
-            'meeting_id' => $object['id'],
-            'start_time' => $object['start_time'] ?? null,
-            'end_time' => $object['end_time'] ?? null,
-            'request_id' => $request->header('x-zm-request-id'),
-        ]);
+        $this->dispatcher->dispatchEnded($object, $request->header('x-zm-request-id'));
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }

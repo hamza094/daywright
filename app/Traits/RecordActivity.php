@@ -8,6 +8,7 @@ use App\Events\ActivityLogged;
 use App\Events\DashboardActivity;
 use App\Models\Activity;
 use App\Models\Project;
+use BackedEnum;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Arr;
@@ -159,14 +160,37 @@ trait RecordActivity
             return null;
         }
 
+        $oldAttributes = $this->convertEnumsToValues($this->oldAttributes);
+        $currentAttributes = $this->convertEnumsToValues($this->getAttributes());
+
         return [
             'before' => Arr::except(
-                array_diff($this->oldAttributes, $this->getAttributes()), 'updated_at'
+                array_diff($oldAttributes, $currentAttributes), 'updated_at'
             ),
             'after' => Arr::except(
                 $this->getChanges(), 'updated_at'
             ),
         ];
+    }
+
+    /**
+     * Convert enum values to their backed values for array comparison.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function convertEnumsToValues(array $attributes): array
+    {
+        foreach ($attributes as $key => $value) {
+            if ($value instanceof BackedEnum) {
+                $attributes[$key] = $value->value;
+            } elseif ($value instanceof \Illuminate\Database\Query\Expression) {
+                // Skip Expression objects from comparison as they represent SQL expressions
+                unset($attributes[$key]);
+            }
+        }
+
+        return $attributes;
     }
 
     /**

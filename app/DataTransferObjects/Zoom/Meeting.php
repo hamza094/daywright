@@ -97,11 +97,32 @@ final readonly class Meeting
      */
     private static function requiredBool(array $response, string $key): bool
     {
-        if (! array_key_exists($key, $response) || ! is_bool($response[$key])) {
+        if (! array_key_exists($key, $response)) {
             self::throwMalformedResponse($key);
         }
 
-        return $response[$key];
+        return self::normalizeBool($response[$key]);
+    }
+
+    /**
+     * Normalize boolean values from API responses.
+     * Handles booleans as strings ('true', 'false', '1', '0').
+     */
+    private static function normalizeBool(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_string($value)) {
+            return in_array(mb_strtolower($value), ['true', '1', 'yes']);
+        }
+
+        if (is_int($value)) {
+            return $value === 1;
+        }
+
+        return (bool) $value;
     }
 
     /**

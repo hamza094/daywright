@@ -17,6 +17,19 @@ use Saloon\Http\Faking\MockResponse;
 use Saloon\Laravel\Facades\Saloon;
 use Tests\TestCase;
 
+/**
+ * Unit tests for Zoom HTTP connector.
+ *
+ * Tests the ZoomConnector which handles HTTP communication with the Zoom API.
+ * These tests verify:
+ * - Exception mapping for 403 Forbidden responses
+ * - Exception mapping for 404 Not Found responses
+ * - Exception mapping for 429 rate limit and 5xx server failures
+ * - Exception mapping for 4xx client errors
+ * - Rate limit exception includes retry-after context
+ *
+ * Level: Unit/HTTP integration testing
+ */
 class ZoomConnectorTest extends TestCase
 {
     #[Test]
@@ -79,6 +92,27 @@ class ZoomConnectorTest extends TestCase
         $this->expectException(ZoomUserErrorException::class);
 
         $this->authenticatedConnector()->send(new GetZakToken)->throw();
+    }
+
+    #[Test]
+    public function rate_limit_exception_includes_retry_after_context(): void
+    {
+        Saloon::fake([
+            'users/me/token?type=zak' => MockResponse::make(
+                body: ['message' => 'Rate limit exceeded'],
+                status: 429,
+                headers: ['Retry-After' => '60']
+            ),
+        ]);
+
+        try {
+            $this->authenticatedConnector()->send(new GetZakToken)->throw();
+            $this->fail('Expected ZoomExternalFailureException was not thrown.');
+        } catch (ZoomExternalFailureException $exception) {
+            $this->assertSame(429, $exception->getCode());
+            $this->assertArrayHasKey('retry_after_seconds', $exception->context());
+            $this->assertEquals(60, $exception->context()['retry_after_seconds']);
+        }
     }
 
     private function authenticatedConnector(): ZoomConnector

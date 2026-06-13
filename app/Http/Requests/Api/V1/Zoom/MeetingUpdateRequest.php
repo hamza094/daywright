@@ -26,7 +26,6 @@ class MeetingUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'meeting_id' => 'integer|required',
             'topic' => 'string|max:200|sometimes',
             'agenda' => 'string|sometimes|max:2000',
             'duration' => 'integer|min:1|sometimes',
@@ -40,6 +39,7 @@ class MeetingUpdateRequest extends FormRequest
             'timezone' => 'string|timezone:all|sometimes',
             'password' => 'string|max:10|sometimes',
             'join_before_host' => 'boolean|sometimes',
+            'meeting_id' => 'prohibited',
         ];
     }
 

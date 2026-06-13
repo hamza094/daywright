@@ -8,10 +8,23 @@ use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\Http\Integrations\Zoom\Requests\GetAccessTokenRequest;
 use App\Services\Zoom\ZoomOAuthService;
 use PHPUnit\Framework\Attributes\Test;
-use Saloon\Http\Faking\MockResponse;
 use Saloon\Laravel\Facades\Saloon;
+use Tests\Support\Zoom\ZoomResponseFactory;
 use Tests\TestCase;
 
+/**
+ * Unit tests for Zoom OAuth authorization service.
+ *
+ * Tests the ZoomOAuthService::authorize method which handles OAuth token exchange with Zoom.
+ * These tests verify:
+ * - Successful access token retrieval from authorization code
+ * - Proper PKCE (Proof Key for Code Exchange) implementation
+ * - Code verifier length constraints (43-128 characters)
+ * - Code challenge generation using SHA256 and base64url encoding
+ * - Security: code_verifier is not sent during refresh token flow
+ *
+ * Level: Unit/Service testing
+ */
 class ZoomAuthorizationTest extends TestCase
 {
     /** @test */
@@ -25,7 +38,7 @@ class ZoomAuthorizationTest extends TestCase
         ]);
 
         Saloon::fake([
-            MockResponse::make([
+            ZoomResponseFactory::tokenResponse([
                 'access_token' => 'access-token-here',
                 'refresh_token' => 'refresh-token-here',
                 'expires_in' => 3600,
@@ -34,7 +47,6 @@ class ZoomAuthorizationTest extends TestCase
 
         $callbackDetails = new AuthorizationCallbackDetails(
             authorizationCode: 'dummy-code',
-            expectedState: 'dummy-state',
             state: 'dummy-state',
             codeVerifier: 'dummy-code-verifier',
         );

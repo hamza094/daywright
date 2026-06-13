@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Zoom;
 
-use App\DataTransferObjects\Zoom\MeetingOperationResult;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use App\Http\Integrations\Zoom\Requests\UpdateMeeting;
 use App\Services\Zoom\ZoomService;
@@ -31,12 +30,7 @@ class ZoomMeetingUpdateTest extends TestCase
 
         $meetingData = $this->meetingData();
 
-        $result = app(ZoomService::class)->updateMeeting($meetingData, $user);
-
-        $this->assertInstanceOf(MeetingOperationResult::class, $result);
-        $this->assertSame('updated', $result->action);
-        $this->assertSame(1234, $result->meetingId);
-        $this->assertSame(204, $result->statusCode);
+        app(ZoomService::class)->updateMeeting($meetingData, $user);
 
         Saloon::assertNotSent(GetRefreshTokenRequest::class);
 

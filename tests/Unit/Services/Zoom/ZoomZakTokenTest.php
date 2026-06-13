@@ -10,8 +10,8 @@ use App\Models\User;
 use App\Services\Zoom\ZoomService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Saloon\Enums\Method;
-use Saloon\Http\Faking\MockResponse;
 use Saloon\Laravel\Facades\Saloon;
+use Tests\Support\Zoom\ZoomResponseFactory;
 use Tests\TestCase;
 use Tests\Traits\CreatesZoomUsers;
 
@@ -24,9 +24,7 @@ class ZoomZakTokenTest extends TestCase
     public function auth_user_can_get_his_zak_token(): void
     {
         Saloon::fake([
-            'users/me/token?type=zak' => MockResponse::make([
-                'token' => 'zak token',
-            ]),
+            'users/me/token?type=zak' => ZoomResponseFactory::zakTokenResponse(),
         ]);
 
         $user = $this->createZoomUser(now()->addWeek());
@@ -40,9 +38,7 @@ class ZoomZakTokenTest extends TestCase
     public function it_reloads_latest_tokens_before_refreshing_an_expired_user(): void
     {
         Saloon::fake([
-            'users/me/token?type=zak' => MockResponse::make([
-                'token' => 'zak token',
-            ]),
+            'users/me/token?type=zak' => ZoomResponseFactory::zakTokenResponse(),
         ]);
 
         $staleUser = $this->createZoomUser(now()->subMinute());

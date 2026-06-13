@@ -14,21 +14,21 @@ final readonly class MeetingWebhookUpdateData
      */
     private const array ALLOWED_FIELDS = [
         'topic',
-        'agenda',
         'duration',
         'password',
+        'start_time',
+        'timezone',
+        'uuid',
         'join_url',
         'start_url',
-        'start_time',
-        'join_before_host',
-        'timezone',
+        'agenda',
     ];
 
     /**
      * @param  array<string, mixed>  $changes
      */
     public function __construct(
-        public int $meetingId,
+        public int|string $meetingId,
         public array $changes,
     ) {}
 
@@ -38,7 +38,7 @@ final readonly class MeetingWebhookUpdateData
     public static function fromPayloadObject(array $payload): self
     {
         return new self(
-            meetingId: (int) ($payload['id'] ?? 0),
+            meetingId: $payload['id'] ?? 0,
             changes: self::normalizeChanges($payload),
         );
     }
@@ -59,6 +59,15 @@ final readonly class MeetingWebhookUpdateData
             self::addNormalizedField($normalized, $field, $changes[$field]);
         }
 
+        // Handle nested settings.join_before_host
+        if (isset($changes['settings']['join_before_host'])) {
+            $booleanValue = filter_var($changes['settings']['join_before_host'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+            if ($booleanValue !== null) {
+                $normalized['join_before_host'] = $booleanValue;
+            }
+        }
+
         return $normalized;
     }
 
@@ -69,11 +78,12 @@ final readonly class MeetingWebhookUpdateData
     {
         switch ($field) {
             case 'topic':
-            case 'agenda':
             case 'password':
             case 'join_url':
             case 'start_url':
             case 'timezone':
+            case 'uuid':
+            case 'agenda':
                 if (is_string($value)) {
                     $normalized[$field] = $value;
                 }
@@ -83,15 +93,6 @@ final readonly class MeetingWebhookUpdateData
             case 'duration':
                 if (is_numeric($value)) {
                     $normalized[$field] = (int) $value;
-                }
-
-                return;
-
-            case 'join_before_host':
-                $booleanValue = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-
-                if ($booleanValue !== null) {
-                    $normalized[$field] = $booleanValue;
                 }
 
                 return;

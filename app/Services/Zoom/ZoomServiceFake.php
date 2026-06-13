@@ -8,10 +8,10 @@ use App\DataTransferObjects\Zoom\AccessTokenDetails;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
-use App\DataTransferObjects\Zoom\MeetingOperationResult;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Interfaces\Zoom;
 use App\Models\User;
+use App\Repository\OAuthConnectionRepository;
 use Faker\Generator;
 use Illuminate\Support\Collection;
 use Override;
@@ -38,7 +38,11 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 
     public function __construct()
     {
-        parent::__construct(null);
+        // Create a ZoomConnectorManager for testing
+        // The fake overrides all parent methods, so the repository is never used
+        $oauthRepository = app(OAuthConnectionRepository::class);
+        $connectorManager = new ZoomConnectorManager($oauthRepository);
+        parent::__construct($connectorManager);
         $this->meetingsToCreate = new Collection;
     }
 
@@ -110,23 +114,19 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
      * @param  array<string, mixed>  $validated
      */
     #[Override]
-    public function updateMeeting(array $validated, User $user): MeetingOperationResult
+    public function updateMeeting(array $validated, User $user): void
     {
         if ($this->failureException instanceof ZoomException) {
             throw $this->failureException;
         }
-
-        return MeetingOperationResult::updated((int) ($validated['meeting_id'] ?? 0), 204);
     }
 
     #[Override]
-    public function deleteMeeting(int $meetingId, User $user): MeetingOperationResult
+    public function deleteMeeting(int $meetingId, User $user): void
     {
         if ($this->failureException instanceof ZoomException) {
             throw $this->failureException;
         }
-
-        return MeetingOperationResult::deleted($meetingId, 204);
     }
 
     #[Override]
@@ -155,7 +155,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         app(Generator::class);
 
         return new Meeting(
-            meeting_id: 1234,
+            meeting_id: random_int(10000000, 99999999),
             topic: 'Topic Of Meeting',
             agenda: 'this is the agenda of meeting',
             created_at: '2024-05-18 18:00:07',

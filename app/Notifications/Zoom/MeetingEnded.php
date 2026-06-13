@@ -8,11 +8,12 @@ use App\Notifications\NotificationLink;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class MeetingEnded extends Notification implements ShouldBroadcast
+class MeetingEnded extends Notification implements ShouldBroadcast, ShouldQueue
 {
     use Queueable;
 

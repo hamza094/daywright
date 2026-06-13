@@ -8,7 +8,6 @@ use App\DataTransferObjects\Zoom\AccessTokenDetails;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
-use App\DataTransferObjects\Zoom\MeetingOperationResult;
 use App\Http\Integrations\Zoom\Requests\CreateMeeting;
 use App\Http\Integrations\Zoom\Requests\DeleteMeeting;
 use App\Http\Integrations\Zoom\Requests\GetZakToken;
@@ -57,24 +56,20 @@ final class ZoomService implements Zoom
      * @param  array<string, mixed>  $validated
      */
     #[Override]
-    public function updateMeeting(array $validated, User $user): MeetingOperationResult
+    public function updateMeeting(array $validated, User $user): void
     {
         $meetingId = (int) $validated['meeting_id'];
-        $response = $this->connectedConnector($user)
+        $this->connectedConnector($user)
             ->send(new UpdateMeeting($validated, $this->limiterKey($user)))
             ->throw();
-
-        return MeetingOperationResult::updated($meetingId, $response->status());
     }
 
     #[Override]
-    public function deleteMeeting(int $meetingId, User $user): MeetingOperationResult
+    public function deleteMeeting(int $meetingId, User $user): void
     {
-        $response = $this->connectedConnector($user)
+        $this->connectedConnector($user)
             ->send(new DeleteMeeting($meetingId, $this->limiterKey($user)))
             ->throw();
-
-        return MeetingOperationResult::deleted($meetingId, $response->status());
     }
 
     #[Override]

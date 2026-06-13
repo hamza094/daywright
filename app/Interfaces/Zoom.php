@@ -8,7 +8,6 @@ use App\DataTransferObjects\Zoom\AccessTokenDetails;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
-use App\DataTransferObjects\Zoom\MeetingOperationResult;
 use App\Models\User;
 
 interface Zoom
@@ -27,9 +26,9 @@ interface Zoom
     /**
      * @param  array<string, mixed>  $validated
      */
-    public function updateMeeting(array $validated, User $user): MeetingOperationResult;
+    public function updateMeeting(array $validated, User $user): void;
 
-    public function deleteMeeting(int $meetingId, User $user): MeetingOperationResult;
+    public function deleteMeeting(int $meetingId, User $user): void;
 
     public function getZakToken(User $user): string;
 }

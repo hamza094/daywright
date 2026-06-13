@@ -360,13 +360,11 @@ final class IdempotencyContractTest extends TestCase
                 ->with(
                     Mockery::on(fn (array $payload): bool => $payload['meeting_id'] === $meeting->meeting_id && $payload['duration'] === 45),
                     Mockery::type(User::class),
-                )
-                ->andReturn(\App\DataTransferObjects\Zoom\MeetingOperationResult::updated($meeting->meeting_id, 204));
+                );
         });
 
         $headers = $this->idempotencyHeaders('phase-six-meeting-update');
         $payload = [
-            'meeting_id' => 18976,
             'duration' => 45,
         ];
         $route = $this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]);
@@ -407,9 +405,12 @@ final class IdempotencyContractTest extends TestCase
 
         $object = $payload['payload']['object'];
         $meetingId = $object['id'];
-        $updateData = collect($object)->except(['id', 'uuid'])->toArray();
+        $updateData = [
+            'topic' => $object['topic'],
+            'uuid' => $object['uuid'],
+        ];
 
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId && $job->update_data === $updateData);
+        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId && $job->data->changes === $updateData);
         Queue::assertPushed(UpdateMeetingWebhook::class, 1);
     }
 

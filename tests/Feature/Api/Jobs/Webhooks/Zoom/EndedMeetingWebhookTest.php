@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Jobs\Webhooks\Zoom;
 
+use App\DataTransferObjects\Zoom\MeetingEndedWebhookData;
+use App\Enums\Meeting\MeetingSyncStatus;
 use App\Events\MeetingStatusUpdate;
-use App\Jobs\Webhooks\Zoom\MeetingEndsWebhook;
-use App\Models\Meeting;
+use App\Jobs\Webhooks\Zoom\MeetingEndedWebhook;
 use App\Models\User;
 use App\Notifications\Zoom\MeetingEnded;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
+use Tests\Support\Meeting\MeetingTestHelper;
 use Tests\TestCase;
 use Tests\Traits\ProjectInvitationHelpers;
 use Tests\Traits\ProjectSetup;
@@ -28,10 +30,8 @@ class EndedMeetingWebhookTest extends TestCase
         Notification::fake();
         Event::fake();
 
-        $meeting = Meeting::factory()->create([
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 813,
-            'project_id' => $this->project->id,
-            'user_id' => $this->user->id,
             'status' => 'waiting',
         ]);
 
@@ -48,11 +48,12 @@ class EndedMeetingWebhookTest extends TestCase
         $startTime = $object['start_time'] ?? null;
         $endTime = $object['end_time'] ?? null;
 
-        $job = new MeetingEndsWebhook([
-            'meeting_id' => $meetingId,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-        ]);
+        $job = new MeetingEndedWebhook(new MeetingEndedWebhookData(
+            meetingId: $meetingId,
+            startTime: $startTime,
+            endTime: $endTime,
+            requestId: null,
+        ));
 
         $job->handle();
 
@@ -73,21 +74,20 @@ class EndedMeetingWebhookTest extends TestCase
         Notification::fake();
         Event::fake();
 
-        $meeting = Meeting::factory()->create([
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 813,
-            'project_id' => $this->project->id,
-            'user_id' => $this->user->id,
             'status' => 'waiting',
         ]);
 
         $users = User::factory()->count(2)->create()->each(fn (User $user) => $this->inviteAndActivateUser($this->project, $user)
         );
 
-        $job = new MeetingEndsWebhook([
-            'meeting_id' => 813,
-            'start_time' => null,
-            'end_time' => null,
-        ]);
+        $job = new MeetingEndedWebhook(new MeetingEndedWebhookData(
+            meetingId: 813,
+            startTime: null,
+            endTime: null,
+            requestId: null,
+        ));
 
         $job->handle();
 
@@ -102,11 +102,12 @@ class EndedMeetingWebhookTest extends TestCase
         Notification::fake();
         Event::fake([MeetingStatusUpdate::class]);
 
-        $job = new MeetingEndsWebhook([
-            'meeting_id' => 999999,
-            'start_time' => null,
-            'end_time' => null,
-        ]);
+        $job = new MeetingEndedWebhook(new MeetingEndedWebhookData(
+            meetingId: 999999,
+            startTime: null,
+            endTime: null,
+            requestId: null,
+        ));
 
         $job->handle();
 
@@ -120,22 +121,47 @@ class EndedMeetingWebhookTest extends TestCase
         Notification::fake();
         Event::fake([MeetingStatusUpdate::class]);
 
-        $meeting = Meeting::factory()->create([
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 813,
-            'project_id' => $this->project->id,
-            'user_id' => $this->user->id,
             'status' => 'ended',
         ]);
 
-        $job = new MeetingEndsWebhook([
-            'meeting_id' => 813,
-            'start_time' => '2024-06-24T11:00:00Z',
-            'end_time' => '2024-06-24T12:00:00Z',
-        ]);
+        $job = new MeetingEndedWebhook(new MeetingEndedWebhookData(
+            meetingId: 813,
+            startTime: '2024-06-24T11:00:00Z',
+            endTime: '2024-06-24T12:00:00Z',
+            requestId: null,
+        ));
 
         $job->handle();
 
         $this->assertEquals('ended', $meeting->fresh()->status);
+        Notification::assertNothingSent();
+        Event::assertNotDispatched(MeetingStatusUpdate::class);
+    }
+
+    /** @test */
+    public function ignores_webhook_if_sync_status_is_not_active(): void
+    {
+        Notification::fake();
+        Event::fake([MeetingStatusUpdate::class]);
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 813,
+            'status' => 'waiting',
+            'sync_status' => MeetingSyncStatus::Deleting->value,
+        ]);
+
+        $job = new MeetingEndedWebhook(new MeetingEndedWebhookData(
+            meetingId: 813,
+            startTime: '2024-06-24T11:00:00Z',
+            endTime: '2024-06-24T12:00:00Z',
+            requestId: 'zoom-ended-inactive',
+        ));
+
+        $job->handle();
+
+        $this->assertEquals('waiting', $meeting->fresh()->status);
         Notification::assertNothingSent();
         Event::assertNotDispatched(MeetingStatusUpdate::class);
     }

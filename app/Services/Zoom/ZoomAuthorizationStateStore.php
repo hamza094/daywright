@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Zoom;
 
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -13,7 +14,7 @@ final class ZoomAuthorizationStateStore
 {
     private const string INVALID_STATE_MESSAGE = 'Zoom authorization session is invalid or expired.';
 
-    private const string VERIFIER_CACHE_KEY_PREFIX = 'oauth:zoom:';
+    private const string AUTHORIZATION_CACHE_KEY_PREFIX = 'oauth:zoom:authorization:';
 
     private const string CALLBACK_LOCK_KEY_PREFIX = 'lock:oauth:zoom:callback:';
 
@@ -21,35 +22,61 @@ final class ZoomAuthorizationStateStore
 
     private const int VERIFIER_TTL_MINUTES = 10;
 
-    public function storeRedirectDetails(AuthorizationRedirectDetails $redirectDetails): void
-    {
+    public function store(
+        AuthorizationRedirectDetails $redirectDetails,
+        User $user,
+    ): void {
         Cache::put(
-            $this->verifierCacheKey($redirectDetails->state),
-            $redirectDetails->codeVerifier,
+            $this->authorizationCacheKey($redirectDetails->state),
+            [
+                'user_id' => $user->getKey(),
+                'code_verifier' => $redirectDetails->codeVerifier,
+            ],
             now()->addMinutes(self::VERIFIER_TTL_MINUTES),
         );
     }
 
-    public function takeVerifier(string $state): string
+    public function consume(string $state, User $user): string
     {
-        $codeVerifier = Cache::lock($this->callbackLockKey($state), self::CALLBACK_LOCK_SECONDS)
-            ->get(fn (): mixed => $this->pullVerifier($state));
+        $authorization = Cache::lock(
+            $this->callbackLockKey($state),
+            self::CALLBACK_LOCK_SECONDS,
+        )->get(
+            fn (): mixed => Cache::pull(
+                $this->authorizationCacheKey($state)
+            ),
+        );
+
+        if (! is_array($authorization)) {
+            $this->invalidState();
+        }
+
+        if (($authorization['user_id'] ?? null) !== $user->getKey()) {
+            $this->invalidState();
+        }
+
+        $codeVerifier = $authorization['code_verifier'] ?? null;
 
         if (! is_string($codeVerifier) || $codeVerifier === '') {
-            throw new HttpException(Response::HTTP_BAD_REQUEST, self::INVALID_STATE_MESSAGE);
+            $this->invalidState();
         }
 
         return $codeVerifier;
     }
 
-    private function pullVerifier(string $state): mixed
+    public function forget(string $state): void
     {
-        return Cache::pull($this->verifierCacheKey($state));
+        Cache::forget($this->authorizationCacheKey($state));
     }
 
-    private function verifierCacheKey(string $state): string
+    private function invalidState(): never
     {
-        return self::VERIFIER_CACHE_KEY_PREFIX.$state;
+        throw new HttpException(Response::HTTP_BAD_REQUEST, self::INVALID_STATE_MESSAGE);
+    }
+
+    private function authorizationCacheKey(string $state): string
+    {
+        return self::AUTHORIZATION_CACHE_KEY_PREFIX.$state;
     }
 
     private function callbackLockKey(string $state): string

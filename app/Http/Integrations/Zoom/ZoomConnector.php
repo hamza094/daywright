@@ -17,6 +17,7 @@ use Saloon\Http\Request;
 use Saloon\Http\Response;
 use Saloon\Traits\OAuth2\AuthorizationCodeGrant;
 use Saloon\Traits\Plugins\AcceptsJson;
+use Saloon\Traits\Plugins\HasTimeout;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Throwable;
 
@@ -24,6 +25,11 @@ class ZoomConnector extends Connector
 {
     use AcceptsJson;
     use AuthorizationCodeGrant;
+    use HasTimeout;
+
+    protected int $connectTimeout = 5;
+
+    protected int $requestTimeout = 30;
 
     /**
      * The Base URL of the API.
@@ -39,7 +45,7 @@ class ZoomConnector extends Connector
         Response $response, ?Throwable $senderException
     ): ?Throwable {
         $status = $response->status();
-        $message = $response->body();
+        $message = $this->sanitizeExceptionMessage($response->body());
         $context = $this->exceptionContext($response);
 
         return match (true) {
@@ -115,6 +121,21 @@ class ZoomConnector extends Connector
         string $refreshToken
     ): Request {
         return new GetRefreshTokenRequest($oauthConfig, $refreshToken);
+    }
+
+    private function sanitizeExceptionMessage(string $body): string
+    {
+        $decoded = json_decode($body, true);
+
+        if (! is_array($decoded)) {
+            return 'Zoom request failed.';
+        }
+
+        return match (true) {
+            isset($decoded['message']) => 'Zoom request failed.',
+            isset($decoded['error']) => 'Zoom request failed.',
+            default => 'Zoom request failed.',
+        };
     }
 
     /**

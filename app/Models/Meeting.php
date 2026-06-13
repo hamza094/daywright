@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Meeting\MeetingSyncStatus;
 use App\Traits\RecordActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -32,6 +33,8 @@ class Meeting extends Model
         'password' => 'encrypted',
         'join_url' => 'encrypted',
         'start_url' => 'encrypted',
+        'sync_status' => MeetingSyncStatus::class,
+        'synced_at' => 'datetime',
     ];
 
     /**
@@ -66,5 +69,14 @@ class Meeting extends Model
     public function scopeScheduled(Builder $query): Builder
     {
         return $query->where('start_time', '>=', Carbon::now());
+    }
+
+    /**
+     * @param  Builder<Meeting>  $query
+     * @return Builder<Meeting>
+     */
+    public function scopeSynced(Builder $query): Builder
+    {
+        return $query->where('sync_status', MeetingSyncStatus::Active);
     }
 }

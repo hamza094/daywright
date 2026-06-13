@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Zoom;
 
-use App\DataTransferObjects\Zoom\MeetingOperationResult;
 use App\Http\Integrations\Zoom\Requests\DeleteMeeting;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use App\Services\Zoom\ZoomService;
@@ -31,12 +30,7 @@ class ZoomMeetingDeleteTest extends TestCase
 
         $user = $this->createZoomUser(now()->addWeek());
 
-        $result = app(ZoomService::class)->deleteMeeting($meetingId, $user);
-
-        $this->assertInstanceOf(MeetingOperationResult::class, $result);
-        $this->assertSame('deleted', $result->action);
-        $this->assertSame($meetingId, $result->meetingId);
-        $this->assertSame(204, $result->statusCode);
+        app(ZoomService::class)->deleteMeeting($meetingId, $user);
 
         Saloon::assertNotSent(GetRefreshTokenRequest::class);
 

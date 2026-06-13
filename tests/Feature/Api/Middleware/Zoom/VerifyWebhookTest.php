@@ -10,6 +10,7 @@ use Illuminate\Testing\TestResponse;
 use Override;
 use Route;
 use Symfony\Component\HttpFoundation\Response;
+use Tests\Support\Zoom\ZoomWebhookSigner;
 use Tests\TestCase;
 use WendellAdriel\Idempotency\Enums\IdempotencyScope;
 use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
@@ -79,16 +80,9 @@ class VerifyWebhookTest extends TestCase
     /** @test */
     public function it_passes_with_a_valid_signature(): void
     {
-        // Zoom sends timestamp as a numeric string header; use the same value for header and signature
-        $timestamp = (string) time();
+        $headers = ZoomWebhookSigner::signPayload($this->payload, 'zoom-request-123');
 
-        $signature = $this->buildSignature($timestamp, $this->payload);
-
-        $response = $this->postJson(self::WEBHOOK_TEST_PATH, $this->payload, [
-            'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $signature,
-            'x-zm-request-id' => 'zoom-request-123',
-        ]);
+        $response = $this->postJson(self::WEBHOOK_TEST_PATH, $this->payload, $headers);
 
         $this->assertEquals('OK', $response->getContent());
     }
@@ -96,7 +90,6 @@ class VerifyWebhookTest extends TestCase
     /** @test */
     public function it_verifies_the_exact_raw_request_body(): void
     {
-        $timestamp = (string) time();
         $rawPayload = <<<'JSON'
 {
     "event": "meeting.started",
@@ -108,11 +101,14 @@ class VerifyWebhookTest extends TestCase
 }
 JSON;
 
-        $response = $this->postRawJson(self::WEBHOOK_TEST_PATH, $rawPayload, [
+        $timestamp = (string) time();
+        $headers = [
             'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $this->buildSignature($timestamp, $rawPayload),
+            'x-zm-signature' => ZoomWebhookSigner::buildSignature($timestamp, $rawPayload),
             'x-zm-request-id' => 'zoom-request-raw-body',
-        ]);
+        ];
+
+        $response = $this->postRawJson(self::WEBHOOK_TEST_PATH, $rawPayload, $headers);
 
         $response->assertOk();
         $this->assertSame('OK', $response->getContent());
@@ -124,8 +120,7 @@ JSON;
         $this->withExceptionHandling();
 
         $oldTimestamp = (string) ($this->timestamp - 600);
-
-        $signature = $this->buildSignature($oldTimestamp, $this->payload);
+        $signature = ZoomWebhookSigner::buildSignature($oldTimestamp, json_encode($this->payload));
 
         $this->postJson(self::WEBHOOK_TEST_PATH, $this->payload, [
             'x-zm-request-timestamp' => $oldTimestamp,
@@ -139,16 +134,10 @@ JSON;
     /** @test */
     public function it_maps_the_zoom_request_id_to_the_idempotency_header(): void
     {
-        $timestamp = (string) time();
         $zoomRequestId = '6009d653_d487_445d_8406_42b654974899';
+        $headers = ZoomWebhookSigner::signPayload($this->payload, $zoomRequestId);
 
-        $signature = $this->buildSignature($timestamp, $this->payload);
-
-        $response = $this->postJson(self::IDEMPOTENT_WEBHOOK_TEST_PATH, $this->payload, [
-            'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $signature,
-            'x-zm-request-id' => $zoomRequestId,
-        ]);
+        $response = $this->postJson(self::IDEMPOTENT_WEBHOOK_TEST_PATH, $this->payload, $headers);
 
         $response->assertOk();
         $this->assertSame($zoomRequestId, $response->getContent());
@@ -157,7 +146,6 @@ JSON;
     /** @test */
     public function it_returns_the_zoom_endpoint_validation_payload(): void
     {
-        $timestamp = (string) time();
         $plainToken = 'zoom-plain-token';
         $payload = [
             'event' => 'endpoint.url_validation',
@@ -166,13 +154,9 @@ JSON;
             ],
         ];
 
-        $signature = $this->buildSignature($timestamp, $payload);
+        $headers = ZoomWebhookSigner::signPayload($payload, 'zoom-request-endpoint-validation');
 
-        $response = $this->postJson(self::WEBHOOK_TEST_PATH, $payload, [
-            'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $signature,
-            'x-zm-request-id' => 'zoom-request-endpoint-validation',
-        ]);
+        $response = $this->postJson(self::WEBHOOK_TEST_PATH, $payload, $headers);
 
         $response->assertOk()
             ->assertExactJson([
@@ -187,7 +171,7 @@ JSON;
         $this->withExceptionHandling();
 
         $timestamp = (string) time();
-        $signature = $this->buildSignature($timestamp, $this->payload);
+        $signature = ZoomWebhookSigner::buildSignature($timestamp, json_encode($this->payload));
 
         $this->postJson(self::WEBHOOK_TEST_PATH, $this->payload, [
             'x-zm-request-timestamp' => $timestamp,
@@ -195,22 +179,6 @@ JSON;
         ])
             ->assertStatus(Response::HTTP_BAD_REQUEST)
             ->assertJsonPath('message', 'Missing required Zoom webhook header: x-zm-request-id.');
-    }
-
-    protected function buildSignature(string $timestamp, array|string $payload): string
-    {
-        $message = 'v0:'.$timestamp.':'.$this->normalizePayload($payload);
-
-        return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
-    }
-
-    private function normalizePayload(array|string $payload): string
-    {
-        if (is_string($payload)) {
-            return $payload;
-        }
-
-        return json_encode($payload);
     }
 
     private function postRawJson(string $path, string $payload, array $headers): TestResponse
