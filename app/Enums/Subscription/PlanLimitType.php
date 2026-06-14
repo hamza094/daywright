@@ -178,7 +178,9 @@ enum PlanLimitType: string
                 'messageSubject' => 'created meetings',
                 'displayLabel' => 'Created meetings',
                 'loadedCountAttribute' => 'meetings_count',
-                'countLoaders' => ['meetings'],
+                'countLoaders' => [
+                    'meetings as meetings_count' => static fn (Builder $query): Builder => $query->where('sync_status', 'active'),
+                ],
                 'scope' => self::SCOPE_ACCOUNT,
             ],
             self::ApiTokens => [

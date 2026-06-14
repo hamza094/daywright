@@ -34,17 +34,17 @@ final readonly class CreateProjectMeeting
      */
     public function handle(Project $project, User $user, array $validated, Zoom $zoom): Meeting
     {
-        $lockedUser = $this->locks->block(
+        return $this->locks->block(
             key: $this->meetingCreationLockKey($user),
             conflictMessage: 'A meeting is already being created for this account. Please retry.',
-            callback: fn (): User => $this->assertCanCreateMeeting($user),
+            callback: function () use ($project, $user, $validated, $zoom): Meeting {
+                $lockedUser = $this->assertCanCreateMeeting($user);
+                $projectMeeting = $this->createPendingMeeting($project, $lockedUser, $validated);
+                $this->syncWithZoom($projectMeeting, $validated, $lockedUser, $zoom);
+
+                return $projectMeeting->refresh();
+            },
         );
-
-        $projectMeeting = $this->createPendingMeeting($project, $lockedUser, $validated);
-
-        $this->syncWithZoom($projectMeeting, $validated, $lockedUser, $zoom);
-
-        return $projectMeeting->refresh();
     }
 
     /**

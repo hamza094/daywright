@@ -41,6 +41,7 @@ class MeetingDeleteTest extends TestCase
             ->assertOk()
             ->assertJsonPath('message', 'Meeting deleted successfully.');
 
+        // Assert database state: meeting is deleted after successful Zoom delete
         $this->assertDatabaseHas('meetings', [
             'id' => $meeting->id,
             'sync_status' => 'deleted',
@@ -69,44 +70,6 @@ class MeetingDeleteTest extends TestCase
     }
 
     /** @test */
-    public function it_marks_deleting_and_clears_old_sync_error(): void
-    {
-        $this->fakeZoom();
-
-        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
-            'sync_status' => 'delete_failed',
-            'sync_error' => 'Previous error',
-        ]);
-
-        $this->deleteJson($this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]))
-            ->assertOk();
-
-        $this->assertDatabaseHas('meetings', [
-            'id' => $meeting->id,
-            'sync_status' => 'deleted',
-            'sync_error' => null,
-        ]);
-    }
-
-    /** @test */
-    public function it_treats_zoom_404_as_success_for_delete(): void
-    {
-        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user);
-
-        $this->fakeZoom()->shouldFailWithException(
-            new NotFoundException('Meeting not found')
-        );
-
-        $this->deleteJson($this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]))
-            ->assertOk();
-
-        $this->assertDatabaseHas('meetings', [
-            'id' => $meeting->id,
-            'sync_status' => 'deleted',
-        ]);
-    }
-
-    /** @test */
     public function it_clears_sync_error_and_sets_synced_at_on_delete_success(): void
     {
         $this->fakeZoom();
@@ -124,6 +87,25 @@ class MeetingDeleteTest extends TestCase
             'id' => $meeting->id,
             'sync_status' => 'deleted',
             'sync_error' => null,
+        ]);
+        $this->assertNotNull($meeting->fresh()->synced_at);
+    }
+
+    /** @test */
+    public function it_treats_zoom_404_as_success_for_delete(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user);
+
+        $this->fakeZoom()->shouldFailWithException(
+            new NotFoundException('Meeting not found')
+        );
+
+        $this->deleteJson($this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]))
+            ->assertOk();
+
+        $this->assertDatabaseHas('meetings', [
+            'id' => $meeting->id,
+            'sync_status' => 'deleted',
         ]);
     }
 

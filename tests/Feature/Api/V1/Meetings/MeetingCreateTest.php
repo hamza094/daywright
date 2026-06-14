@@ -56,7 +56,15 @@ class MeetingCreateTest extends TestCase
             duration: $postBody['duration'],
         );
 
-        $this->assertDatabaseHas('meetings', ['topic' => $meetingResponse['topic']]);
+        // Assert database state: meeting is active after successful Zoom create
+        $this->assertDatabaseHas('meetings', [
+            'topic' => $meetingResponse['topic'],
+            'sync_status' => 'active',
+        ]);
+
+        // Assert API response includes sync_status and synced_at is set
+        $response->assertJsonPath('data.sync_status', 'active');
+        $this->assertNotNull(\App\Models\Meeting::where('topic', 'test-repo')->firstOrFail()->synced_at);
     }
 
     /** @test */
@@ -126,50 +134,6 @@ class MeetingCreateTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['start_time']);
-    }
-
-    /** @test */
-    public function it_creates_pending_meeting_before_zoom_call(): void
-    {
-        $this->fakeZoom();
-
-        $postBody = [
-            'topic' => 'test-repo',
-            'agenda' => 'test-description',
-            'duration' => 30,
-            'password' => 'metingpass',
-            'join_before_host' => false,
-            'start_time' => Carbon::now()->addWeek()->toIso8601String(),
-            'timezone' => 'UTC',
-        ];
-
-        $this->withoutExceptionHandling()->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
-
-        $this->assertDatabaseHas('meetings', [
-            'topic' => $postBody['topic'],
-            'sync_status' => 'active',
-        ]);
-    }
-
-    /** @test */
-    public function it_marks_meeting_active_after_successful_zoom_create(): void
-    {
-        $this->fakeZoom();
-
-        $postBody = [
-            'topic' => 'test-repo',
-            'agenda' => 'test-description',
-            'duration' => 30,
-            'password' => 'metingpass',
-            'join_before_host' => false,
-            'start_time' => Carbon::now()->addWeek()->toIso8601String(),
-            'timezone' => 'UTC',
-        ];
-
-        $response = $this->withoutExceptionHandling()->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody);
-
-        $response->assertJsonPath('data.sync_status', 'active');
-        $this->assertNotNull(\App\Models\Meeting::where('topic', 'test-repo')->firstOrFail()->synced_at);
     }
 
     /** @test */

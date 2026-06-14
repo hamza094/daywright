@@ -45,6 +45,18 @@ class ZoomConnectorTest extends TestCase
     }
 
     #[Test]
+    public function connector_maps_unauthorized_responses_to_unauthorized_exceptions(): void
+    {
+        Saloon::fake([
+            'users/me/token?type=zak' => MockResponse::make(body: 'Unauthorized', status: 401),
+        ]);
+
+        $this->expectException(UnauthorizedException::class);
+
+        $this->authenticatedConnector()->send(new GetZakToken)->throw();
+    }
+
+    #[Test]
     public function connector_maps_not_found_responses_to_not_found_exceptions(): void
     {
         Saloon::fake([

@@ -30,7 +30,6 @@ class MeetingDeletedWebhookRequest extends FormRequest
             'payload' => ['required', 'array'],
             'payload.object' => ['required', 'array'],
             'payload.object.id' => ['required'],
-            'payload.object.uuid' => ['sometimes', 'string'],
         ];
     }
 }

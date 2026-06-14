@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 final class VerifyZoomWebhook
@@ -47,6 +48,14 @@ final class VerifyZoomWebhook
                 'The webhook signature was invalid.',
             );
         }
+
+        $replayKey = $this->computeReplayKey($signature, $timestamp, $request->getContent());
+
+        if ($this->isReplayRequest($replayKey)) {
+            return response()->json(['message' => 'Webhook accepted'], Response::HTTP_ACCEPTED);
+        }
+
+        $this->storeReplayKey($replayKey);
 
         $request->headers->set(
             $this->idempotencyHeader(),
@@ -156,5 +165,29 @@ final class VerifyZoomWebhook
         }
 
         return $header;
+    }
+
+    private function computeReplayKey(string $signature, string $timestamp, string $body): string
+    {
+        return hash('sha256', "{$signature}:{$timestamp}:{$body}");
+    }
+
+    private function isReplayRequest(string $replayKey): bool
+    {
+        return Cache::has($this->replayCacheKey($replayKey));
+    }
+
+    private function storeReplayKey(string $replayKey): void
+    {
+        Cache::put(
+            $this->replayCacheKey($replayKey),
+            true,
+            self::TIMESTAMP_TOLERANCE_SECONDS,
+        );
+    }
+
+    private function replayCacheKey(string $replayKey): string
+    {
+        return "zoom_webhook_replay:{$replayKey}";
     }
 }

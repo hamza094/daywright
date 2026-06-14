@@ -27,20 +27,22 @@ final readonly class DeleteProjectMeeting
 
     public function handle(Meeting $meeting, User $user, Zoom $zoom): void
     {
-        $currentMeeting = $this->locks->block(
+        $this->locks->block(
             key: $this->meetingLockKey($meeting),
             conflictMessage: 'This meeting is currently being deleted. Please retry.',
-            callback: fn (): Meeting => $this->findMeetingOrFail($meeting),
-        );
+            callback: function () use ($meeting, $user, $zoom): void {
+                $currentMeeting = $this->findMeetingOrFail($meeting);
 
-        try {
-            $this->markMeetingAsDeleting($currentMeeting);
-            $this->deleteFromZoom($currentMeeting, $zoom, $user);
-            $this->markMeetingAsDeleted($currentMeeting);
-        } catch (Throwable $exception) {
-            $this->markMeetingAsDeleteFailed($currentMeeting, $exception);
-            throw $exception;
-        }
+                try {
+                    $this->markMeetingAsDeleting($currentMeeting);
+                    $this->deleteFromZoom($currentMeeting, $zoom, $user);
+                    $this->markMeetingAsDeleted($currentMeeting);
+                } catch (Throwable $exception) {
+                    $this->markMeetingAsDeleteFailed($currentMeeting, $exception);
+                    throw $exception;
+                }
+            },
+        );
     }
 
     private function markMeetingAsDeleting(Meeting $meeting): void

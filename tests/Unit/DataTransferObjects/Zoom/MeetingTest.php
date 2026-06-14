@@ -125,4 +125,73 @@ class MeetingTest extends TestCase
 
         $this->assertEquals($largeId, $meeting->meeting_id);
     }
+
+    #[Test]
+    public function it_handles_nested_settings_join_before_host(): void
+    {
+        $response = [
+            'id' => 123,
+            'topic' => 'Test',
+            'agenda' => '',
+            'created_at' => '2024-05-16T18:00:07Z',
+            'duration' => 30,
+            'join_url' => 'https://zoom.us/j/123',
+            'password' => 'secret',
+            'start_time' => '2024-05-18T18:00:07Z',
+            'start_url' => 'https://zoom.us/s/123',
+            'status' => 'waiting',
+            'timezone' => 'UTC',
+            'settings' => [
+                'join_before_host' => true,
+            ],
+        ];
+
+        $meeting = Meeting::fromResponse($response);
+
+        $this->assertTrue($meeting->join_before_host);
+    }
+
+    #[Test]
+    public function it_handles_optional_missing_password_and_status(): void
+    {
+        $response = [
+            'id' => 123,
+            'topic' => 'Test',
+            'agenda' => '',
+            'created_at' => '2024-05-16T18:00:07Z',
+            'duration' => 30,
+            'join_url' => 'https://zoom.us/j/123',
+            'join_before_host' => false,
+            'start_time' => '2024-05-18T18:00:07Z',
+            'start_url' => 'https://zoom.us/s/123',
+            'timezone' => 'UTC',
+        ];
+
+        $meeting = Meeting::fromResponse($response);
+
+        $this->assertEquals('', $meeting->password);
+        $this->assertEquals('', $meeting->status);
+    }
+
+    #[Test]
+    public function it_defaults_join_before_host_to_false_when_missing(): void
+    {
+        $response = [
+            'id' => 123,
+            'topic' => 'Test',
+            'agenda' => '',
+            'created_at' => '2024-05-16T18:00:07Z',
+            'duration' => 30,
+            'join_url' => 'https://zoom.us/j/123',
+            'password' => 'secret',
+            'start_time' => '2024-05-18T18:00:07Z',
+            'start_url' => 'https://zoom.us/s/123',
+            'status' => 'waiting',
+            'timezone' => 'UTC',
+        ];
+
+        $meeting = Meeting::fromResponse($response);
+
+        $this->assertFalse($meeting->join_before_host);
+    }
 }

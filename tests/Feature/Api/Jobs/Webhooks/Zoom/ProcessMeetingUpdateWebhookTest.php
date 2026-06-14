@@ -204,4 +204,52 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
 
         $this->assertSame('Original topic', $meeting->fresh()->topic);
     }
+
+    /** @test */
+    public function ignores_update_if_meeting_is_deleted(): void
+    {
+        $project = Project::factory()->create();
+        $user = User::factory()->create();
+
+        $meeting = MeetingTestHelper::createMeeting($project, $user, [
+            'meeting_id' => 813,
+            'topic' => 'Original topic',
+            'sync_status' => MeetingSyncStatus::Deleted->value,
+        ]);
+
+        $job = new UpdateMeetingWebhook(new MeetingUpdatedWebhookData(
+            meetingId: 813,
+            changes: ['topic' => 'Updated topic'],
+            requestId: null,
+        ));
+
+        $job->handle();
+
+        $this->assertSame('Original topic', $meeting->fresh()->topic);
+        $this->assertSame(MeetingSyncStatus::Deleted->value, $meeting->fresh()->sync_status->value);
+    }
+
+    /** @test */
+    public function ignores_update_if_meeting_is_deleting(): void
+    {
+        $project = Project::factory()->create();
+        $user = User::factory()->create();
+
+        $meeting = MeetingTestHelper::createMeeting($project, $user, [
+            'meeting_id' => 813,
+            'topic' => 'Original topic',
+            'sync_status' => MeetingSyncStatus::Deleting->value,
+        ]);
+
+        $job = new UpdateMeetingWebhook(new MeetingUpdatedWebhookData(
+            meetingId: 813,
+            changes: ['topic' => 'Updated topic'],
+            requestId: null,
+        ));
+
+        $job->handle();
+
+        $this->assertSame('Original topic', $meeting->fresh()->topic);
+        $this->assertSame(MeetingSyncStatus::Deleting->value, $meeting->fresh()->sync_status->value);
+    }
 }

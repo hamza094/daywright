@@ -77,27 +77,6 @@ class MeetingUpdateTest extends TestCase
     }
 
     /** @test */
-    public function it_marks_updating_and_clears_old_sync_error(): void
-    {
-        $this->fakeZoom();
-
-        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
-            'sync_status' => 'update_failed',
-            'sync_error' => 'Previous error',
-        ]);
-
-        $this->withHeaders($this->idempotencyHeaders())->patchJson($this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]), [
-            'duration' => 15,
-        ])->assertStatus(200);
-
-        $this->assertDatabaseHas('meetings', [
-            'id' => $meeting->id,
-            'sync_status' => 'active',
-            'sync_error' => null,
-        ]);
-    }
-
-    /** @test */
     public function it_marks_update_failed_on_zoom_failure(): void
     {
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user);
@@ -155,6 +134,7 @@ class MeetingUpdateTest extends TestCase
             'duration' => 15,
         ])->assertStatus(200);
 
+        // Assert sync_error is cleared and synced_at is set on successful update
         $this->assertDatabaseHas('meetings', [
             'id' => $meeting->id,
             'sync_status' => 'active',

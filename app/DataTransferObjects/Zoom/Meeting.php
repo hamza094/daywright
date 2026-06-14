@@ -39,10 +39,10 @@ final readonly class Meeting
             start_time: self::requiredUtcDateTime($response, 'start_time'),
             start_url: self::requiredString($response, 'start_url'),
             join_url: self::requiredString($response, 'join_url'),
-            status: self::requiredString($response, 'status'),
+            status: self::optionalString($response, 'status'),
             timezone: self::requiredString($response, 'timezone'),
-            password: self::requiredString($response, 'password'),
-            join_before_host: self::requiredBool($response, 'join_before_host'),
+            password: self::optionalString($response, 'password'),
+            join_before_host: self::optionalBool($response, 'join_before_host'),
         );
     }
 
@@ -102,6 +102,25 @@ final readonly class Meeting
         }
 
         return self::normalizeBool($response[$key]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    private static function optionalBool(array $response, string $key): bool
+    {
+        // Check top-level first
+        if (array_key_exists($key, $response)) {
+            return self::normalizeBool($response[$key]);
+        }
+
+        // Check nested in settings
+        if (isset($response['settings'][$key])) {
+            return self::normalizeBool($response['settings'][$key]);
+        }
+
+        // Default to false if not found
+        return false;
     }
 
     /**

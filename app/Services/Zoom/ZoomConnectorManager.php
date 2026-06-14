@@ -87,6 +87,15 @@ final readonly class ZoomConnectorManager
             $this->oauthRepository->clearTokens($user, self::PROVIDER);
 
             throw new ZoomUserErrorException(self::USER_RECONNECT_REQUIRED, $exception->getCode(), previous: $exception);
+        } catch (ZoomUserErrorException $exception) {
+            // Check for OAuth error codes that indicate the refresh token is invalid
+            if ($this->isInvalidOAuthError($exception)) {
+                $this->oauthRepository->clearTokens($user, self::PROVIDER);
+
+                throw new ZoomUserErrorException(self::USER_RECONNECT_REQUIRED, $exception->getCode(), previous: $exception);
+            }
+
+            throw $exception;
         }
 
         $this->oauthRepository->saveTokens(
@@ -104,6 +113,17 @@ final readonly class ZoomConnectorManager
             $refreshed->getRefreshToken(),
             $refreshed->getExpiresAt(),
         );
+    }
+
+    private function isInvalidOAuthError(ZoomUserErrorException $exception): bool
+    {
+        $context = $exception->getContext();
+
+        if (! isset($context['error']) || ! is_string($context['error'])) {
+            return false;
+        }
+
+        return in_array($context['error'], ['invalid_grant', 'invalid_token'], true);
     }
 
     private function authenticatorFor(User $user): AccessTokenAuthenticator

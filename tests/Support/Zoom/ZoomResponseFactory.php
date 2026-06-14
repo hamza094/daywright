@@ -23,6 +23,9 @@ class ZoomResponseFactory
             'start_url' => 'https://zoom.us/s/1234567890?pwd=yourpassword',
             'status' => 'waiting',
             'timezone' => 'UTC',
+            'settings' => [
+                'join_before_host' => false,
+            ],
         ];
 
         return MockResponse::make(array_merge($defaultResponse, $overrides));

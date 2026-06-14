@@ -209,15 +209,15 @@ class ZoomWebhookTest extends TestCase
 
         // Send the same request again with the same request ID
         $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId))
-            ->assertOk()
-            ->assertExactJson(['message' => 'Webhook accepted.']);
+            ->assertStatus(202)
+            ->assertExactJson(['message' => 'Webhook accepted']);
 
         // Job should still only be pushed once due to idempotency
         Queue::assertPushed(UpdateMeetingWebhook::class, 1);
     }
 
     /** @test */
-    public function different_request_id_dispatches_new_job(): void
+    public function different_request_id_with_same_body_is_treated_as_replay(): void
     {
         Meeting::factory()->create([
             'meeting_id' => 813,
@@ -237,10 +237,12 @@ class ZoomWebhookTest extends TestCase
         $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId1))
             ->assertOk();
 
+        // Same body/timestamp/signature with different request ID is treated as replay
         $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId2))
-            ->assertOk();
+            ->assertStatus(202)
+            ->assertExactJson(['message' => 'Webhook accepted']);
 
-        // Different request IDs should dispatch separate jobs
-        Queue::assertPushed(UpdateMeetingWebhook::class, 2);
+        // Only one job should be pushed due to replay protection
+        Queue::assertPushed(UpdateMeetingWebhook::class, 1);
     }
 }

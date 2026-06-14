@@ -30,9 +30,6 @@ class MeetingEndedWebhookRequest extends FormRequest
             'payload' => ['required', 'array'],
             'payload.object' => ['required', 'array'],
             'payload.object.id' => ['required'],
-            'payload.object.start_time' => ['sometimes', 'string'],
-            'payload.object.end_time' => ['sometimes', 'string'],
-            'payload.object.uuid' => ['sometimes', 'string'],
         ];
     }
 }

@@ -29,21 +29,23 @@ final readonly class UpdateProjectMeeting
      */
     public function handle(Meeting $meeting, User $user, array $validated, Zoom $zoom): Meeting
     {
-        $currentMeeting = $this->locks->block(
+        return $this->locks->block(
             key: $this->meetingLockKey($meeting),
             conflictMessage: 'This meeting is currently being updated. Please retry.',
-            callback: fn (): Meeting => $this->findMeetingOrFail($meeting),
+            callback: function () use ($meeting, $user, $validated, $zoom): Meeting {
+                $currentMeeting = $this->findMeetingOrFail($meeting);
+
+                try {
+                    $this->markMeetingAsUpdating($currentMeeting);
+                    $this->updateInZoom($currentMeeting, $validated, $user, $zoom);
+
+                    return $this->markMeetingAsUpdated($currentMeeting, $validated);
+                } catch (Throwable $exception) {
+                    $this->markMeetingAsUpdateFailed($currentMeeting, $exception);
+                    throw $exception;
+                }
+            },
         );
-
-        try {
-            $this->markMeetingAsUpdating($currentMeeting);
-            $this->updateInZoom($currentMeeting, $validated, $user, $zoom);
-
-            return $this->markMeetingAsUpdated($currentMeeting, $validated);
-        } catch (Throwable $exception) {
-            $this->markMeetingAsUpdateFailed($currentMeeting, $exception);
-            throw $exception;
-        }
     }
 
     private function markMeetingAsUpdating(Meeting $meeting): void

@@ -49,6 +49,7 @@ class ZoomConnector extends Connector
         $context = $this->exceptionContext($response);
 
         return match (true) {
+            $status === HttpResponse::HTTP_UNAUTHORIZED,
             $status === HttpResponse::HTTP_FORBIDDEN => (new UnauthorizedException(
                 message: $message,
                 code: $status,
@@ -146,12 +147,21 @@ class ZoomConnector extends Connector
     {
         $retryAfter = $response->header('Retry-After');
 
-        if (! is_string($retryAfter) || ! is_numeric($retryAfter)) {
-            return [];
+        $context = [];
+
+        if (is_string($retryAfter) && is_numeric($retryAfter)) {
+            $context['retry_after_seconds'] = (int) $retryAfter;
         }
 
-        return [
-            'retry_after_seconds' => (int) $retryAfter,
-        ];
+        // Include OAuth error field if present for token refresh error handling
+        $body = $response->body();
+        // @phpstan-ignore theCodingMachineSafe.function
+        $decoded = json_decode($body, true);
+
+        if (is_array($decoded) && isset($decoded['error']) && is_string($decoded['error'])) {
+            $context['error'] = $decoded['error'];
+        }
+
+        return $context;
     }
 }
