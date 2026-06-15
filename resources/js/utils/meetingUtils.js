@@ -3,5 +3,8 @@ export function shouldShowStartButton(meeting, auth, notAuthorize) {
 }
 
 export function shouldShowJoinButton(meeting, auth, members) {
-  return meeting.owner.id !== auth.id && members.includes(auth);
+  if (meeting.owner.id === auth.id) {
+    return false;
+  }
+  return members.some((member) => member.id === auth.id || (member.uuid && member.uuid === auth.uuid));
 }

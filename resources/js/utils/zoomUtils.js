@@ -2,26 +2,19 @@ import axios from 'axios';
 import ZoomMtgEmbedded from '@zoom/meetingsdk/embedded';
 import { getObjectData } from './apiResponse.js';
 
-export async function getToken(url, errorMessage, toastify) {
+export async function fetchTokens(projectSlug, meetingId, action, toastify) {
   try {
-    const response = await axios.get(url);
+    const response = await axios.post(`/projects/${projectSlug}/meetings/${meetingId}/zoom-tokens`, {
+      action,
+    });
     return getObjectData(response);
   } catch (error) {
-    toastify.error(errorMessage);
+    toastify.error('Unable to generate meeting tokens');
     throw error;
   }
 }
 
-export async function fetchTokens(action, role, meetingId, toastify) {
-  return await Promise.all([
-    action === 'start'
-      ? getToken('/users/me/zoom-token', 'Unable to generate ZAK token', toastify)
-      : Promise.resolve(null),
-    getToken(`/users/me/zoom-jwt-token?role=${role}&meetingId=${meetingId}`, 'Unable to generate JWT token', toastify),
-  ]);
-}
-
-export async function setupAndJoinMeeting(action, meeting, jwt_token, zak_token, auth, toastify) {
+export async function setupAndJoinMeeting(action, meeting, jwt_token, zak_token, auth) {
   const client = ZoomMtgEmbedded.createClient();
   const meetingSDKElement = document.getElementById('meetingSDKElement');
   client.init({
@@ -46,10 +39,5 @@ export async function setupAndJoinMeeting(action, meeting, jwt_token, zak_token,
     meetingConfig.zak = zak_token;
   }
 
-  try {
-    await client.join(meetingConfig);
-  } catch (err) {
-    if (toastify) toastify.error('Failed to join meeting. Please try again.');
-    throw err;
-  }
+  await client.join(meetingConfig);
 }

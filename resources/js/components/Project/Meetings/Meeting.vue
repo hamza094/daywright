@@ -232,18 +232,10 @@ export default {
         this.activeMeetingId = meeting.id;
       }
       try {
-        const role = this.auth.id === meeting.owner.id ? 1 : 0;
+        const tokenResponse = await fetchTokens(this.projectSlug, meeting.id, action, this.$vToastify);
 
-        const [zakTokenResponse, jwtTokenResponse] = await fetchTokens(
-          action,
-          role,
-          meeting.meeting_id,
-          this.$vToastify,
-        );
-
-        const zak_token = zakTokenResponse ? zakTokenResponse.zak_token : null;
-
-        const jwt_token = jwtTokenResponse.jwt_token;
+        const jwt_token = tokenResponse.jwt_token;
+        const zak_token = tokenResponse.zak_token;
 
         await setupAndJoinMeeting(action, meeting, jwt_token, zak_token, this.auth);
 

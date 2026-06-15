@@ -87,11 +87,22 @@ class MeetingEnded extends Notification implements ShouldBroadcast, ShouldQueue
 
     private function formattedStartTime(): string
     {
-        return $this->data['start_time'] ? Carbon::parse($this->data['start_time'])->format('d F \\a\\t H:i:s') : '';
+        return $this->data['start_time']
+            ? Carbon::parse($this->data['start_time'])->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
+            : '';
     }
 
     private function formattedEndTime(): string
     {
-        return $this->data['end_time'] ? Carbon::parse($this->data['end_time'])->format('d F \\a\\t H:i:s') : '';
+        return $this->data['end_time']
+            ? Carbon::parse($this->data['end_time'])->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
+            : '';
+    }
+
+    private function meetingTimezone(): string
+    {
+        $timezone = $this->data['meeting_timezone'] ?? null;
+
+        return is_string($timezone) && $timezone !== '' ? $timezone : 'UTC';
     }
 }

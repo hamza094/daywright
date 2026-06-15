@@ -96,6 +96,15 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
      */
     private function formattedStartTime(): string
     {
-        return $this->data['start_time'] ? Carbon::parse($this->data['start_time'])->format('d F \\a\\t H:i:s') : 'an unknown time';
+        return $this->data['start_time']
+            ? Carbon::parse($this->data['start_time'])->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
+            : 'an unknown time';
+    }
+
+    private function meetingTimezone(): string
+    {
+        $timezone = $this->data['meeting_timezone'] ?? null;
+
+        return is_string($timezone) && $timezone !== '' ? $timezone : 'UTC';
     }
 }

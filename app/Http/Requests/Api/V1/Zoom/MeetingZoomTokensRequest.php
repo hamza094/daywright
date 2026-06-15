@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Zoom;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Override;
 
-class JwtTokenRequest extends FormRequest
+class MeetingZoomTokensRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,17 +24,7 @@ class JwtTokenRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => 'required|in:0,1',
-            'meeting_id' => 'required|integer',
+            'action' => 'required|in:start,join',
         ];
-    }
-
-    #[Override]
-    protected function prepareForValidation(): void
-    {
-        // Accept legacy camelCase `meetingId` but normalize to snake_case
-        if ($this->has('meetingId') && ! $this->has('meeting_id')) {
-            $this->merge(['meeting_id' => $this->input('meetingId')]);
-        }
     }
 }

@@ -33,6 +33,7 @@ class Meeting extends Model
         'password' => 'encrypted',
         'join_url' => 'encrypted',
         'start_url' => 'encrypted',
+        'start_time' => 'datetime',
         'sync_status' => MeetingSyncStatus::class,
         'synced_at' => 'datetime',
     ];
