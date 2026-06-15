@@ -117,13 +117,6 @@ If admin meeting visibility is added, show local id, Zoom meeting_id, owner, pro
 
 ## Phase 8: Tests
 
-- Replace existing happy-path token tests with meeting-scoped tests:
-  - token call uses local `meeting.id`, not Zoom `meeting_id`, in the API URL.
-  - SDK config still uses Zoom `meeting.meeting_id`.
-  - join button works when member object has same `id`/`uuid` but different object reference.
-  - update payload does not include `meeting_id`.
-  - create payload sends UTC `start_time` and user timezone.
-
 - Keep existing `CreateZoomJwtAction` unit test, but add an integration-level assertion that backend computes role correctly.
 - Run:
   - `php artisan test tests/Feature/Api/V1/Users/UserZoomTokenTest.php`

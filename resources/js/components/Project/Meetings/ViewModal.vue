@@ -75,6 +75,12 @@
 
             <meeting-detail v-if="!isEditing" label="Status" :value="meeting.status" />
 
+            <meeting-detail v-if="!isEditing && meeting.sync_status" label="Sync Status">
+              <span :class="['sync-status-badge', getSyncStatusBadge(meeting.sync_status).color]">
+                {{ getSyncStatusBadge(meeting.sync_status).label }}
+              </span>
+            </meeting-detail>
+
             <meeting-detail v-if="!isEditing && meeting.owner" label="Created By" :value="meeting.owner.name" />
 
             <meeting-detail
@@ -193,7 +199,7 @@
 import { mapMutations } from 'vuex';
 import MeetingDetail from './MeetingDetail.vue';
 import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
-import { shouldShowStartButton, shouldShowJoinButton } from '../../../utils/meetingUtils';
+import { shouldShowStartButton, shouldShowJoinButton, getSyncStatusBadge } from '../../../utils/meetingUtils';
 import { getDisplayTimezone, toUtcIsoString } from '../../../utils/dateTime';
 import { getObjectData, getResponseMessage } from '../../../utils/apiResponse.js';
 
@@ -261,6 +267,10 @@ export default {
 
     canJoinMeeting(meeting, auth, members) {
       return shouldShowJoinButton(meeting, auth, members);
+    },
+
+    getSyncStatusBadge(syncStatus) {
+      return getSyncStatusBadge(syncStatus);
     },
 
     updateMeeting(id) {
@@ -373,3 +383,15 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.sync-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+}
+</style>

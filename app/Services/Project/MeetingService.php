@@ -7,6 +7,7 @@ namespace App\Services\Project;
 use App\Actions\Meetings\CreateProjectMeeting;
 use App\Actions\Meetings\DeleteProjectMeeting;
 use App\Actions\Meetings\UpdateProjectMeeting;
+use App\Enums\MeetingSyncStatus;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
@@ -30,7 +31,7 @@ class MeetingService
     {
         $meetingsQuery = $project->meetings()
             ->with(self::MEETING_RESOURCE_RELATIONS)
-            ->synced();
+            ->where('sync_status', '!=', MeetingSyncStatus::Deleted);
 
         $meetingsQuery->when($isPrevious, fn ($query) => $query->previous(), fn ($query) => $query->scheduled());
 

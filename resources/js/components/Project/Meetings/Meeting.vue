@@ -40,9 +40,17 @@
         </div>
 
         <ul class="list-unstyled mb-0">
-          <li v-for="meeting in meetings.data" :key="meeting.id">
-            <article class="card mt-3 card-hover" @click.prevent="getMeeting(meeting.id)">
+          <li v-for="meeting in filteredMeetings.data" :key="meeting.id">
+            <article
+              class="card mt-3 card-hover"
+              :class="{ 'meeting-ended': meeting.status.toLowerCase() === 'ended' }"
+              @click.prevent="getMeeting(meeting.id)">
               <div :class="['ribbon', ribbonColor(meeting.status)]">{{ meeting.status }}</div>
+              <div
+                v-if="meeting.sync_status && meeting.sync_status !== 'active'"
+                :class="['sync-status-badge', getSyncStatusBadge(meeting.sync_status).color]">
+                {{ getSyncStatusBadge(meeting.sync_status).label }}
+              </div>
               <div class="card-stamp">
                 <div class="card-stamp-icon bg-yellow">
                   <!-- Download SVG icon from http://tabler-icons.io/i/bell -->
@@ -91,7 +99,7 @@
         </ul>
       </div>
     </section>
-    <pagination :data="meetings" @pagination-change-page="getResults"></pagination>
+    <pagination :data="filteredMeetings" @pagination-change-page="getResults"></pagination>
     <MeetingModal :project-slug="projectSlug"></MeetingModal>
     <ViewModal :project-slug="projectSlug" :members="members" :not-authorize="notAuthorize"></ViewModal>
   </div>
@@ -102,7 +110,12 @@ import MeetingModal from './MeetingModal.vue';
 import ViewModal from './ViewModal.vue';
 import { mapState, mapActions } from 'vuex';
 import { fetchTokens, setupAndJoinMeeting } from '../../../utils/zoomUtils';
-import { shouldShowStartButton, shouldShowJoinButton } from '../../../utils/meetingUtils';
+import {
+  shouldShowStartButton,
+  shouldShowJoinButton,
+  getSyncStatusBadge,
+  canViewMeeting,
+} from '../../../utils/meetingUtils';
 import { getObjectData } from '../../../utils/apiResponse.js';
 
 export default {
@@ -116,6 +129,7 @@ export default {
     projectMeetings: { type: Object, default: () => ({}) },
     notAuthorize: { type: Boolean, default: false },
     members: { type: Array, default: () => [] },
+    projectOwner: { type: Object, default: null },
   },
   data() {
     return {
@@ -129,6 +143,18 @@ export default {
   },
   computed: {
     ...mapState('meeting', ['meetings', 'message']),
+    // Filter meetings based on user role and sync_status
+    filteredMeetings() {
+      if (!this.meetings.data || !Array.isArray(this.meetings.data)) {
+        return { ...this.meetings, data: [] };
+      }
+
+      const isOwner = this.auth && this.projectOwner && this.auth.id === this.projectOwner.id;
+
+      const filteredData = this.meetings.data.filter((meeting) => canViewMeeting(meeting, isOwner));
+
+      return { ...this.meetings, data: filteredData };
+    },
     // Listen for meeting status updates via Echo
     meetingStatusListener() {
       if (this.activeMeetingId) {
@@ -183,6 +209,10 @@ export default {
 
     shouldShowJoinButton(meeting, auth, members) {
       return shouldShowJoinButton(meeting, auth, members);
+    },
+
+    getSyncStatusBadge(syncStatus) {
+      return getSyncStatusBadge(syncStatus);
     },
 
     // Open the meeting details modal
@@ -262,3 +292,27 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.sync-status-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.meeting-ended {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.meeting-ended .card-body {
+  color: #6c757d;
+}
+</style>

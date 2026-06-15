@@ -189,7 +189,8 @@
                     :project-slug="project.slug"
                     :project-meetings="project.meetings"
                     :not-authorize="project.ownerNotAuthorized"
-                    :members="project.members"></Meeting>
+                    :members="project.members"
+                    :project-owner="user"></Meeting>
                 </div>
               </div>
             </div>
