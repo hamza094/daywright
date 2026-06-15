@@ -116,6 +116,12 @@ return [
             'path' => storage_path('logs/zoom.log'),
             'level' => env('LOG_ZOOM_LEVEL', 'info'),
         ],
+        'zoom_webhook_failed' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/zoom-webhook-failed.log'),
+            'level' => 'error',
+            'days' => 30,
+        ],
 
         'exception_metrics' => [
             'driver' => 'daily',

@@ -49,6 +49,14 @@ final class VerifyZoomWebhook
             );
         }
 
+        // Handle endpoint.url_validation before replay-cache logic
+        if ($request->input('event') === self::ENDPOINT_VALIDATION_EVENT) {
+            return response()->json(
+                $this->endpointValidationPayload($request),
+            );
+        }
+
+        // Replay protection only for real event webhooks
         $replayKey = $this->computeReplayKey($signature, $timestamp, $request->getContent());
 
         if ($this->isReplayRequest($replayKey)) {
@@ -61,12 +69,6 @@ final class VerifyZoomWebhook
             $this->idempotencyHeader(),
             $requestId,
         );
-
-        if ($request->input('event') === self::ENDPOINT_VALIDATION_EVENT) {
-            return response()->json(
-                $this->endpointValidationPayload($request),
-            );
-        }
 
         return $next($request);
     }

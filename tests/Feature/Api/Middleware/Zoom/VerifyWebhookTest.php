@@ -6,6 +6,7 @@ namespace Tests\Feature\Api\Middleware\Zoom;
 
 use App\Http\Middleware\VerifyZoomWebhook;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Testing\TestResponse;
 use Override;
 use Route;
@@ -31,6 +32,9 @@ class VerifyWebhookTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Clear replay and idempotency cache between tests
+        Cache::flush();
 
         // Ensure the webhook secret is set for signature generation in tests
         config(['services.zoom.webhook_secret' => 'secret']);
@@ -166,6 +170,36 @@ JSON;
     }
 
     /** @test */
+    public function repeated_endpoint_validation_still_returns_plain_token_and_encrypted_token(): void
+    {
+        $plainToken = 'zoom-plain-token';
+        $payload = [
+            'event' => 'endpoint.url_validation',
+            'payload' => [
+                'plainToken' => $plainToken,
+            ],
+        ];
+
+        $headers = ZoomWebhookSigner::signPayload($payload, 'zoom-request-endpoint-validation');
+
+        // First request
+        $response1 = $this->postJson(self::WEBHOOK_TEST_PATH, $payload, $headers);
+        $response1->assertOk()
+            ->assertExactJson([
+                'plainToken' => $plainToken,
+                'encryptedToken' => hash_hmac('sha256', $plainToken, 'secret'),
+            ]);
+
+        // Second request with same payload (should still work, not affected by replay protection)
+        $response2 = $this->postJson(self::WEBHOOK_TEST_PATH, $payload, $headers);
+        $response2->assertOk()
+            ->assertExactJson([
+                'plainToken' => $plainToken,
+                'encryptedToken' => hash_hmac('sha256', $plainToken, 'secret'),
+            ]);
+    }
+
+    /** @test */
     public function it_requires_the_zoom_request_id_header(): void
     {
         $this->withExceptionHandling();
@@ -179,6 +213,26 @@ JSON;
         ])
             ->assertStatus(Response::HTTP_BAD_REQUEST)
             ->assertJsonPath('message', 'Missing required Zoom webhook header: x-zm-request-id.');
+    }
+
+    /** @test */
+    public function it_returns_500_when_webhook_secret_is_missing(): void
+    {
+        $this->withExceptionHandling();
+
+        // Clear the webhook secret config
+        config(['services.zoom.webhook_secret' => '']);
+
+        $timestamp = (string) time();
+        $headers = [
+            'x-zm-request-timestamp' => $timestamp,
+            'x-zm-signature' => 'some-signature',
+            'x-zm-request-id' => 'zoom-request-missing-secret',
+        ];
+
+        $this->postJson(self::WEBHOOK_TEST_PATH, $this->payload, $headers)
+            ->assertStatus(Response::HTTP_INTERNAL_SERVER_ERROR)
+            ->assertJsonPath('message', 'Zoom webhook secret is not configured.');
     }
 
     private function postRawJson(string $path, string $payload, array $headers): TestResponse

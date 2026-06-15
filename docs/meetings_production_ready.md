@@ -63,7 +63,59 @@ Assumption chosen: use the production-ready strategy now, not backwards compatib
   - code: `zoom_reconnect_required`
 - Add coverage for invalid OAuth refresh context mapping to reconnect-required.
 
-## Phase 5: Tests
+## Phase 5: Webhook Reliability Baseline
+
+Fix VerifyZoomWebhook ordering:Verify signature/timestamp first.
+Handle endpoint.url_validation before replay-cache logic.
+Keep replay protection for real event webhooks.
+
+Confirm production config requirements:QUEUE_CONNECTION must not be sync in production.
+queue worker/Horizon/Supervisor must run continuously.
+CACHE_STORE should be shared Redis/database, not local array/file, because replay protection and WithoutOverlapping()->shared() need shared state.
+
+Fix existing webhook tests:clear replay/idempotency cache between tests;
+update start_time assertions now that Meeting::start_time is cast to datetime;
+keep webhook test suite green before proceeding.
+
+Add missing webhook tests:invalid signature returns 403;
+stale timestamp returns 403;
+missing webhook secret returns 500;
+repeated endpoint validation still returns plainToken/encryptedToken;
+terminal job failure logs zoom_webhook_failed.
+
+## Phase 6: Webhook Job Recovery And Observability
+
+Keep queued webhook jobs async; Zoom should receive a fast 200.
+Treat queued job failure as internal recovery responsibility:retain tries, backoff, failed() logging, and WithoutOverlapping;
+alert/monitor on zoom_webhook_failed;
+document/operator path for retrying failed jobs.
+
+Ensure logs stay safe:no access tokens, refresh tokens, ZAK, start URLs, passwords, or webhook secrets;
+include only safe IDs: meeting_id, request_id, operation, user UUID.
+
+Add tests for:failed job logs sanitized context;
+duplicate start/end webhooks do not duplicate notifications;
+ended meeting cannot be restarted;
+inactive sync_status webhooks are ignored.
+
+## Phase 7: Meeting Visibility And Status UX
+
+Keep two separate meanings clear:status: Zoom runtime state, such as waiting, started, ended.
+sync_status: app-to-Zoom lifecycle, such as active, update_failed, delete_failed, deleted.
+
+User/project frontend behavior:normal members see only usable active meetings;
+project owner sees active, update_failed, and delete_failed;
+hide deleted from normal project UI;
+show both status and sync_status badges where recovery is needed.
+
+Current/Previous tabs:keep current split by start_time for now;
+make ended visually obvious even if it appears under Current due to scheduled time;
+disable Start/Join when status = ended or sync_status != active.
+
+Admin:do not block core production work on a full admin meeting UI.
+If admin meeting visibility is added, show local id, Zoom meeting_id, owner, project, status, sync_status, start_time, timezone, synced_at, and safe/truncated sync_error.
+
+## Phase 8: Tests
 
 - Replace existing happy-path token tests with meeting-scoped tests:
   - token call uses local `meeting.id`, not Zoom `meeting_id`, in the API URL.

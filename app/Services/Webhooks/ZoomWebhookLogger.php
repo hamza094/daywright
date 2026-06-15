@@ -76,7 +76,7 @@ final class ZoomWebhookLogger
             'exception' => $exception::class,
             'message' => Str::limit($this->sanitize($exception->getMessage()), 1000),
             ...$context,
-        ]);
+        ], 'zoom_webhook_failed');
     }
 
     /**
@@ -89,9 +89,10 @@ final class ZoomWebhookLogger
         int|string $meetingId,
         ?string $requestId,
         int|string|null $userIdentifier,
-        array $context
+        array $context,
+        string $channel = 'zoom'
     ): void {
-        Log::channel('zoom')->{$level}(
+        Log::channel($channel)->{$level}(
             $event,
             ZoomLogContext::forWebhook(
                 operation: $operation,
@@ -111,6 +112,7 @@ final class ZoomWebhookLogger
             '/authorization["\']?\s*[:=]\s*["\']?[^"\',\s}]+/i',
             '/webhook_secret["\']?\s*[:=]\s*["\']?[^"\',\s}]+/i',
             '/start_url["\']?\s*[:=]\s*["\']?[^"\',\s}]+/i',
+            '/zak["\']?\s*[:=]\s*["\']?[^"\',\s}]+/i',
             '/token["\']?\s*[:=]\s*["\']?[^"\',\s}]+/i',
             '/secret["\']?\s*[:=]\s*["\']?[^"\',\s}]+/i',
             '/password["\']?\s*[:=]\s*["\']?[^"\',\s}]+/i',

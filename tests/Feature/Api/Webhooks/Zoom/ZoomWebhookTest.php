@@ -11,6 +11,7 @@ use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
 use App\Models\Meeting;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -26,6 +27,9 @@ class ZoomWebhookTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Clear replay and idempotency cache between tests
+        Cache::flush();
 
         config(['services.zoom.webhook_secret' => 'secret']);
 

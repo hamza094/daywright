@@ -237,4 +237,48 @@ class StartMeetingWebhookTest extends TestCase
         Notification::assertNothingSent();
         Event::assertNotDispatched(MeetingStatusUpdate::class);
     }
+
+    /** @test */
+    public function failed_job_logs_sanitized_context_without_sensitive_data(): void
+    {
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom_webhook_failed')
+            ->andReturnSelf();
+
+        Log::shouldReceive('error')
+            ->once()
+            ->with(
+                'zoom_webhook_failed',
+                Mockery::on(fn (array $context): bool => isset($context['provider']) &&
+                    $context['provider'] === 'zoom' &&
+                    isset($context['operation']) &&
+                    $context['operation'] === 'zoom.webhook.meeting.started' &&
+                    isset($context['meeting_id']) &&
+                    $context['meeting_id'] === 813 &&
+                    isset($context['request_id']) &&
+                    $context['request_id'] === 'zoom-failed-sanitize' &&
+                    isset($context['exception']) &&
+                    isset($context['message']) &&
+                    // Ensure no sensitive data is present
+                    ! str_contains((string) $context['message'], 'access_token') &&
+                    ! str_contains((string) $context['message'], 'refresh_token') &&
+                    ! str_contains((string) $context['message'], 'zak') &&
+                    ! str_contains((string) $context['message'], 'password') &&
+                    ! str_contains((string) $context['message'], 'secret')
+                )
+            );
+
+        $job = new StartMeetingWebhook(new MeetingStartedWebhookData(
+            meetingId: 813,
+            startTime: '2024-06-24T11:00:00Z',
+            requestId: 'zoom-failed-sanitize',
+        ));
+
+        // Simulate a failure with sensitive data in the exception message
+        $exception = new RuntimeException('Failed with access_token=abc123 and zak=xyz789');
+        $job->failed($exception);
+
+        $this->assertTrue(true);
+    }
 }

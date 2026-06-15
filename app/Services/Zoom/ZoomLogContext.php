@@ -117,6 +117,7 @@ final class ZoomLogContext
             '/start[_-]?url/i',
             '/(^|_)zoom(_|_).*token/i',
             '/(^|_)oauth/i',
+            '/(^|_)zak/i',
             '/(^|_)token$/i',
             '/email/i',
             '/password/i',

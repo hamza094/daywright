@@ -117,7 +117,7 @@ final readonly class ZoomConnectorManager
 
     private function isInvalidOAuthError(ZoomUserErrorException $exception): bool
     {
-        $context = $exception->getContext();
+        $context = $exception->context();
 
         if (! isset($context['error']) || ! is_string($context['error'])) {
             return false;
