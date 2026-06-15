@@ -217,7 +217,6 @@ export default {
       loaderId: null,
       auth: this.$store.state.currentUser.user,
       form: {
-        meeting_id: '',
         topic: '',
         agenda: '',
         start_time: '',
@@ -313,7 +312,6 @@ export default {
         .get(`/projects/${this.projectSlug}/meetings/${meetingId}`)
         .then((response) => {
           this.meeting = getObjectData(response);
-          this.form.agenda = this.meeting.agenda;
           this.$Progress.finish();
           this.$modal.show('ViewMeeting');
         })
@@ -324,6 +322,15 @@ export default {
     },
 
     meetingEdit() {
+      this.form = {
+        topic: this.meeting.topic,
+        agenda: this.meeting.agenda,
+        start_time: this.meeting.start_time,
+        duration: this.meeting.duration,
+        join_before_host: this.meeting.join_before_host,
+        timezone: this.meeting.timezone,
+        password: this.meeting.password,
+      };
       this.isEditing = true;
     },
 
@@ -332,7 +339,6 @@ export default {
       this.updateMeetingRequest.reset();
       this.form = {};
       this.errors = {};
-      this.form.agenda = this.meeting.agenda;
     },
 
     meetingModalClose() {
@@ -350,7 +356,6 @@ export default {
     },
 
     initializeUpdateMeeting() {
-      this.form.meeting_id = this.meeting.meeting_id;
       this.form.start_time = toUtcIsoString(this.form.start_time) || this.form.start_time;
       this.errors = {};
       this.loading = true;

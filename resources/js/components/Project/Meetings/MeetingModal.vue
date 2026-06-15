@@ -122,7 +122,7 @@ export default {
         join_before_host: '',
         duration: '',
         start_time: '',
-        timezone: 'UTC',
+        timezone: '',
       },
       errors: {},
       loading: false,
@@ -192,6 +192,7 @@ export default {
     },
 
     openMeetingModal() {
+      this.form.timezone = getDisplayTimezone();
       this.$modal.show('MeetingModal');
     },
 
