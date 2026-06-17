@@ -105,6 +105,9 @@ final readonly class MeetingWebhookUpdateData
                 }
 
                 return;
+
+            default:
+                return;
         }
     }
 

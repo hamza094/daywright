@@ -210,9 +210,12 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 ->name('project.pending.invitation');
 
             Route::apiResource('/meetings', MeetingsController::class)
+                ->middlewareFor(['index', 'show'], 'can:access,project')
+                ->middlewareFor(['store', 'update', 'destroy'], 'can:manage,project')
                 ->middlewareFor(['store', 'update'], Idempotent::using(scope: IdempotencyScope::User));
 
             Route::post('/meetings/{meeting}/zoom-tokens', MeetingZoomTokensController::class)
+                ->can('access,project')
                 ->name('meetings.zoom-tokens');
 
         });

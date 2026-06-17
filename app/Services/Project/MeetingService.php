@@ -7,7 +7,7 @@ namespace App\Services\Project;
 use App\Actions\Meetings\CreateProjectMeeting;
 use App\Actions\Meetings\DeleteProjectMeeting;
 use App\Actions\Meetings\UpdateProjectMeeting;
-use App\Enums\MeetingSyncStatus;
+use App\Enums\Meeting\MeetingSyncStatus;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;

@@ -19,7 +19,6 @@ class MeetingsController extends ApiController
 {
     public function index(Project $project, MeetingIndexRequest $request, MeetingService $meetingService): JsonResponse
     {
-        $this->authorize('access', $project);
         $isPrevious = $request->isPrevious();
 
         $meetings = $meetingService->getMeetingsData(
@@ -34,15 +33,11 @@ class MeetingsController extends ApiController
 
     public function show(Project $project, Meeting $meeting, MeetingService $meetingService): MeetingResource
     {
-        $this->authorize('access', $project);
-
         return new MeetingResource($meetingService->loadForResponse($meeting));
     }
 
     public function store(Zoom $zoom, Project $project, MeetingStoreRequest $request, MeetingService $meetingService): JsonResponse
     {
-        $this->authorize('manage', $project);
-
         $projectMeeting = $meetingService->createMeetingForProject(
             $project,
             $this->authenticatedUser(),
@@ -55,8 +50,6 @@ class MeetingsController extends ApiController
 
     public function update(Zoom $zoom, Project $project, Meeting $meeting, MeetingUpdateRequest $request, MeetingService $meetingService): JsonResponse
     {
-        $this->authorize('manage', $project);
-
         $meeting = $meetingService->updateProjectMeeting(
             $meeting,
             $this->authenticatedUser(),
@@ -69,8 +62,6 @@ class MeetingsController extends ApiController
 
     public function destroy(Zoom $zoom, Project $project, Meeting $meeting, MeetingService $meetingService): JsonResponse
     {
-        $this->authorize('manage', $project);
-
         $meetingService->deleteProjectMeeting($meeting, $this->authenticatedUser(), $zoom);
 
         return $this->respondWithMessage('Meeting deleted successfully.');

@@ -8,6 +8,7 @@ use App\Enums\Meeting\MeetingSyncStatus;
 use App\Models\Meeting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Override;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
 use Tests\Traits\ProjectSetup;
@@ -26,6 +27,7 @@ class MeetingTokenTest extends TestCase
 
     private User $outsider;
 
+    #[Override]
     protected function setUp(): void
     {
         $this->projectSetUp();
@@ -47,7 +49,7 @@ class MeetingTokenTest extends TestCase
     /** @test */
     public function owner_can_start_and_receives_jwt_token_and_zak_token(): void
     {
-        $zoomFake = $this->fakeZoom();
+        $this->fakeZoom();
 
         $response = $this
             ->postJson(route('api.v1.meetings.zoom-tokens', [
@@ -146,7 +148,7 @@ class MeetingTokenTest extends TestCase
             'sync_status' => MeetingSyncStatus::Active,
         ]);
 
-        $zoomFake = $this->fakeZoom();
+        $this->fakeZoom();
 
         $response = $this
             ->postJson(route('api.v1.meetings.zoom-tokens', [

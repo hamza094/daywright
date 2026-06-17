@@ -8,31 +8,32 @@ use App\DataTransferObjects\Notification\NotificationActorData;
 use App\DataTransferObjects\Zoom\MeetingEndedWebhookData;
 use App\Enums\MeetingState;
 use App\Events\MeetingStatusUpdate;
+use App\Jobs\SendMeetingEndedNotification;
 use App\Models\Meeting;
-use App\Notifications\Zoom\MeetingEnded;
-use Illuminate\Support\Facades\Notification;
+use App\Services\Webhooks\ZoomWebhookSupport;
 
-final class HandleMeetingEndedWebhook extends BaseZoomWebhookAction
+final readonly class HandleMeetingEndedWebhook
 {
+    private const string OPERATION = 'zoom.webhook.meeting.ended';
+
+    public function __construct(
+        private ZoomWebhookSupport $support,
+    ) {}
+
     public function handle(MeetingEndedWebhookData $data): void
     {
-        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
-            if (! $this->ensureActiveSyncStatus($meeting, $data->meetingId, $data->requestId, $userUuid)) {
+        $this->support->executeWithLogging(self::OPERATION, $data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
+            if (! $this->support->ensureActiveSyncStatus(self::OPERATION, $meeting, $data->meetingId, $data->requestId, $userUuid)) {
                 return;
             }
 
-            if (! $this->transitionToEnded($meeting, $data->meetingId, $data->requestId)) {
-                return;
-            }
+            $this->transitionToEnded($meeting, $data->meetingId, $data->requestId);
 
-            $this->sendNotifications($meeting, $data->startTime, $data->endTime);
-            $this->logger->logWebhookProcessed($this->operation(), $data->meetingId, $data->requestId, $userUuid);
+            if ($meeting->ended_notification_sent_at === null) {
+                $this->dispatchNotificationJob($meeting, $data->startTime, $data->endTime);
+            }
+            $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
         });
-    }
-
-    protected function operation(): string
-    {
-        return 'zoom.webhook.meeting.ended';
     }
 
     private function transitionToEnded(Meeting $meeting, int|string $meetingId, ?string $requestId): bool
@@ -45,8 +46,8 @@ final class HandleMeetingEndedWebhook extends BaseZoomWebhookAction
             ]);
 
         if ($updated === 0) {
-            $userUuid = $this->userUuid($meeting);
-            $this->logger->logWebhookIgnored($this->operation(), $meetingId, $requestId, 'already_ended', $userUuid);
+            $userUuid = $this->support->userUuid($meeting);
+            $this->support->logger->logWebhookIgnored(self::OPERATION, $meetingId, $requestId, 'already_ended', $userUuid);
 
             return false;
         }
@@ -58,22 +59,18 @@ final class HandleMeetingEndedWebhook extends BaseZoomWebhookAction
         return true;
     }
 
-    private function sendNotifications(Meeting $meeting, ?string $startTime, ?string $endTime): void
+    private function dispatchNotificationJob(Meeting $meeting, ?string $startTime, ?string $endTime): void
     {
-        $project = $meeting->project()->with(['asignees', 'user'])->firstOrFail();
-        $user = $project->user;
-        $members = $project->asignees;
-
         $notificationData = [
-            'project_name' => $project->name,
-            'project_slug' => $project->slug,
+            'project_name' => $meeting->project->name,
+            'project_slug' => $meeting->project->slug,
             'meeting_topic' => $meeting->topic,
             'meeting_timezone' => $meeting->timezone,
             'start_time' => $startTime,
             'end_time' => $endTime,
-            'notifier' => NotificationActorData::fromUser($user)->toArray(),
+            'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
         ];
 
-        Notification::send($members, new MeetingEnded($notificationData));
+        SendMeetingEndedNotification::dispatch($meeting->id, $notificationData);
     }
 }

@@ -25,6 +25,8 @@ class ProjectController extends ApiController
         $projects = $repository->filter($filters, $request->perPage());
         $appliedFilters = $buildAppliedFilters->execute($filters);
 
+        $this->authenticatedUser()->load('oauthConnections');
+
         return ProjectResource::collection($projects)
             ->additional([
                 'meta' => [

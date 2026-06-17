@@ -6,31 +6,33 @@ namespace App\Actions\Webhooks\Zoom;
 
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Models\Meeting;
+use App\Services\Webhooks\ZoomWebhookSupport;
 use Carbon\Carbon;
 
-final class HandleMeetingUpdatedWebhook extends BaseZoomWebhookAction
+final readonly class HandleMeetingUpdatedWebhook
 {
+    private const string OPERATION = 'zoom.webhook.meeting.updated';
+
+    public function __construct(
+        private ZoomWebhookSupport $support,
+    ) {}
+
     public function handle(MeetingUpdatedWebhookData $data): void
     {
-        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
-            if (! $this->ensureActiveSyncStatus($meeting, $data->meetingId, $data->requestId, $userUuid)) {
+        $this->support->executeWithLogging(self::OPERATION, $data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
+            if (! $this->support->ensureActiveSyncStatus(self::OPERATION, $meeting, $data->meetingId, $data->requestId, $userUuid)) {
                 return;
             }
 
             if (! $this->isMeetingUpdated($meeting, $data->changes)) {
-                $this->logger->logWebhookIgnored($this->operation(), $data->meetingId, $data->requestId, 'no_changes', $userUuid);
+                $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'no_changes', $userUuid);
 
                 return;
             }
 
             $meeting->update($data->changes);
-            $this->logger->logWebhookProcessed($this->operation(), $data->meetingId, $data->requestId, $userUuid);
+            $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
         });
-    }
-
-    protected function operation(): string
-    {
-        return 'zoom.webhook.meeting.updated';
     }
 
     /**
@@ -55,19 +57,17 @@ final class HandleMeetingUpdatedWebhook extends BaseZoomWebhookAction
             $currentIso = $current ? Carbon::parse($current)->toISOString() : null;
             $valueIso = $value ? Carbon::parse($value)->toISOString() : null;
 
-            return $currentIso !== $valueIso;
+            $changed = $currentIso !== $valueIso;
+        } elseif (is_bool($current) || is_bool($value)) {
+            // Normalize boolean/integer comparisons (1 === true, 0 === false)
+            $changed = (bool) $value !== (bool) $current;
+        } elseif (is_numeric($current) && is_numeric($value)) {
+            // Normalize integer/string comparisons for numeric fields
+            $changed = (int) $value !== (int) $current;
+        } else {
+            $changed = $value !== $current;
         }
 
-        // Normalize boolean/integer comparisons (1 === true, 0 === false)
-        if (is_bool($current) || is_bool($value)) {
-            return (bool) $value !== (bool) $current;
-        }
-
-        // Normalize integer/string comparisons for numeric fields
-        if (is_numeric($current) && is_numeric($value)) {
-            return (int) $value !== (int) $current;
-        }
-
-        return $value !== $current;
+        return $changed;
     }
 }

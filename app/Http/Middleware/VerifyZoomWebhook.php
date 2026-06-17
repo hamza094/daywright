@@ -59,11 +59,9 @@ final class VerifyZoomWebhook
         // Replay protection only for real event webhooks
         $replayKey = $this->computeReplayKey($signature, $timestamp, $request->getContent());
 
-        if ($this->isReplayRequest($replayKey)) {
+        if (! $this->reserveReplayKey($replayKey)) {
             return response()->json(['message' => 'Webhook accepted'], Response::HTTP_ACCEPTED);
         }
-
-        $this->storeReplayKey($replayKey);
 
         $request->headers->set(
             $this->idempotencyHeader(),
@@ -174,14 +172,9 @@ final class VerifyZoomWebhook
         return hash('sha256', "{$signature}:{$timestamp}:{$body}");
     }
 
-    private function isReplayRequest(string $replayKey): bool
+    private function reserveReplayKey(string $replayKey): bool
     {
-        return Cache::has($this->replayCacheKey($replayKey));
-    }
-
-    private function storeReplayKey(string $replayKey): void
-    {
-        Cache::put(
+        return Cache::add(
             $this->replayCacheKey($replayKey),
             true,
             self::TIMESTAMP_TOLERANCE_SECONDS,

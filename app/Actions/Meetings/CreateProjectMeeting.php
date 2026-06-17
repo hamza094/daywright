@@ -36,7 +36,7 @@ final readonly class CreateProjectMeeting
     {
         return $this->locks->block(
             key: $this->meetingCreationLockKey($user),
-            conflictMessage: 'A meeting is already being created for this account. Please retry.',
+            conflictMessage: 'A meeting is already being created for this user. Please retry.',
             callback: function () use ($project, $user, $validated, $zoom): Meeting {
                 $lockedUser = $this->assertCanCreateMeeting($user);
                 $projectMeeting = $this->createPendingMeeting($project, $lockedUser, $validated);
@@ -52,8 +52,7 @@ final readonly class CreateProjectMeeting
      */
     private function createPendingMeeting(Project $project, User $user, array $validated): Meeting
     {
-        /** @var Meeting $projectMeeting */
-        $projectMeeting = DB::transaction(
+        return DB::transaction(
             fn (): Meeting => $project->meetings()->create([
                 ...$validated,
                 'user_id' => $user->id,
@@ -61,8 +60,6 @@ final readonly class CreateProjectMeeting
             ]),
             attempts: $this->transactionRetryAttempts,
         );
-
-        return $projectMeeting;
     }
 
     /**
@@ -107,14 +104,11 @@ final readonly class CreateProjectMeeting
 
     private function assertCanCreateMeeting(User $user): User
     {
-        /** @var User $lockedUser */
-        $lockedUser = $this->planLimitService->executeWithinAccountLimit(
+        return $this->planLimitService->executeWithinAccountLimit(
             PlanLimitType::CreatedMeetings,
             $user,
             fn (User $lockedUser): User => $lockedUser,
         );
-
-        return $lockedUser;
     }
 
     private function meetingCreationLockKey(User $user): string

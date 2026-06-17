@@ -29,7 +29,7 @@ class MeetingUpdatedWebhookRequest extends FormRequest
             'event_ts' => ['sometimes', 'integer'],
             'payload' => ['required', 'array'],
             'payload.object' => ['required', 'array'],
-            'payload.object.id' => ['required'],
+            'payload.object.id' => ['required', 'numeric'],
         ];
     }
 }

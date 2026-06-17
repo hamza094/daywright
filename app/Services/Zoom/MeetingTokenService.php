@@ -17,9 +17,9 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final readonly class MeetingTokenService
 {
-    private const ROLE_PARTICIPANT = 0;
+    private const int ROLE_PARTICIPANT = 0;
 
-    private const ROLE_HOST = 1;
+    private const int ROLE_HOST = 1;
 
     public function __construct(
         private CreateZoomJwtAction $jwtAction,

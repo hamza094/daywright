@@ -36,6 +36,8 @@ class Meeting extends Model
         'start_time' => 'datetime',
         'sync_status' => MeetingSyncStatus::class,
         'synced_at' => 'datetime',
+        'started_notification_sent_at' => 'datetime',
+        'ended_notification_sent_at' => 'datetime',
     ];
 
     /**

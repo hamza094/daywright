@@ -12,7 +12,6 @@ use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Interfaces\Zoom;
 use App\Models\User;
 use App\Repository\OAuthConnectionRepository;
-use Faker\Generator;
 use Illuminate\Support\Collection;
 use Override;
 use PHPUnit\Framework\Assert;
@@ -36,12 +35,9 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 
     private ?ZoomException $failureException = null;
 
-    public function __construct()
+    public function __construct(private readonly OAuthConnectionRepository $oauthRepository)
     {
-        // Create a ZoomConnectorManager for testing
-        // The fake overrides all parent methods, so the repository is never used
-        $oauthRepository = app(OAuthConnectionRepository::class);
-        $connectorManager = new ZoomConnectorManager($oauthRepository);
+        $connectorManager = new ZoomConnectorManager($this->oauthRepository);
         parent::__construct($connectorManager);
         $this->meetingsToCreate = new Collection;
     }
@@ -152,8 +148,6 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 
     private function fakeMeeting(): Meeting
     {
-        app(Generator::class);
-
         return new Meeting(
             meeting_id: random_int(10000000, 99999999),
             topic: 'Topic Of Meeting',

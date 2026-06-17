@@ -40,7 +40,7 @@ class MeetingPolicy
         // Action-specific authorization
         return match ($action) {
             MeetingTokenAction::Start => $this->authorizeStart($user, $project, $meeting),
-            MeetingTokenAction::Join => $this->authorizeJoin($user, $project),
+            MeetingTokenAction::Join => $this->authorizeJoin(),
         };
     }
 
@@ -58,7 +58,7 @@ class MeetingPolicy
         return Response::allow();
     }
 
-    private function authorizeJoin(User $user, Project $project): Response
+    private function authorizeJoin(): Response
     {
         // Already checked project access in generateToken, so just allow
         return Response::allow();

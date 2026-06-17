@@ -19,9 +19,8 @@ class DeleteMeetingWebhook extends ZoomMeetingWebhookJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(): void
+    public function handle(HandleMeetingDeletedWebhook $handler): void
     {
-        $handler = app(HandleMeetingDeletedWebhook::class);
         $handler->handle($this->data);
     }
 

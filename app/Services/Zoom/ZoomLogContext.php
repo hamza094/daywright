@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Zoom;
 
 use App\Exceptions\Integrations\Zoom\ZoomException;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -13,40 +12,35 @@ use function Safe\preg_match;
 
 final class ZoomLogContext
 {
+    private const string REDACTED = '[REDACTED]';
+
+    /**
+     * @var list<string>
+     */
+    private const array SENSITIVE_KEY_PATTERNS = [
+        '/join[_-]?url/i',
+        '/start[_-]?url/i',
+        '/(^|_)zoom(_|_).*token/i',
+        '/(^|_)oauth/i',
+        '/(^|_)zak/i',
+        '/(^|_)token$/i',
+        '/email/i',
+        '/password/i',
+        '/secret/i',
+    ];
+
     /**
      * @return array<string, mixed>
      */
     public static function forRequest(Request $request, ZoomException $exception): array
     {
         $operation = $request->route()?->getName() ?? sprintf('%s %s', $request->method(), $request->path());
-
-        $userUuid = null;
-        $user = $request->user();
-
-        if ($user !== null) {
-            if ($user->uuid !== null && $user->uuid !== '') {
-                $userUuid = $user->uuid;
-            } else {
-                $id = $user->getAuthIdentifier();
-
-                if (is_int($id) || ctype_digit((string) $id)) {
-                    $userUuid = User::where('id', (int) $id)->value('uuid') ?: null;
-                }
-            }
-        }
-
-        if ($userUuid === null) {
-            $authId = Auth::id();
-
-            if (is_int($authId) || ctype_digit((string) $authId)) {
-                $userUuid = User::where('id', (int) $authId)->value('uuid') ?: null;
-            }
-        }
+        $userIdentifier = self::getUserIdentifier($request);
 
         $context = [
             'provider' => 'zoom',
             'operation' => $operation,
-            'user_uuid' => $userUuid,
+            ...$userIdentifier,
             'request_id' => self::requestId($request),
             'path' => $request->path(),
             'method' => $request->method(),
@@ -68,13 +62,13 @@ final class ZoomLogContext
         int|string|null $userId = null,
         array $context = [],
     ): array {
-        $userUuid = null;
+        $userIdentifier = [];
 
         if ($userId !== null) {
             if (is_string($userId) && self::looksLikeUuid($userId)) {
-                $userUuid = $userId;
-            } elseif (is_int($userId) || ctype_digit($userId)) {
-                $userUuid = User::where('id', (int) $userId)->value('uuid') ?: null;
+                $userIdentifier['user_uuid'] = $userId;
+            } else {
+                $userIdentifier['user_id'] = $userId;
             }
         }
 
@@ -83,11 +77,29 @@ final class ZoomLogContext
             'operation' => $operation,
             'meeting_id' => $meetingId,
             'request_id' => $requestId,
-            'user_uuid' => $userUuid,
+            ...$userIdentifier,
             ...$context,
         ];
 
         return self::filter(self::sanitizeContext($ctx));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function getUserIdentifier(Request $request): array
+    {
+        $user = $request->user();
+
+        if ($user !== null) {
+            if ($user->uuid !== null && $user->uuid !== '') {
+                return ['user_uuid' => $user->uuid];
+            }
+
+            return ['user_id' => $user->getAuthIdentifier()];
+        }
+
+        return ['user_id' => Auth::id()];
     }
 
     private static function requestId(Request $request): ?string
@@ -112,64 +124,73 @@ final class ZoomLogContext
      */
     private static function sanitizeContext(array $context): array
     {
-        $sensitiveKeyPatterns = [
-            '/join[_-]?url/i',
-            '/start[_-]?url/i',
-            '/(^|_)zoom(_|_).*token/i',
-            '/(^|_)oauth/i',
-            '/(^|_)zak/i',
-            '/(^|_)token$/i',
-            '/email/i',
-            '/password/i',
-            '/secret/i',
-        ];
-
-        $sanitizeValue = function ($value) use (&$sanitizeValue) {
-            if (is_array($value)) {
-                $res = [];
-
-                foreach ($value as $k => $v) {
-                    $res[$k] = $sanitizeValue($v);
-                }
-
-                return $res;
-            }
-
-            if (is_string($value)) {
-                if (preg_match('/https?:\\/\\/[^\\s]*zoom\\.us\\/j\\//i', $value) !== 0) {
-                    return '[REDACTED]';
-                }
-
-                if (preg_match('/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/', $value) !== 0) {
-                    return '[REDACTED]';
-                }
-            }
-
-            return $value;
-        };
-
         $out = [];
 
         foreach ($context as $key => $value) {
-            $isSensitiveKey = false;
-
-            foreach ($sensitiveKeyPatterns as $pat) {
-                if (preg_match($pat, (string) $key) !== 0) {
-                    $isSensitiveKey = true;
-                    break;
-                }
-            }
-
-            if ($isSensitiveKey) {
-                $out[$key] = '[REDACTED]';
+            if (self::isSensitiveKey($key)) {
+                $out[$key] = self::REDACTED;
 
                 continue;
             }
 
-            $out[$key] = $sanitizeValue($value);
+            $out[$key] = self::sanitizeValue($value);
         }
 
         return $out;
+    }
+
+    private static function isSensitiveKey(string $key): bool
+    {
+        foreach (self::SENSITIVE_KEY_PATTERNS as $pattern) {
+            if (preg_match($pattern, $key) !== 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function sanitizeValue(mixed $value): mixed
+    {
+        if (is_array($value)) {
+            return self::sanitizeArray($value);
+        }
+
+        if (is_string($value)) {
+            return self::sanitizeString($value);
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  array<string, mixed>  $array
+     * @return array<string, mixed>
+     */
+    private static function sanitizeArray(array $array): array
+    {
+        $result = [];
+
+        foreach ($array as $key => $value) {
+            $result[$key] = self::isSensitiveKey((string) $key)
+                ? self::REDACTED
+                : self::sanitizeValue($value);
+        }
+
+        return $result;
+    }
+
+    private static function sanitizeString(string $value): string
+    {
+        if (preg_match('/https?:\\/\\/[^\\s]*zoom\\.us\\/j\\//i', $value) !== 0) {
+            return self::REDACTED;
+        }
+
+        if (preg_match('/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}/', $value) !== 0) {
+            return self::REDACTED;
+        }
+
+        return $value;
     }
 
     private static function looksLikeUuid(string $value): bool

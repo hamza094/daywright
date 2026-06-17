@@ -189,7 +189,7 @@ class MeetingCreateTest extends TestCase
     }
 
     /** @test */
-    public function normal_index_excludes_pending_and_failed_meetings(): void
+    public function normal_index_includes_failed_meetings(): void
     {
         $this->fakeZoom();
 
@@ -211,7 +211,7 @@ class MeetingCreateTest extends TestCase
 
         $response = $this->getJson(route('api.v1.meetings.index', ['project' => $this->project->slug]));
 
-        $response->assertJsonCount(0, 'data');
+        $response->assertJsonCount(1, 'data');
     }
 
     /** @test */

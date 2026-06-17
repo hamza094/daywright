@@ -23,7 +23,8 @@ final class ZoomWebhookLogger
         int|string|null $userIdentifier = null,
         array $context = []
     ): void {
-        $this->logWebhook('info', 'zoom_webhook_processed', $operation, $meetingId, $requestId, $userIdentifier, $context);
+        $params = new WebhookLogParameters($operation, $meetingId, $requestId, $userIdentifier, $context);
+        $this->logWebhook('info', 'zoom_webhook_processed', $params);
     }
 
     /**
@@ -37,10 +38,11 @@ final class ZoomWebhookLogger
         int|string|null $userIdentifier = null,
         array $context = []
     ): void {
-        $this->logWebhook('info', 'zoom_webhook_ignored', $operation, $meetingId, $requestId, $userIdentifier, [
+        $params = new WebhookLogParameters($operation, $meetingId, $requestId, $userIdentifier, [
             'reason' => $reason,
             ...$context,
         ]);
+        $this->logWebhook('info', 'zoom_webhook_ignored', $params);
     }
 
     /**
@@ -54,11 +56,12 @@ final class ZoomWebhookLogger
         int|string|null $userIdentifier = null,
         array $context = []
     ): void {
-        $this->logWebhook('warning', 'zoom_webhook_retry_scheduled', $operation, $meetingId, $requestId, $userIdentifier, [
+        $params = new WebhookLogParameters($operation, $meetingId, $requestId, $userIdentifier, [
+            ...$this->sanitizeContext($context),
             'exception' => $exception::class,
             'message' => Str::limit($this->sanitize($exception->getMessage()), 1000),
-            ...$context,
         ]);
+        $this->logWebhook('warning', 'zoom_webhook_retry_scheduled', $params);
     }
 
     /**
@@ -72,36 +75,37 @@ final class ZoomWebhookLogger
         int|string|null $userIdentifier = null,
         array $context = []
     ): void {
-        $this->logWebhook('error', 'zoom_webhook_failed', $operation, $meetingId, $requestId, $userIdentifier, [
+        $params = new WebhookLogParameters($operation, $meetingId, $requestId, $userIdentifier, [
+            ...$this->sanitizeContext($context),
             'exception' => $exception::class,
             'message' => Str::limit($this->sanitize($exception->getMessage()), 1000),
-            ...$context,
-        ], 'zoom_webhook_failed');
+        ]);
+        $this->logWebhook('error', 'zoom_webhook_failed', $params, 'zoom_webhook_failed');
     }
 
-    /**
-     * @param  array<string, mixed>  $context
-     */
     private function logWebhook(
         string $level,
         string $event,
-        string $operation,
-        int|string $meetingId,
-        ?string $requestId,
-        int|string|null $userIdentifier,
-        array $context,
+        WebhookLogParameters $params,
         string $channel = 'zoom'
     ): void {
-        Log::channel($channel)->{$level}(
-            $event,
-            ZoomLogContext::forWebhook(
-                operation: $operation,
-                meetingId: $meetingId,
-                requestId: $requestId,
-                userId: $userIdentifier,
-                context: $context,
-            ),
+        $logContext = ZoomLogContext::forWebhook(
+            operation: $params->operation,
+            meetingId: $params->meetingId,
+            requestId: $params->requestId,
+            userId: $params->userIdentifier,
+            context: $params->context,
         );
+
+        $this->writeLog($level, $event, $channel, $logContext);
+    }
+
+    /**
+     * @param  array<string, mixed>  $logContext
+     */
+    private function writeLog(string $level, string $event, string $channel, array $logContext): void
+    {
+        Log::channel($channel)->{$level}($event, $logContext);
     }
 
     private function sanitize(string $message): string
@@ -125,4 +129,34 @@ final class ZoomWebhookLogger
 
         return $message;
     }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private function sanitizeContext(array $context): array
+    {
+        foreach ($context as $key => $value) {
+            if (is_string($value)) {
+                $context[$key] = $this->sanitize($value);
+            }
+        }
+
+        return $context;
+    }
+}
+
+/**
+ * @internal
+ */
+final readonly class WebhookLogParameters
+{
+    public function __construct(
+        public string $operation,
+        public int|string $meetingId,
+        public ?string $requestId,
+        public int|string|null $userIdentifier,
+        /** @var array<string, mixed> */
+        public array $context,
+    ) {}
 }

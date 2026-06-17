@@ -27,6 +27,8 @@ class ZoomConnector extends Connector
     use AuthorizationCodeGrant;
     use HasTimeout;
 
+    private const string DEFAULT_ERROR_MESSAGE = 'Zoom request failed.';
+
     protected int $connectTimeout = 5;
 
     protected int $requestTimeout = 30;
@@ -130,13 +132,13 @@ class ZoomConnector extends Connector
         $decoded = json_decode($body, true);
 
         if (! is_array($decoded)) {
-            return 'Zoom request failed.';
+            return self::DEFAULT_ERROR_MESSAGE;
         }
 
         return match (true) {
-            isset($decoded['message']) => 'Zoom request failed.',
-            isset($decoded['error']) => 'Zoom request failed.',
-            default => 'Zoom request failed.',
+            isset($decoded['message']) => self::DEFAULT_ERROR_MESSAGE,
+            isset($decoded['error']) => self::DEFAULT_ERROR_MESSAGE,
+            default => self::DEFAULT_ERROR_MESSAGE,
         };
     }
 

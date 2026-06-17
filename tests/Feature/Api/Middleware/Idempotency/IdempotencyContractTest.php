@@ -401,7 +401,8 @@ final class IdempotencyContractTest extends TestCase
             ->assertOk();
 
         $this->postJson(route('api.v1.webhooks.meetings.update'), $payload, $headers)
-            ->assertOk();
+            ->assertAccepted()
+            ->assertExactJson(['message' => 'Webhook accepted']);
 
         $object = $payload['payload']['object'];
         $meetingId = $object['id'];

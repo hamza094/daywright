@@ -21,16 +21,4 @@ return new class extends Migration
             ]);
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::table('users', function (Blueprint $table): void {
-            $table->string('zoom_access_token', 2000)->nullable();
-            $table->string('zoom_refresh_token', 2000)->nullable();
-            $table->dateTime('zoom_expires_at')->nullable();
-        });
-    }
 };

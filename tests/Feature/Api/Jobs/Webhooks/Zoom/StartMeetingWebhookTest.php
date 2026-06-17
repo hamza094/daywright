@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Jobs\Webhooks\Zoom;
 
+use App\Actions\Webhooks\Zoom\HandleMeetingStartedWebhook;
 use App\DataTransferObjects\Zoom\MeetingStartedWebhookData;
 use App\Events\MeetingStatusUpdate;
+use App\Jobs\SendMeetingStartedNotification;
 use App\Jobs\Webhooks\Zoom\StartMeetingWebhook;
 use App\Models\Meeting;
 use App\Models\User;
-use App\Notifications\Zoom\MeetingStarted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -44,7 +46,7 @@ class StartMeetingWebhookTest extends TestCase
     /** @test */
     public function notifies_project_members_on_meeting_start(): void
     {
-        Notification::fake();
+        Bus::fake();
         Event::fake();
 
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
@@ -52,7 +54,7 @@ class StartMeetingWebhookTest extends TestCase
             'status' => 'waiting',
         ]);
 
-        $users = User::factory()->count(2)->create()->each(fn (User $user) => $this->inviteAndActivateUser($this->project, $user)
+        User::factory()->count(2)->create()->each(fn (User $user) => $this->inviteAndActivateUser($this->project, $user)
         );
 
         $fixture = File::json(
@@ -71,23 +73,19 @@ class StartMeetingWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingStartedWebhook::class));
 
         $this->assertEquals('started', $meeting->fresh()->status);
-        $expectedLink = $this->apiV1Route('projects.show', ['project' => $this->project]);
-        $expectedUrl = route('api.v1.projects.show', ['project' => $this->project]);
 
         Event::assertDispatched(fn (MeetingStatusUpdate $event): bool => $event->meeting->id === $meeting->id);
 
-        Notification::assertSentTo($users, MeetingStarted::class, fn (MeetingStarted $notification, array $channels): bool => $channels === ['mail', 'database', 'broadcast']
-            && $notification->toDatabase($this->user)['link'] === $expectedLink
-            && $notification->toMail($this->user)->viewData['projectLink'] === $expectedUrl);
+        Bus::assertDispatched(SendMeetingStartedNotification::class, fn (SendMeetingStartedNotification $job): bool => $job->meetingId === $meeting->id);
     }
 
     /** @test */
     public function allows_missing_start_time_without_failing(): void
     {
-        Notification::fake();
+        Bus::fake();
         Event::fake();
 
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
@@ -95,26 +93,23 @@ class StartMeetingWebhookTest extends TestCase
             'status' => 'waiting',
         ]);
 
-        $users = User::factory()->count(2)->create()->each(fn (User $user) => $this->inviteAndActivateUser($this->project, $user)
-        );
-
         $job = new StartMeetingWebhook(new MeetingStartedWebhookData(
             meetingId: 813,
             startTime: null,
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingStartedWebhook::class));
 
         $this->assertEquals('started', $meeting->fresh()->status);
         Event::assertDispatched(fn (MeetingStatusUpdate $event): bool => $event->meeting->id === $meeting->id);
-        Notification::assertSentTo($users, MeetingStarted::class);
+        Bus::assertDispatched(SendMeetingStartedNotification::class);
     }
 
     /** @test */
     public function ignores_missing_meeting_without_failing(): void
     {
-        Notification::fake();
+        Bus::fake();
         Event::fake([MeetingStatusUpdate::class]);
 
         $job = new StartMeetingWebhook(new MeetingStartedWebhookData(
@@ -123,21 +118,22 @@ class StartMeetingWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingStartedWebhook::class));
 
-        Notification::assertNothingSent();
+        Bus::assertNotDispatched(SendMeetingStartedNotification::class);
         Event::assertNotDispatched(MeetingStatusUpdate::class);
     }
 
     /** @test */
     public function does_not_send_duplicate_notifications_when_meeting_is_already_started(): void
     {
-        Notification::fake();
+        Bus::fake();
         Event::fake([MeetingStatusUpdate::class]);
 
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 813,
             'status' => 'started',
+            'started_notification_sent_at' => now(),
         ]);
 
         $job = new StartMeetingWebhook(new MeetingStartedWebhookData(
@@ -146,10 +142,10 @@ class StartMeetingWebhookTest extends TestCase
             requestId: 'zoom-start-duplicate',
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingStartedWebhook::class));
 
         $this->assertEquals('started', $meeting->fresh()->status);
-        Notification::assertNothingSent();
+        Bus::assertNotDispatched(SendMeetingStartedNotification::class);
         Event::assertNotDispatched(MeetingStatusUpdate::class);
     }
 
@@ -170,7 +166,7 @@ class StartMeetingWebhookTest extends TestCase
     /** @test */
     public function ignores_webhook_if_sync_status_is_not_active(): void
     {
-        Notification::fake();
+        Bus::fake();
         Event::fake([MeetingStatusUpdate::class]);
 
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
@@ -204,17 +200,17 @@ class StartMeetingWebhookTest extends TestCase
                 ])
             );
 
-        $job->handle();
+        $job->handle(app(HandleMeetingStartedWebhook::class));
 
         $this->assertEquals('waiting', $meeting->fresh()->status);
-        Notification::assertNothingSent();
+        Bus::assertNotDispatched(SendMeetingStartedNotification::class);
         Event::assertNotDispatched(MeetingStatusUpdate::class);
     }
 
     /** @test */
     public function ended_meeting_cannot_be_restarted_via_webhook(): void
     {
-        Notification::fake();
+        Bus::fake();
         Event::fake([MeetingStatusUpdate::class]);
 
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
@@ -228,14 +224,38 @@ class StartMeetingWebhookTest extends TestCase
             requestId: 'zoom-restart-ended',
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingStartedWebhook::class));
 
         // Meeting should remain ended
         $this->assertEquals('ended', $meeting->fresh()->status);
 
-        // No notification should be sent
-        Notification::assertNothingSent();
+        // No job should be dispatched
+        Bus::assertNotDispatched(SendMeetingStartedNotification::class);
         Event::assertNotDispatched(MeetingStatusUpdate::class);
+    }
+
+    /** @test */
+    public function sends_notification_on_retry_when_meeting_already_started_but_notification_not_sent(): void
+    {
+        Bus::fake();
+        Event::fake([MeetingStatusUpdate::class]);
+
+        MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 813,
+            'status' => 'started',
+            'started_notification_sent_at' => null,
+        ]);
+
+        $job = new StartMeetingWebhook(new MeetingStartedWebhookData(
+            meetingId: 813,
+            startTime: '2024-06-24T11:00:00Z',
+            requestId: 'zoom-start-retry',
+        ));
+
+        $job->handle(app(HandleMeetingStartedWebhook::class));
+
+        // Job should be dispatched on retry
+        Bus::assertDispatched(SendMeetingStartedNotification::class);
     }
 
     /** @test */

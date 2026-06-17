@@ -6,6 +6,7 @@ namespace App\Traits;
 
 use App\Events\ActivityLogged;
 use App\Events\DashboardActivity;
+use App\Exceptions\UnableToResolveUserIdException;
 use App\Models\Activity;
 use App\Models\Project;
 use BackedEnum;
@@ -14,7 +15,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 trait RecordActivity
 {
@@ -164,13 +164,12 @@ trait RecordActivity
         $oldAttributes = $this->convertEnumsToValues($this->oldAttributes);
         $currentAttributes = $this->convertEnumsToValues($this->getAttributes());
 
+        $changed = Arr::except($this->getChanges(), 'updated_at');
+        $changedKeys = array_keys($changed);
+
         return [
-            'before' => Arr::except(
-                array_diff($oldAttributes, $currentAttributes), 'updated_at'
-            ),
-            'after' => Arr::except(
-                $this->getChanges(), 'updated_at'
-            ),
+            'before' => Arr::only($oldAttributes, $changedKeys),
+            'after' => Arr::only($currentAttributes, $changedKeys),
         ];
     }
 
@@ -215,7 +214,7 @@ trait RecordActivity
         $user = $relation->user;
 
         if ($user === null) {
-            throw new RuntimeException('Unable to resolve user ID for activity');
+            throw new UnableToResolveUserIdException;
         }
 
         return $user->id;

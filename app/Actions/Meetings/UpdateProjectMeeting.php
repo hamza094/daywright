@@ -71,14 +71,11 @@ final readonly class UpdateProjectMeeting
      */
     private function markMeetingAsUpdated(Meeting $meeting, array $validated): Meeting
     {
-        /** @var Meeting $updatedMeeting */
-        $updatedMeeting = DB::transaction(fn (): Meeting => $this->updateMeetingWithLock($meeting, $validated + [
+        return DB::transaction(fn (): Meeting => $this->updateMeetingWithLock($meeting, $validated + [
             'sync_status' => MeetingSyncStatus::Active,
             'sync_error' => null,
             'synced_at' => now(),
         ]), attempts: $this->transactionRetryAttempts);
-
-        return $updatedMeeting;
     }
 
     private function markMeetingAsUpdateFailed(Meeting $meeting, Throwable $exception): void

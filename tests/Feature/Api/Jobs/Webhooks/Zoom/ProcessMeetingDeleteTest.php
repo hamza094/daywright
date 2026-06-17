@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Jobs\Webhooks\Zoom;
 
+use App\Actions\Webhooks\Zoom\HandleMeetingDeletedWebhook;
 use App\DataTransferObjects\Zoom\MeetingDeletedWebhookData;
 use App\Jobs\Webhooks\Zoom\DeleteMeetingWebhook;
 use App\Models\Meeting;
@@ -35,10 +36,9 @@ class ProcessMeetingDeleteTest extends TestCase
 
         $job = new DeleteMeetingWebhook(new MeetingDeletedWebhookData(
             meetingId: $meetingId,
-            requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingDeletedWebhook::class));
 
         $this->assertDatabaseHas('meetings', [
             'meeting_id' => 813,
@@ -63,7 +63,6 @@ class ProcessMeetingDeleteTest extends TestCase
 
         $job = new DeleteMeetingWebhook(new MeetingDeletedWebhookData(
             meetingId: $meetingId,
-            requestId: null,
         ));
 
         $this->assertDatabaseHas('meetings', [
@@ -71,7 +70,7 @@ class ProcessMeetingDeleteTest extends TestCase
         ]);
 
         // The job should handle a missing meeting id gracefully and not remove other meetings.
-        $job->handle();
+        $job->handle(app(HandleMeetingDeletedWebhook::class));
 
         $this->assertDatabaseHas('meetings', [
             'meeting_id' => 413,
@@ -89,10 +88,9 @@ class ProcessMeetingDeleteTest extends TestCase
 
         $job = new DeleteMeetingWebhook(new MeetingDeletedWebhookData(
             meetingId: 813,
-            requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingDeletedWebhook::class));
 
         $this->assertDatabaseHas('meetings', [
             'meeting_id' => 813,
@@ -111,11 +109,10 @@ class ProcessMeetingDeleteTest extends TestCase
 
         $job = new DeleteMeetingWebhook(new MeetingDeletedWebhookData(
             meetingId: 813,
-            requestId: null,
         ));
 
         // Should not throw error even if already deleted
-        $job->handle();
+        $job->handle(app(HandleMeetingDeletedWebhook::class));
 
         $this->assertDatabaseHas('meetings', [
             'meeting_id' => 813,

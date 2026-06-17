@@ -8,6 +8,8 @@ use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
 use Carbon\Carbon;
 use Throwable;
 
+use function Safe\preg_match;
+
 final readonly class Meeting
 {
     public function __construct(
@@ -53,11 +55,15 @@ final readonly class Meeting
     {
         $value = $response[$key] ?? null;
 
-        if (! is_int($value) && ! is_numeric($value)) {
-            self::throwMalformedResponse($key);
+        if (is_int($value)) {
+            return $value;
         }
 
-        return (int) $value;
+        if (is_string($value) && preg_match('/^-?\d+$/', $value) === 1) {
+            return (int) $value;
+        }
+
+        self::throwMalformedResponse($key);
     }
 
     /**
@@ -95,28 +101,16 @@ final readonly class Meeting
     /**
      * @param  array<string, mixed>  $response
      */
-    private static function requiredBool(array $response, string $key): bool
-    {
-        if (! array_key_exists($key, $response)) {
-            self::throwMalformedResponse($key);
-        }
-
-        return self::normalizeBool($response[$key]);
-    }
-
-    /**
-     * @param  array<string, mixed>  $response
-     */
     private static function optionalBool(array $response, string $key): bool
     {
         // Check top-level first
         if (array_key_exists($key, $response)) {
-            return self::normalizeBool($response[$key]);
+            return self::normalizeBool($response[$key], $key);
         }
 
         // Check nested in settings
         if (isset($response['settings'][$key])) {
-            return self::normalizeBool($response['settings'][$key]);
+            return self::normalizeBool($response['settings'][$key], $key);
         }
 
         // Default to false if not found
@@ -127,21 +121,19 @@ final readonly class Meeting
      * Normalize boolean values from API responses.
      * Handles booleans as strings ('true', 'false', '1', '0').
      */
-    private static function normalizeBool(mixed $value): bool
+    private static function normalizeBool(mixed $value, string $key): bool
     {
         if (is_bool($value)) {
-            return $value;
+            $result = $value;
+        } elseif (is_string($value)) {
+            $result = in_array(mb_strtolower($value), ['true', '1', 'yes'], true);
+        } elseif (is_int($value)) {
+            $result = $value === 1;
+        } else {
+            self::throwMalformedResponse($key);
         }
 
-        if (is_string($value)) {
-            return in_array(mb_strtolower($value), ['true', '1', 'yes']);
-        }
-
-        if (is_int($value)) {
-            return $value === 1;
-        }
-
-        return (bool) $value;
+        return $result;
     }
 
     /**

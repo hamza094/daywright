@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Jobs\Webhooks\Zoom;
 
+use App\Actions\Webhooks\Zoom\HandleMeetingUpdatedWebhook;
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
@@ -20,11 +21,6 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
     use RefreshDatabase;
 
     public $project;
-
-    /**
-     * A basic feature test example.
-     *
-     *
 
     /** @test */
     public function zoom_meeting_can_be_updated(): void
@@ -51,7 +47,7 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
         $this->assertSame(
             expected: $updateData['topic'],
@@ -78,9 +74,9 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
-        $this->assertSame('2024-06-24 11:30:00', $meeting->fresh()->start_time);
+        $this->assertSame('2024-06-24 11:30:00', $meeting->fresh()->start_time->toDateTimeString());
     }
 
     /** @test */
@@ -92,7 +88,7 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
         $this->assertDatabaseMissing('meetings', ['meeting_id' => 999999]);
     }
@@ -118,7 +114,7 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
         $this->assertSame('Original topic', $meeting->fresh()->topic);
         $this->assertSame(30, $meeting->fresh()->duration);
@@ -148,7 +144,7 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
         $this->assertSame('Updated topic', $meeting->fresh()->topic);
         $this->assertSame(1, $meeting->fresh()->user_id);
@@ -176,7 +172,7 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
         $this->assertSame(30, $meeting->fresh()->duration);
         $this->assertTrue((bool) $meeting->fresh()->join_before_host);
@@ -200,7 +196,7 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
         $this->assertSame('Original topic', $meeting->fresh()->topic);
     }
@@ -223,7 +219,7 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
         $this->assertSame('Original topic', $meeting->fresh()->topic);
         $this->assertSame(MeetingSyncStatus::Deleted->value, $meeting->fresh()->sync_status->value);
@@ -247,7 +243,7 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             requestId: null,
         ));
 
-        $job->handle();
+        $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
         $this->assertSame('Original topic', $meeting->fresh()->topic);
         $this->assertSame(MeetingSyncStatus::Deleting->value, $meeting->fresh()->sync_status->value);

@@ -8,31 +8,37 @@ use App\DataTransferObjects\Notification\NotificationActorData;
 use App\DataTransferObjects\Zoom\MeetingStartedWebhookData;
 use App\Enums\MeetingState;
 use App\Events\MeetingStatusUpdate;
+use App\Jobs\SendMeetingStartedNotification;
 use App\Models\Meeting;
-use App\Notifications\Zoom\MeetingStarted;
-use Illuminate\Support\Facades\Notification;
+use App\Services\Webhooks\ZoomWebhookSupport;
 
-final class HandleMeetingStartedWebhook extends BaseZoomWebhookAction
+final readonly class HandleMeetingStartedWebhook
 {
+    private const string OPERATION = 'zoom.webhook.meeting.started';
+
+    public function __construct(
+        private ZoomWebhookSupport $support,
+    ) {}
+
     public function handle(MeetingStartedWebhookData $data): void
     {
-        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
-            if (! $this->ensureActiveSyncStatus($meeting, $data->meetingId, $data->requestId, $userUuid)) {
+        $this->support->executeWithLogging(self::OPERATION, $data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
+            if (! $this->support->ensureActiveSyncStatus(self::OPERATION, $meeting, $data->meetingId, $data->requestId, $userUuid)) {
                 return;
             }
 
-            if (! $this->transitionToStarted($meeting, $data->meetingId, $data->requestId)) {
-                return;
+            $transitioned = $this->transitionToStarted($meeting, $data->meetingId, $data->requestId);
+
+            // Dispatch notification if transition succeeded OR if meeting is started but notification not sent (retry case)
+            // Do NOT dispatch if meeting is ended
+            if ($transitioned || ($meeting->status === MeetingState::START->value && $meeting->started_notification_sent_at === null)) {
+                $this->dispatchNotificationJob($meeting, $data->startTime);
             }
 
-            $this->sendNotifications($meeting, $data->startTime);
-            $this->logger->logWebhookProcessed($this->operation(), $data->meetingId, $data->requestId, $userUuid);
+            if ($transitioned) {
+                $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
+            }
         });
-    }
-
-    protected function operation(): string
-    {
-        return 'zoom.webhook.meeting.started';
     }
 
     private function transitionToStarted(Meeting $meeting, int|string $meetingId, ?string $requestId): bool
@@ -46,8 +52,8 @@ final class HandleMeetingStartedWebhook extends BaseZoomWebhookAction
             ]);
 
         if ($updated === 0) {
-            $userUuid = $this->userUuid($meeting);
-            $this->logger->logWebhookIgnored($this->operation(), $meetingId, $requestId, 'already_started_or_ended', $userUuid);
+            $userUuid = $this->support->userUuid($meeting);
+            $this->support->logger->logWebhookIgnored(self::OPERATION, $meetingId, $requestId, 'already_started_or_ended', $userUuid);
 
             return false;
         }
@@ -59,22 +65,18 @@ final class HandleMeetingStartedWebhook extends BaseZoomWebhookAction
         return true;
     }
 
-    private function sendNotifications(Meeting $meeting, ?string $startTime): void
+    private function dispatchNotificationJob(Meeting $meeting, ?string $startTime): void
     {
-        $project = $meeting->project()->with(['asignees', 'user'])->firstOrFail();
-        $user = $project->user;
-        $members = $project->asignees;
-
         $notificationData = [
-            'project_name' => $project->name,
-            'project_slug' => $project->slug,
+            'project_name' => $meeting->project->name,
+            'project_slug' => $meeting->project->slug,
             'meeting_topic' => $meeting->topic,
             'meeting_timezone' => $meeting->timezone,
             'meeting_join_url' => $meeting->join_url,
             'start_time' => $startTime,
-            'notifier' => NotificationActorData::fromUser($user)->toArray(),
+            'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
         ];
 
-        Notification::send($members, new MeetingStarted($notificationData));
+        SendMeetingStartedNotification::dispatch($meeting->id, $notificationData);
     }
 }

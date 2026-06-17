@@ -7,15 +7,22 @@ namespace App\Actions\Webhooks\Zoom;
 use App\DataTransferObjects\Zoom\MeetingDeletedWebhookData;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Models\Meeting;
+use App\Services\Webhooks\ZoomWebhookSupport;
 
-final class HandleMeetingDeletedWebhook extends BaseZoomWebhookAction
+final readonly class HandleMeetingDeletedWebhook
 {
+    private const string OPERATION = 'zoom.webhook.meeting.deleted';
+
+    public function __construct(
+        private ZoomWebhookSupport $support,
+    ) {}
+
     public function handle(MeetingDeletedWebhookData $data): void
     {
-        $this->executeWithLogging($data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
+        $this->support->executeWithLogging(self::OPERATION, $data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
             // If already deleting/deleted, treat as already handled
             if (in_array($meeting->sync_status, [MeetingSyncStatus::Deleting, MeetingSyncStatus::Deleted], true)) {
-                $this->logger->logWebhookIgnored($this->operation(), $data->meetingId, $data->requestId, 'already_deleted', $userUuid);
+                $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'already_deleted', $userUuid);
 
                 return;
             }
@@ -26,12 +33,7 @@ final class HandleMeetingDeletedWebhook extends BaseZoomWebhookAction
                 'synced_at' => now(),
             ]);
 
-            $this->logger->logWebhookProcessed($this->operation(), $data->meetingId, $data->requestId, $userUuid);
+            $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
         });
-    }
-
-    protected function operation(): string
-    {
-        return 'zoom.webhook.meeting.deleted';
     }
 }

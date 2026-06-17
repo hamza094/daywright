@@ -30,6 +30,7 @@
 
               <FormGroup id="agenda" label="Agenda:" :error="errors.agenda">
                 <textarea
+                  id="agenda"
                   name="agenda"
                   class="form-control"
                   rows="3"
@@ -81,7 +82,12 @@
               </FormGroup>
 
               <FormGroup id="start_time" label="Start Time:" :error="errors.start_time">
-                <datetime type="datetime" v-model="form.start_time" value-zone="UTC" :zone="displayTimezone"></datetime>
+                <datetime
+                  id="start_time"
+                  type="datetime"
+                  v-model="form.start_time"
+                  value-zone="UTC"
+                  :zone="displayTimezone"></datetime>
               </FormGroup>
             </div>
 

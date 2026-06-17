@@ -12,6 +12,14 @@ use function Safe\parse_url;
 
 class ZoomAuthRedirectDetailsTest extends TestCase
 {
+    private ZoomOAuthService $service;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(ZoomOAuthService::class);
+    }
+
     /** @test */
     public function auth_redirect_details_can_be_returned(): void
     {
@@ -19,7 +27,7 @@ class ZoomAuthRedirectDetailsTest extends TestCase
             'services.zoom.client_id' => 'client-id-here',
         ]);
 
-        $authDetails = app(ZoomOAuthService::class)->getAuthRedirectDetails();
+        $authDetails = $this->service->getAuthRedirectDetails();
 
         // Get the query parameters from the authorization URL.
         $queryParameters = [];
@@ -45,10 +53,8 @@ class ZoomAuthRedirectDetailsTest extends TestCase
     /** @test */
     public function code_verifier_length_is_between_43_and_128_characters(): void
     {
-        $service = app(ZoomOAuthService::class);
-
         for ($i = 0; $i < 100; $i++) {
-            $details = $service->getAuthRedirectDetails();
+            $details = $this->service->getAuthRedirectDetails();
             $length = mb_strlen($details->codeVerifier);
             $this->assertGreaterThanOrEqual(43, $length, "Code verifier too short: {$length}");
             $this->assertLessThanOrEqual(128, $length, "Code verifier too long: {$length}");
@@ -58,15 +64,13 @@ class ZoomAuthRedirectDetailsTest extends TestCase
     /** @test */
     public function code_challenge_is_correct_base64url_sha256_of_verifier(): void
     {
-        $service = app(ZoomOAuthService::class);
-
         $testVerifier = 'test-verifier-string-for-pkce-validation-12345678';
         $expectedChallenge = trim(strtr(base64_encode(hash('sha256', $testVerifier, true)), '+/', '-_'), '=');
 
-        $reflection = new ReflectionClass($service);
+        $reflection = new ReflectionClass($this->service);
         $method = $reflection->getMethod('codeChallenge');
 
-        $actualChallenge = $method->invoke($service, $testVerifier);
+        $actualChallenge = $method->invoke($this->service, $testVerifier);
 
         $this->assertEquals($expectedChallenge, $actualChallenge);
     }
@@ -74,12 +78,10 @@ class ZoomAuthRedirectDetailsTest extends TestCase
     /** @test */
     public function code_challenge_uses_base64url_encoding(): void
     {
-        $service = app(ZoomOAuthService::class);
-
-        $reflection = new ReflectionClass($service);
+        $reflection = new ReflectionClass($this->service);
         $method = $reflection->getMethod('codeChallenge');
 
-        $challenge = $method->invoke($service, 'test-verifier');
+        $challenge = $method->invoke($this->service, 'test-verifier');
 
         // Base64URL should not contain +, /, or =
         $this->assertStringNotContainsString('+', $challenge, 'Challenge contains + (should be -)');

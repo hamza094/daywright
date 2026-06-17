@@ -153,7 +153,26 @@ export default {
 
       const filteredData = this.meetings.data.filter((meeting) => canViewMeeting(meeting, isOwner));
 
-      return { ...this.meetings, data: filteredData };
+      // Recalculate pagination metadata based on filtered data
+      const perPage = this.meetings.meta?.per_page || 10;
+      const currentFilteredTotal = filteredData.length;
+      const lastPage = Math.max(1, Math.ceil(currentFilteredTotal / perPage));
+      const currentPage = this.meetings.meta?.current_page || 1;
+      const adjustedCurrentPage = Math.min(currentPage, lastPage);
+
+      return {
+        ...this.meetings,
+        data: filteredData,
+        meta: {
+          ...this.meetings.meta,
+          current_page: adjustedCurrentPage,
+          from: currentFilteredTotal > 0 ? (adjustedCurrentPage - 1) * perPage + 1 : 0,
+          last_page: lastPage,
+          per_page: perPage,
+          to: Math.min(adjustedCurrentPage * perPage, currentFilteredTotal),
+          total: currentFilteredTotal,
+        },
+      };
     },
     // Listen for meeting status updates via Echo
     meetingStatusListener() {
@@ -309,10 +328,13 @@ export default {
 
 .meeting-ended {
   opacity: 0.6;
-  pointer-events: none;
 }
 
 .meeting-ended .card-body {
   color: #6c757d;
+}
+
+.meeting-ended .card-footer button {
+  pointer-events: none;
 }
 </style>
