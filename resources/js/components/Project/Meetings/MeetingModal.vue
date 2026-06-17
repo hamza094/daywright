@@ -30,7 +30,7 @@
 
               <FormGroup id="agenda" label="Agenda:" :error="errors.agenda">
                 <textarea
-                  id="agenda"
+                  id="agenda-input"
                   name="agenda"
                   class="form-control"
                   rows="3"
@@ -41,7 +41,7 @@
               <FormGroup id="password" label="Password:" :error="errors.password">
                 <input
                   type="password"
-                  id="password"
+                  id="password-input"
                   class="form-control"
                   name="password"
                   v-model="form.password"
@@ -83,7 +83,7 @@
 
               <FormGroup id="start_time" label="Start Time:" :error="errors.start_time">
                 <datetime
-                  id="start_time"
+                  id="start_time-input"
                   type="datetime"
                   v-model="form.start_time"
                   value-zone="UTC"

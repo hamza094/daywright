@@ -88,14 +88,14 @@ final readonly class MeetingWebhookUpdateData
                     $normalized[$field] = $value;
                 }
 
-                return;
+                break;
 
             case 'duration':
                 if (is_numeric($value)) {
                     $normalized[$field] = (int) $value;
                 }
 
-                return;
+                break;
 
             case 'start_time':
                 $normalizedStartTime = self::normalizeStartTime($value);
@@ -104,10 +104,10 @@ final readonly class MeetingWebhookUpdateData
                     $normalized[$field] = $normalizedStartTime;
                 }
 
-                return;
+                break;
 
             default:
-                return;
+                break;
         }
     }
 
