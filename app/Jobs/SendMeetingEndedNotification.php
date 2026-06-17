@@ -6,11 +6,11 @@ namespace App\Jobs;
 
 use App\Models\Meeting;
 use App\Notifications\Zoom\MeetingEnded;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\Queueable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -31,14 +31,6 @@ final class SendMeetingEndedNotification implements ShouldBeUnique, ShouldQueue
         public int $meetingId,
         public array $notificationData,
     ) {}
-
-    /**
-     * @return array<int, int>
-     */
-    public function backoff(): array
-    {
-        return [60, 300, 900];
-    }
 
     public function uniqueId(): string
     {
