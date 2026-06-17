@@ -28,4 +28,15 @@ final readonly class MeetingDeletedWebhookData
             requestId: $requestId,
         );
     }
+
+    /**
+     * @return array{meetingId: int|string, requestId: ?string}
+     */
+    public function toArray(): array
+    {
+        return [
+            'meetingId' => $this->meetingId,
+            'requestId' => $this->requestId,
+        ];
+    }
 }

@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Queueable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -17,11 +18,11 @@ use Throwable;
 
 final class SendMeetingStartedNotification implements ShouldBeUnique, ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
 
-    public int $uniqueFor = 3600;
+    public int $uniqueFor = 120;
 
     /**
      * @param  array<string, mixed>  $notificationData
@@ -56,8 +57,9 @@ final class SendMeetingStartedNotification implements ShouldBeUnique, ShouldQueu
         );
 
         try {
-            $meeting->whereNull('started_notification_sent_at')
-                ->update(['started_notification_sent_at' => now()]);
+            if ($meeting->started_notification_sent_at === null) {
+                $meeting->update(['started_notification_sent_at' => now()]);
+            }
         } catch (Throwable $e) {
             // Log but don't fail the job - notification was already sent
             Log::warning('Failed to update started notification flag', [
