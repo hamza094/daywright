@@ -11,7 +11,7 @@ use App\DataTransferObjects\Zoom\Meeting;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Interfaces\Zoom;
 use App\Models\User;
-use Faker\Generator;
+use App\Repository\OAuthConnectionRepository;
 use Illuminate\Support\Collection;
 use Override;
 use PHPUnit\Framework\Assert;
@@ -20,7 +20,7 @@ use PHPUnit\Framework\Assert;
  * @template TKey of array-key
  * @template TValue
  */
-final class ZoomServiceFake implements Zoom
+final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 {
     /**
      * @var Collection<int, array<string, mixed>>
@@ -35,8 +35,10 @@ final class ZoomServiceFake implements Zoom
 
     private ?ZoomException $failureException = null;
 
-    public function __construct()
+    public function __construct(private readonly OAuthConnectionRepository $oauthRepository)
     {
+        $connectorManager = new ZoomConnectorManager($this->oauthRepository);
+        parent::__construct($connectorManager);
         $this->meetingsToCreate = new Collection;
     }
 
@@ -108,25 +110,19 @@ final class ZoomServiceFake implements Zoom
      * @param  array<string, mixed>  $validated
      */
     #[Override]
-    public function updateMeeting(array $validated, User $user): mixed
+    public function updateMeeting(array $validated, User $user): void
     {
         if ($this->failureException instanceof ZoomException) {
             throw $this->failureException;
         }
-
-        return response()->json(204);
     }
 
     #[Override]
-    public function deleteMeeting(int $meetingId, User $user): mixed
+    public function deleteMeeting(int $meetingId, User $user): void
     {
         if ($this->failureException instanceof ZoomException) {
             throw $this->failureException;
         }
-
-        // Simulate a successful deletion: return an empty JSON response with 204 No Content.
-
-        return response()->json(null, 204);
     }
 
     #[Override]
@@ -152,10 +148,8 @@ final class ZoomServiceFake implements Zoom
 
     private function fakeMeeting(): Meeting
     {
-        app(Generator::class);
-
         return new Meeting(
-            meeting_id: 1234,
+            meeting_id: random_int(10000000, 99999999),
             topic: 'Topic Of Meeting',
             agenda: 'this is the agenda of meeting',
             created_at: '2024-05-18 18:00:07',

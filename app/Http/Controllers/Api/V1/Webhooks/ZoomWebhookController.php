@@ -5,68 +5,77 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Webhooks;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\Zoom\WebhookRequest;
-use App\Jobs\Webhooks\Zoom\DeleteMeetingWebhook;
-use App\Jobs\Webhooks\Zoom\MeetingEndsWebhook;
-use App\Jobs\Webhooks\Zoom\StartMeetingWebhook;
-use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
+use App\Http\Requests\Api\V1\Zoom\MeetingDeletedWebhookRequest;
+use App\Http\Requests\Api\V1\Zoom\MeetingEndedWebhookRequest;
+use App\Http\Requests\Api\V1\Zoom\MeetingStartedWebhookRequest;
+use App\Http\Requests\Api\V1\Zoom\MeetingUpdatedWebhookRequest;
+use App\Services\Webhooks\ZoomWebhookDispatcher;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ZoomWebhookController extends ApiController
 {
     private const string WEBHOOK_ACCEPTED_MESSAGE = 'Webhook accepted.';
 
-    public function update(WebhookRequest $request): JsonResponse
+    public function __construct(
+        private readonly ZoomWebhookDispatcher $dispatcher,
+    ) {}
+
+    public function update(MeetingUpdatedWebhookRequest $request): JsonResponse
     {
         $request->validated();
 
         /** @var array<string, mixed> $object */
-        $object = (array) $request->input('payload.object', []);
+        $object = $this->payloadObject($request);
 
-        UpdateMeetingWebhook::dispatch([
-            'meeting_id' => $object['id'],
-            'update_data' => collect($object)->except(['id', 'uuid'])->toArray(),
-        ]);
+        $this->dispatcher->dispatchUpdate($object, $request->header('x-zm-request-id'));
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
-    public function delete(WebhookRequest $request): JsonResponse
+    public function delete(MeetingDeletedWebhookRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-        $object = $validated['payload']['object'];
+        $request->validated();
 
-        DeleteMeetingWebhook::dispatch([
-            'meeting_id' => $object['id'],
-        ]);
+        /** @var array<string, mixed> $object */
+        $object = $this->payloadObject($request);
+
+        $this->dispatcher->dispatchDelete($object, $request->header('x-zm-request-id'));
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
-    public function start(WebhookRequest $request): JsonResponse
+    public function start(MeetingStartedWebhookRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-        $object = $validated['payload']['object'];
+        $request->validated();
 
-        StartMeetingWebhook::dispatchAfterResponse([
-            'meeting_id' => $object['id'],
-            'start_time' => $object['start_time'] ?? null,
-        ]);
+        /** @var array<string, mixed> $object */
+        $object = $this->payloadObject($request);
+
+        $this->dispatcher->dispatchStart($object, $request->header('x-zm-request-id'));
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
-    public function ended(WebhookRequest $request): JsonResponse
+    public function ended(MeetingEndedWebhookRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-        $object = $validated['payload']['object'];
+        $request->validated();
 
-        MeetingEndsWebhook::dispatchAfterResponse([
-            'meeting_id' => $object['id'],
-            'start_time' => $object['start_time'] ?? null,
-            'end_time' => $object['end_time'] ?? null,
-        ]);
+        /** @var array<string, mixed> $object */
+        $object = $this->payloadObject($request);
+
+        $this->dispatcher->dispatchEnded($object, $request->header('x-zm-request-id'));
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function payloadObject(Request $request): array
+    {
+        $object = $request->input('payload.object');
+
+        return is_array($object) ? $object : [];
     }
 }

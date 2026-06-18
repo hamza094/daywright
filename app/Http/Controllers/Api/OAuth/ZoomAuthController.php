@@ -4,62 +4,84 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\OAuth;
 
+use App\DataTransferObjects\OAuth\OAuthTokens;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\Http\Controllers\Api\ApiController;
-use App\Interfaces\Zoom;
+use App\Http\Requests\Api\V1\Zoom\ZoomAuthorizationCallbackRequest;
+use App\Repository\OAuthConnectionRepository;
+use App\Services\Zoom\ZoomAuthorizationStateStore;
+use App\Services\Zoom\ZoomOAuthService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ZoomAuthController extends ApiController
 {
-    public function __construct(private readonly Zoom $zoom) {}
+    public function __construct(
+        private readonly ZoomOAuthService $zoomOAuth,
+        private readonly ZoomAuthorizationStateStore $authorizationStateStore,
+        private readonly OAuthConnectionRepository $oauthRepository,
+    ) {}
 
     public function redirect(): JsonResponse
     {
-        $redirectDetails = $this->zoom->getAuthRedirectDetails();
+        $redirectDetails = $this->zoomOAuth->getAuthRedirectDetails();
 
-        // Store the PKCE code verifier in cache keyed by the OAuth state so
-        // stateless clients (mobile, SPA) that don't persist sessions can still
-        // complete the callback flow.
-        $cacheKey = 'oauth:zoom:'.$redirectDetails->state;
-        cache()->put($cacheKey, $redirectDetails->codeVerifier, now()->addMinutes(10));
-
-        return $this->respondWithData(['redirect_url' => $redirectDetails->authorizationUrl]);
-
-    }
-
-    public function callback(Request $request): JsonResponse
-    {
-        if ($request->string('error')->trim()->exactly('access_denied')) {
-            abort(Response::HTTP_BAD_REQUEST, 'Zoom account connection denied');
-        }
-
-        $state = (string) $request->string('state')->trim();
-        $cacheKey = 'oauth:zoom:'.$state;
-
-        $hasRequiredFields = $request->filled(['code', 'state']) && cache()->has($cacheKey);
-
-        if (! $hasRequiredFields) {
-            abort(Response::HTTP_BAD_REQUEST, 'Missing required fields');
-        }
-
-        $callbackDetails = new AuthorizationCallbackDetails(
-            authorizationCode: (string) $request->string('code')->trim(),
-            expectedState: $state,
-            state: $state,
-            codeVerifier: cache()->pull($cacheKey),
+        $this->authorizationStateStore->store(
+            redirectDetails: $redirectDetails,
+            user: $this->authenticatedUser(),
         );
 
-        $accessDetails = $this->zoom->authorize($callbackDetails);
+        return $this->respondWithData(['redirect_url' => $redirectDetails->authorizationUrl]);
+    }
 
-        $this->authenticatedUser()->updateZoomOAuthDetails(
-            accessToken: $accessDetails->accessToken,
-            refreshToken: $accessDetails->refreshToken,
-            expiresAt: $accessDetails->expiresAt,
+    public function callback(ZoomAuthorizationCallbackRequest $request): JsonResponse
+    {
+        $error = trim((string) $request->string('error'));
+
+        if ($error !== '') {
+            $state = trim((string) $request->string('state'));
+
+            if ($state !== '') {
+                $this->authorizationStateStore->forget($state);
+            }
+
+            abort(
+                Response::HTTP_BAD_REQUEST,
+                $error === 'access_denied'
+                    ? 'Zoom account connection denied.'
+                    : 'Zoom authorization failed.',
+            );
+        }
+
+        $accessDetails = $this->zoomOAuth->authorize($this->callbackDetails($request));
+
+        $this->oauthRepository->saveTokens(
+            $this->authenticatedUser(),
+            'zoom',
+            new OAuthTokens(
+                accessToken: $accessDetails->accessToken,
+                refreshToken: $accessDetails->refreshToken,
+                expiresAt: $accessDetails->expiresAt,
+            ),
         );
 
         return $this->respondWithMessage('Zoom account connected successfully');
+    }
 
+    private function callbackDetails(ZoomAuthorizationCallbackRequest $request): AuthorizationCallbackDetails
+    {
+        $authorizationCode = (string) $request->string('code')->trim();
+        $state = (string) $request->string('state')->trim();
+
+        $codeVerifier = $this->authorizationStateStore->consume(
+            state: $state,
+            user: $this->authenticatedUser(),
+        );
+
+        return new AuthorizationCallbackDetails(
+            authorizationCode: $authorizationCode,
+            state: $state,
+            codeVerifier: $codeVerifier,
+        );
     }
 }

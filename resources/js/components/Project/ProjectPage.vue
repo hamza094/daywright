@@ -43,7 +43,13 @@
                     <!-- Project name section -->
                     <p class="content-name">
                       <span v-if="nameEdit">
-                        <input class="form-control sm-6" type="text" v-model="projectname" />
+                        <label for="project-name-input" class="sr-only">Project Name</label>
+                        <input
+                          id="project-name-input"
+                          class="form-control sm-6"
+                          type="text"
+                          v-model="projectname"
+                          aria-label="Project name" />
                       </span>
 
                       <span v-else>{{ project.name }}</span>
@@ -96,7 +102,15 @@
                   <p class="crm-info">
                     <b>About</b>:
                     <span v-if="aboutEdit">
-                      <textarea rows="4" cols="30" v-model="projectabout" v-text="project.about" class="form-control">
+                      <label for="project-about-textarea" class="sr-only">Project About</label>
+                      <textarea
+                        id="project-about-textarea"
+                        rows="4"
+                        cols="30"
+                        v-model="projectabout"
+                        v-text="project.about"
+                        class="form-control"
+                        aria-label="Project about">
                       </textarea>
                     </span>
 
@@ -189,7 +203,8 @@
                     :project-slug="project.slug"
                     :project-meetings="project.meetings"
                     :not-authorize="project.ownerNotAuthorized"
-                    :members="project.members"></Meeting>
+                    :members="project.members"
+                    :project-owner="user"></Meeting>
                 </div>
               </div>
             </div>

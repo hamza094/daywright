@@ -6,88 +6,183 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
-use function Safe\json_encode;
-
-class VerifyZoomWebhook
+final class VerifyZoomWebhook
 {
+    private const string ENDPOINT_VALIDATION_EVENT = 'endpoint.url_validation';
+
     private const string REQUEST_ID_HEADER = 'x-zm-request-id';
 
     private const string SIGNATURE_HEADER = 'x-zm-signature';
 
     private const string TIMESTAMP_HEADER = 'x-zm-request-timestamp';
 
-    /**
-     * Handle an incoming request.
-     *
-     * @param  Closure(Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
-     */
+    private const int TIMESTAMP_TOLERANCE_SECONDS = 300;
+
     public function handle(Request $request, Closure $next): Response
     {
-        $zoomRequestId = $this->getZoomRequestId($request);
+        $requestId = $this->requiredHeader(
+            $request,
+            self::REQUEST_ID_HEADER,
+        );
 
-        $providedSignature = $request->header(self::SIGNATURE_HEADER);
+        $signature = $this->requiredHeader(
+            $request,
+            self::SIGNATURE_HEADER,
+        );
 
-        $zoomTimestamp = $request->header(self::TIMESTAMP_HEADER);
+        $timestamp = $this->requiredHeader(
+            $request,
+            self::TIMESTAMP_HEADER,
+        );
 
-        if (! $this->isRequestValid($providedSignature, $zoomTimestamp, $request)) {
-
-            abort(Response::HTTP_FORBIDDEN, 'The webhook signature was invalid.');
+        if (
+            ! $this->hasValidTimestamp($timestamp)
+            || ! $this->hasValidSignature($request, $timestamp, $signature)
+        ) {
+            abort(
+                Response::HTTP_FORBIDDEN,
+                'The webhook signature was invalid.',
+            );
         }
 
-        $request->headers->set((string) config('idempotency.header'), $zoomRequestId);
+        // Handle endpoint.url_validation before replay-cache logic
+        if ($request->input('event') === self::ENDPOINT_VALIDATION_EVENT) {
+            return response()->json(
+                $this->endpointValidationPayload($request),
+            );
+        }
+
+        // Replay protection only for real event webhooks
+        $replayKey = $this->computeReplayKey($signature, $timestamp, $request->getContent());
+
+        if (! $this->reserveReplayKey($replayKey)) {
+            return response()->json(['message' => 'Webhook accepted'], Response::HTTP_ACCEPTED);
+        }
+
+        $request->headers->set(
+            $this->idempotencyHeader(),
+            $requestId,
+        );
 
         return $next($request);
     }
 
-    public function isRequestValid(?string $providedSignature, ?string $timestamp, Request $request): bool
+    private function requiredHeader(Request $request, string $name): string
     {
-        if ($providedSignature === null || $providedSignature === '') {
+        $value = $request->header($name);
+
+        if (! is_string($value) || trim($value) === '') {
+            abort(
+                Response::HTTP_BAD_REQUEST,
+                "Missing required Zoom webhook header: {$name}.",
+            );
+        }
+
+        return trim($value);
+    }
+
+    private function hasValidTimestamp(string $timestamp): bool
+    {
+        if (! ctype_digit($timestamp)) {
             return false;
         }
 
-        return ! $this->isTimestampInvalid($timestamp)
-        &&
-        $this->isSignatureValid($providedSignature, $timestamp, $request);
+        return abs(time() - (int) $timestamp)
+            <= self::TIMESTAMP_TOLERANCE_SECONDS;
     }
 
-    private function getZoomRequestId(Request $request): string
-    {
-        $zoomRequestId = $request->header(self::REQUEST_ID_HEADER);
+    private function hasValidSignature(
+        Request $request,
+        string $timestamp,
+        string $providedSignature,
+    ): bool {
+        $message = "v0:{$timestamp}:{$request->getContent()}";
 
-        if (! is_string($zoomRequestId) || trim($zoomRequestId) === '') {
-            abort(Response::HTTP_BAD_REQUEST, 'Missing required Zoom webhook header: x-zm-request-id.');
+        $generatedSignature = 'v0='.hash_hmac(
+            'sha256',
+            $message,
+            $this->webhookSecret(),
+        );
+
+        return hash_equals($generatedSignature, $providedSignature);
+    }
+
+    /**
+     * @return array{plainToken: string, encryptedToken: string}
+     */
+    private function endpointValidationPayload(Request $request): array
+    {
+        $plainToken = trim((string) Arr::get(
+            $request->input('payload', []),
+            'plainToken',
+            '',
+        ));
+
+        if ($plainToken === '') {
+            abort(
+                Response::HTTP_BAD_REQUEST,
+                'Missing required Zoom webhook payload field: payload.plainToken.',
+            );
         }
 
-        return $zoomRequestId;
+        return [
+            'plainToken' => $plainToken,
+            'encryptedToken' => hash_hmac(
+                'sha256',
+                $plainToken,
+                $this->webhookSecret(),
+            ),
+        ];
     }
 
-    private function isTimestampInvalid(?string $timestamp): bool
+    private function webhookSecret(): string
     {
-        if (! is_numeric($timestamp)) {
-            return true;
+        $secret = config('services.zoom.webhook_secret');
+
+        if (! is_string($secret) || trim($secret) === '') {
+            abort(
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+                'Zoom webhook secret is not configured.',
+            );
         }
 
-        return abs(time() - (int) $timestamp) > 300;
+        return $secret;
     }
 
-    private function isSignatureValid(string $providedSignature, ?string $timestamp, Request $request): bool
+    private function idempotencyHeader(): string
     {
-        if ($timestamp === null || $timestamp === '') {
-            return false;
+        $header = config('idempotency.header');
+
+        if (! is_string($header) || trim($header) === '') {
+            abort(
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+                'Idempotency header is not configured.',
+            );
         }
 
-        $generatedSignature = $this->generateSignature($timestamp, $request);
-
-        return hash_equals($providedSignature, $generatedSignature);
+        return $header;
     }
 
-    private function generateSignature(string $timestamp, Request $request): string
+    private function computeReplayKey(string $signature, string $timestamp, string $body): string
     {
-        $message = 'v0:'.$timestamp.':'.json_encode($request->all(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        return hash('sha256', "{$signature}:{$timestamp}:{$body}");
+    }
 
-        return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
+    private function reserveReplayKey(string $replayKey): bool
+    {
+        return Cache::add(
+            $this->replayCacheKey($replayKey),
+            true,
+            self::TIMESTAMP_TOLERANCE_SECONDS,
+        );
+    }
+
+    private function replayCacheKey(string $replayKey): string
+    {
+        return "zoom_webhook_replay:{$replayKey}";
     }
 }

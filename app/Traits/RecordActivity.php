@@ -6,8 +6,10 @@ namespace App\Traits;
 
 use App\Events\ActivityLogged;
 use App\Events\DashboardActivity;
+use App\Exceptions\UnableToResolveUserIdException;
 use App\Models\Activity;
 use App\Models\Project;
+use BackedEnum;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Arr;
@@ -159,14 +161,36 @@ trait RecordActivity
             return null;
         }
 
+        $oldAttributes = $this->convertEnumsToValues($this->oldAttributes);
+        $currentAttributes = $this->convertEnumsToValues($this->getAttributes());
+
+        $changed = Arr::except($this->getChanges(), 'updated_at');
+        $changedKeys = array_keys($changed);
+
         return [
-            'before' => Arr::except(
-                array_diff($this->oldAttributes, $this->getAttributes()), 'updated_at'
-            ),
-            'after' => Arr::except(
-                $this->getChanges(), 'updated_at'
-            ),
+            'before' => Arr::only($oldAttributes, $changedKeys),
+            'after' => Arr::only($currentAttributes, $changedKeys),
         ];
+    }
+
+    /**
+     * Convert enum values to their backed values for array comparison.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function convertEnumsToValues(array $attributes): array
+    {
+        foreach ($attributes as $key => $value) {
+            if ($value instanceof BackedEnum) {
+                $attributes[$key] = $value->value;
+            } elseif ($value instanceof \Illuminate\Database\Query\Expression) {
+                // Skip Expression objects from comparison as they represent SQL expressions
+                unset($attributes[$key]);
+            }
+        }
+
+        return $attributes;
     }
 
     /**
@@ -174,7 +198,25 @@ trait RecordActivity
      */
     private function resolveUserId(): int
     {
-        return auth()->id() ?? ($this->project ?? $this)
-            ->user->id;
+        $authId = auth()->id();
+
+        if ($authId !== null) {
+            return $authId;
+        }
+
+        $relation = ($this->project ?? $this);
+
+        // Try to load the user relationship if not already loaded
+        if (! $relation->relationLoaded('user')) {
+            $relation->load('user');
+        }
+
+        $user = $relation->user;
+
+        if ($user === null) {
+            throw new UnableToResolveUserIdException;
+        }
+
+        return $user->id;
     }
 }

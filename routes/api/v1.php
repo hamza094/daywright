@@ -18,6 +18,8 @@ use App\Http\Controllers\Api\V1\Project\ActivityController;
 use App\Http\Controllers\Api\V1\Project\ConversationController;
 use App\Http\Controllers\Api\V1\Project\ExportProjectController;
 use App\Http\Controllers\Api\V1\Project\ForceDeleteProjectController;
+use App\Http\Controllers\Api\V1\Project\MeetingsController;
+use App\Http\Controllers\Api\V1\Project\MeetingZoomTokensController;
 use App\Http\Controllers\Api\V1\Project\ProjectController;
 use App\Http\Controllers\Api\V1\Project\ProjectInsightsController;
 use App\Http\Controllers\Api\V1\Project\ProjectInvitationController;
@@ -29,7 +31,6 @@ use App\Http\Controllers\Api\V1\Project\RestoreProjectController;
 use App\Http\Controllers\Api\V1\Project\ScheduledProjectMessagesController;
 use App\Http\Controllers\Api\V1\Project\StageController;
 use App\Http\Controllers\Api\V1\Project\UpdateProjectStageController;
-use App\Http\Controllers\Api\V1\Project\ZoomMeetingController;
 use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\Task\ArchiveTaskController;
 use App\Http\Controllers\Api\V1\Task\AssignTaskMembersController;
@@ -46,7 +47,6 @@ use App\Http\Controllers\Api\V1\User\InvitationUserSearchController;
 use App\Http\Controllers\Api\V1\User\UserController;
 use App\Http\Controllers\Api\V1\User\UserInvitationsController;
 use App\Http\Controllers\Api\V1\Webhooks\ZoomWebhookController;
-use App\Http\Controllers\Api\V1\Zoom\ZoomTokenController;
 use App\Http\Middleware\VerifyZoomWebhook;
 use Illuminate\Support\Facades\Route;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
@@ -78,10 +78,6 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
     Route::prefix('users/me')->name('users.me.')->group(function (): void {
         Route::get('/', CurrentUserController::class)->name('show');
-
-        Route::get('zoom-token', [ZoomTokenController::class, 'getUserToken'])->name('zoom-token');
-
-        Route::get('zoom-jwt-token', [ZoomTokenController::class, 'getJwtToken'])->name('zoom-jwt-token');
 
         Route::get('invitations', [UserInvitationsController::class, 'myInvitations'])->name('invitations.index');
 
@@ -213,8 +209,14 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 ->can('manage', 'project')
                 ->name('project.pending.invitation');
 
-            Route::apiResource('/meetings', ZoomMeetingController::class)
+            Route::apiResource('/meetings', MeetingsController::class)
+                ->middlewareFor(['index', 'show'], 'can:access,project')
+                ->middlewareFor(['store', 'update', 'destroy'], 'can:manage,project')
                 ->middlewareFor(['store', 'update'], Idempotent::using(scope: IdempotencyScope::User));
+
+            Route::post('/meetings/{meeting}/zoom-tokens', MeetingZoomTokensController::class)
+                ->can('access,project')
+                ->name('meetings.zoom-tokens');
 
         });
     });

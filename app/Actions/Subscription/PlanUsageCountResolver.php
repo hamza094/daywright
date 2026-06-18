@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Subscription;
 
+use App\Enums\Meeting\MeetingSyncStatus;
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\TaskStatus;
 use App\Models\Project;
@@ -34,7 +35,7 @@ final readonly class PlanUsageCountResolver
 
         return match ($type) {
             PlanLimitType::Projects => $user->projects()->count(),
-            PlanLimitType::CreatedMeetings => $user->meetings()->count(),
+            PlanLimitType::CreatedMeetings => $user->meetings()->where('sync_status', MeetingSyncStatus::Active)->count(),
             PlanLimitType::ApiTokens => $user->tokens()->count(),
             default => throw new InvalidArgumentException("Invalid account limit type: {$type->value}"),
         };

@@ -360,13 +360,11 @@ final class IdempotencyContractTest extends TestCase
                 ->with(
                     Mockery::on(fn (array $payload): bool => $payload['meeting_id'] === $meeting->meeting_id && $payload['duration'] === 45),
                     Mockery::type(User::class),
-                )
-                ->andReturn(response()->json(status: 204));
+                );
         });
 
         $headers = $this->idempotencyHeaders('phase-six-meeting-update');
         $payload = [
-            'meeting_id' => 18976,
             'duration' => 45,
         ];
         $route = $this->apiV1Route('meetings.update', ['project' => $this->project, 'meeting' => $meeting]);
@@ -403,13 +401,17 @@ final class IdempotencyContractTest extends TestCase
             ->assertOk();
 
         $this->postJson(route('api.v1.webhooks.meetings.update'), $payload, $headers)
-            ->assertOk();
+            ->assertAccepted()
+            ->assertExactJson(['message' => 'Webhook accepted']);
 
         $object = $payload['payload']['object'];
         $meetingId = $object['id'];
-        $updateData = collect($object)->except(['id', 'uuid'])->toArray();
+        $updateData = [
+            'topic' => $object['topic'],
+            'uuid' => $object['uuid'],
+        ];
 
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId && $job->update_data === $updateData);
+        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId && $job->data->changes === $updateData);
         Queue::assertPushed(UpdateMeetingWebhook::class, 1);
     }
 
@@ -478,20 +480,18 @@ final class IdempotencyContractTest extends TestCase
     private function zoomWebhookHeaders(array $payload, string $requestId): array
     {
         $timestamp = (string) time();
+        $rawPayload = json_encode($payload);
 
         return [
             'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $this->buildSignature($timestamp, $payload),
+            'x-zm-signature' => $this->buildSignature($timestamp, $rawPayload),
             'x-zm-request-id' => $requestId,
         ];
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function buildSignature(string $timestamp, array $payload): string
+    private function buildSignature(string $timestamp, string $payload): string
     {
-        $message = 'v0:'.$timestamp.':'.json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        $message = 'v0:'.$timestamp.':'.$payload;
 
         return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
     }

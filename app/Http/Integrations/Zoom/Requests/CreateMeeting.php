@@ -5,23 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Integrations\Zoom\Requests;
 
 use App\DataTransferObjects\Zoom\Meeting;
-use Illuminate\Support\Facades\Cache;
 use Override;
-use ReflectionClass;
 use Safe\DateTimeImmutable;
 use Saloon\Contracts\Body\HasBody;
 use Saloon\Enums\Method;
-use Saloon\Http\Request;
 use Saloon\Http\Response;
-use Saloon\RateLimitPlugin\Contracts\RateLimitStore;
 use Saloon\RateLimitPlugin\Limit;
-use Saloon\RateLimitPlugin\Stores\LaravelCacheStore;
-use Saloon\RateLimitPlugin\Traits\HasRateLimits;
 use Saloon\Traits\Body\HasJsonBody;
 
-class CreateMeeting extends Request implements HasBody
+class CreateMeeting extends ZoomRateLimitedRequest implements HasBody
 {
-    use HasJsonBody,HasRateLimits;
+    use HasJsonBody;
 
     /**
      * The HTTP method of the request
@@ -33,7 +27,10 @@ class CreateMeeting extends Request implements HasBody
      */
     public function __construct(
         private readonly array $validated,
-    ) {}
+        string $limiterKey,
+    ) {
+        parent::__construct($limiterKey);
+    }
 
     /**
      * The endpoint for the request
@@ -76,18 +73,5 @@ class CreateMeeting extends Request implements HasBody
             Limit::allow(requests: 2)->everySeconds(seconds: 1),
             Limit::allow(2000)->everyDay(),
         ];
-    }
-
-    #[Override]
-    protected function resolveRateLimitStore(): RateLimitStore
-    {
-        return new LaravelCacheStore(Cache::store(config('cache.default')));
-    }
-
-    protected function getLimiterPrefix(): ?string
-    {
-        return (new ReflectionClass($this))->getShortName()
-              .':user_'
-            .auth()->id();
     }
 }

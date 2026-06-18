@@ -11,10 +11,15 @@ trait CreatesZoomUsers
 {
     protected function createZoomUser(DateTimeInterface $expireAt): User
     {
-        return User::factory()->create([
-            'zoom_access_token' => 'access-token-here',
-            'zoom_refresh_token' => 'refresh-token-here',
-            'zoom_expires_at' => $expireAt,
+        $user = User::factory()->create();
+
+        $user->oauthConnections()->create([
+            'provider' => 'zoom',
+            'access_token' => 'access-token-here',
+            'refresh_token' => 'refresh-token-here',
+            'expires_at' => $expireAt,
         ]);
+
+        return $user;
     }
 }

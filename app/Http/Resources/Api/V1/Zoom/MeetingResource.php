@@ -8,7 +8,6 @@ use App\Http\Resources\Api\V1\ApiResourceLink;
 use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Carbon\Carbon;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Str;
 use Override;
 
 /**
@@ -31,8 +30,8 @@ class MeetingResource extends JsonResource
         return [
             'id' => $this->id,
             'meeting_id' => $this->meeting_id,
-            'topic' => Str::headline($this->topic),
-            'agenda' => Str::ucfirst($this->agenda),
+            'topic' => $this->topic,
+            'agenda' => $this->agenda,
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
             'owner' => $this->whenLoaded('user', fn (): UserSummaryResource => new UserSummaryResource($this->user)),
@@ -53,9 +52,10 @@ class MeetingResource extends JsonResource
                 $canAccessProject,
                 $this->password,
             ),
-            'status' => Str::ucfirst($this->status),
+            'status' => $this->status,
             'timezone' => $this->timezone,
             'join_before_host' => (bool) $this->join_before_host,
+            'sync_status' => $this->sync_status->value,
             'links' => $this->whenLoaded('project', fn (): array => [
                 'self' => ApiResourceLink::meeting($this->resource),
             ]),

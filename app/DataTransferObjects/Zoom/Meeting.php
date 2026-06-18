@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Zoom;
 
+use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
 use Carbon\Carbon;
 use Throwable;
+
+use function Safe\preg_match;
 
 final readonly class Meeting
 {
@@ -30,55 +33,129 @@ final readonly class Meeting
     public static function fromResponse(array $response): static
     {
         return new self(
-            meeting_id: self::intValue($response, 'id'),
-            topic: self::stringValue($response, 'topic'),
-            agenda: self::stringValue($response, 'agenda'),
-            created_at: self::parseUtcDateTime($response['created_at'] ?? null),
-            duration: self::intValue($response, 'duration'),
-            start_time: self::parseUtcDateTime($response['start_time'] ?? null),
-            start_url: self::stringValue($response, 'start_url'),
-            join_url: self::stringValue($response, 'join_url'),
-            status: self::stringValue($response, 'status'),
-            timezone: self::stringValue($response, 'timezone'),
-            password: self::stringValue($response, 'password'),
-            join_before_host: self::boolValue($response, 'join_before_host'),
+            meeting_id: self::requiredInt($response, 'id'),
+            topic: self::requiredString($response, 'topic'),
+            agenda: self::optionalString($response, 'agenda'),
+            created_at: self::requiredUtcDateTime($response, 'created_at'),
+            duration: self::requiredInt($response, 'duration'),
+            start_time: self::requiredUtcDateTime($response, 'start_time'),
+            start_url: self::requiredString($response, 'start_url'),
+            join_url: self::requiredString($response, 'join_url'),
+            status: self::optionalString($response, 'status'),
+            timezone: self::requiredString($response, 'timezone'),
+            password: self::optionalString($response, 'password'),
+            join_before_host: self::optionalBool($response, 'join_before_host'),
         );
     }
 
     /**
      * @param  array<string, mixed>  $response
      */
-    private static function intValue(array $response, string $key): int
+    private static function requiredInt(array $response, string $key): int
     {
-        return isset($response[$key]) ? (int) $response[$key] : 0;
+        $value = $response[$key] ?? null;
+
+        if (is_int($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && preg_match('/^-?\d+$/', $value) === 1) {
+            return (int) $value;
+        }
+
+        self::throwMalformedResponse($key);
     }
 
     /**
      * @param  array<string, mixed>  $response
      */
-    private static function stringValue(array $response, string $key): string
+    private static function requiredString(array $response, string $key): string
     {
-        return (string) ($response[$key] ?? '');
+        $value = $response[$key] ?? null;
+
+        if (! is_string($value)) {
+            self::throwMalformedResponse($key);
+        }
+
+        return $value;
     }
 
     /**
      * @param  array<string, mixed>  $response
      */
-    private static function boolValue(array $response, string $key): bool
+    private static function optionalString(array $response, string $key): string
     {
-        return isset($response[$key]) && (bool) $response[$key];
-    }
+        $value = $response[$key] ?? null;
 
-    private static function parseUtcDateTime(mixed $value): string
-    {
-        if (! is_string($value) || $value === '') {
+        if ($value === null) {
             return '';
+        }
+
+        if (! is_string($value)) {
+            self::throwMalformedResponse($key);
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    private static function optionalBool(array $response, string $key): bool
+    {
+        // Check top-level first
+        if (array_key_exists($key, $response)) {
+            return self::normalizeBool($response[$key], $key);
+        }
+
+        // Check nested in settings
+        if (isset($response['settings'][$key])) {
+            return self::normalizeBool($response['settings'][$key], $key);
+        }
+
+        // Default to false if not found
+        return false;
+    }
+
+    /**
+     * Normalize boolean values from API responses.
+     * Handles booleans as strings ('true', 'false', '1', '0').
+     */
+    private static function normalizeBool(mixed $value, string $key): bool
+    {
+        if (is_bool($value)) {
+            $result = $value;
+        } elseif (is_string($value)) {
+            $result = in_array(mb_strtolower($value), ['true', '1', 'yes'], true);
+        } elseif (is_int($value)) {
+            $result = $value === 1;
+        } else {
+            self::throwMalformedResponse($key);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     */
+    private static function requiredUtcDateTime(array $response, string $key): string
+    {
+        $value = $response[$key] ?? null;
+
+        if (! is_string($value) || $value === '') {
+            self::throwMalformedResponse($key);
         }
 
         try {
             return Carbon::parse($value)->utc()->toDateTimeString();
         } catch (Throwable) {
-            return '';
+            self::throwMalformedResponse($key);
         }
+    }
+
+    private static function throwMalformedResponse(string $key): never
+    {
+        throw new ZoomExternalFailureException("Zoom meeting response is missing or invalid for [{$key}].");
     }
 }

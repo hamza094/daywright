@@ -11,6 +11,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ZoomException extends ApiException
 {
+    /**
+     * @var array<string, mixed>
+     */
+    private array $context = [];
+
     public function status(): int
     {
         return Response::HTTP_SERVICE_UNAVAILABLE;
@@ -35,7 +40,26 @@ class ZoomException extends ApiException
     {
         return [
             'provider' => 'zoom',
+            ...$this->context,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    public function withContext(array $context): static
+    {
+        $this->context = [...$this->context, ...$context];
+
+        return $this;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function context(): array
+    {
+        return $this->context;
     }
 
     #[Override]

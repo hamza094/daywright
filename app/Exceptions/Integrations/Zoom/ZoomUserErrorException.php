@@ -10,6 +10,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ZoomUserErrorException extends ZoomException implements ShouldntReport
 {
+    private const string USER_NOT_CONNECTED = 'User is not connected to Zoom.';
+
+    private const string RECONNECT_REQUIRED = 'Zoom account connection needs to be re-authorized.';
+
     #[Override]
     public function status(): int
     {
@@ -19,6 +23,10 @@ class ZoomUserErrorException extends ZoomException implements ShouldntReport
     #[Override]
     public function errorCode(): string
     {
+        if (trim($this->getMessage()) === self::RECONNECT_REQUIRED) {
+            return 'zoom_reconnect_required';
+        }
+
         return 'zoom_error';
     }
 
@@ -27,7 +35,7 @@ class ZoomUserErrorException extends ZoomException implements ShouldntReport
     {
         $message = trim($this->getMessage());
 
-        if ($message === 'User is not connected to Zoom.') {
+        if (in_array($message, [self::USER_NOT_CONNECTED, self::RECONNECT_REQUIRED], true)) {
             return $message;
         }
 

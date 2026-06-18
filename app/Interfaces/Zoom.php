@@ -26,9 +26,9 @@ interface Zoom
     /**
      * @param  array<string, mixed>  $validated
      */
-    public function updateMeeting(array $validated, User $user): mixed;
+    public function updateMeeting(array $validated, User $user): void;
 
-    public function deleteMeeting(int $meetingId, User $user): mixed;
+    public function deleteMeeting(int $meetingId, User $user): void;
 
     public function getZakToken(User $user): string;
 }

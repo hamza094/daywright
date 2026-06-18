@@ -30,6 +30,7 @@
 
               <FormGroup id="agenda" label="Agenda:" :error="errors.agenda">
                 <textarea
+                  id="agenda-input"
                   name="agenda"
                   class="form-control"
                   rows="3"
@@ -40,7 +41,7 @@
               <FormGroup id="password" label="Password:" :error="errors.password">
                 <input
                   type="password"
-                  id="password"
+                  id="password-input"
                   class="form-control"
                   name="password"
                   v-model="form.password"
@@ -81,7 +82,12 @@
               </FormGroup>
 
               <FormGroup id="start_time" label="Start Time:" :error="errors.start_time">
-                <datetime type="datetime" v-model="form.start_time" value-zone="UTC" :zone="displayTimezone"></datetime>
+                <datetime
+                  id="start_time-input"
+                  type="datetime"
+                  v-model="form.start_time"
+                  value-zone="UTC"
+                  :zone="displayTimezone"></datetime>
               </FormGroup>
             </div>
 
@@ -122,7 +128,7 @@ export default {
         join_before_host: '',
         duration: '',
         start_time: '',
-        timezone: 'UTC',
+        timezone: '',
       },
       errors: {},
       loading: false,
@@ -192,6 +198,7 @@ export default {
     },
 
     openMeetingModal() {
+      this.form.timezone = getDisplayTimezone();
       this.$modal.show('MeetingModal');
     },
 

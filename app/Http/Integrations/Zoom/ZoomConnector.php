@@ -17,6 +17,7 @@ use Saloon\Http\Request;
 use Saloon\Http\Response;
 use Saloon\Traits\OAuth2\AuthorizationCodeGrant;
 use Saloon\Traits\Plugins\AcceptsJson;
+use Saloon\Traits\Plugins\HasTimeout;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Throwable;
 
@@ -24,6 +25,13 @@ class ZoomConnector extends Connector
 {
     use AcceptsJson;
     use AuthorizationCodeGrant;
+    use HasTimeout;
+
+    private const string DEFAULT_ERROR_MESSAGE = 'Zoom request failed.';
+
+    protected int $connectTimeout = 5;
+
+    protected int $requestTimeout = 30;
 
     /**
      * The Base URL of the API.
@@ -39,30 +47,32 @@ class ZoomConnector extends Connector
         Response $response, ?Throwable $senderException
     ): ?Throwable {
         $status = $response->status();
-        $message = $response->body();
+        $message = $this->sanitizeExceptionMessage($response->body());
+        $context = $this->exceptionContext($response);
 
         return match (true) {
-            $status === HttpResponse::HTTP_FORBIDDEN => new UnauthorizedException(
+            $status === HttpResponse::HTTP_UNAUTHORIZED,
+            $status === HttpResponse::HTTP_FORBIDDEN => (new UnauthorizedException(
                 message: $message,
                 code: $status,
                 previous: $senderException,
-            ),
-            $status === HttpResponse::HTTP_NOT_FOUND => new NotFoundException(
+            ))->withContext($context),
+            $status === HttpResponse::HTTP_NOT_FOUND => (new NotFoundException(
                 message: $message,
                 code: $status,
                 previous: $senderException,
-            ),
+            ))->withContext($context),
             $status === HttpResponse::HTTP_TOO_MANY_REQUESTS,
-            $status >= HttpResponse::HTTP_INTERNAL_SERVER_ERROR => new ZoomExternalFailureException(
+            $status >= HttpResponse::HTTP_INTERNAL_SERVER_ERROR => (new ZoomExternalFailureException(
                 message: $message,
                 code: $status,
                 previous: $senderException,
-            ),
-            default => new ZoomUserErrorException(
+            ))->withContext($context),
+            default => (new ZoomUserErrorException(
                 message: $message,
                 code: $status,
                 previous: $senderException,
-            ),
+            ))->withContext($context),
         };
     }
 
@@ -114,5 +124,46 @@ class ZoomConnector extends Connector
         string $refreshToken
     ): Request {
         return new GetRefreshTokenRequest($oauthConfig, $refreshToken);
+    }
+
+    private function sanitizeExceptionMessage(string $body): string
+    {
+        // @phpstan-ignore theCodingMachineSafe.function
+        $decoded = json_decode($body, true);
+
+        if (! is_array($decoded)) {
+            return self::DEFAULT_ERROR_MESSAGE;
+        }
+
+        return match (true) {
+            isset($decoded['message']) => self::DEFAULT_ERROR_MESSAGE,
+            isset($decoded['error']) => self::DEFAULT_ERROR_MESSAGE,
+            default => self::DEFAULT_ERROR_MESSAGE,
+        };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function exceptionContext(Response $response): array
+    {
+        $retryAfter = $response->header('Retry-After');
+
+        $context = [];
+
+        if (is_string($retryAfter) && is_numeric($retryAfter)) {
+            $context['retry_after_seconds'] = (int) $retryAfter;
+        }
+
+        // Include OAuth error field if present for token refresh error handling
+        $body = $response->body();
+        // @phpstan-ignore theCodingMachineSafe.function
+        $decoded = json_decode($body, true);
+
+        if (is_array($decoded) && isset($decoded['error']) && is_string($decoded['error'])) {
+            $context['error'] = $decoded['error'];
+        }
+
+        return $context;
     }
 }

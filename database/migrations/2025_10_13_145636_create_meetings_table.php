@@ -17,13 +17,13 @@ return new class extends Migration
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id')->index('meetings_user_id_foreign');
             $table->unsignedBigInteger('project_id')->index('meetings_project_id_foreign');
-            $table->bigInteger('meeting_id');
+            $table->unsignedBigInteger('meeting_id')->nullable()->index();
             $table->string('topic')->nullable();
             $table->string('agenda')->nullable();
             $table->integer('duration');
             $table->string('password');
-            $table->string('join_url', 2000);
-            $table->string('start_url', 2000);
+            $table->string('join_url', 2000)->nullable();
+            $table->string('start_url', 2000)->nullable();
             $table->dateTime('start_time');
             $table->string('status')->nullable();
             $table->boolean('join_before_host');

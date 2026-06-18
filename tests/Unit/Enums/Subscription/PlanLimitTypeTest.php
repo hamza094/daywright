@@ -68,7 +68,7 @@ class PlanLimitTypeTest extends TestCase
                     'message_subject' => 'created meetings',
                     'display_label' => 'Created meetings',
                     'loaded_count_attribute' => 'meetings_count',
-                    'count_loader_keys' => ['meetings'],
+                    'count_loader_keys' => ['meetings as meetings_count'],
                     'scope' => 'account',
                     'requires_project' => false,
                 ],
@@ -131,7 +131,7 @@ class PlanLimitTypeTest extends TestCase
     {
         $this->assertSame([
             'projects',
-            'meetings',
+            'meetings as meetings_count',
             'tokens',
         ], $this->normalizeCountLoaderKeys(PlanLimitType::accountCountLoaders()));
 

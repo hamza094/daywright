@@ -40,9 +40,17 @@
         </div>
 
         <ul class="list-unstyled mb-0">
-          <li v-for="meeting in meetings.data" :key="meeting.id">
-            <article class="card mt-3 card-hover" @click.prevent="getMeeting(meeting.id)">
+          <li v-for="meeting in filteredMeetings.data" :key="meeting.id">
+            <article
+              class="card mt-3 card-hover"
+              :class="{ 'meeting-ended': meeting.status.toLowerCase() === 'ended' }"
+              @click.prevent="getMeeting(meeting.id)">
               <div :class="['ribbon', ribbonColor(meeting.status)]">{{ meeting.status }}</div>
+              <div
+                v-if="meeting.sync_status && meeting.sync_status !== 'active'"
+                :class="['sync-status-badge', getSyncStatusBadge(meeting.sync_status).color]">
+                {{ getSyncStatusBadge(meeting.sync_status).label }}
+              </div>
               <div class="card-stamp">
                 <div class="card-stamp-icon bg-yellow">
                   <!-- Download SVG icon from http://tabler-icons.io/i/bell -->
@@ -91,7 +99,7 @@
         </ul>
       </div>
     </section>
-    <pagination :data="meetings" @pagination-change-page="getResults"></pagination>
+    <pagination :data="filteredMeetings" @pagination-change-page="getResults"></pagination>
     <MeetingModal :project-slug="projectSlug"></MeetingModal>
     <ViewModal :project-slug="projectSlug" :members="members" :not-authorize="notAuthorize"></ViewModal>
   </div>
@@ -102,7 +110,12 @@ import MeetingModal from './MeetingModal.vue';
 import ViewModal from './ViewModal.vue';
 import { mapState, mapActions } from 'vuex';
 import { fetchTokens, setupAndJoinMeeting } from '../../../utils/zoomUtils';
-import { shouldShowStartButton, shouldShowJoinButton } from '../../../utils/meetingUtils';
+import {
+  shouldShowStartButton,
+  shouldShowJoinButton,
+  getSyncStatusBadge,
+  canViewMeeting,
+} from '../../../utils/meetingUtils';
 import { getObjectData } from '../../../utils/apiResponse.js';
 
 export default {
@@ -116,6 +129,7 @@ export default {
     projectMeetings: { type: Object, default: () => ({}) },
     notAuthorize: { type: Boolean, default: false },
     members: { type: Array, default: () => [] },
+    projectOwner: { type: Object, default: null },
   },
   data() {
     return {
@@ -129,6 +143,37 @@ export default {
   },
   computed: {
     ...mapState('meeting', ['meetings', 'message']),
+    // Filter meetings based on user role and sync_status
+    filteredMeetings() {
+      if (!this.meetings.data || !Array.isArray(this.meetings.data)) {
+        return { ...this.meetings, data: [] };
+      }
+
+      const isOwner = this.auth && this.projectOwner && this.auth.id === this.projectOwner.id;
+
+      const filteredData = this.meetings.data.filter((meeting) => canViewMeeting(meeting, isOwner));
+
+      // Recalculate pagination metadata based on filtered data
+      const perPage = this.meetings.meta?.per_page || 10;
+      const currentFilteredTotal = filteredData.length;
+      const lastPage = Math.max(1, Math.ceil(currentFilteredTotal / perPage));
+      const currentPage = this.meetings.meta?.current_page || 1;
+      const adjustedCurrentPage = Math.min(currentPage, lastPage);
+
+      return {
+        ...this.meetings,
+        data: filteredData,
+        meta: {
+          ...this.meetings.meta,
+          current_page: adjustedCurrentPage,
+          from: currentFilteredTotal > 0 ? (adjustedCurrentPage - 1) * perPage + 1 : 0,
+          last_page: lastPage,
+          per_page: perPage,
+          to: Math.min(adjustedCurrentPage * perPage, currentFilteredTotal),
+          total: currentFilteredTotal,
+        },
+      };
+    },
     // Listen for meeting status updates via Echo
     meetingStatusListener() {
       if (this.activeMeetingId) {
@@ -185,6 +230,10 @@ export default {
       return shouldShowJoinButton(meeting, auth, members);
     },
 
+    getSyncStatusBadge(syncStatus) {
+      return getSyncStatusBadge(syncStatus);
+    },
+
     // Open the meeting details modal
     getMeeting(meetingId) {
       this.$bus.$emit('view-meeting-modal', meetingId);
@@ -232,18 +281,10 @@ export default {
         this.activeMeetingId = meeting.id;
       }
       try {
-        const role = this.auth.id === meeting.owner.id ? 1 : 0;
+        const tokenResponse = await fetchTokens(this.projectSlug, meeting.id, action, this.$vToastify);
 
-        const [zakTokenResponse, jwtTokenResponse] = await fetchTokens(
-          action,
-          role,
-          meeting.meeting_id,
-          this.$vToastify,
-        );
-
-        const zak_token = zakTokenResponse ? zakTokenResponse.zak_token : null;
-
-        const jwt_token = jwtTokenResponse.jwt_token;
+        const jwt_token = tokenResponse.jwt_token;
+        const zak_token = tokenResponse.zak_token;
 
         await setupAndJoinMeeting(action, meeting, jwt_token, zak_token, this.auth);
 
@@ -270,3 +311,30 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.sync-status-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  text-transform: uppercase;
+  z-index: 1;
+}
+
+.meeting-ended {
+  opacity: 0.6;
+}
+
+.meeting-ended .card-body {
+  color: #6c757d;
+}
+
+.meeting-ended .card-footer button {
+  pointer-events: none;
+}
+</style>

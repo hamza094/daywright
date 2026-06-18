@@ -30,7 +30,7 @@ class ZoomMeetingUpdateTest extends TestCase
 
         $meetingData = $this->meetingData();
 
-        (new ZoomService)->updateMeeting($meetingData, $user);
+        app(ZoomService::class)->updateMeeting($meetingData, $user);
 
         Saloon::assertNotSent(GetRefreshTokenRequest::class);
 

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Exceptions\Subscription\SubscriptionRequiredException;
 use App\Exceptions\Support\ApiErrorFormatter;
+use App\Services\Zoom\ZoomLogContext;
 use Aws\S3\Exception\S3Exception;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -32,6 +34,10 @@ class Handler extends ExceptionHandler
     private const string EXCEPTION_METRICS_CHANNEL = 'exception_metrics';
 
     private const string EXCEPTION_METRIC_EVENT = 'api_exception_metric';
+
+    private const string ZOOM_CHANNEL = 'zoom';
+
+    private const string ZOOM_REQUEST_FAILED_EVENT = 'zoom_request_failed';
 
     /**
      * A list of the exception types that are not reported.
@@ -60,6 +66,10 @@ class Handler extends ExceptionHandler
     #[Override]
     public function report(Throwable $e): void
     {
+        if ($e instanceof ZoomException) {
+            $this->recordZoomException($e);
+        }
+
         if ($this->shouldRecordExceptionMetric($e)) {
             if ($e instanceof ApiException) {
                 $this->recordExceptionMetric($e);
@@ -209,5 +219,36 @@ class Handler extends ExceptionHandler
         }
 
         Log::channel(self::EXCEPTION_METRICS_CHANNEL)->info(self::EXCEPTION_METRIC_EVENT, $context);
+    }
+
+    private function recordZoomException(ZoomException $e): void
+    {
+        /** @var mixed $request */
+        $request = request();
+
+        $context = $request instanceof Request
+            ? ZoomLogContext::forRequest($request, $e)
+            : ['provider' => 'zoom'];
+
+        $context['exception'] = $e::class;
+        $context['code'] = $e->errorCode();
+        $context['status'] = $e->status();
+        $context['message'] = $e->publicMessage();
+
+        Log::channel(self::ZOOM_CHANNEL)->{$this->zoomExceptionLogLevel($e)}(
+            self::ZOOM_REQUEST_FAILED_EVENT,
+            $context,
+        );
+    }
+
+    private function zoomExceptionLogLevel(ZoomException $e): string
+    {
+        if ($e->getCode() === Response::HTTP_TOO_MANY_REQUESTS) {
+            return 'warning';
+        }
+
+        return $e->status() >= Response::HTTP_INTERNAL_SERVER_ERROR
+            ? 'error'
+            : 'warning';
     }
 }

@@ -5,19 +5,19 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\Webhooks\Zoom;
 
 use App\Jobs\Webhooks\Zoom\DeleteMeetingWebhook;
-use App\Jobs\Webhooks\Zoom\MeetingEndsWebhook;
+use App\Jobs\Webhooks\Zoom\MeetingEndedWebhook;
 use App\Jobs\Webhooks\Zoom\StartMeetingWebhook;
 use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
 use App\Models\Meeting;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Override;
+use Tests\Support\Zoom\ZoomWebhookSigner;
 use Tests\TestCase;
-
-use function Safe\json_encode;
 
 class ZoomWebhookTest extends TestCase
 {
@@ -28,6 +28,9 @@ class ZoomWebhookTest extends TestCase
     {
         parent::setUp();
 
+        // Clear replay and idempotency cache between tests
+        Cache::flush();
+
         config(['services.zoom.webhook_secret' => 'secret']);
 
         $this->travelTo(Carbon::parse('2024-06-24 11:49:48'));
@@ -36,7 +39,7 @@ class ZoomWebhookTest extends TestCase
             UpdateMeetingWebhook::class,
             DeleteMeetingWebhook::class,
             StartMeetingWebhook::class,
-            MeetingEndsWebhook::class,
+            MeetingEndedWebhook::class,
         ]);
 
     }
@@ -53,18 +56,25 @@ class ZoomWebhookTest extends TestCase
             path: base_path('tests/Fixtures/Webhooks/Zoom/meeting_update.json'),
             flags: JSON_THROW_ON_ERROR,
         );
+        $postBody['payload']['object']['host_id'] = 'provider-host-id';
+        $postBody['payload']['object']['settings'] = ['waiting_room' => true];
 
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
-        $updateData = collect($object)->except(['id', 'uuid'])->toArray();
+        $updateData = [
+            'topic' => $object['topic'],
+            'uuid' => $object['uuid'],
+        ];
 
         $requestId = 'zoom-update-'.Str::uuid();
 
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, $this->zoomWebhookHeaders($postBody, $requestId))
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId && $job->update_data === $updateData);
+        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === (int) $meetingId
+            && $job->data->changes === $updateData
+            && $job->data->requestId === $requestId);
     }
 
     /** @test */
@@ -82,11 +92,12 @@ class ZoomWebhookTest extends TestCase
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
 
-        $this->postJson(route('api.v1.webhooks.meetings.delete'), $postBody, $this->zoomWebhookHeaders($postBody, 'zoom-delete-813'))
+        $this->postJson(route('api.v1.webhooks.meetings.delete'), $postBody, ZoomWebhookSigner::signPayload($postBody, 'zoom-delete-813'))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId);
+        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId
+            && $job->data->requestId === 'zoom-delete-813');
     }
 
     /** @test */
@@ -105,11 +116,13 @@ class ZoomWebhookTest extends TestCase
         $meetingId = $object['id'];
         $startTime = $object['start_time'] ?? null;
 
-        $this->postJson(route('api.v1.webhooks.meetings.start'), $postBody, $this->zoomWebhookHeaders($postBody, 'zoom-start-813'))
+        $this->postJson(route('api.v1.webhooks.meetings.start'), $postBody, ZoomWebhookSigner::signPayload($postBody, 'zoom-start-813'))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId && $job->start_time === $startTime);
+        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId
+            && $job->data->startTime === $startTime
+            && $job->data->requestId === 'zoom-start-813');
     }
 
     /** @test */
@@ -129,11 +142,14 @@ class ZoomWebhookTest extends TestCase
         $startTime = $object['start_time'] ?? null;
         $endTime = $object['end_time'] ?? null;
 
-        $this->postJson(route('api.v1.webhooks.meetings.ended'), $postBody, $this->zoomWebhookHeaders($postBody, 'zoom-ended-813'))
+        $this->postJson(route('api.v1.webhooks.meetings.ended'), $postBody, ZoomWebhookSigner::signPayload($postBody, 'zoom-ended-813'))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(MeetingEndsWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId && $job->start_time === $startTime && $job->end_time === $endTime);
+        Queue::assertPushed(MeetingEndedWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId
+            && $job->data->startTime === $startTime
+            && $job->data->endTime === $endTime
+            && $job->data->requestId === 'zoom-ended-813');
 
     }
 
@@ -147,28 +163,90 @@ class ZoomWebhookTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, string>
-     */
-    private function zoomWebhookHeaders(array $payload, string $requestId): array
+    /** @test */
+    public function endpoint_validation_is_handled_before_webhook_validation_and_dispatch(): void
     {
-        $timestamp = (string) time();
-
-        return [
-            'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $this->buildSignature($timestamp, $payload),
-            'x-zm-request-id' => $requestId,
+        $plainToken = 'zoom-endpoint-validation-token';
+        $payload = [
+            'event' => 'endpoint.url_validation',
+            'payload' => [
+                'plainToken' => $plainToken,
+            ],
         ];
+
+        $this->postJson(
+            route('api.v1.webhooks.meetings.update'),
+            $payload,
+            ZoomWebhookSigner::signPayload($payload, 'zoom-endpoint-validation')
+        )
+            ->assertOk()
+            ->assertExactJson([
+                'plainToken' => $plainToken,
+                'encryptedToken' => hash_hmac('sha256', $plainToken, 'secret'),
+            ]);
+
+        Queue::assertNothingPushed();
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function buildSignature(string $timestamp, array $payload): string
+    /** @test */
+    public function duplicate_webhook_request_with_same_request_id_does_not_dispatch_job_twice(): void
     {
-        $message = 'v0:'.$timestamp.':'.json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        Meeting::factory()->create([
+            'meeting_id' => 813,
+            'topic' => 'shining in the sky',
+        ]);
 
-        return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
+        $postBody = File::json(
+            path: base_path('tests/Fixtures/Webhooks/Zoom/meeting_update.json'),
+            flags: JSON_THROW_ON_ERROR,
+        );
+        $postBody['payload']['object']['host_id'] = 'provider-host-id';
+        $postBody['payload']['object']['settings'] = ['waiting_room' => true];
+
+        $requestId = 'zoom-update-duplicate';
+
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId))
+            ->assertOk()
+            ->assertExactJson(['message' => 'Webhook accepted.']);
+
+        Queue::assertPushed(UpdateMeetingWebhook::class, 1);
+
+        // Send the same request again with the same request ID
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId))
+            ->assertStatus(202)
+            ->assertExactJson(['message' => 'Webhook accepted']);
+
+        // Job should still only be pushed once due to idempotency
+        Queue::assertPushed(UpdateMeetingWebhook::class, 1);
+    }
+
+    /** @test */
+    public function different_request_id_with_same_body_is_treated_as_replay(): void
+    {
+        Meeting::factory()->create([
+            'meeting_id' => 813,
+            'topic' => 'shining in the sky',
+        ]);
+
+        $postBody = File::json(
+            path: base_path('tests/Fixtures/Webhooks/Zoom/meeting_update.json'),
+            flags: JSON_THROW_ON_ERROR,
+        );
+        $postBody['payload']['object']['host_id'] = 'provider-host-id';
+        $postBody['payload']['object']['settings'] = ['waiting_room' => true];
+
+        $requestId1 = 'zoom-update-1';
+        $requestId2 = 'zoom-update-2';
+
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId1))
+            ->assertOk();
+
+        // Same body/timestamp/signature with different request ID is treated as replay
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId2))
+            ->assertStatus(202)
+            ->assertExactJson(['message' => 'Webhook accepted']);
+
+        // Only one job should be pushed due to replay protection
+        Queue::assertPushed(UpdateMeetingWebhook::class, 1);
     }
 }
