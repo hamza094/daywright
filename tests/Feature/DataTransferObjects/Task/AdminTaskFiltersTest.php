@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Feature\Unit\DataTransferObjects\Task;
+namespace Tests\Feature\DataTransferObjects\Task;
 
 use App\DataTransferObjects\Task\AdminTaskFilters;
 use PHPUnit\Framework\Attributes\Test;

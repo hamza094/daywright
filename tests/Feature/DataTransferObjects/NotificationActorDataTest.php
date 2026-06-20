@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Unit\DataTransferObjects\Notification;
+namespace Tests\Feature\DataTransferObjects\Notification;
 
 use App\DataTransferObjects\Notification\NotificationActorData;
 use App\Models\User;

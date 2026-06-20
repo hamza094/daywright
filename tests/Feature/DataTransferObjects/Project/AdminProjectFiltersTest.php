@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Feature\Unit\DataTransferObjects\Project;
+namespace Tests\Feature\DataTransferObjects\Project;
 
 use App\DataTransferObjects\Project\AdminProjectFilters;
 use PHPUnit\Framework\Attributes\Test;

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Feature\Unit\DataTransferObjects\Auth;
+namespace Tests\Feature\DataTransferObjects\Auth;
 
 use App\DataTransferObjects\Auth\RegisterUserData;
 use PHPUnit\Framework\Attributes\Test;
