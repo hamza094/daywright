@@ -21,6 +21,30 @@ Assumptions:
   - `POST /projects/{project}/conversations`
 - Add idempotency to `DELETE /users/me/subscription`.
 
+## Phase 0: Test Infrastructure Enhancement
+
+- Enhance `SubscriptionServiceFake` to simulate realistic state and edge cases:
+  - Track subscription state per user (active, trialing, past_due, paused, canceled)
+  - Validate duplicate subscriptions and throw appropriate exceptions
+  - Simulate swap/cancel when not subscribed
+  - Simulate invalid plan configurations
+  - Implement idempotent cancel behavior
+- Add context to `SubscriptionException` for better debugging:
+  - Include current subscription state when available
+  - Include attempted action (subscribe, swap, cancel)
+  - Include relevant plan information
+- Add tests proving:
+  - Fake service correctly simulates duplicate subscription prevention
+  - Fake service correctly simulates state transitions
+  - Fake service handles edge cases (not subscribed, invalid plans)
+  - Exception context is properly populated
+
+Acceptance:
+
+- Fake service can simulate all subscription states required by Phase 2 tests
+- Exception handling provides useful debugging information
+- Test infrastructure supports comprehensive edge case coverage
+
 ## Phase 1: Paddle And Subscription Storage Safety
 
 - Add an app-level production guard in `AppServiceProvider::boot`:

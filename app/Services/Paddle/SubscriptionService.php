@@ -37,13 +37,23 @@ final class SubscriptionService implements Paddle
     {
         return $this->executeSerially($user, function (User $lockedUser) use ($plan): array {
             if (! $lockedUser->isBillingSubscribed()) {
-                throw new SubscriptionException('You are not subscribed to a paid plan.');
+                throw new SubscriptionException(
+                    'You are not subscribed to a paid plan.',
+                    action: 'swap',
+                    plan: $plan,
+                    currentState: $lockedUser->subscription('DayWright')?->paddle_status
+                );
             }
 
             $currentPlan = $lockedUser->activeBillingPlan();
 
             if ($currentPlan === $plan) {
-                throw new SubscriptionException('You are already on this plan.');
+                throw new SubscriptionException(
+                    'You are already on this plan.',
+                    action: 'swap',
+                    plan: $plan,
+                    currentState: $lockedUser->subscription('DayWright')?->paddle_status
+                );
             }
 
             $lockedUser->subscription('DayWright')->swapAndInvoice(config('services.paddle.'.$plan));
@@ -68,7 +78,12 @@ final class SubscriptionService implements Paddle
             }
 
             if ($lockedUser->activeBillingPlan() !== $plan) {
-                throw new SubscriptionException('You are not subscribed to this plan.');
+                throw new SubscriptionException(
+                    'You are not subscribed to this plan.',
+                    action: 'cancel',
+                    plan: $plan,
+                    currentState: $lockedUser->subscription('DayWright')?->paddle_status
+                );
             }
 
             $lockedUser->subscription('DayWright')->cancel();
@@ -86,14 +101,24 @@ final class SubscriptionService implements Paddle
         }
 
         if ($user->isBillingSubscribed()) {
+            $currentPlan = $user->activeBillingPlan();
+
             throw new SubscriptionException(
-                $user->activeBillingPlan() === $plan
+                $currentPlan === $plan
                     ? 'You are already subscribed to this plan.'
-                    : 'You already have an active paid plan. Please swap plans instead.'
+                    : 'You already have an active paid plan. Please swap plans instead.',
+                action: 'subscribe',
+                plan: $plan,
+                currentState: $user->subscription('DayWright')?->paddle_status
             );
         }
 
-        throw new SubscriptionException('You have an existing subscription. Please resume or swap your subscription instead.');
+        throw new SubscriptionException(
+            'You have an existing subscription. Please resume or swap your subscription instead.',
+            action: 'subscribe',
+            plan: $plan,
+            currentState: $user->subscription('DayWright')?->paddle_status
+        );
     }
 
     /**
