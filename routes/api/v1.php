@@ -85,7 +85,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
             Route::get('/', 'show')->name('show');
             Route::post('/', 'store')->middleware(Idempotent::using(scope: IdempotencyScope::User))->name('store');
             Route::patch('/', 'update')->middleware(['subscription', Idempotent::using(scope: IdempotencyScope::User)])->name('update');
-            Route::delete('/', 'destroy')->middleware('subscription')->name('destroy');
+            Route::delete('/', 'destroy')->middleware(['subscription', Idempotent::using(scope: IdempotencyScope::User)])->name('destroy');
         });
     });
 

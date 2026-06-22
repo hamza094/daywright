@@ -20,7 +20,7 @@ class SubscriptionResource extends JsonResource
     /**
      * @param  array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>  $limits
      * @param  array<int, array{name: string, label: string, interval_label: string, price: int, currency: string, currency_symbol: string, featured: bool}>  $availablePlans
-     * @param  array{subscribed: bool, billing_plan: ?string, next_payment: ?Payment, created_at: ?CarbonInterface}  $billing
+     * @param  array{subscribed: bool, billing_status: ?string, billing_plan: ?string, next_payment: ?Payment, created_at: ?CarbonInterface}  $billing
      * @param  array{active: bool, ends_at: ?CarbonInterface}  $trial
      * @param  array{active: bool, ends_at: ?CarbonInterface}  $gracePeriod
      */
@@ -64,6 +64,12 @@ class SubscriptionResource extends JsonResource
              * @example false
              */
             'subscribed' => $this->billing['subscribed'],
+            /**
+             * Raw billing status from Paddle (active, trialing, past_due, paused, canceled, etc.).
+             *
+             * @example active
+             */
+            'billing_status' => $this->billing['billing_status'],
             /**
              * Plans the user can purchase or switch to.
              *

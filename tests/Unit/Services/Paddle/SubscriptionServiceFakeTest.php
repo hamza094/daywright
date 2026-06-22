@@ -21,6 +21,9 @@ final class SubscriptionServiceFakeTest extends TestCase
     {
         parent::setUp();
 
+        config(['services.paddle.monthly' => '123456']);
+        config(['services.paddle.yearly' => '789012']);
+
         $this->fake = new SubscriptionServiceFake;
     }
 
@@ -42,10 +45,10 @@ final class SubscriptionServiceFakeTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $this->fake->setInvalidPlan('invalid_plan');
+        config(['services.paddle.invalid_plan' => null]);
 
         $this->expectException(SubscriptionException::class);
-        $this->expectExceptionMessage('Invalid plan configuration.');
+        $this->expectExceptionMessage('The invalid_plan plan is not configured. Please contact support.');
 
         $this->fake->subscribe($user, 'invalid_plan');
     }
@@ -56,10 +59,10 @@ final class SubscriptionServiceFakeTest extends TestCase
         $user = User::factory()->create();
         $this->fake->setState($user, 'active');
 
-        $this->fake->setInvalidPlan('invalid_plan');
+        config(['services.paddle.invalid_plan' => null]);
 
         $this->expectException(SubscriptionException::class);
-        $this->expectExceptionMessage('Invalid plan configuration.');
+        $this->expectExceptionMessage('The invalid_plan plan is not configured. Please contact support.');
 
         $this->fake->swap($user, 'invalid_plan');
     }

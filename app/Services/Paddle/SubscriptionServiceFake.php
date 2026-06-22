@@ -18,6 +18,8 @@ final class SubscriptionServiceFake implements Paddle
     #[Override]
     public function subscribe(User $user, string $plan): mixed
     {
+        $this->validatePlanConfig($plan);
+
         $key = $user->getKey();
 
         if ($this->isInvalidPlan($plan)) {
@@ -47,6 +49,8 @@ final class SubscriptionServiceFake implements Paddle
     #[Override]
     public function swap(User $user, string $plan): array
     {
+        $this->validatePlanConfig($plan);
+
         $key = $user->getKey();
 
         if ($this->isInvalidPlan($plan)) {
@@ -112,5 +116,19 @@ final class SubscriptionServiceFake implements Paddle
     private function isInvalidPlan(string $plan): bool
     {
         return in_array($plan, $this->invalidPlans, true);
+    }
+
+    private function validatePlanConfig(string $plan): void
+    {
+        $planId = config('services.paddle.'.$plan);
+
+        if (blank($planId) || ! is_numeric($planId)) {
+            throw new SubscriptionException(
+                "The {$plan} plan is not configured. Please contact support.",
+                action: 'subscribe',
+                plan: $plan,
+                currentState: null
+            );
+        }
     }
 }
