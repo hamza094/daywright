@@ -9,7 +9,6 @@ use App\Models\Project;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Validator;
 use Override;
 
 #[SchemaName('TaskStoreRequestData')]
@@ -68,14 +67,5 @@ class TaskRequest extends FormRequest
             'title.max' => 'Your task title is too long.',
             'title.unique' => 'Task with same title already exists.',
         ];
-    }
-
-    public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $validator): void {
-            if ($this->route('project')?->tasksReachedItsLimit()) {
-                $validator->errors()->add('tasks', 'Project tasks reached their limit.');
-            }
-        });
     }
 }

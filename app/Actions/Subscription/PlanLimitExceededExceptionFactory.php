@@ -46,6 +46,20 @@ final readonly class PlanLimitExceededExceptionFactory
         }
 
         if ($type->requiresProject()) {
+            if ($type === PlanLimitType::MembersPerProject) {
+                $max = $maxAllowed ?? 'unlimited';
+
+                return "This project has reached its member limit ({$currentUsage}/{$max}). "
+                    .'Unable to join. Ask the project owner to upgrade the plan or remove inactive members.';
+            }
+
+            if ($type === PlanLimitType::ActiveTasksPerProject) {
+                $max = $maxAllowed ?? 'unlimited';
+
+                return "This project has reached its task limit ({$currentUsage}/{$max}). "
+                    .'Unable to restore. Ask the project owner to upgrade the plan or delete existing tasks.';
+            }
+
             return 'This project has reached the maximum number of '
                 .$this->projectLimitMessageSubject($type)
                 .' allowed on its current plan.';

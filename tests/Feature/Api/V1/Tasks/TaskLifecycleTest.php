@@ -72,4 +72,30 @@ class TaskLifecycleTest extends TestCase
 
         $this->assertModelExists($task);
     }
+
+    /** @test */
+    public function it_enforces_task_limit_on_restore(): void
+    {
+        config(['plan-limits.free.max_active_tasks_per_project' => 2]);
+
+        // Ensure user is on Free plan
+        $this->user->subscriptions()->delete();
+        $this->user->customer()->delete();
+
+        $task1 = Task::factory()->for($this->project)->create();
+        $task2 = Task::factory()->for($this->project)->create();
+        $task3 = Task::factory()->for($this->project)->create();
+
+        $task3->delete();
+
+        $this->assertSoftDeleted($task3);
+
+        $response = $this->patchJson(route('api.v1.task.unarchive', [
+            'project' => $this->project->slug,
+            'task' => $task3->id,
+        ]));
+
+        $response->assertStatus(403)
+            ->assertJsonPath('code', 'plan_limit_exceeded');
+    }
 }

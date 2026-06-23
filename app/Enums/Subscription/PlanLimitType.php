@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Enums\Subscription;
 
-use App\Enums\TaskStatus;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -153,11 +152,11 @@ enum PlanLimitType: string
             self::ActiveTasksPerProject => [
                 'configKey' => 'max_active_tasks_per_project',
                 'exceptionKey' => 'active_tasks_per_project',
-                'messageSubject' => 'active tasks for this project',
-                'displayLabel' => 'Active tasks',
+                'messageSubject' => 'tasks for this project',
+                'displayLabel' => 'Tasks',
                 'loadedCountAttribute' => 'active_tasks_count',
                 'countLoaders' => [
-                    'tasks as active_tasks_count' => static fn (Builder $query): Builder => $query->whereIn('status_id', TaskStatus::active()),
+                    'tasks as active_tasks_count' => static fn (Builder $query): Builder => $query,
                 ],
                 'scope' => self::SCOPE_PROJECT,
             ],
