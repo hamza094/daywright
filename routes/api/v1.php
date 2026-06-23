@@ -147,7 +147,8 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
                 // Chat Conversation Routes
                 Route::apiResource('/conversations', ConversationController::class)
-                    ->only(['store', 'destroy', 'index']);
+                    ->only(['store', 'destroy', 'index'])
+                    ->middleware(['subscription', Idempotent::using(scope: IdempotencyScope::User)], ['only' => ['store']]);
             });
 
             Route::middleware(['can:access,project'])->group(function (): void {
