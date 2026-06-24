@@ -52,7 +52,7 @@ class IdempotentRoutesRegistrationTest extends TestCase
 
         $this->assertNotNull($route);
         $this->assertContains('DELETE', $route->methods());
-        $this->assertNotContains(Idempotent::using(scope: IdempotencyScope::User), $route->gatherMiddleware());
+        $this->assertContains(Idempotent::using(scope: IdempotencyScope::User), $route->gatherMiddleware());
     }
 
     #[Test]

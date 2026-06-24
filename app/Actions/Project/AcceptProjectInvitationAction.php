@@ -12,12 +12,10 @@ use App\Notifications\AcceptInvitation;
 use App\Services\Subscription\PlanLimitService;
 use Illuminate\Support\Facades\DB;
 
-final class AcceptProjectInvitationAction
+final readonly class AcceptProjectInvitationAction
 {
-    private const int TRANSACTION_RETRY_ATTEMPTS = 5;
-
     public function __construct(
-        private readonly PlanLimitService $planLimitService,
+        private PlanLimitService $planLimitService,
     ) {}
 
     public function execute(Project $project, User $user): void

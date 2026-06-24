@@ -13,17 +13,11 @@ use Throwable;
 
 class SubscriptionException extends ApiException implements ShouldntReport
 {
-    private ?string $action = null;
-
-    private ?string $plan = null;
-
-    private ?string $currentState = null;
-
     public function __construct(
         string $message = '',
-        ?string $action = null,
-        ?string $plan = null,
-        ?string $currentState = null,
+        private readonly ?string $action = null,
+        private readonly ?string $plan = null,
+        private readonly ?string $currentState = null,
         int $code = 0,
         ?Throwable $previous = null
     ) {
@@ -32,10 +26,6 @@ class SubscriptionException extends ApiException implements ShouldntReport
         }
 
         parent::__construct($message, $code, $previous);
-
-        $this->action = $action;
-        $this->plan = $plan;
-        $this->currentState = $currentState;
     }
 
     public function status(): int
@@ -48,13 +38,14 @@ class SubscriptionException extends ApiException implements ShouldntReport
         return 'subscription_conflict';
     }
 
+    /** @return array<string, string|null> */
     public function context(): array
     {
         return array_filter([
             'action' => $this->action,
             'plan' => $this->plan,
             'current_state' => $this->currentState,
-        ], fn ($value) => $value !== null);
+        ], fn (?string $value): bool => $value !== null);
     }
 
     #[Override]
@@ -65,7 +56,7 @@ class SubscriptionException extends ApiException implements ShouldntReport
         return array_filter([
             'action' => $this->action,
             'plan' => $this->plan,
-        ], fn ($value) => $value !== null);
+        ], fn (?string $value): bool => $value !== null);
     }
 
     #[Override]

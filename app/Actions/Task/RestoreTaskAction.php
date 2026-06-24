@@ -10,10 +10,10 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Services\Subscription\PlanLimitService;
 
-final class RestoreTaskAction
+final readonly class RestoreTaskAction
 {
     public function __construct(
-        private readonly PlanLimitService $planLimitService,
+        private PlanLimitService $planLimitService,
     ) {}
 
     public function execute(Task $task): void

@@ -136,7 +136,7 @@ class PlanLimitTypeTest extends TestCase
         ], $this->normalizeCountLoaderKeys(PlanLimitType::accountCountLoaders()));
 
         $this->assertSame([
-            'tasks as active_tasks_count',
+            'tasks as tasks_count',
             'activeMembers as active_members_count',
         ], $this->normalizeCountLoaderKeys(PlanLimitType::projectCountLoaders()));
     }

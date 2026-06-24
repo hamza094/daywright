@@ -18,13 +18,13 @@ final class AppServiceProviderTest extends TestCase
     #[Test]
     public function it_boots_in_non_production_without_public_key(): void
     {
-        $this->app->detectEnvironment(fn () => 'local');
-        Config::set('cashier.public_key', null);
-        Config::set('services.paddle.monthly', null);
-        Config::set('services.paddle.yearly', null);
-        Config::set('services.paddle.subscription_name', null);
-        Config::set('services.paddle.vendor_id', null);
-        Config::set('services.paddle.vendor_auth_code', null);
+        $this->app->detectEnvironment(fn (): string => 'local');
+        Config::set('cashier.public_key');
+        Config::set('services.paddle.monthly');
+        Config::set('services.paddle.yearly');
+        Config::set('services.paddle.subscription_name');
+        Config::set('services.paddle.vendor_id');
+        Config::set('services.paddle.vendor_auth_code');
 
         $provider = new AppServiceProvider($this->app);
         $provider->boot();
@@ -35,7 +35,7 @@ final class AppServiceProviderTest extends TestCase
     #[Test]
     public function it_boots_in_production_with_public_key_configured(): void
     {
-        $this->app->detectEnvironment(fn () => 'production');
+        $this->app->detectEnvironment(fn (): string => 'production');
         Config::set('cashier.public_key', 'paddle_pub_test_key');
         Config::set('services.paddle.monthly', '12345');
         Config::set('services.paddle.yearly', '67890');
@@ -52,13 +52,13 @@ final class AppServiceProviderTest extends TestCase
     #[Test]
     public function it_fails_to_boot_in_production_without_public_key(): void
     {
-        $this->app->detectEnvironment(fn () => 'production');
-        Config::set('cashier.public_key', null);
-        Config::set('services.paddle.monthly', null);
-        Config::set('services.paddle.yearly', null);
-        Config::set('services.paddle.subscription_name', null);
-        Config::set('services.paddle.vendor_id', null);
-        Config::set('services.paddle.vendor_auth_code', null);
+        $this->app->detectEnvironment(fn (): string => 'production');
+        Config::set('cashier.public_key');
+        Config::set('services.paddle.monthly');
+        Config::set('services.paddle.yearly');
+        Config::set('services.paddle.subscription_name');
+        Config::set('services.paddle.vendor_id');
+        Config::set('services.paddle.vendor_auth_code');
 
         $provider = new AppServiceProvider($this->app);
 

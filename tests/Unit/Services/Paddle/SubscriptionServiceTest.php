@@ -16,8 +16,12 @@ class SubscriptionServiceTest extends TestCase
     #[Test]
     public function it_throws_exception_for_already_subscribed_user(): void
     {
+        config(['services.paddle.monthly' => 123]);
+
         /** @var User&Mockery\MockInterface $user */
         $user = Mockery::mock(User::class);
+        $user->shouldReceive('subscriptionName')->andReturn('daywright');
+        $user->shouldReceive('subscription')->with('daywright')->andReturn(null);
         $user->shouldReceive('isSubscribed')->andReturn(true);
         $user->shouldReceive('isBillingSubscribed')->andReturn(true);
         $user->shouldReceive('activeBillingPlan')->andReturn('monthly');
@@ -33,8 +37,12 @@ class SubscriptionServiceTest extends TestCase
     #[Test]
     public function it_throws_error_while_swapping_to_the_same_plan(): void
     {
+        config(['services.paddle.yearly' => 456]);
+
         /** @var User&Mockery\MockInterface $user */
         $user = Mockery::mock(User::class);
+        $user->shouldReceive('subscriptionName')->andReturn('daywright');
+        $user->shouldReceive('subscription')->with('daywright')->andReturn(null);
         $user->shouldReceive('isBillingSubscribed')->andReturn(true);
         $user->shouldReceive('activeBillingPlan')->andReturn('yearly');
 
@@ -51,6 +59,8 @@ class SubscriptionServiceTest extends TestCase
     {
         /** @var User&Mockery\MockInterface $user */
         $user = Mockery::mock(User::class);
+        $user->shouldReceive('subscriptionName')->andReturn('daywright');
+        $user->shouldReceive('subscription')->with('daywright')->andReturn(null);
         $user->shouldReceive('isBillingSubscribed')->andReturn(true);
         $user->shouldReceive('activeBillingPlan')->andReturn('monthly');
 
@@ -67,6 +77,8 @@ class SubscriptionServiceTest extends TestCase
     {
         /** @var User&Mockery\MockInterface $user */
         $user = Mockery::mock(User::class);
+        $user->shouldReceive('subscriptionName')->andReturn('daywright');
+        $user->shouldReceive('subscription')->with('daywright')->andReturn(null);
         $user->shouldReceive('isBillingSubscribed')->andReturn(false);
 
         $service = new SubscriptionService;
@@ -80,8 +92,12 @@ class SubscriptionServiceTest extends TestCase
     #[Test]
     public function it_throws_exception_for_swapping_without_a_valid_subscription(): void
     {
+        config(['services.paddle.yearly' => 456]);
+
         /** @var User&Mockery\MockInterface $user */
         $user = Mockery::mock(User::class);
+        $user->shouldReceive('subscriptionName')->andReturn('daywright');
+        $user->shouldReceive('subscription')->with('daywright')->andReturn(null);
         $user->shouldReceive('isBillingSubscribed')->andReturn(false);
 
         $service = new SubscriptionService;

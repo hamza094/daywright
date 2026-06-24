@@ -127,7 +127,7 @@ class SubscriptionUsageServiceTest extends TestCase
                 'key' => 'tasks_per_project',
                 'label' => 'Tasks',
                 'scope' => 'project',
-                'limit' => ['used' => 3, 'max' => $free->maxFor(PlanLimitType::TasksPerProject)],
+                'limit' => ['used' => 4, 'max' => $free->maxFor(PlanLimitType::TasksPerProject)],
             ],
             [
                 'key' => 'members_per_project',

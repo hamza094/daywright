@@ -132,8 +132,7 @@ final class SubscriptionService implements Paddle
             throw new SubscriptionException(
                 "The {$plan} plan is not configured. Please contact support.",
                 action: $action,
-                plan: $plan,
-                currentState: null
+                plan: $plan
             );
         }
     }

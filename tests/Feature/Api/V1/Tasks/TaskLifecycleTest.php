@@ -82,8 +82,8 @@ class TaskLifecycleTest extends TestCase
         $this->user->subscriptions()->delete();
         $this->user->customer()->delete();
 
-        $task1 = Task::factory()->for($this->project)->create();
-        $task2 = Task::factory()->for($this->project)->create();
+        Task::factory()->for($this->project)->create();
+        Task::factory()->for($this->project)->create();
         $task3 = Task::factory()->for($this->project)->create();
 
         $task3->delete();

@@ -57,10 +57,7 @@ final class SubscriptionExceptionTest extends TestCase
     public function it_filters_null_values_from_context(): void
     {
         $exception = new SubscriptionException(
-            'Test message',
-            action: null,
-            plan: null,
-            currentState: null
+            'Test message'
         );
 
         $context = $exception->context();
@@ -99,7 +96,11 @@ final class SubscriptionExceptionTest extends TestCase
         $request = Request::create('/api/v1/test');
         $meta = $exception->meta($request);
 
-        $this->assertSame($exception->context(), $meta);
+        // meta() should redact current_state for security
+        $this->assertSame([
+            'action' => 'swap',
+            'plan' => 'yearly',
+        ], $meta);
     }
 
     #[Test]

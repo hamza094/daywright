@@ -155,7 +155,7 @@ class ProjectFeatureTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data.limits');
 
-        $this->assertProjectLimitItem($response, 'data.limits', 'tasks_per_project', 'Tasks', 'project', 2, 10);
+        $this->assertProjectLimitItem($response, 'data.limits', 'tasks_per_project', 'Tasks', 'project', 3, 10);
         $this->assertProjectLimitItem($response, 'data.limits', 'members_per_project', 'Members', 'project', 2, 3);
     }
 

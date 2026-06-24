@@ -118,7 +118,7 @@ class PlanLimitServiceTest extends TestCase
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: $taskLimit,
             expectedMax: $taskLimit,
-            expectedMessage: 'This project has reached the maximum number of active tasks allowed on its current plan.',
+            expectedMessage: "This project has reached its task limit ({$taskLimit}/{$taskLimit}). Unable to restore. Ask the project owner to upgrade the plan or delete existing tasks.",
             expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
         );
     }
@@ -140,7 +140,7 @@ class PlanLimitServiceTest extends TestCase
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: $taskLimit + 1,
             expectedMax: $taskLimit,
-            expectedMessage: 'This project is already above the maximum number of active tasks allowed on its current plan. Reduce usage before creating more.',
+            expectedMessage: 'This project is already above the maximum number of tasks allowed on its current plan. Reduce usage before creating more.',
             expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
         );
     }
@@ -165,7 +165,7 @@ class PlanLimitServiceTest extends TestCase
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: $memberLimit,
             expectedMax: $memberLimit,
-            expectedMessage: 'This project has reached the maximum number of members allowed on its current plan.',
+            expectedMessage: "This project has reached its member limit ({$memberLimit}/{$memberLimit}). Unable to join. Ask the project owner to upgrade the plan or remove inactive members.",
             expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
         );
     }
@@ -418,12 +418,13 @@ class PlanLimitServiceTest extends TestCase
 
     private function seedProjectJustBelowActiveTaskLimit(User $user, Project $project, int $taskLimit): void
     {
-        // Create (taskLimit - 1) active/pending tasks
-        Task::factory()->count($taskLimit - 1)->for($user, 'owner')->for($project)->create([
+        // Create (taskLimit - 2) active/pending tasks
+        // Since completed tasks are now counted in total, we need fewer active tasks to stay below the limit
+        Task::factory()->count($taskLimit - 2)->for($user, 'owner')->for($project)->create([
             'status_id' => TaskStatusEnum::PENDING,
         ]);
 
-        // Create one completed task (should not be counted)
+        // Create one completed task (now counted in total)
         Task::factory()->for($user, 'owner')->for($project)->completed()->create();
 
         // Create one task that will be archived (deleted) so it isn't counted

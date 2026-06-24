@@ -23,7 +23,7 @@ final class PaddleWebhookTest extends TestCase
     #[Test]
     public function it_accepts_webhook_without_signature_when_public_key_not_configured(): void
     {
-        Config::set('cashier.public_key', null);
+        Config::set('cashier.public_key');
 
         $response = $this->postJson('/paddle/webhook', [
             'alert_name' => 'subscription_created',

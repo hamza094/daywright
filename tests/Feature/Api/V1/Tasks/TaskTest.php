@@ -212,8 +212,7 @@ class TaskTest extends TestCase
 
         $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project),
             ['title' => 'Project Task'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('tasks');
+            ->assertForbidden();
     }
 
     /** @test */

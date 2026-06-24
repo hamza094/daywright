@@ -134,8 +134,9 @@ final class HasSubscriptionTraitTest extends TestCase
         ?bool $onGracePeriod = null,
         ?int $paddlePlan = null,
         mixed $nextPayment = null,
+        ?string $paddleStatus = null,
     ): object {
-        return new class($valid, $recurring, $onGracePeriod, $paddlePlan, $nextPayment)
+        return new class($valid, $recurring, $onGracePeriod, $paddlePlan, $nextPayment, $paddleStatus)
         {
             public function __construct(
                 private readonly ?bool $valid,
@@ -143,6 +144,7 @@ final class HasSubscriptionTraitTest extends TestCase
                 private readonly ?bool $onGracePeriod,
                 public ?int $paddle_plan,
                 private readonly mixed $nextPayment,
+                public ?string $paddle_status,
             ) {}
 
             public function valid(): bool
@@ -173,17 +175,17 @@ final class HasSubscriptionTraitTest extends TestCase
 
     private function makeInvalidSubscription(): object
     {
-        return $this->makeSubscription(valid: false, recurring: false);
+        return $this->makeSubscription(valid: false, recurring: false, paddleStatus: 'canceled');
     }
 
     private function makeValidRecurringSubscription(?int $paddlePlan = null): object
     {
-        return $this->makeSubscription(valid: true, recurring: true, paddlePlan: $paddlePlan);
+        return $this->makeSubscription(valid: true, recurring: true, paddlePlan: $paddlePlan, paddleStatus: 'active');
     }
 
     private function makeCanceledSubscription(int $paddlePlan): object
     {
-        return $this->makeSubscription(valid: true, recurring: false, paddlePlan: $paddlePlan);
+        return $this->makeSubscription(valid: true, recurring: false, paddlePlan: $paddlePlan, paddleStatus: 'canceled');
     }
 
     private function makeGracePeriodSubscription(bool $onGracePeriod): object

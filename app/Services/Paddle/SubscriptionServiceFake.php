@@ -11,8 +11,10 @@ use Override;
 
 final class SubscriptionServiceFake implements Paddle
 {
+    /** @var array<int|string, array{plan: string, status: string}> */
     private array $subscriptions = [];
 
+    /** @var array<int, string> */
     private array $invalidPlans = [];
 
     #[Override]
@@ -150,8 +152,7 @@ final class SubscriptionServiceFake implements Paddle
             throw new SubscriptionException(
                 "The {$plan} plan is not configured. Please contact support.",
                 action: $action,
-                plan: $plan,
-                currentState: null
+                plan: $plan
             );
         }
     }
