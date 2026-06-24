@@ -53,7 +53,7 @@ final readonly class PlanLimitExceededExceptionFactory
                     .'Unable to join. Ask the project owner to upgrade the plan or remove inactive members.';
             }
 
-            if ($type === PlanLimitType::ActiveTasksPerProject) {
+            if ($type === PlanLimitType::TasksPerProject) {
                 $max = $maxAllowed ?? 'unlimited';
 
                 return "This project has reached its task limit ({$currentUsage}/{$max}). "
@@ -90,7 +90,7 @@ final readonly class PlanLimitExceededExceptionFactory
     private function projectLimitMessageSubject(PlanLimitType $type): string
     {
         return match ($type) {
-            PlanLimitType::ActiveTasksPerProject => 'active tasks',
+            PlanLimitType::TasksPerProject => 'tasks',
             PlanLimitType::MembersPerProject => 'members',
             default => $type->messageSubject(),
         };

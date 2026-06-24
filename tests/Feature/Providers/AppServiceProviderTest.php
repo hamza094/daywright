@@ -20,6 +20,11 @@ final class AppServiceProviderTest extends TestCase
     {
         $this->app->detectEnvironment(fn () => 'local');
         Config::set('cashier.public_key', null);
+        Config::set('services.paddle.monthly', null);
+        Config::set('services.paddle.yearly', null);
+        Config::set('services.paddle.subscription_name', null);
+        Config::set('services.paddle.vendor_id', null);
+        Config::set('services.paddle.vendor_auth_code', null);
 
         $provider = new AppServiceProvider($this->app);
         $provider->boot();
@@ -32,6 +37,11 @@ final class AppServiceProviderTest extends TestCase
     {
         $this->app->detectEnvironment(fn () => 'production');
         Config::set('cashier.public_key', 'paddle_pub_test_key');
+        Config::set('services.paddle.monthly', '12345');
+        Config::set('services.paddle.yearly', '67890');
+        Config::set('services.paddle.subscription_name', 'DayWright');
+        Config::set('services.paddle.vendor_id', 'vendor_123');
+        Config::set('services.paddle.vendor_auth_code', 'auth_code');
 
         $provider = new AppServiceProvider($this->app);
         $provider->boot();
@@ -44,11 +54,16 @@ final class AppServiceProviderTest extends TestCase
     {
         $this->app->detectEnvironment(fn () => 'production');
         Config::set('cashier.public_key', null);
+        Config::set('services.paddle.monthly', null);
+        Config::set('services.paddle.yearly', null);
+        Config::set('services.paddle.subscription_name', null);
+        Config::set('services.paddle.vendor_id', null);
+        Config::set('services.paddle.vendor_auth_code', null);
 
         $provider = new AppServiceProvider($this->app);
 
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('PADDLE_PUBLIC_KEY must be configured in production environment.');
+        $this->expectExceptionMessage('The following Paddle configuration values are missing in production environment: PADDLE_PUBLIC_KEY, Monthly_Plan (services.paddle.monthly), Yearly_Plan (services.paddle.yearly), PADDLE_SUBSCRIPTION_NAME (services.paddle.subscription_name), PADDLE_VENDOR_ID (services.paddle.vendor_id), PADDLE_VENDOR_AUTH_CODE (services.paddle.vendor_auth_code)');
 
         $provider->boot();
     }

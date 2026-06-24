@@ -20,7 +20,7 @@ final class SubscriptionService implements Paddle
     {
         return $this->executeSerially($user, function (User $lockedUser) use ($plan): mixed {
             $this->validateSubscribeAllowed($lockedUser, $plan);
-            $this->validatePlanConfig($plan);
+            $this->validatePlanConfig($plan, 'subscribe');
 
             $appUrl = rtrim((string) config('app.url'), '/');
 
@@ -37,7 +37,7 @@ final class SubscriptionService implements Paddle
     public function swap(User $user, string $plan): array
     {
         return $this->executeSerially($user, function (User $lockedUser) use ($plan): array {
-            $this->validatePlanConfig($plan);
+            $this->validatePlanConfig($plan, 'swap');
 
             if (! $lockedUser->isBillingSubscribed()) {
                 throw new SubscriptionException(
@@ -124,14 +124,14 @@ final class SubscriptionService implements Paddle
         );
     }
 
-    private function validatePlanConfig(string $plan): void
+    private function validatePlanConfig(string $plan, string $action): void
     {
         $planId = config('services.paddle.'.$plan);
 
         if (blank($planId) || ! is_numeric($planId)) {
             throw new SubscriptionException(
                 "The {$plan} plan is not configured. Please contact support.",
-                action: 'subscribe',
+                action: $action,
                 plan: $plan,
                 currentState: null
             );

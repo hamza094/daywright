@@ -50,7 +50,7 @@ final readonly class PlanUsageCountResolver
         }
 
         return match ($type) {
-            PlanLimitType::ActiveTasksPerProject => $project->tasks()->whereIn('status_id', TaskStatus::active())->count(),
+            PlanLimitType::TasksPerProject => $project->tasks()->whereIn('status_id', TaskStatus::active())->count(),
             PlanLimitType::MembersPerProject => $project->activeMembers()->count(),
             default => throw new InvalidArgumentException("Invalid project limit type: {$type->value}"),
         };

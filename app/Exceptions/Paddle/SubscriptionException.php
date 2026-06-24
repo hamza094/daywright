@@ -60,7 +60,12 @@ class SubscriptionException extends ApiException implements ShouldntReport
     #[Override]
     public function meta(Request $request): array
     {
-        return $this->context();
+        // Exclude current_state from public API response to prevent information leakage
+        // Internal billing state should only be logged, not exposed to consumers
+        return array_filter([
+            'action' => $this->action,
+            'plan' => $this->plan,
+        ], fn ($value) => $value !== null);
     }
 
     #[Override]

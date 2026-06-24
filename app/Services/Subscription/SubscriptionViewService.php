@@ -32,8 +32,7 @@ final readonly class SubscriptionViewService
         $subscription = $user->getSubscription();
         // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
         $billingStatus = $subscription !== null ? $subscription->paddle_status : null;
-        // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
-        $isBillingSubscribed = $subscription !== null && $subscription->recurring() === true && in_array($billingStatus, ['active', 'trialing'], true);
+        $isBillingSubscribed = $user->isBillingSubscribed();
         // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
         $hasGracePeriod = $subscription !== null && $subscription->onGracePeriod() === true;
         $isBillingVisible = $isBillingSubscribed || $hasGracePeriod;

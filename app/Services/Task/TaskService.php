@@ -51,7 +51,7 @@ class TaskService
     {
         /** @var Task $task */
         $task = $this->planLimitService->executeWithinProjectLimit(
-            PlanLimitType::ActiveTasksPerProject,
+            PlanLimitType::TasksPerProject,
             $project,
             fn (Project $lockedProject): Task => $lockedProject->tasks()->firstOrCreate(
                 $data->toCreateAttributes($user->id)

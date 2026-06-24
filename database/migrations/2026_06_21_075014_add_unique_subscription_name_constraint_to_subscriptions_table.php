@@ -18,7 +18,7 @@ return new class extends Migration
         $duplicates = DB::table('subscriptions')
             ->select('billable_type', 'billable_id', 'name', DB::raw('COUNT(*) as count'))
             ->groupBy('billable_type', 'billable_id', 'name')
-            ->having('count', '>', 1)
+            ->havingRaw('COUNT(*) > 1')
             ->get();
 
         if ($duplicates->isNotEmpty()) {

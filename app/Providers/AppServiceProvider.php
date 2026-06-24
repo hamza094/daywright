@@ -10,6 +10,7 @@ use App\Interfaces\SendSmsInterface;
 use App\Interfaces\Zoom;
 use App\Models\User;
 use App\Services\Admin\Integration\PaddleService;
+use App\Services\Config\ConfigValidator;
 use App\Services\Paddle\SubscriptionService;
 use App\Services\VonageSmsService;
 use App\Services\Zoom\ZoomService;
@@ -19,7 +20,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Pennant\Feature;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
-use LogicException;
 use Opcodes\LogViewer\Facades\LogViewer;
 use Override;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -55,9 +55,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        if (app()->isProduction() && blank(config('cashier.public_key'))) {
-            throw new LogicException('PADDLE_PUBLIC_KEY must be configured in production environment.');
-        }
+        $this->app->make(ConfigValidator::class)->validatePaddleConfig();
 
         Feature::define('project-export', fn (User $user): bool => $user->isAdmin());
         Feature::define('project-messaging', fn (User $user): bool => $user->isAdmin());

@@ -18,7 +18,7 @@ final class SubscriptionServiceFake implements Paddle
     #[Override]
     public function subscribe(User $user, string $plan): mixed
     {
-        $this->validatePlanConfig($plan);
+        $this->validatePlanConfig($plan, 'subscribe');
 
         $key = $user->getKey();
 
@@ -49,7 +49,7 @@ final class SubscriptionServiceFake implements Paddle
     #[Override]
     public function swap(User $user, string $plan): array
     {
-        $this->validatePlanConfig($plan);
+        $this->validatePlanConfig($plan, 'swap');
 
         $key = $user->getKey();
 
@@ -59,6 +59,17 @@ final class SubscriptionServiceFake implements Paddle
 
         if (! isset($this->subscriptions[$key])) {
             throw new SubscriptionException('You are not subscribed to a paid plan.', action: 'swap', plan: $plan);
+        }
+
+        $currentPlan = $this->subscriptions[$key]['plan'];
+
+        if ($currentPlan === $plan) {
+            throw new SubscriptionException(
+                'You are already on this plan.',
+                action: 'swap',
+                plan: $plan,
+                currentState: $this->subscriptions[$key]['status']
+            );
         }
 
         $this->subscriptions[$key]['plan'] = $plan;
@@ -80,6 +91,17 @@ final class SubscriptionServiceFake implements Paddle
             return [
                 'message' => 'Your subscription has been canceled successfully (fake).',
             ];
+        }
+
+        $currentPlan = $this->subscriptions[$key]['plan'];
+
+        if ($currentPlan !== $plan) {
+            throw new SubscriptionException(
+                'You are not subscribed to this plan.',
+                action: 'cancel',
+                plan: $plan,
+                currentState: $this->subscriptions[$key]['status']
+            );
         }
 
         $this->subscriptions[$key]['status'] = 'canceled';
@@ -118,14 +140,16 @@ final class SubscriptionServiceFake implements Paddle
         return in_array($plan, $this->invalidPlans, true);
     }
 
-    private function validatePlanConfig(string $plan): void
+    // NOTE: This method is duplicated from SubscriptionService::validatePlanConfig()
+    // If updating this method, also update the real implementation to keep them in sync.
+    private function validatePlanConfig(string $plan, string $action): void
     {
         $planId = config('services.paddle.'.$plan);
 
         if (blank($planId) || ! is_numeric($planId)) {
             throw new SubscriptionException(
                 "The {$plan} plan is not configured. Please contact support.",
-                action: 'subscribe',
+                action: $action,
                 plan: $plan,
                 currentState: null
             );

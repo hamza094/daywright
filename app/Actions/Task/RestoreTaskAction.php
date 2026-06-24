@@ -9,7 +9,6 @@ use App\Exceptions\TaskNotTrashedException;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\Subscription\PlanLimitService;
-use Illuminate\Support\Facades\DB;
 
 final class RestoreTaskAction
 {
@@ -24,7 +23,7 @@ final class RestoreTaskAction
         }
 
         $this->planLimitService->executeWithinProjectLimit(
-            PlanLimitType::ActiveTasksPerProject,
+            PlanLimitType::TasksPerProject,
             $task->project,
             fn (Project $lockedProject) => $this->performRestore($task)
         );
@@ -32,9 +31,7 @@ final class RestoreTaskAction
 
     private function performRestore(Task $task): void
     {
-        DB::transaction(function () use ($task): void {
-            $task->restore();
-            $task->activities()->update(['is_hidden' => false]);
-        });
+        $task->restore();
+        $task->activities()->update(['is_hidden' => false]);
     }
 }

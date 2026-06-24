@@ -47,16 +47,20 @@ trait HasSubscription
 
     /**
      * Check if the user has an actively recurring DayWright subscription.
+     * Only considers subscriptions with active or trialing status.
      */
     public function isBillingSubscribed(): bool
     {
         $subscription = $this->getSubscription();
 
-        return $subscription?->recurring() === true;
+        return $subscription !== null
+            && $subscription->recurring() === true
+            && in_array($subscription->paddle_status, ['active', 'trialing'], true);
     }
 
     /**
      * Get the active recurring billing plan name.
+     * Only returns a plan name for subscriptions with active or trialing status.
      */
     public function activeBillingPlan(
         ?int $monthlyPlanId = null,
@@ -64,7 +68,7 @@ trait HasSubscription
     ): string {
         $subscription = $this->getSubscription();
 
-        if ($subscription?->recurring() !== true) {
+        if (! $this->isBillingSubscribed()) {
             return 'Not Subscribed Actively';
         }
 

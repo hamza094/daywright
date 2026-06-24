@@ -121,7 +121,7 @@ class PlanLimitServiceFeatureTest extends TestCase
     #[Test]
     public function free_user_is_blocked_from_creating_an_eleventh_active_task(): void
     {
-        $taskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
+        $taskLimit = $this->freePlanLimit(PlanLimitType::TasksPerProject);
 
         $this->createActiveTasks($taskLimit);
 
@@ -130,7 +130,7 @@ class PlanLimitServiceFeatureTest extends TestCase
         $this->assertPlanLimitExceeded(
             response: $response,
             reason: 'limit_reached',
-            limitType: 'active_tasks_per_project',
+            limitType: 'tasks_per_project',
             currentUsage: $taskLimit,
             maxAllowed: $taskLimit,
             expectedMessage: 'This project has reached the maximum number of active tasks allowed on its current plan.',
@@ -142,7 +142,7 @@ class PlanLimitServiceFeatureTest extends TestCase
     #[Test]
     public function member_is_blocked_when_the_project_owner_has_reached_the_active_task_limit_even_if_member_has_a_pro_plan(): void
     {
-        $taskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
+        $taskLimit = $this->freePlanLimit(PlanLimitType::TasksPerProject);
 
         $member = User::factory()->create();
 
@@ -157,7 +157,7 @@ class PlanLimitServiceFeatureTest extends TestCase
         $this->assertPlanLimitExceeded(
             response: $response,
             reason: 'limit_reached',
-            limitType: 'active_tasks_per_project',
+            limitType: 'tasks_per_project',
             currentUsage: $taskLimit,
             maxAllowed: $taskLimit,
             expectedMessage: 'This project has reached the maximum number of active tasks allowed on its current plan.',
@@ -174,7 +174,7 @@ class PlanLimitServiceFeatureTest extends TestCase
     #[Test]
     public function member_can_create_a_task_when_the_project_owners_plan_allows_it(): void
     {
-        $taskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
+        $taskLimit = $this->freePlanLimit(PlanLimitType::TasksPerProject);
 
         $member = User::factory()->create();
 
@@ -305,7 +305,7 @@ class PlanLimitServiceFeatureTest extends TestCase
     {
         return match ($limitType) {
             'projects' => 'Projects',
-            'active_tasks_per_project' => 'Active tasks',
+            'tasks_per_project' => 'Tasks',
             'members' => 'Members',
             'meetings' => 'Created meetings',
             'api_tokens' => 'API tokens',

@@ -31,16 +31,16 @@ class PlanLimitTypeTest extends TestCase
                     'requires_project' => false,
                 ],
             ],
-            'active tasks per project' => [
-                PlanLimitType::ActiveTasksPerProject,
+            'tasks per project' => [
+                PlanLimitType::TasksPerProject,
                 [
-                    'value' => 'active_tasks_per_project',
-                    'config_key' => 'max_active_tasks_per_project',
-                    'exception_key' => 'active_tasks_per_project',
-                    'message_subject' => 'active tasks for this project',
-                    'display_label' => 'Active tasks',
-                    'loaded_count_attribute' => 'active_tasks_count',
-                    'count_loader_keys' => ['tasks as active_tasks_count'],
+                    'value' => 'tasks_per_project',
+                    'config_key' => 'max_tasks_per_project',
+                    'exception_key' => 'tasks_per_project',
+                    'message_subject' => 'tasks for this project',
+                    'display_label' => 'Tasks',
+                    'loaded_count_attribute' => 'tasks_count',
+                    'count_loader_keys' => ['tasks as tasks_count'],
                     'scope' => 'project',
                     'requires_project' => true,
                 ],
@@ -121,7 +121,7 @@ class PlanLimitTypeTest extends TestCase
         ], $accountTypes);
 
         $this->assertSame([
-            'active_tasks_per_project',
+            'tasks_per_project',
             'members_per_project',
         ], $projectTypes);
     }

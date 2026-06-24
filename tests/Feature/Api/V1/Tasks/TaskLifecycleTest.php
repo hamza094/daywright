@@ -76,7 +76,7 @@ class TaskLifecycleTest extends TestCase
     /** @test */
     public function it_enforces_task_limit_on_restore(): void
     {
-        config(['plan-limits.free.max_active_tasks_per_project' => 2]);
+        config(['plan-limits.free.max_tasks_per_project' => 2]);
 
         // Ensure user is on Free plan
         $this->user->subscriptions()->delete();

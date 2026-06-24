@@ -104,17 +104,17 @@ class PlanLimitServiceTest extends TestCase
         // Uses: private seeder helper seedProjectJustBelowActiveTaskLimit() and assertPlanException()
         $user = $this->makeUser();
         $project = $this->makeProject($user);
-        $taskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
+        $taskLimit = $this->freePlanLimit(PlanLimitType::TasksPerProject);
 
         $this->seedProjectJustBelowActiveTaskLimit($user, $project, $taskLimit);
 
-        $this->service->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, $user, $project);
+        $this->service->assertWithinLimit(PlanLimitType::TasksPerProject, $user, $project);
 
         Task::factory()->for($user, 'owner')->for($project)->remaining()->create();
 
         $this->assertPlanException(
-            callback: fn (): null => $this->service->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, $user, $project),
-            expectedLimitType: 'active_tasks_per_project',
+            callback: fn (): null => $this->service->assertWithinLimit(PlanLimitType::TasksPerProject, $user, $project),
+            expectedLimitType: 'tasks_per_project',
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: $taskLimit,
             expectedMax: $taskLimit,
@@ -128,15 +128,15 @@ class PlanLimitServiceTest extends TestCase
     {
         $user = $this->makeUser();
         $project = $this->makeProject($user);
-        $taskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
+        $taskLimit = $this->freePlanLimit(PlanLimitType::TasksPerProject);
 
         Task::factory()->count($taskLimit + 1)->for($user, 'owner')->for($project)->create([
             'status_id' => TaskStatusEnum::PENDING,
         ]);
 
         $this->assertPlanException(
-            callback: fn (): null => $this->service->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, $user, $project),
-            expectedLimitType: 'active_tasks_per_project',
+            callback: fn (): null => $this->service->assertWithinLimit(PlanLimitType::TasksPerProject, $user, $project),
+            expectedLimitType: 'tasks_per_project',
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: $taskLimit + 1,
             expectedMax: $taskLimit,
@@ -206,7 +206,7 @@ class PlanLimitServiceTest extends TestCase
         $this->assertSame(SubscriptionPlan::Pro, $this->service->plan($user));
 
         $this->service->assertWithinLimit(PlanLimitType::Projects, $user);
-        $this->service->assertWithinLimit(PlanLimitType::ActiveTasksPerProject, $user, $project);
+        $this->service->assertWithinLimit(PlanLimitType::TasksPerProject, $user, $project);
         $this->service->assertWithinLimit(PlanLimitType::MembersPerProject, $user, $project);
         $this->service->assertWithinLimit(PlanLimitType::CreatedMeetings, $user);
         $this->service->assertWithinLimit(PlanLimitType::ApiTokens, $user);
@@ -263,7 +263,7 @@ class PlanLimitServiceTest extends TestCase
         $project = $this->makeProject($user);
 
         $task = $this->service->executeWithinProjectLimit(
-            PlanLimitType::ActiveTasksPerProject,
+            PlanLimitType::TasksPerProject,
             $project,
             fn (Project $lockedProject): Task => $lockedProject->tasks()->create([
                 'title' => 'Locked Task',
@@ -305,7 +305,7 @@ class PlanLimitServiceTest extends TestCase
         $user = $this->makeUser();
         $project = $this->makeProject($user);
 
-        $this->seedProjectJustBelowActiveTaskLimit($user, $project, $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject));
+        $this->seedProjectJustBelowActiveTaskLimit($user, $project, $this->freePlanLimit(PlanLimitType::TasksPerProject));
         $this->seedProjectJustBelowMemberLimit($project, $this->freePlanLimit(PlanLimitType::MembersPerProject));
 
         $user->load('subscriptions', 'customer');
@@ -397,7 +397,7 @@ class PlanLimitServiceTest extends TestCase
     private function seedUsageBeyondFreeLimits(User $user, Project $project): void
     {
         Project::factory()->count($this->freePlanLimit(PlanLimitType::Projects) + 1)->for($user)->create();
-        Task::factory()->count($this->freePlanLimit(PlanLimitType::ActiveTasksPerProject) + 1)->for($user, 'owner')->for($project)->create([
+        Task::factory()->count($this->freePlanLimit(PlanLimitType::TasksPerProject) + 1)->for($user, 'owner')->for($project)->create([
             'status_id' => TaskStatusEnum::PENDING,
         ]);
         $project->members()->attach(User::factory()->count($this->freePlanLimit(PlanLimitType::MembersPerProject) + 1)->create(), ['active' => true]);
