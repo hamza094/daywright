@@ -6,7 +6,6 @@ namespace App\Actions\Subscription;
 
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Enums\Subscription\PlanLimitType;
-use App\Enums\TaskStatus;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
@@ -50,7 +49,7 @@ final readonly class PlanUsageCountResolver
         }
 
         return match ($type) {
-            PlanLimitType::ActiveTasksPerProject => $project->tasks()->whereIn('status_id', TaskStatus::active())->count(),
+            PlanLimitType::TasksPerProject => $project->tasks()->count(),
             PlanLimitType::MembersPerProject => $project->activeMembers()->count(),
             default => throw new InvalidArgumentException("Invalid project limit type: {$type->value}"),
         };

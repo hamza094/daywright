@@ -124,10 +124,10 @@ class SubscriptionUsageServiceTest extends TestCase
 
         $this->assertSame([
             [
-                'key' => 'active_tasks_per_project',
-                'label' => 'Active tasks',
+                'key' => 'tasks_per_project',
+                'label' => 'Tasks',
                 'scope' => 'project',
-                'limit' => ['used' => 3, 'max' => $free->maxFor(PlanLimitType::ActiveTasksPerProject)],
+                'limit' => ['used' => 4, 'max' => $free->maxFor(PlanLimitType::TasksPerProject)],
             ],
             [
                 'key' => 'members_per_project',

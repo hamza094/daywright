@@ -26,7 +26,7 @@ enum SubscriptionPlan: string
     /**
      * @return array{
      *     max_owned_projects?: int|null,
-     *     max_active_tasks_per_project?: int|null,
+     *     max_tasks_per_project?: int|null,
      *     max_members_per_project?: int|null,
      *     max_created_meetings?: int|null,
      *     max_api_tokens?: int|null

@@ -88,7 +88,7 @@ class ProjectInsightsPreloader
     {
         return match ($metricType) {
             'tasks' => [
-                'tasks' => fn ($q) => $q->withTrashed(),
+                'tasks as tasks_count' => fn ($q) => $q->withTrashed(),
                 'tasks as active_tasks_count' => fn ($q) => $q->whereNull('deleted_at'),
                 'tasks as completed_tasks_count' => fn ($q) => $q->completed(),
                 'tasks as overdue_tasks_count' => fn ($q) => $q->overdue(),

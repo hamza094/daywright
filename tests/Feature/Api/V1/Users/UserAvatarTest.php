@@ -95,4 +95,27 @@ class UserAvatarTest extends TestCase
                 'message' => 'User does not have an avatar',
             ])->assertStatus(404);
     }
+
+    /** @test */
+    public function free_user_can_upload_avatar(): void
+    {
+        $user = User::first();
+
+        // Ensure user is on Free plan
+        $user->subscriptions()->delete();
+        $user->customer()->delete();
+
+        Storage::fake('s3');
+
+        $file = UploadedFile::fake()->image('avatar.jpg');
+
+        $this->postJson(route(self::USER_AVATAR_ROUTE, ['user' => $user->uuid]), [
+            'avatar' => $file,
+        ])->assertSuccessful()
+            ->assertJsonPath('data.path', route('api.v1.users.show', ['user' => $user], false));
+
+        $uploadedFile = 'avatars/'.$user->uuid.'_'.$file->hashName();
+
+        Storage::disk('s3')->assertExists($uploadedFile);
+    }
 }

@@ -4,21 +4,33 @@ declare(strict_types=1);
 
 namespace App\Actions\Task;
 
+use App\Enums\Subscription\PlanLimitType;
 use App\Exceptions\TaskNotTrashedException;
 use App\Models\Task;
-use Illuminate\Support\Facades\DB;
+use App\Services\Subscription\PlanLimitService;
 
-final class RestoreTaskAction
+final readonly class RestoreTaskAction
 {
+    public function __construct(
+        private PlanLimitService $planLimitService,
+    ) {}
+
     public function execute(Task $task): void
     {
         if (! $task->trashed()) {
             throw new TaskNotTrashedException;
         }
 
-        DB::transaction(function () use ($task): void {
-            $task->restore();
-            $task->activities()->update(['is_hidden' => false]);
-        });
+        $this->planLimitService->executeWithinProjectLimit(
+            PlanLimitType::TasksPerProject,
+            $task->project,
+            fn () => $this->performRestore($task)
+        );
+    }
+
+    private function performRestore(Task $task): void
+    {
+        $task->restore();
+        $task->activities()->update(['is_hidden' => false]);
     }
 }

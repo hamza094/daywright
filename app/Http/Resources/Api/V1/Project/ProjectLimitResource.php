@@ -24,14 +24,14 @@ final class ProjectLimitResource extends JsonResource
             /**
              * Stable limit key used in plan-limit checks.
              *
-             * @example active_tasks_per_project
+             * @example tasks_per_project
              */
             'key' => $this['key'],
 
             /**
              * Human-readable label for the tracked limit.
              *
-             * @example Active tasks per project
+             * @example Tasks per project
              */
             'label' => $this['label'],
 

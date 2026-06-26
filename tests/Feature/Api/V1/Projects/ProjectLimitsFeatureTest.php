@@ -23,7 +23,7 @@ final class ProjectLimitsFeatureTest extends TestCase
     #[Test]
     public function project_owner_can_get_project_scoped_limits_from_the_dedicated_endpoint(): void
     {
-        $activeTaskLimit = $this->freePlanLimit(PlanLimitType::ActiveTasksPerProject);
+        $activeTaskLimit = $this->freePlanLimit(PlanLimitType::TasksPerProject);
         $memberLimit = $this->freePlanLimit(PlanLimitType::MembersPerProject);
 
         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
@@ -38,7 +38,7 @@ final class ProjectLimitsFeatureTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data');
 
-        $this->assertLimitItem($response, 'active_tasks_per_project', 'Active tasks', 'project', 2, $activeTaskLimit);
+        $this->assertLimitItem($response, 'tasks_per_project', 'Tasks', 'project', 3, $activeTaskLimit);
         $this->assertLimitItem($response, 'members_per_project', 'Members', 'project', 2, $memberLimit);
     }
 

@@ -96,6 +96,7 @@ class NotificationDeliveryTest extends TestCase
         $this->addMember($this->project, $newUser);
 
         $this
+            ->withHeaders($this->idempotencyHeaders())
             ->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), ['message' => 'random chat conversation with @thanos844',
                 'user_id' => $this->user->id]);
 

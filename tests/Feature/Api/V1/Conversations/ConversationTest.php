@@ -11,11 +11,12 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
+use Tests\Traits\InteractsWithPaddle;
 use Tests\Traits\ProjectSetup;
 
 class ConversationTest extends TestCase
 {
-    use ProjectSetup,RefreshDatabase;
+    use InteractsWithPaddle, ProjectSetup, RefreshDatabase;
 
     /** @test */
     public function allowed_user_can_see_project_conversations(): void
@@ -88,7 +89,7 @@ class ConversationTest extends TestCase
         $message = 'random chat conversation';
 
         $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), ['message' => $message,
-            'user_id' => $this->user->id])
+            'user_id' => $this->user->id], ['Idempotency-Key' => 'test-key-existing'])
             ->assertCreated()
             ->assertJsonPath('data.message', $message);
 
@@ -102,7 +103,7 @@ class ConversationTest extends TestCase
     public function chat_validation_check(): void
     {
         $response = $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), ['message' => null,
-            'user_id' => $this->user->id]);
+            'user_id' => $this->user->id], ['Idempotency-Key' => 'test-key-validation']);
 
         $response->assertJsonValidationErrors('message');
     }
@@ -117,7 +118,8 @@ class ConversationTest extends TestCase
         $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
             'message' => 'abra ka dabra',
             'file' => $file,
-            'user_id' => $this->user->id]);
+            'user_id' => $this->user->id,
+        ], ['Idempotency-Key' => 'test-key-file']);
 
         $uploadedFile = 'conversations/'.$this->project->id.'_'.$file->hashName();
 
@@ -146,5 +148,99 @@ class ConversationTest extends TestCase
         $this->assertModelMissing($conversation);
 
         Storage::disk('s3')->assertMissing('photo1.jpg');
+    }
+
+    /** @test */
+    public function free_user_cannot_create_conversation(): void
+    {
+        // Ensure user is on Free plan
+        $this->user->subscriptions()->delete();
+        $this->user->customer()->delete();
+
+        // Re-enable subscription middleware for this test
+        $this->withMiddleware([\App\Http\Middleware\CheckSubscription::class]);
+
+        $message = 'random chat conversation';
+
+        $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
+            'message' => $message,
+            'user_id' => $this->user->id,
+        ], ['Idempotency-Key' => 'test-key-1'])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Access denied. An active subscription is required to perform this action.');
+    }
+
+    /** @test */
+    public function free_user_cannot_create_conversation_with_attachment(): void
+    {
+        // Ensure user is on Free plan
+        $this->user->subscriptions()->delete();
+        $this->user->customer()->delete();
+
+        // Re-enable subscription middleware for this test
+        $this->withMiddleware([\App\Http\Middleware\CheckSubscription::class]);
+
+        Storage::fake('s3');
+
+        $file = UploadedFile::fake()->image('file.jpg')->size(700);
+
+        $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
+            'message' => 'abra ka dabra',
+            'file' => $file,
+            'user_id' => $this->user->id,
+        ], ['Idempotency-Key' => 'test-key-2'])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Access denied. An active subscription is required to perform this action.');
+    }
+
+    /** @test */
+    public function free_user_can_list_conversations(): void
+    {
+        // Ensure user is on Free plan
+        $this->user->subscriptions()->delete();
+        $this->user->customer()->delete();
+
+        $conversation = Conversation::factory()->create([
+            'project_id' => $this->project->id,
+        ]);
+
+        $this->getJson($this->apiV1ProjectRoute('conversations.index', $this->project))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonFragment([
+                'message' => $conversation->message,
+            ]);
+    }
+
+    /** @test */
+    public function trial_user_can_create_conversation(): void
+    {
+        $fake = $this->fakeSubscription();
+        $fake->setState($this->user, 'trialing');
+
+        $message = 'trial chat conversation';
+
+        $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
+            'message' => $message,
+            'user_id' => $this->user->id,
+        ], ['Idempotency-Key' => 'test-key-3'])
+            ->assertCreated()
+            ->assertJsonPath('data.message', $message);
+    }
+
+    /** @test */
+    public function subscribed_user_can_create_conversation(): void
+    {
+        $fake = $this->fakeSubscription();
+        $fake->setState($this->user, 'active');
+
+        $message = 'subscribed chat conversation';
+
+        $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
+            'message' => $message,
+            'user_id' => $this->user->id,
+        ], ['Idempotency-Key' => 'test-key-4'])
+            ->assertCreated()
+            ->assertJsonPath('data.message', $message);
     }
 }

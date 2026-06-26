@@ -31,7 +31,8 @@ final readonly class SubscriptionViewService
         /** @var ?PaddleSubscription $subscription */
         $subscription = $user->getSubscription();
         // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
-        $isBillingSubscribed = $subscription !== null && $subscription->recurring() === true;
+        $billingStatus = $subscription !== null ? $subscription->paddle_status : null;
+        $isBillingSubscribed = $user->isBillingSubscribed();
         // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
         $hasGracePeriod = $subscription !== null && $subscription->onGracePeriod() === true;
         $isBillingVisible = $isBillingSubscribed || $hasGracePeriod;
@@ -47,6 +48,7 @@ final readonly class SubscriptionViewService
                 subscription: $subscription,
                 isBillingSubscribed: $isBillingSubscribed,
                 isBillingVisible: $isBillingVisible,
+                billingStatus: $billingStatus,
             ),
             [
                 'active' => $isOnTrial,
@@ -63,13 +65,14 @@ final readonly class SubscriptionViewService
     }
 
     /**
-     * @return array{subscribed: bool, billing_plan: ?string, next_payment: ?Payment, created_at: ?CarbonInterface}
+     * @return array{subscribed: bool, billing_status: ?string, billing_plan: ?string, next_payment: ?Payment, created_at: ?CarbonInterface}
      */
     private function resolveBillingState(
         User $user,
         ?PaddleSubscription $subscription,
         bool $isBillingSubscribed,
         bool $isBillingVisible,
+        ?string $billingStatus,
     ): array {
         $createdAt = null;
         // @phpstan-ignore-next-line - getSubscription() phpdoc may be overly-certain about nullability
@@ -79,6 +82,7 @@ final readonly class SubscriptionViewService
 
         return [
             'subscribed' => $isBillingSubscribed,
+            'billing_status' => $billingStatus,
             'billing_plan' => $isBillingVisible ? $user->displayBillingPlan() : null,
             'next_payment' => $isBillingSubscribed ? $user->payment() : null,
             'created_at' => $createdAt,

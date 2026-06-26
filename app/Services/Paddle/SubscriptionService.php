@@ -20,10 +20,11 @@ final class SubscriptionService implements Paddle
     {
         return $this->executeSerially($user, function (User $lockedUser) use ($plan): mixed {
             $this->validateSubscribeAllowed($lockedUser, $plan);
+            $this->validatePlanConfig($plan, 'subscribe');
 
             $appUrl = rtrim((string) config('app.url'), '/');
 
-            return $lockedUser->newSubscription('DayWright', config('services.paddle.'.$plan))
+            return $lockedUser->newSubscription($lockedUser->subscriptionName(), config('services.paddle.'.$plan))
                 ->returnTo($appUrl.'/subscriptions')
                 ->create();
         });
@@ -36,17 +37,29 @@ final class SubscriptionService implements Paddle
     public function swap(User $user, string $plan): array
     {
         return $this->executeSerially($user, function (User $lockedUser) use ($plan): array {
+            $this->validatePlanConfig($plan, 'swap');
+
             if (! $lockedUser->isBillingSubscribed()) {
-                throw new SubscriptionException('You are not subscribed to a paid plan.');
+                throw new SubscriptionException(
+                    'You are not subscribed to a paid plan.',
+                    action: 'swap',
+                    plan: $plan,
+                    currentState: $lockedUser->subscription($lockedUser->subscriptionName())?->paddle_status
+                );
             }
 
             $currentPlan = $lockedUser->activeBillingPlan();
 
             if ($currentPlan === $plan) {
-                throw new SubscriptionException('You are already on this plan.');
+                throw new SubscriptionException(
+                    'You are already on this plan.',
+                    action: 'swap',
+                    plan: $plan,
+                    currentState: $lockedUser->subscription($lockedUser->subscriptionName())?->paddle_status
+                );
             }
 
-            $lockedUser->subscription('DayWright')->swapAndInvoice(config('services.paddle.'.$plan));
+            $lockedUser->subscription($lockedUser->subscriptionName())->swapAndInvoice(config('services.paddle.'.$plan));
 
             return [
                 'message' => 'Your subscription has been successfully updated to the '.$plan.' plan',
@@ -68,10 +81,15 @@ final class SubscriptionService implements Paddle
             }
 
             if ($lockedUser->activeBillingPlan() !== $plan) {
-                throw new SubscriptionException('You are not subscribed to this plan.');
+                throw new SubscriptionException(
+                    'You are not subscribed to this plan.',
+                    action: 'cancel',
+                    plan: $plan,
+                    currentState: $lockedUser->subscription($lockedUser->subscriptionName())?->paddle_status
+                );
             }
 
-            $lockedUser->subscription('DayWright')->cancel();
+            $lockedUser->subscription($lockedUser->subscriptionName())->cancel();
 
             return [
                 'message' => 'Your subscription has been canceled successfully.',
@@ -86,14 +104,37 @@ final class SubscriptionService implements Paddle
         }
 
         if ($user->isBillingSubscribed()) {
+            $currentPlan = $user->activeBillingPlan();
+
             throw new SubscriptionException(
-                $user->activeBillingPlan() === $plan
+                $currentPlan === $plan
                     ? 'You are already subscribed to this plan.'
-                    : 'You already have an active paid plan. Please swap plans instead.'
+                    : 'You already have an active paid plan. Please swap plans instead.',
+                action: 'subscribe',
+                plan: $plan,
+                currentState: $user->subscription($user->subscriptionName())?->paddle_status
             );
         }
 
-        throw new SubscriptionException('You have an existing subscription. Please resume or swap your subscription instead.');
+        throw new SubscriptionException(
+            'You have an existing subscription. Please resume or swap your subscription instead.',
+            action: 'subscribe',
+            plan: $plan,
+            currentState: $user->subscription($user->subscriptionName())?->paddle_status
+        );
+    }
+
+    private function validatePlanConfig(string $plan, string $action): void
+    {
+        $planId = config('services.paddle.'.$plan);
+
+        if (blank($planId) || ! is_numeric($planId)) {
+            throw new SubscriptionException(
+                "The {$plan} plan is not configured. Please contact support.",
+                action: $action,
+                plan: $plan
+            );
+        }
     }
 
     /**

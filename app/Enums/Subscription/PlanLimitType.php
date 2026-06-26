@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Enums\Subscription;
 
-use App\Enums\TaskStatus;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -13,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 enum PlanLimitType: string
 {
     case Projects = 'projects';
-    case ActiveTasksPerProject = 'active_tasks_per_project';
+    case TasksPerProject = 'tasks_per_project';
     case MembersPerProject = 'members_per_project';
     case CreatedMeetings = 'created_meetings';
     case ApiTokens = 'api_tokens';
@@ -150,14 +149,14 @@ enum PlanLimitType: string
                 'countLoaders' => ['projects'],
                 'scope' => self::SCOPE_ACCOUNT,
             ],
-            self::ActiveTasksPerProject => [
-                'configKey' => 'max_active_tasks_per_project',
-                'exceptionKey' => 'active_tasks_per_project',
-                'messageSubject' => 'active tasks for this project',
-                'displayLabel' => 'Active tasks',
+            self::TasksPerProject => [
+                'configKey' => 'max_tasks_per_project',
+                'exceptionKey' => 'tasks_per_project',
+                'messageSubject' => 'tasks for this project',
+                'displayLabel' => 'Tasks',
                 'loadedCountAttribute' => 'active_tasks_count',
                 'countLoaders' => [
-                    'tasks as active_tasks_count' => static fn (Builder $query): Builder => $query->whereIn('status_id', TaskStatus::active()),
+                    'tasks as active_tasks_count' => static fn (Builder $query): Builder => $query->whereNull('deleted_at'),
                 ],
                 'scope' => self::SCOPE_PROJECT,
             ],

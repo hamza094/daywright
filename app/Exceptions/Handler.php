@@ -218,6 +218,10 @@ class Handler extends ExceptionHandler
             $context['meta'] = $e->meta($request);
         }
 
+        if (method_exists($e, 'context')) {
+            $context['context'] = $e->context();
+        }
+
         Log::channel(self::EXCEPTION_METRICS_CHANNEL)->info(self::EXCEPTION_METRIC_EVENT, $context);
     }
 

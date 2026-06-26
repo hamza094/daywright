@@ -207,13 +207,14 @@ class TaskTest extends TestCase
     /** @test */
     public function task_limit_per_project(): void
     {
-        Task::factory()->count((int) config('app.project.taskLimit'))
+        $taskLimit = (int) config('plan-limits.free.max_tasks_per_project', 10);
+
+        Task::factory()->count($taskLimit)
             ->for($this->project)->create();
 
         $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project),
             ['title' => 'Project Task'])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors('tasks');
+            ->assertForbidden();
     }
 
     /** @test */
