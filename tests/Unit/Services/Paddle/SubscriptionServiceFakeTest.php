@@ -122,6 +122,7 @@ final class SubscriptionServiceFakeTest extends TestCase
 
         try {
             $this->fake->subscribe($user, 'yearly');
+            $this->fail('Expected SubscriptionException was not thrown.');
         } catch (SubscriptionException $e) {
             $context = $e->context();
 

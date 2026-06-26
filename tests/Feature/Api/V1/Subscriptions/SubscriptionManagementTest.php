@@ -8,6 +8,7 @@ use App\Http\Middleware\CheckSubscription;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Laravel\Paddle\Subscription as PaddleSubscription;
 use Laravel\Sanctum\Sanctum;
 use Override;
@@ -211,14 +212,15 @@ class SubscriptionManagementTest extends TestCase
         $this->withoutMiddleware(CheckSubscription::class);
 
         $plan = 'yearly';
+        $idempotencyKey = (string) Str::uuid();
 
-        $response1 = $this->deleteJson($this->apiV1Route('users.me.subscription.destroy'), [
+        $response1 = $this->withHeaders($this->idempotencyHeaders($idempotencyKey))->deleteJson($this->apiV1Route('users.me.subscription.destroy'), [
             'plan' => $plan,
         ]);
 
         $response1->assertStatus(200);
 
-        $response2 = $this->deleteJson($this->apiV1Route('users.me.subscription.destroy'), [
+        $response2 = $this->withHeaders($this->idempotencyHeaders($idempotencyKey))->deleteJson($this->apiV1Route('users.me.subscription.destroy'), [
             'plan' => $plan,
         ]);
 

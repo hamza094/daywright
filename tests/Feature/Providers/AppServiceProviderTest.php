@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Providers;
 
 use App\Providers\AppServiceProvider;
+use App\Services\Config\ConfigValidator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use LogicException;
@@ -27,7 +28,7 @@ final class AppServiceProviderTest extends TestCase
         Config::set('services.paddle.vendor_auth_code');
 
         $provider = new AppServiceProvider($this->app);
-        $provider->boot();
+        $provider->boot(new ConfigValidator);
 
         $this->expectNotToPerformAssertions();
     }
@@ -44,7 +45,7 @@ final class AppServiceProviderTest extends TestCase
         Config::set('services.paddle.vendor_auth_code', 'auth_code');
 
         $provider = new AppServiceProvider($this->app);
-        $provider->boot();
+        $provider->boot(new ConfigValidator);
 
         $this->expectNotToPerformAssertions();
     }
@@ -62,9 +63,15 @@ final class AppServiceProviderTest extends TestCase
 
         $provider = new AppServiceProvider($this->app);
 
+        ConfigValidator::$overrideConsoleCheckForTests = true;
+
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('The following Paddle configuration values are missing in production environment: PADDLE_PUBLIC_KEY, Monthly_Plan (services.paddle.monthly), Yearly_Plan (services.paddle.yearly), PADDLE_SUBSCRIPTION_NAME (services.paddle.subscription_name), PADDLE_VENDOR_ID (services.paddle.vendor_id), PADDLE_VENDOR_AUTH_CODE (services.paddle.vendor_auth_code)');
 
-        $provider->boot();
+        try {
+            $provider->boot(new ConfigValidator);
+        } finally {
+            ConfigValidator::$overrideConsoleCheckForTests = false;
+        }
     }
 }

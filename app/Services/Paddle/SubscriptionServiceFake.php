@@ -28,7 +28,7 @@ final class SubscriptionServiceFake implements Paddle
             throw new SubscriptionException('Invalid plan configuration.', action: 'subscribe', plan: $plan);
         }
 
-        if (isset($this->subscriptions[$key])) {
+        if (isset($this->subscriptions[$key]) && $this->subscriptions[$key]['status'] !== 'canceled') {
             throw new SubscriptionException(
                 'You already have an active subscription.',
                 action: 'subscribe',

@@ -57,7 +57,7 @@ final readonly class PlanLimitExceededExceptionFactory
                 $max = $maxAllowed ?? 'unlimited';
 
                 return "This project has reached its task limit ({$currentUsage}/{$max}). "
-                    .'Unable to restore. Ask the project owner to upgrade the plan or delete existing tasks.';
+                    .'Ask the project owner to upgrade the plan or delete existing tasks.';
             }
 
             return 'This project has reached the maximum number of '

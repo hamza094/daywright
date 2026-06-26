@@ -133,7 +133,7 @@ class PlanLimitServiceFeatureTest extends TestCase
             limitType: 'tasks_per_project',
             currentUsage: $taskLimit,
             maxAllowed: $taskLimit,
-            expectedMessage: "This project has reached its task limit ({$taskLimit}/{$taskLimit}). Unable to restore. Ask the project owner to upgrade the plan or delete existing tasks.",
+            expectedMessage: "This project has reached its task limit ({$taskLimit}/{$taskLimit}). Ask the project owner to upgrade the plan or delete existing tasks.",
             expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
             expectedCanUpgrade: true,
         );
@@ -160,7 +160,7 @@ class PlanLimitServiceFeatureTest extends TestCase
             limitType: 'tasks_per_project',
             currentUsage: $taskLimit,
             maxAllowed: $taskLimit,
-            expectedMessage: "This project has reached its task limit ({$taskLimit}/{$taskLimit}). Unable to restore. Ask the project owner to upgrade the plan or delete existing tasks.",
+            expectedMessage: "This project has reached its task limit ({$taskLimit}/{$taskLimit}). Ask the project owner to upgrade the plan or delete existing tasks.",
             expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
             expectedCanUpgrade: false,
         );

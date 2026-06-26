@@ -32,14 +32,4 @@ return new class extends Migration
             $table->unique(['billable_type', 'billable_id', 'name'], 'subscriptions_unique_name_per_user');
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::table('subscriptions', function (Blueprint $table) {
-            $table->dropUnique('subscriptions_unique_name_per_user');
-        });
-    }
 };

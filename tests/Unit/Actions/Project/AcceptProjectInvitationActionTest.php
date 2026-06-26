@@ -45,6 +45,8 @@ final class AcceptProjectInvitationActionTest extends TestCase
     #[Test]
     public function it_enforces_member_limit_during_invitation_acceptance(): void
     {
+        Notification::fake();
+
         config(['plan-limits.free.max_members_per_project' => 2]);
 
         $invitedUser1 = User::factory()->create();

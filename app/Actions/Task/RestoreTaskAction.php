@@ -6,7 +6,6 @@ namespace App\Actions\Task;
 
 use App\Enums\Subscription\PlanLimitType;
 use App\Exceptions\TaskNotTrashedException;
-use App\Models\Project;
 use App\Models\Task;
 use App\Services\Subscription\PlanLimitService;
 
@@ -25,7 +24,7 @@ final readonly class RestoreTaskAction
         $this->planLimitService->executeWithinProjectLimit(
             PlanLimitType::TasksPerProject,
             $task->project,
-            fn (Project $lockedProject) => $this->performRestore($task)
+            fn () => $this->performRestore($task)
         );
     }
 

@@ -154,9 +154,9 @@ enum PlanLimitType: string
                 'exceptionKey' => 'tasks_per_project',
                 'messageSubject' => 'tasks for this project',
                 'displayLabel' => 'Tasks',
-                'loadedCountAttribute' => 'tasks_count',
+                'loadedCountAttribute' => 'active_tasks_count',
                 'countLoaders' => [
-                    'tasks as tasks_count' => static fn (Builder $query): Builder => $query,
+                    'tasks as active_tasks_count' => static fn (Builder $query): Builder => $query->whereNull('deleted_at'),
                 ],
                 'scope' => self::SCOPE_PROJECT,
             ],

@@ -118,7 +118,7 @@ class PlanLimitServiceTest extends TestCase
             expectedReason: PlanLimitExceededException::REASON_LIMIT_REACHED,
             expectedUsage: $taskLimit,
             expectedMax: $taskLimit,
-            expectedMessage: "This project has reached its task limit ({$taskLimit}/{$taskLimit}). Unable to restore. Ask the project owner to upgrade the plan or delete existing tasks.",
+            expectedMessage: "This project has reached its task limit ({$taskLimit}/{$taskLimit}). Ask the project owner to upgrade the plan or delete existing tasks.",
             expectedLimitScope: PlanLimitExceededException::SCOPE_PROJECT,
         );
     }

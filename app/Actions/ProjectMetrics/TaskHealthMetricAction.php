@@ -76,7 +76,7 @@ final class TaskHealthMetricAction
     private function getCountsFromProject(Project $project): array
     {
         $total = (int) ($project->tasks_count ?? 0);
-        $active = (int) ($project->tasks_count ?? 0);
+        $active = (int) ($project->active_tasks_count ?? 0);
         $completed = (int) ($project->completed_tasks_count ?? 0);
         $overdue = (int) ($project->overdue_tasks_count ?? 0);
         $abandoned = (int) ($project->abandoned_tasks_count ?? 0);

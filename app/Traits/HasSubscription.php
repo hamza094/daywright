@@ -53,9 +53,17 @@ trait HasSubscription
     {
         $subscription = $this->getSubscription();
 
-        return $subscription !== null
-            && $subscription->recurring() === true
-            && in_array($subscription->paddle_status, ['active', 'trialing'], true);
+        if ($subscription === null) {
+            return false;
+        }
+
+        // Trialing subscriptions are considered subscribed even if not yet recurring
+        if ($subscription->paddle_status === 'trialing') {
+            return true;
+        }
+
+        return $subscription->recurring() === true
+            && $subscription->paddle_status === 'active';
     }
 
     /**

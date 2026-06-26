@@ -8,9 +8,11 @@ use LogicException;
 
 final class ConfigValidator
 {
+    public static bool $overrideConsoleCheckForTests = false;
+
     public function validatePaddleConfig(): void
     {
-        if (! app()->isProduction()) {
+        if (! app()->isProduction() || (app()->runningInConsole() && ! self::$overrideConsoleCheckForTests)) {
             return;
         }
 

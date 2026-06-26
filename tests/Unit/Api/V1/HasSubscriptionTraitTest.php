@@ -45,6 +45,7 @@ final class HasSubscriptionTraitTest extends TestCase
         $missingSubscriptionUser = $this->makeUser();
         $invalidSubscriptionUser = $this->makeUser(subscription: $this->makeInvalidSubscription());
         $validRecurringSubscriptionUser = $this->makeUser(subscription: $this->makeValidRecurringSubscription());
+        $trialingSubscriptionUser = $this->makeUser(subscription: $this->makeTrialingSubscription());
 
         $this->assertFalse($missingSubscriptionUser->hasSubscriptionRecord());
         $this->assertFalse($missingSubscriptionUser->isSubscribed());
@@ -57,6 +58,10 @@ final class HasSubscriptionTraitTest extends TestCase
         $this->assertTrue($validRecurringSubscriptionUser->hasSubscriptionRecord());
         $this->assertTrue($validRecurringSubscriptionUser->isSubscribed());
         $this->assertTrue($validRecurringSubscriptionUser->isBillingSubscribed());
+
+        $this->assertTrue($trialingSubscriptionUser->hasSubscriptionRecord());
+        $this->assertTrue($trialingSubscriptionUser->isSubscribed());
+        $this->assertTrue($trialingSubscriptionUser->isBillingSubscribed());
     }
 
     #[Test]
@@ -181,6 +186,11 @@ final class HasSubscriptionTraitTest extends TestCase
     private function makeValidRecurringSubscription(?int $paddlePlan = null): object
     {
         return $this->makeSubscription(valid: true, recurring: true, paddlePlan: $paddlePlan, paddleStatus: 'active');
+    }
+
+    private function makeTrialingSubscription(?int $paddlePlan = null): object
+    {
+        return $this->makeSubscription(valid: true, recurring: false, paddlePlan: $paddlePlan, paddleStatus: 'trialing');
     }
 
     private function makeCanceledSubscription(int $paddlePlan): object

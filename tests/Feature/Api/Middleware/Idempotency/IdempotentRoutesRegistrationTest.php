@@ -46,7 +46,7 @@ class IdempotentRoutesRegistrationTest extends TestCase
     }
 
     #[Test]
-    public function subscription_cancel_remains_a_delete_route_without_idempotency_middleware(): void
+    public function subscription_cancel_route_has_user_scoped_idempotency_middleware(): void
     {
         $route = app('router')->getRoutes()->getByName('api.v1.users.me.subscription.destroy');
 

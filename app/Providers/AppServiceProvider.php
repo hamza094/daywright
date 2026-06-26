@@ -53,9 +53,9 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
+    public function boot(ConfigValidator $configValidator): void
     {
-        $this->app->make(ConfigValidator::class)->validatePaddleConfig();
+        $configValidator->validatePaddleConfig();
 
         Feature::define('project-export', fn (User $user): bool => $user->isAdmin());
         Feature::define('project-messaging', fn (User $user): bool => $user->isAdmin());

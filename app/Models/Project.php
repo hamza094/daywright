@@ -289,7 +289,7 @@ class Project extends Model
 
     public function tasksReachedItsLimit(): bool
     {
-        $this->loadCount('tasks');
+        $this->loadCount('tasks as tasks_count', fn ($q) => $q->whereNull('deleted_at'));
 
         return $this->tasks_count === (int) config('app.project.taskLimit');
     }
