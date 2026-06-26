@@ -287,13 +287,6 @@ class Project extends Model
         return $this->hasMany(Conversation::class);
     }
 
-    public function tasksReachedItsLimit(): bool
-    {
-        $this->loadCount('tasks as tasks_count', fn ($q) => $q->whereNull('deleted_at'));
-
-        return $this->tasks_count === (int) config('app.project.taskLimit');
-    }
-
     /**
      * Derived health status label from persisted health_score.
      */
