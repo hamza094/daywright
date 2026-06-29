@@ -130,6 +130,88 @@ class MessageTest extends TestCase
     }
 
     /** @test */
+    public function message_scheduled_later_today_is_not_dispatched(): void
+    {
+        Bus::fake();
+
+        $message = Message::factory()
+            ->for($this->project)
+            ->create([
+                'type' => 'mail',
+                'delivered_at' => Carbon::now()->addHours(5),
+            ]);
+
+        $message->users()->attach($this->user->id);
+
+        $this->assertCount(0, Message::messageScheduled()->get());
+
+        $this->artisan('schedule:message')->assertok();
+
+        Bus::assertBatchCount(0);
+        $this->assertNull($message->fresh()->batch_id);
+    }
+
+    /** @test */
+    public function message_scheduled_at_or_before_now_dispatches_normally(): void
+    {
+        Bus::fake();
+
+        $message = Message::factory()
+            ->for($this->project)
+            ->create([
+                'type' => 'mail',
+                'delivered_at' => Carbon::now()->subMinutes(5),
+            ]);
+
+        $message->users()->attach($this->user->id);
+
+        $this->assertCount(1, Message::messageScheduled()->get());
+
+        $this->artisan('schedule:message')->assertok();
+
+        Bus::assertBatchCount(1);
+        $this->assertNotNull($message->fresh()->batch_id);
+    }
+
+    /** @test */
+    public function message_scheduled_later_today_appears_in_scheduled_list(): void
+    {
+        Message::factory()->for($this->project)->create([
+            'delivered_at' => Carbon::now()->addHours(3),
+        ]);
+
+        $this->assertCount(1, $this->project->scheduledMessages());
+    }
+
+    /** @test */
+    public function timezone_boundary_message_scheduled_in_user_timezone_stored_in_utc(): void
+    {
+        $userTimezone = 'Asia/Karachi';
+        $deliveredAt = Carbon::now($userTimezone)
+            ->addDay()
+            ->setTime(14, 30, 0)
+            ->toIso8601String();
+
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('projects.messages.store', $this->project), [
+            'message' => 'this is project message',
+            'users' => json_encode([$this->user->id]),
+            'sms' => true,
+            'delivered_at' => $deliveredAt,
+        ])->assertOk();
+
+        $message = Message::query()->sole();
+
+        // Verify stored in UTC
+        $this->assertSame(
+            Carbon::parse($deliveredAt)->setTimezone('UTC')->toIso8601String(),
+            $message->refresh()->delivered_at?->toIso8601String(),
+        );
+
+        // Verify not dispatched yet (still in future in UTC)
+        $this->assertCount(0, Message::messageScheduled()->get());
+    }
+
+    /** @test */
     public function get_project_scheduled_messages(): void
     {
         Message::factory()->for($this->project)->count(4)
