@@ -75,7 +75,7 @@ Acceptance:
 - Metrics jobs have a separate worker so health sweeps do not starve user-facing work.
 - The deployment docs name every queue that code can dispatch to.
 
-## Phase 4: Make Scheduler Multi-Server Safe and Observable
+## Phase 4: Make Scheduler Multi-Server Safe and Observable ✅ COMPLETED
 
 - Add `onOneServer()` and stable `name()` values to scheduled commands that must not run twice:
   - `schedule:message`
