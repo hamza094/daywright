@@ -14,6 +14,13 @@ final class SendTaskDueNotificationAction
 {
     private const int TRANSACTION_RETRY_ATTEMPTS = 5;
 
+    /**
+     * The notify_sent field indicates that a notification has been queued for delivery.
+     * It is set to true BEFORE the notification is dispatched to the queue.
+     * This prevents duplicate notifications from being sent if the command runs multiple times.
+     * If the queued notification job fails, notify_sent remains true but the notification may not be delivered.
+     * Failed notification jobs can be retried via the queue worker.
+     */
     public function execute(Task $task): bool
     {
         $taskForNotification = DB::transaction(function () use ($task): ?Task {

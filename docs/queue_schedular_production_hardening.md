@@ -123,7 +123,7 @@ Acceptance:
 - Zoom cancellation is not skipped by cron cleanup.
 - Large cleanup runs do not load every abandoned project into memory.
 
-## Phase 6: Harden Task Notification Scheduling
+## Phase 6: Harden Task Notification Scheduling ✅ COMPLETED
 
 - Change `tasks:notify` from `chunk()` to `chunkById()` because processing mutates `notify_sent`.
 - Keep the existing row-lock claim behavior in `SendTaskDueNotificationAction`.

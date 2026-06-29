@@ -97,6 +97,35 @@ class TaskNotifyTest extends TestCase
         $this->assertEquals(1, (int) $task->fresh()->notify_sent);
     }
 
+    /** @test */
+    public function task_notify_command_processes_tasks_in_chunks(): void
+    {
+        Notification::fake();
+
+        $status = $this->createTaskStatus();
+
+        $user = $this->createUser();
+
+        // Create 120 tasks (more than chunk size of 50)
+        $tasks = Task::factory()
+            ->count(120)
+            ->for($this->project)
+            ->create([
+                'notified' => '1 Day Before',
+                'due_at' => now()->addDay(),
+                'status_id' => $status->id,
+            ]);
+
+        foreach ($tasks as $task) {
+            $task->assignee()->attach($user);
+        }
+
+        $this->artisan('tasks:notify')->assertSuccessful();
+
+        // All tasks should have notify_sent set
+        $this->assertEquals(120, Task::where('notify_sent', true)->count());
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */

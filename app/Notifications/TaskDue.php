@@ -30,6 +30,7 @@ class TaskDue extends Notification implements ShouldBroadcast, ShouldQueue
         protected string $projectSlug
     ) {
         $this->afterCommit();
+        $this->onQueue('default');
     }
 
     /**
