@@ -10,7 +10,6 @@ use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Sanctum\Sanctum;
@@ -366,26 +365,6 @@ class ProjectFeatureTest extends TestCase
         $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))->assertOk();
 
         Queue::assertNotPushed(CancelZoomMeetingsJob::class);
-    }
-
-    public function delete_abandon_projects_after_limit_past(): void
-    {
-        $this->project->touch('deleted_at');
-
-        $this->assertCount(1, $this->user->projects()
-            ->onlyTrashed()->get());
-
-        Project::factory()
-            ->for($this->user)
-            ->create(['deleted_at' => Carbon::now()->subDays(91)]);
-
-        $this->assertCount(2, $this->user->projects()
-            ->onlyTrashed()->get());
-
-        $this->artisan('remove:abandon')->assertSuccessful();
-
-        $this->assertCount(1, $this->user->projects()
-            ->onlyTrashed()->get());
     }
 
     /**

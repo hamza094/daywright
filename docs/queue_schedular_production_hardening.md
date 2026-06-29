@@ -103,7 +103,7 @@ Acceptance:
 - Scheduler locks rely on Redis cache, so production must have Redis available and configured as the cache store.
 - Scheduler failures and background command output are reviewable after production incidents.
 
-## Phase 5: Fix Abandoned Project Cleanup Path
+## Phase 5: Fix Abandoned Project Cleanup Path ✅ COMPLETED
 
 - Update `remove:abandon` to use `ForceDeleteAbandonedProjectAction` instead of calling `forceDelete()` directly.
 - Process abandoned projects with `chunkById()` to avoid loading all trashed projects at once.
