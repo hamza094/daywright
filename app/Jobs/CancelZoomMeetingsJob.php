@@ -27,7 +27,10 @@ class CancelZoomMeetingsJob implements ShouldQueue
     /**
      * @param  array<int, array{meeting_id:int, user_id:int}>  $meetings
      */
-    public function __construct(public array $meetings) {}
+    public function __construct(public array $meetings)
+    {
+        $this->onQueue('default');
+    }
 
     public function handle(Zoom $zoomService): void
     {

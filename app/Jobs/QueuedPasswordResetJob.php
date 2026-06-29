@@ -16,10 +16,10 @@ class QueuedPasswordResetJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct(protected User $user, protected string $token) {}
+    public function __construct(protected User $user, protected string $token)
+    {
+        $this->onQueue('critical');
+    }
 
     /**
      * Execute the job.

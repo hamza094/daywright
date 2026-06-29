@@ -28,7 +28,9 @@ class MailMessage implements ShouldQueue
         protected Project $project,
         protected $message,
         protected $user
-    ) {}
+    ) {
+        $this->onQueue('default');
+    }
 
     /**
      * Execute the job.

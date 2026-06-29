@@ -25,6 +25,16 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
 
     public ?string $request_id = null;
 
+    public function __construct(
+        public int $meetingId,
+        public ?string $requestId = null,
+        public array $payload = [],
+    ) {
+        $this->meeting_id = $meetingId;
+        $this->request_id = $requestId;
+        $this->onQueue('webhooks');
+    }
+
     abstract protected function operation(): string;
 
     /**

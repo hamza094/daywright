@@ -8,7 +8,7 @@ This revision was cross-checked against `.github/skills/laravel-queue.md` and no
 
 Final target: scheduled work runs once, queued jobs have safe retry/timeout behavior, external sends are not accidentally duplicated, failed critical jobs are observable, notification failures are not hidden, and tests lock the production-critical behavior.
 
-## Phase 1: Fix Scheduled Message Timing
+## Phase 1: Fix Scheduled Message Timing ✅ COMPLETED
 
 - Change scheduled-message due checks from date-only comparison to full timestamp comparison.
 - Update both due-message selection and future scheduled-message listing so messages scheduled later today are not sent early.
@@ -53,7 +53,7 @@ Acceptance:
 - Worker command can safely use `--timeout=120` or lower than queue `retry_after`.
 - Jobs dispatched inside transactions are queued only after commit.
 
-## Phase 3: Define Queue Priority and Worker Topology
+## Phase 3: Define Queue Priority and Worker Topology ✅ COMPLETED
 
 - Add a small production queue map before changing dispatches:
   - `critical`: password reset, verification, user-facing auth/security email, and any future payment/security jobs.

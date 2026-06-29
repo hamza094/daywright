@@ -30,7 +30,9 @@ final class SendMeetingEndedNotification implements ShouldBeUnique, ShouldQueue
     public function __construct(
         public int $meetingId,
         public array $notificationData,
-    ) {}
+    ) {
+        $this->onQueue('default');
+    }
 
     public function uniqueId(): string
     {
