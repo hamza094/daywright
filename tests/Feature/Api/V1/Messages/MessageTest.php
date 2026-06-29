@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests\Feature\Api\V1\Messages;
 
 use App\Models\Message;
+use App\Models\User;
 use App\Services\Project\MessageService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Mail;
 use Override;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
@@ -247,6 +249,40 @@ class MessageTest extends TestCase
                 'links',
                 'meta',
             ]);
+    }
+
+    /** @test */
+    public function mail_message_job_does_not_send_if_message_already_delivered(): void
+    {
+        $message = Message::factory()->for($this->project)->create([
+            'delivered' => true,
+            'type' => 'mail',
+        ]);
+
+        $user = User::factory()->create();
+        $message->users()->attach($user);
+
+        Mail::fake();
+
+        $job = new \App\Jobs\MailMessage($this->project->id, $message->id, $user->id);
+        $job->handle();
+
+        Mail::assertNothingSent();
+    }
+
+    /** @test */
+    public function sms_message_job_does_not_send_if_message_already_delivered(): void
+    {
+        $message = Message::factory()->for($this->project)->create([
+            'delivered' => true,
+            'type' => 'sms',
+        ]);
+
+        $service = $this->mock(\App\Services\VonageSmsService::class);
+        $service->shouldNotReceive('send');
+
+        $job = new \App\Jobs\SmsMessage($this->project->id, $message->id);
+        $job->handle($service);
     }
 
     /** @test */

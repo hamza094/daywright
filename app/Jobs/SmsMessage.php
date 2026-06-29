@@ -16,10 +16,11 @@ use Illuminate\Queue\SerializesModels;
 
 class SmsMessage implements ShouldQueue
 {
-    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable;
 
     public function __construct(
-        private Project $project, private Message $message
+        private int $projectId,
+        private int $messageId
     ) {
         $this->onQueue('default');
     }
@@ -29,6 +30,23 @@ class SmsMessage implements ShouldQueue
      */
     public function handle(VonageSmsService $service): void
     {
-        $service->send($this->project, $this->message);
+        // Early return if batch is cancelled
+        if ($this->batch()?->cancelled()) {
+            return;
+        }
+
+        $message = Message::find($this->messageId);
+        $project = Project::find($this->projectId);
+
+        // Idempotency check: don't send if message is already delivered
+        if ($message?->delivered) {
+            return;
+        }
+
+        if (! $project || ! $message) {
+            return;
+        }
+
+        $service->send($project, $message);
     }
 }

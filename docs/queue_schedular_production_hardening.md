@@ -146,7 +146,7 @@ Acceptance:
 - Re-running the command does not duplicate task due notifications.
 - If queued notification delivery fails later, the failure is visible in logs/failed jobs and not mistaken for scheduler success.
 
-## Phase 7: Harden Project Message Delivery and Batch Recovery
+## Phase 7: Harden Project Message Delivery and Batch Recovery ✅ COMPLETED
 
 - Add minimal idempotency for project message delivery:
   - Mail jobs should avoid resending if the parent message is already delivered or if a per-user delivery record/status already exists.

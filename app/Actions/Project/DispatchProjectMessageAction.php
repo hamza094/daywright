@@ -69,11 +69,18 @@ final class DispatchProjectMessageAction
     private function dispatchBatch(Project $project, Message $message): Batch
     {
         $jobs = $message->type === 'mail'
-            ? $message->users->map(fn ($user): MailMessage => new MailMessage($project, $message, $user))
-            : collect([new SmsMessage($project, $message)]);
+            ? $message->users->map(fn ($user): MailMessage => new MailMessage($project->id, $message->id, $user->id))
+            : collect([new SmsMessage($project->id, $message->id)]);
 
         return Bus::batch($jobs)
             ->allowFailures()
+            /**
+             * allowFailures() is used to ensure the batch completes even if individual jobs fail.
+             * This means the message will be marked as delivered even if one recipient fails.
+             * Trade-off: Without per-recipient delivery tracking, failed recipients won't be retried.
+             * This is acceptable for task notifications where delivery is not critical.
+             * For critical notifications, per-recipient tracking should be added.
+             */
             ->then(function () use ($message): void {
                 Message::query()
                     ->whereKey($message->getKey())
