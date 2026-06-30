@@ -1,0 +1,78 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Jobs;
+
+use App\Jobs\SendMeetingStartedNotification;
+use App\Notifications\Zoom\MeetingStarted;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use Mockery;
+use RuntimeException;
+use Tests\Support\Meeting\MeetingTestHelper;
+use Tests\TestCase;
+use Tests\Traits\ProjectInvitationHelpers;
+use Tests\Traits\ProjectSetup;
+
+class SendMeetingStartedNotificationTest extends TestCase
+{
+    use ProjectInvitationHelpers;
+    use ProjectSetup, RefreshDatabase;
+
+    /** @test */
+    public function does_not_send_when_flag_is_already_set(): void
+    {
+        Notification::fake();
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 813,
+            'status' => 'started',
+            'started_notification_sent_at' => now(),
+        ]);
+
+        $job = new SendMeetingStartedNotification(
+            meetingId: $meeting->id,
+            notificationData: [
+                'meeting_topic' => 'Test',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'meeting_join_url' => 'https://zoom.us/j/813',
+                'start_time' => '2024-06-24T11:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project'
+            ]
+        );
+
+        $job->handle();
+
+        Notification::assertNothingSent();
+    }
+
+    /** @test */
+    public function failed_method_logs_meeting_id_and_error(): void
+    {
+        Log::shouldReceive('error')
+            ->once()
+            ->with(
+                'Meeting started notification job failed',
+                Mockery::on(fn (array $context): bool => 
+                    isset($context['meeting_id']) &&
+                    $context['meeting_id'] === 999 &&
+                    isset($context['error']) &&
+                    $context['error'] === 'Test failure' &&
+                    isset($context['trace'])
+                )
+            );
+
+        $job = new SendMeetingStartedNotification(
+            meetingId: 999,
+            notificationData: []
+        );
+
+        $job->failed(new RuntimeException('Test failure'));
+
+        $this->assertTrue(true);
+    }
+}

@@ -21,6 +21,8 @@ final class SendMeetingEndedNotification implements ShouldBeUnique, ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
+    public int $timeout = 60;
+    public bool $failOnTimeout = true;
 
     public int $uniqueFor = 120;
 
@@ -44,6 +46,10 @@ final class SendMeetingEndedNotification implements ShouldBeUnique, ShouldQueue
         $meeting = Meeting::query()
             ->with(['project.asignees', 'project.user'])
             ->findOrFail($this->meetingId);
+
+        if ($meeting->ended_notification_sent_at !== null) {
+            return;
+        }
 
         Notification::send(
             $meeting->project->asignees,
