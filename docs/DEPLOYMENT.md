@@ -206,11 +206,11 @@ php artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=1
 
 ### Important: Timeout vs Retry After
 
-The queue `retry_after` configuration is set to 90 seconds. Worker `--timeout` must be **lower** than this to prevent jobs from being retried while still running:
+The queue `retry_after` configuration is set to 150 seconds. Worker `--timeout` must be **lower** than this to prevent jobs from being retried while still running:
 
 ```
-retry_after (90s) > worker timeout (120s) ❌ WRONG - causes duplicate executions
-retry_after (90s) > worker timeout (60s)  ✅ CORRECT - safe
+retry_after (150s) > worker timeout (120s) ✅ CORRECT - safe
+retry_after (90s) > worker timeout (120s)  ❌ WRONG - causes duplicate executions
 ```
 
 ## Scheduler Configuration

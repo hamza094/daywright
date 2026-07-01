@@ -81,10 +81,19 @@ final class DispatchProjectMessageAction
              * This is acceptable for task notifications where delivery is not critical.
              * For critical notifications, per-recipient tracking should be added.
              */
-            ->then(function () use ($message): void {
-                Message::query()
-                    ->whereKey($message->getKey())
-                    ->update(['delivered' => true]);
+            ->then(function (Batch $batch) use ($message): void {
+                if ($batch->failedJobs === 0) {
+                    Message::query()
+                        ->whereKey($message->getKey())
+                        ->update(['delivered' => true]);
+                } else {
+                    Log::warning('Message batch completed with failures', [
+                        'message_id' => $message->getKey(),
+                        'batch_id' => $batch->id,
+                        'failed_jobs' => $batch->failedJobs,
+                        'total_jobs' => $batch->totalJobs,
+                    ]);
+                }
             })
             ->catch(function (Batch $batch, Throwable $throwable): void {
                 Log::error('Message batch failed', [

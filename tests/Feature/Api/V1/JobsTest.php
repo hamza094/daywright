@@ -43,8 +43,7 @@ class JobsTest extends TestCase
 
         $message->users()->attach($this->user);
 
-        $job = new MailMessage($this->project, $message,
-            $this->user);
+        $job = new MailMessage($this->project->id, $message->id, $this->user->id, $this->user->uuid);
 
         Mail::fake();
 
@@ -74,7 +73,8 @@ class JobsTest extends TestCase
                 ->andReturn('https://picsum.photos/200/300');
         });
 
-        app(SmsMessage::class)->handle($mock);
+        $job = new SmsMessage($project->id, $message->id);
+        $job->handle($mock);
     }
 
     /** @test */
@@ -113,7 +113,7 @@ class JobsTest extends TestCase
         Queue::fake();
 
         $message = Message::factory()->for($this->project)->create();
-        $job = new MailMessage($this->project, $message, $this->user);
+        $job = new MailMessage($this->project->id, $message->id, $this->user->id, $this->user->uuid);
 
         dispatch($job);
 
@@ -128,7 +128,7 @@ class JobsTest extends TestCase
         Queue::fake();
 
         $message = Message::factory()->for($this->project)->create();
-        $job = new SmsMessage($this->project, $message);
+        $job = new SmsMessage($this->project->id, $message->id);
 
         dispatch($job);
 

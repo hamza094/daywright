@@ -18,7 +18,8 @@ class QueuedVerifyEmailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    public int $tries = 3;
+    public int $backoff = [10, 30, 60];
     public int $timeout = 30;
     public bool $failOnTimeout = true;
 

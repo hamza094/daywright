@@ -163,9 +163,12 @@ php artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --t
 
 # Metrics queue (analytics and reporting)
 php artisan queue:work database --queue=metrics --sleep=3 --tries=2 --timeout=120 --max-time=3600
+
+# Webhooks queue (Zoom webhook processing)
+php artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=120 --max-time=3600
 ```
 
-**Important:** The `--timeout` value must be lower than the queue `retry_after` configuration (90 seconds by default) to prevent jobs from being retried while still running.
+**Important:** The `--timeout` value must be lower than the queue `retry_after` configuration (150 seconds by default) to prevent jobs from being retried while still running.
 
 ### Supervisor Configuration
 
