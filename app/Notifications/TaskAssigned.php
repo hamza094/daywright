@@ -27,6 +27,7 @@ class TaskAssigned extends Notification implements ShouldBroadcast, ShouldQueue
         protected NotificationActorData $notifierData
     ) {
         $this->afterCommit();
+        $this->onQueue('default');
     }
 
     /**

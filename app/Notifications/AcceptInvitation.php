@@ -23,7 +23,10 @@ class AcceptInvitation extends Notification implements ShouldBroadcast, ShouldQu
         protected string $projectName,
         protected string $projectSlug,
         protected NotificationActorData $notifierData
-    ) {}
+    ) {
+        $this->afterCommit();
+        $this->onQueue('default');
+    }
 
     /**
      * Get the notification's delivery channels.

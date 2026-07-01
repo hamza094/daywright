@@ -267,6 +267,12 @@ Acceptance:
 - Update `.env.example` to make production expectations clear:
   - Keep local default if desired, but add comments showing production should not use `QUEUE_CONNECTION=sync`.
   - Mention database queue as current supported production default.
+
+**Gap Fix - Notification afterCommit:**
+- Added `afterCommit()` to 5 queued notifications (ProjectInvitation, AcceptInvitation, ProjectUpdated, ProjectTask, UserMentioned) to prevent them from being queued before database transactions commit. This prevents race conditions where notifications could fail if transactions roll back.
+
+**Gap Fix - Notification Queue Assignment:**
+- Added explicit `$this->onQueue('default')` to 6 queued notifications (TaskAssigned, ProjectInvitation, AcceptInvitation, ProjectUpdated, ProjectTask, UserMentioned) to ensure consistent queue assignment and prevent fragility if default queue configuration changes. TaskDue already had explicit queue assignment.
   - Mention Redis cache requirement.
   - Mention `LOG_CHANNEL=stack` should include production alerting such as Bugsnag/Sentry/Slack where configured.
 
