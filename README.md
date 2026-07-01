@@ -26,6 +26,7 @@
   - [Principles](#principles)
   - [Vision](#vision)
   - [Goals](#goals)
+- [Deployment](#deployment)
 - [Contact](#contact)
 - [Thank you, open source](#thank-you-open-source)
 - [License](#license)
@@ -116,6 +117,102 @@ The application uses an environment variable called `ADMIN_EMAILS` to identify a
 - Prefer this over `config/admin.local.php` unless you need to execute PHP in a local override. If you do use `admin.local.php`, keep it out of version control and only use trusted contents.
 
 This value is read by `config/admin.php` and used by the application to determine which users are considered admins.
+
+## Deployment
+
+### Requirements
+
+- **PHP 8.2+**
+- **MySQL 8.0+** or PostgreSQL 14+
+- **Redis** (required for cache, queue locks, scheduler locks, rate limiting, and job overlap prevention)
+- **Composer** for dependency management
+- **Node.js 18+** and **npm** for frontend assets
+
+### Environment Configuration
+
+Production deployments should use the database queue driver (default). Do not use `QUEUE_CONNECTION=sync` in production.
+
+```env
+QUEUE_CONNECTION=database
+CACHE_DRIVER=redis
+SESSION_DRIVER=redis
+```
+
+See `.env.example` for all required environment variables.
+
+### Scheduler
+
+The Laravel scheduler must be configured to run every minute via cron:
+
+```bash
+* * * * * cd /path/to/daywright && php artisan schedule:run >> /dev/null 2>&1
+```
+
+The scheduler handles:
+- Scheduled message dispatching
+- Failed job pruning
+- Other periodic tasks
+
+### Queue Workers
+
+DayWright uses multiple queues with different priorities. Run the following workers:
+
+```bash
+# Critical and default queues (auth emails, notifications, messages)
+php artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --timeout=120 --max-time=3600
+
+# Metrics queue (analytics and reporting)
+php artisan queue:work database --queue=metrics --sleep=3 --tries=2 --timeout=120 --max-time=3600
+```
+
+**Important:** The `--timeout` value must be lower than the queue `retry_after` configuration (90 seconds by default) to prevent jobs from being retried while still running.
+
+### Supervisor Configuration
+
+For production, use Supervisor to keep queue workers running. Example configuration:
+
+```ini
+[program:daywright-worker]
+process_name=%(program_name)s_%(process_num)02d
+command=php /path/to/daywright/artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --timeout=120 --max-time=3600
+autostart=true
+autorestart=true
+user=www-data
+numprocs=2
+redirect_stderr=true
+stdout_logfile=/var/log/daywright-worker.log
+```
+
+### Deployment Steps
+
+1. Deploy code to server
+2. Run `php artisan migrate --force` to run database migrations
+3. Run `php artisan config:cache` to cache configuration
+4. Run `php artisan route:cache` to cache routes
+5. Run `php artisan queue:restart` to restart queue workers (loads new code)
+6. Run `php artisan schedule:interrupt` if needed to stop running scheduler tasks
+
+### Failed Job Management
+
+Monitor failed jobs regularly:
+
+```bash
+# View failed jobs
+php artisan queue:failed
+
+# Retry a specific failed job
+php artisan queue:retry [id]
+
+# Retry all failed jobs
+php artisan queue:retry all
+
+# Flush all failed jobs
+php artisan queue:flush
+```
+
+Failed jobs are automatically pruned after 7 days by the scheduler.
+
+For detailed deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Contact
 
