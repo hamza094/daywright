@@ -13,16 +13,27 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class SmsMessage implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable;
+
+    public int $tries = 3;
+    public int $timeout = 60;
+    public bool $failOnTimeout = true;
+    public $backoff = [30, 120];
 
     public function __construct(
         private int $projectId,
         private int $messageId
     ) {
         $this->onQueue('default');
+    }
+
+    public function tags(): array
+    {
+        return ['project:'.$this->projectId, 'message:'.$this->messageId];
     }
 
     /**
@@ -48,5 +59,15 @@ class SmsMessage implements ShouldQueue
         }
 
         $service->send($project, $message);
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        Log::error('SmsMessage job failed', [
+            'message_id' => $this->messageId,
+            'project_id' => $this->projectId,
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
     }
 }

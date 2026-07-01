@@ -14,11 +14,17 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class MailMessage implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable;
+
+    public int $tries = 3;
+    public int $timeout = 60;
+    public bool $failOnTimeout = true;
+    public $backoff = [30, 120];
 
     /**
      * Create a new job instance.
@@ -26,9 +32,15 @@ class MailMessage implements ShouldQueue
     public function __construct(
         private int $projectId,
         private int $messageId,
-        private int $userId
+        private int $userId,
+        private string $userUuid
     ) {
         $this->onQueue('default');
+    }
+
+    public function tags(): array
+    {
+        return ['project:'.$this->projectId, 'message:'.$this->messageId, 'user:'.$this->userUuid];
     }
 
     /**
@@ -56,5 +68,16 @@ class MailMessage implements ShouldQueue
 
         Mail::to($user)
             ->send(new ProjectMail($project, $message));
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        Log::error('MailMessage job failed', [
+            'message_id' => $this->messageId,
+            'project_id' => $this->projectId,
+            'user_uuid' => $this->userUuid,
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
     }
 }

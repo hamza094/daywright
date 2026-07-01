@@ -28,16 +28,16 @@ Acceptance:
 - Future same-day messages still appear in scheduled-message listings.
 - The scheduler `when()` condition uses the same due scope as the command.
 
-## Phase 2: Align Queue Timeouts, Retries, and After-Commit Defaults
+## Phase 2: Align Queue Timeouts, Retries, and After-Commit Defaults ✅ COMPLETED
 
 - Set queue `retry_after` above the highest job timeout plus buffer. Use `150` seconds as the default because Zoom webhook jobs currently use overlap locks expiring at `120` seconds and the worker should never retry a still-running job.
 - Keep database queue as the production default for now, but align the `redis` connection too so a future Redis queue switch does not regress.
 - Set `after_commit = true` on all production queue connections that may be used (`database` already has it; align `redis`).
 - Add explicit job policies where missing:
   - Mail/SMS project message jobs: `$tries = 3`, `$timeout = 60`, `$failOnTimeout = true`, `backoff = [30, 120]`, `failed()` logs message/project/user context.
-  - Auth email jobs: `$tries = 3`, `$timeout = 30`, `$failOnTimeout = true`, `backoff = [10, 60]`, `failed()` logs user/auth context without tokens.
+  - Auth email jobs: `$tries = 1`, `$timeout = 30`, `$failOnTimeout = true`, `failed()` logs user_uuid context without tokens. Set to 1 try since these are lightweight notification triggers and actual mail delivery is handled by queued mailables with their own retry logic.
   - Zoom meeting notification wrapper jobs: decide intentionally between `tries = 1` to avoid duplicate external sends or `tries > 1` only after idempotency/per-recipient tracking exists.
-  - `CancelZoomMeetingsJob`: add `timeout`, `failOnTimeout`, and keep/review its 429 release/backoff behavior.
+  - `CancelZoomMeetingsJob`: add `timeout`, `failOnTimeout`, and keep/review its 429 release/backoff behavior. Added `FailOnException` middleware to fail immediately on auth/permission errors (401/403) while retrying transient errors.
   - Keep existing Zoom webhook retry/backoff behavior, only align queue config and worker flags.
 - Avoid relying only on global worker defaults for critical external side effects.
 
@@ -199,7 +199,7 @@ Acceptance:
 - Critical notification failures are visible through logs and failed jobs.
 - Adding `ShouldQueue` to a notification class cannot accidentally hide delivery failure behind an already-updated sent flag.
 
-## Phase 9: Critical Queue Failure Logging and Operations
+## Phase 9: Critical Queue Failure Logging and Operations ✅ COMPLETED
 
 - Add a dedicated `queue_critical` logging channel or equivalent structured logging path for permanent failures of critical jobs.
 - Register a global `Queue::failing` listener that logs:

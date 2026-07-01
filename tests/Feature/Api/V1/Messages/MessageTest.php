@@ -264,7 +264,7 @@ class MessageTest extends TestCase
 
         Mail::fake();
 
-        $job = new \App\Jobs\MailMessage($this->project->id, $message->id, $user->id);
+        $job = new \App\Jobs\MailMessage($this->project->id, $message->id, $user->id, $user->uuid);
         $job->handle();
 
         Mail::assertNothingSent();

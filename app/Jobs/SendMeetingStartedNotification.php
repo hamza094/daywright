@@ -41,6 +41,11 @@ final class SendMeetingStartedNotification implements ShouldBeUnique, ShouldQueu
         return "meeting-started-notification-{$this->meetingId}";
     }
 
+    public function tags(): array
+    {
+        return ['meeting:'.$this->meetingId];
+    }
+
     public function handle(): void
     {
         $meeting = Meeting::query()

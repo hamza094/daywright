@@ -17,6 +17,9 @@ use App\Services\Zoom\ZoomService;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Pennant\Feature;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
@@ -74,6 +77,21 @@ class AppServiceProvider extends ServiceProvider
                 'ressie03@example.net',
             ]);
         });*/
+
+        Queue::failing(function (JobFailed $event) {
+            $payload = method_exists($event->job, 'payload') ? $event->job->payload() : [];
+            
+            Log::channel('queue_critical')->error('Critical queue job failed permanently', [
+                'job' => $event->job->resolveName(),
+                'connection' => $event->connectionName,
+                'queue' => $event->job->getQueue(),
+                'uuid' => method_exists($event->job, 'uuid') ? $event->job->uuid() : null,
+                'attempts' => $event->job->attempts(),
+                'exception' => get_class($event->exception),
+                'message' => $event->exception->getMessage(),
+                'tags' => $payload['tags'] ?? [],
+            ]);
+        });
     }
 
     // Scramble/OpenAPI related methods extracted to ScrambleServiceProvider

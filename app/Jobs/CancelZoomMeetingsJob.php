@@ -12,6 +12,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\FailOnException;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -23,6 +24,8 @@ class CancelZoomMeetingsJob implements ShouldQueue
     private const string LOG_CHANNEL = 'zoom';
 
     public int $tries = 3;
+    public int $timeout = 60;
+    public bool $failOnTimeout = true;
 
     /**
      * @param  array<int, array{meeting_id:int, user_id:int}>  $meetings
@@ -30,6 +33,26 @@ class CancelZoomMeetingsJob implements ShouldQueue
     public function __construct(public array $meetings)
     {
         $this->onQueue('default');
+    }
+
+    public function tags(): array
+    {
+        $tags = ['cancel-zoom-meetings'];
+        foreach ($this->meetings as $meeting) {
+            $tags[] = 'meeting:'.$meeting['meeting_id'];
+        }
+        return $tags;
+    }
+
+    public function middleware(): array
+    {
+        return [
+            new FailOnException(function (Throwable $e) {
+                // Fail immediately on authentication/permission errors
+                // These are permanent errors that won't be fixed by retrying
+                return $e->getCode() === 401 || $e->getCode() === 403;
+            }),
+        ];
     }
 
     public function handle(Zoom $zoomService): void

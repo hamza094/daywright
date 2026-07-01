@@ -69,7 +69,7 @@ final class DispatchProjectMessageAction
     private function dispatchBatch(Project $project, Message $message): Batch
     {
         $jobs = $message->type === 'mail'
-            ? $message->users->map(fn ($user): MailMessage => new MailMessage($project->id, $message->id, $user->id))
+            ? $message->users->map(fn ($user): MailMessage => new MailMessage($project->id, $message->id, $user->id, $user->uuid))
             : collect([new SmsMessage($project->id, $message->id)]);
 
         return Bus::batch($jobs)
