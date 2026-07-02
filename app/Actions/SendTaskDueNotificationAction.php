@@ -16,19 +16,36 @@ final class SendTaskDueNotificationAction
 
     /**
      * The notify_sent field indicates that a notification has been queued for delivery.
-     * It is set to true BEFORE the notification is dispatched to the queue.
-     * This prevents duplicate notifications from being sent if the command runs multiple times.
-     * If the queued notification job fails, notify_sent remains true but the notification may not be delivered.
-     * Failed notification jobs can be retried via the queue worker.
+     * It is set to true AFTER the notification is dispatched to the queue.
+     * This ensures that if notification dispatch fails, notify_sent is not set and the task can be retried.
+     * The transaction ensures atomicity: if dispatch fails, the flag is not committed.
      */
     public function execute(Task $task): bool
     {
-        $taskForNotification = DB::transaction(function () use ($task): ?Task {
+        $project = $task->project;
+
+        if ($project === null) {
+            return false;
+        }
+
+        $taskForNotification = DB::transaction(function () use ($task, $project): ?Task {
             $lockedTask = $this->lockTask($task);
             $lockedTask->loadMissing(['assignee', 'project', 'owner']);
 
             if (! $this->canNotify($lockedTask)) {
                 return null;
+            }
+
+            foreach ($lockedTask->assignee as $user) {
+                $user->notify(
+                    new TaskDue(
+                        $lockedTask->due_at,
+                        $lockedTask->title,
+                        $lockedTask->notified,
+                        NotificationActorData::fromUser($lockedTask->owner),
+                        $project->name,
+                        $project->slug
+                    ));
             }
 
             $lockedTask->notify_sent = true;
@@ -37,29 +54,7 @@ final class SendTaskDueNotificationAction
             return $lockedTask;
         }, attempts: self::TRANSACTION_RETRY_ATTEMPTS);
 
-        if ($taskForNotification === null) {
-            return false;
-        }
-
-        $project = $taskForNotification->project;
-
-        if ($project === null) {
-            return false;
-        }
-
-        foreach ($taskForNotification->assignee as $user) {
-            $user->notify(
-                new TaskDue(
-                    $taskForNotification->due_at,
-                    $taskForNotification->title,
-                    $taskForNotification->notified,
-                    NotificationActorData::fromUser($taskForNotification->owner),
-                    $project->name,
-                    $project->slug
-                ));
-        }
-
-        return true;
+        return $taskForNotification !== null;
     }
 
     private function canNotify(Task $task): bool
