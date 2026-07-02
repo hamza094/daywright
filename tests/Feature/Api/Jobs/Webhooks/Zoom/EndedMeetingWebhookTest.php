@@ -158,7 +158,7 @@ class EndedMeetingWebhookTest extends TestCase
     }
 
     /** @test */
-    public function sends_notification_on_retry_when_meeting_already_ended_but_notification_not_sent(): void
+    public function does_not_dispatch_notification_when_transition_fails(): void
     {
         Bus::fake();
         Event::fake([MeetingStatusUpdate::class]);
@@ -173,12 +173,12 @@ class EndedMeetingWebhookTest extends TestCase
             meetingId: 813,
             startTime: '2024-06-24T11:00:00Z',
             endTime: '2024-06-24T12:00:00Z',
-            requestId: 'zoom-ended-retry',
+            requestId: 'zoom-ended-no-transition',
         ));
 
         $job->handle(app(HandleMeetingEndedWebhook::class));
 
-        // Job should be dispatched on retry
-        Bus::assertDispatched(SendMeetingEndedNotification::class);
+        // Job should NOT be dispatched when transition fails
+        Bus::assertNotDispatched(SendMeetingEndedNotification::class);
     }
 }

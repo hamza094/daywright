@@ -20,11 +20,12 @@ final class SendMeetingStartedNotification implements ShouldBeUnique, ShouldQueu
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    public int $tries = 3;
     public int $timeout = 60;
     public bool $failOnTimeout = true;
+    public array $backoff = [10, 60];
 
-    public int $uniqueFor = 120;
+    public int $uniqueFor = 300;
 
     /**
      * @param  array<string, mixed>  $notificationData
@@ -56,21 +57,25 @@ final class SendMeetingStartedNotification implements ShouldBeUnique, ShouldQueu
             return;
         }
 
-        Notification::send(
-            $meeting->project->asignees,
-            new MeetingStarted($this->notificationData),
-        );
+        $claimed = Meeting::query()
+            ->where('id', $this->meetingId)
+            ->whereNull('started_notification_sent_at')
+            ->update(['started_notification_sent_at' => now()]);
+
+        if ($claimed === 0) {
+            return;
+        }
 
         try {
-            if ($meeting->started_notification_sent_at === null) {
-                $meeting->update(['started_notification_sent_at' => now()]);
-            }
+            Notification::send(
+                $meeting->project->asignees,
+                new MeetingStarted($this->notificationData),
+            );
         } catch (Throwable $e) {
-            // Log but don't fail the job - notification was already sent
-            Log::warning('Failed to update started notification flag', [
-                'meeting_id' => $this->meetingId,
-                'error' => $e->getMessage(),
-            ]);
+            Meeting::query()
+                ->where('id', $this->meetingId)
+                ->update(['started_notification_sent_at' => null]);
+            throw $e;
         }
     }
 

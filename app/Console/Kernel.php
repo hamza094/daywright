@@ -93,6 +93,14 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->withoutOverlapping()
             ->dailyAt('02:00');
+
+        // Check for stuck meeting notifications (defense in depth)
+        $schedule->command('meetings:check-unsent-notifications')
+            ->name('check-unsent-meeting-notifications')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->everyThirtyMinutes()
+            ->appendOutputTo(storage_path('logs/scheduler.log'));
     }
 
     /**

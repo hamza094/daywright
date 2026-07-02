@@ -51,6 +51,103 @@ class SendMeetingStartedNotificationTest extends TestCase
     }
 
     /** @test */
+    public function claims_flag_and_sends_notification(): void
+    {
+        Notification::fake();
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 813,
+            'status' => 'started',
+            'started_notification_sent_at' => null,
+        ]);
+
+        $job = new SendMeetingStartedNotification(
+            meetingId: $meeting->id,
+            notificationData: [
+                'meeting_topic' => 'Test',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'meeting_join_url' => 'https://zoom.us/j/813',
+                'start_time' => '2024-06-24T11:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project'
+            ]
+        );
+
+        $job->handle();
+
+        Notification::assertSentTo($this->user, MeetingStarted::class);
+        $this->assertNotNull($meeting->fresh()->started_notification_sent_at);
+    }
+
+    /** @test */
+    public function does_not_claim_if_already_claimed_by_another_worker(): void
+    {
+        Notification::fake();
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 813,
+            'status' => 'started',
+            'started_notification_sent_at' => null,
+        ]);
+
+        // Simulate another worker claiming the flag
+        $meeting->update(['started_notification_sent_at' => now()]);
+
+        $job = new SendMeetingStartedNotification(
+            meetingId: $meeting->id,
+            notificationData: [
+                'meeting_topic' => 'Test',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'meeting_join_url' => 'https://zoom.us/j/813',
+                'start_time' => '2024-06-24T11:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project'
+            ]
+        );
+
+        $job->handle();
+
+        Notification::assertNothingSent();
+    }
+
+    /** @test */
+    public function rolls_back_flag_on_notification_send_failure(): void
+    {
+        Notification::fake();
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 813,
+            'status' => 'started',
+            'started_notification_sent_at' => null,
+        ]);
+
+        Notification::shouldReceive('send')
+            ->once()
+            ->andThrow(new RuntimeException('Notification service failed'));
+
+        $job = new SendMeetingStartedNotification(
+            meetingId: $meeting->id,
+            notificationData: [
+                'meeting_topic' => 'Test',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'meeting_join_url' => 'https://zoom.us/j/813',
+                'start_time' => '2024-06-24T11:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project'
+            ]
+        );
+
+        $this->expectException(RuntimeException::class);
+        $job->handle();
+
+        // Flag should be rolled back
+        $this->assertNull($meeting->fresh()->started_notification_sent_at);
+    }
+
+    /** @test */
     public function failed_method_logs_meeting_id_and_error(): void
     {
         Log::shouldReceive('error')
