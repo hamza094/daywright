@@ -341,16 +341,23 @@ class ProjectFeatureTest extends TestCase
 
         $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))->assertOk();
 
+        // Should dispatch 2 individual jobs (one per meeting)
+        Queue::assertPushed(CancelZoomMeetingsJob::class, 2);
+
+        // Verify each job has correct meetingId and userId
         Queue::assertPushed(
             CancelZoomMeetingsJob::class,
-            function (CancelZoomMeetingsJob $job) use ($meetingOne, $meetingTwo, $anotherUser): bool {
-                $payload = collect($job->meetings);
+            function (CancelZoomMeetingsJob $job) use ($meetingOne): bool {
+                return $job->meetingId === (int) $meetingOne->meeting_id
+                    && $job->userId === (int) $this->user->id;
+            }
+        );
 
-                return $payload->count() === 2
-                    && $payload->contains(fn (array $meeting): bool => $meeting['meeting_id'] === (int) $meetingOne->meeting_id
-                        && $meeting['user_id'] === (int) $this->user->id)
-                    && $payload->contains(fn (array $meeting): bool => $meeting['meeting_id'] === (int) $meetingTwo->meeting_id
-                        && $meeting['user_id'] === (int) $anotherUser->id);
+        Queue::assertPushed(
+            CancelZoomMeetingsJob::class,
+            function (CancelZoomMeetingsJob $job) use ($meetingTwo, $anotherUser): bool {
+                return $job->meetingId === (int) $meetingTwo->meeting_id
+                    && $job->userId === (int) $anotherUser->id;
             }
         );
     }

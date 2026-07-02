@@ -170,7 +170,7 @@ class JobsTest extends TestCase
     {
         Queue::fake();
 
-        $job = new CancelZoomMeetingsJob([]);
+        $job = new CancelZoomMeetingsJob(123, 456);
 
         dispatch($job);
 

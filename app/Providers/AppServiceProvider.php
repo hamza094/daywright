@@ -19,7 +19,9 @@ use Dedoc\Scramble\Support\Generator\OpenApi;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Pennant\Feature;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
@@ -91,6 +93,10 @@ class AppServiceProvider extends ServiceProvider
                 'message' => $event->exception->getMessage(),
                 'tags' => $payload['tags'] ?? [],
             ]);
+        });
+
+        RateLimiter::for('zoom-api', function () {
+            return Limit::perMinute(10);
         });
     }
 

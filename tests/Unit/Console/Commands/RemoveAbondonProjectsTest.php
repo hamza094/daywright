@@ -62,7 +62,8 @@ class RemoveAbondonProjectsTest extends TestCase
 
         $this->artisan('remove:abandon')->assertSuccessful();
 
-        Queue::assertPushed(CancelZoomMeetingsJob::class);
+        // Should dispatch 3 individual jobs (one per meeting)
+        Queue::assertPushed(CancelZoomMeetingsJob::class, 3);
     }
 
     /** @test */
