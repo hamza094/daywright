@@ -15,10 +15,6 @@ use Throwable;
  */
 trait InteractsWithZoomWebhookLogging
 {
-    public int $timeout = 120;
-
-    public bool $failOnTimeout = true;
-
     /**
      * @param  array<string, mixed>  $context
      */

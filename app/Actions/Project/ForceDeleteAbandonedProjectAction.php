@@ -42,6 +42,9 @@ final readonly class ForceDeleteAbandonedProjectAction
         return true;
     }
 
+    /**
+     * @param  array<int, array{meeting_id:int, user_id:int}>  $meetings
+     */
     private function deleteProjectWithMeetings(Project $project, array $meetings): bool
     {
         $jobs = $this->buildCancellationJobs($meetings);
@@ -51,13 +54,20 @@ final readonly class ForceDeleteAbandonedProjectAction
         return true;
     }
 
+    /**
+     * @param  array<int, array{meeting_id:int, user_id:int}>  $meetings
+     * @return array<int, CancelZoomMeetingsJob>
+     */
     private function buildCancellationJobs(array $meetings): array
     {
         return collect($meetings)->map(
-            fn ($meeting) => new CancelZoomMeetingsJob($meeting['meeting_id'], $meeting['user_id'])
+            fn ($meeting): CancelZoomMeetingsJob => new CancelZoomMeetingsJob($meeting['meeting_id'], $meeting['user_id'])
         )->toArray();
     }
 
+    /**
+     * @param  array<int, CancelZoomMeetingsJob>  $jobs
+     */
     private function dispatchCancellationBatch(array $jobs, Project $project): void
     {
         Bus::batch($jobs)

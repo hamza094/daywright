@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Exceptions\Integrations\Zoom\NotFoundException;
-use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Interfaces\Zoom;
 use App\Models\User;
+use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -19,12 +19,14 @@ use Throwable;
 
 class CancelZoomMeetingsJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     private const string LOG_CHANNEL = 'zoom';
 
     public int $tries = 3;
+
     public int $timeout = 60;
+
     public bool $failOnTimeout = true;
 
     public function __construct(
@@ -34,11 +36,17 @@ class CancelZoomMeetingsJob implements ShouldQueue
         $this->onQueue('default');
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function tags(): array
     {
         return ['cancel-zoom-meetings', 'meeting:'.$this->meetingId];
     }
 
+    /**
+     * @return array<int, object>
+     */
     public function middleware(): array
     {
         return [
@@ -58,11 +66,8 @@ class CancelZoomMeetingsJob implements ShouldQueue
             $zoomService->deleteMeeting($this->meetingId, $user);
         } catch (NotFoundException) {
             return;
-        } catch (ZoomException $exception) {
-            throw $exception;
         }
     }
-
 
     public function failed(Throwable $exception): void
     {

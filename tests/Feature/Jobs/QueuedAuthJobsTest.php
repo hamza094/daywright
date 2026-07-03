@@ -27,9 +27,10 @@ class QueuedAuthJobsTest extends TestCase
             ->once()
             ->with(
                 'QueuedPasswordResetJob failed',
-                Mockery::on(function (array $context) use ($token) {
+                Mockery::on(function (array $context) use ($token): bool {
                     $json = json_encode($context);
-                    return !str_contains($json, $token) && isset($context['user_uuid']);
+
+                    return ! str_contains($json, $token) && isset($context['user_uuid']);
                 })
             );
 
@@ -49,7 +50,7 @@ class QueuedAuthJobsTest extends TestCase
             ->once()
             ->with(
                 'QueuedVerifyEmailJob failed',
-                Mockery::on(fn (array $context) => isset($context['user_uuid']) && $context['user_uuid'] === $user->uuid)
+                Mockery::on(fn (array $context): bool => isset($context['user_uuid']) && $context['user_uuid'] === $user->uuid)
             );
 
         $job = new QueuedVerifyEmailJob($user);

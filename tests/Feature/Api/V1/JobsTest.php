@@ -87,9 +87,7 @@ class JobsTest extends TestCase
 
         dispatch($job);
 
-        Queue::assertPushed(QueuedPasswordResetJob::class, function ($job) {
-            return $job->queue === 'critical';
-        });
+        Queue::assertPushed(QueuedPasswordResetJob::class, fn ($job): bool => $job->queue === 'critical');
     }
 
     /** @test */
@@ -102,9 +100,7 @@ class JobsTest extends TestCase
 
         dispatch($job);
 
-        Queue::assertPushed(QueuedVerifyEmailJob::class, function ($job) {
-            return $job->queue === 'critical';
-        });
+        Queue::assertPushed(QueuedVerifyEmailJob::class, fn ($job): bool => $job->queue === 'critical');
     }
 
     /** @test */
@@ -117,9 +113,7 @@ class JobsTest extends TestCase
 
         dispatch($job);
 
-        Queue::assertPushed(MailMessage::class, function ($job) {
-            return $job->queue === 'default';
-        });
+        Queue::assertPushed(MailMessage::class, fn ($job): bool => $job->queue === 'default');
     }
 
     /** @test */
@@ -132,9 +126,7 @@ class JobsTest extends TestCase
 
         dispatch($job);
 
-        Queue::assertPushed(SmsMessage::class, function ($job) {
-            return $job->queue === 'default';
-        });
+        Queue::assertPushed(SmsMessage::class, fn ($job): bool => $job->queue === 'default');
     }
 
     /** @test */
@@ -146,9 +138,7 @@ class JobsTest extends TestCase
 
         dispatch($job);
 
-        Queue::assertPushed(SendMeetingStartedNotification::class, function ($job) {
-            return $job->queue === 'default';
-        });
+        Queue::assertPushed(SendMeetingStartedNotification::class, fn ($job): bool => $job->queue === 'default');
     }
 
     /** @test */
@@ -160,9 +150,7 @@ class JobsTest extends TestCase
 
         dispatch($job);
 
-        Queue::assertPushed(SendMeetingEndedNotification::class, function ($job) {
-            return $job->queue === 'default';
-        });
+        Queue::assertPushed(SendMeetingEndedNotification::class, fn ($job): bool => $job->queue === 'default');
     }
 
     /** @test */
@@ -174,8 +162,6 @@ class JobsTest extends TestCase
 
         dispatch($job);
 
-        Queue::assertPushed(CancelZoomMeetingsJob::class, function ($job) {
-            return $job->queue === 'default';
-        });
+        Queue::assertPushed(CancelZoomMeetingsJob::class, fn ($job): bool => $job->queue === 'default');
     }
 }

@@ -41,7 +41,7 @@ class SendMeetingStartedNotificationTest extends TestCase
                 'meeting_join_url' => 'https://zoom.us/j/813',
                 'start_time' => '2024-06-24T11:00:00Z',
                 'meeting_timezone' => 'UTC',
-                'project_slug' => 'test-project'
+                'project_slug' => 'test-project',
             ]
         );
 
@@ -54,6 +54,9 @@ class SendMeetingStartedNotificationTest extends TestCase
     public function claims_flag_and_sends_notification(): void
     {
         Notification::fake();
+
+        $assignee = \App\Models\User::factory()->create();
+        $this->inviteAndActivateUser($this->project, $assignee);
 
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 813,
@@ -70,13 +73,13 @@ class SendMeetingStartedNotificationTest extends TestCase
                 'meeting_join_url' => 'https://zoom.us/j/813',
                 'start_time' => '2024-06-24T11:00:00Z',
                 'meeting_timezone' => 'UTC',
-                'project_slug' => 'test-project'
+                'project_slug' => 'test-project',
             ]
         );
 
         $job->handle();
 
-        Notification::assertSentTo($this->user, MeetingStarted::class);
+        Notification::assertSentTo($assignee, MeetingStarted::class);
         $this->assertNotNull($meeting->fresh()->started_notification_sent_at);
     }
 
@@ -103,7 +106,7 @@ class SendMeetingStartedNotificationTest extends TestCase
                 'meeting_join_url' => 'https://zoom.us/j/813',
                 'start_time' => '2024-06-24T11:00:00Z',
                 'meeting_timezone' => 'UTC',
-                'project_slug' => 'test-project'
+                'project_slug' => 'test-project',
             ]
         );
 
@@ -136,7 +139,7 @@ class SendMeetingStartedNotificationTest extends TestCase
                 'meeting_join_url' => 'https://zoom.us/j/813',
                 'start_time' => '2024-06-24T11:00:00Z',
                 'meeting_timezone' => 'UTC',
-                'project_slug' => 'test-project'
+                'project_slug' => 'test-project',
             ]
         );
 
@@ -154,8 +157,7 @@ class SendMeetingStartedNotificationTest extends TestCase
             ->once()
             ->with(
                 'Meeting started notification job failed',
-                Mockery::on(fn (array $context): bool => 
-                    isset($context['meeting_id']) &&
+                Mockery::on(fn (array $context): bool => isset($context['meeting_id']) &&
                     $context['meeting_id'] === 999 &&
                     isset($context['error']) &&
                     $context['error'] === 'Test failure' &&

@@ -31,8 +31,8 @@ class RemoveAbondonProjects extends Command
     {
         Project::onlyTrashed()
             ->pastAbandonedLimit()
-            ->chunkById(100, function ($projects) use ($forceDeleteAbandonedProjectAction) {
-                $projects->each(function ($project) use ($forceDeleteAbandonedProjectAction) {
+            ->chunkById(100, function ($projects) use ($forceDeleteAbandonedProjectAction): void {
+                $projects->each(function (Project $project) use ($forceDeleteAbandonedProjectAction): void {
                     $forceDeleteAbandonedProjectAction->execute($project);
                 });
             });

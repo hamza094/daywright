@@ -20,13 +20,18 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, InteractsWithZoomWebhookLogging, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $timeout = 60;
+
     public bool $failOnTimeout = true;
 
     public int|string $meeting_id;
 
     public ?string $request_id = null;
 
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     public function __construct(
         public int $meetingId,
         public ?string $requestId = null,

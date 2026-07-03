@@ -18,7 +18,7 @@ class SendPasswordUpdateEmailTest extends TestCase
     /** @test */
     public function listener_implements_should_queue(): void
     {
-        $listener = new SendPasswordUpdateEmail();
+        $listener = new SendPasswordUpdateEmail;
 
         $this->assertInstanceOf(\Illuminate\Contracts\Queue\ShouldQueue::class, $listener);
     }
@@ -29,13 +29,11 @@ class SendPasswordUpdateEmailTest extends TestCase
         Mail::fake();
 
         $user = User::factory()->create();
-        $listener = new SendPasswordUpdateEmail();
+        $listener = new SendPasswordUpdateEmail;
         $event = new PasswordUpdateEvent($user, now()->toIso8601String());
 
         $listener->handle($event);
 
-        Mail::assertQueued(\App\Mail\PasswordUpdate::class, function ($mail) use ($user) {
-            return $mail->hasTo($user->email);
-        });
+        Mail::assertQueued(\App\Mail\PasswordUpdate::class, fn ($mail) => $mail->hasTo($user->email));
     }
 }

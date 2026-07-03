@@ -19,15 +19,22 @@ class QueuedPasswordResetJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
-    public int $backoff = [10, 30, 60];
+
     public int $timeout = 30;
+
     public bool $failOnTimeout = true;
+
+    /** @var array<int, int> */
+    public array $backoff = [10, 30, 60];
 
     public function __construct(protected User $user, protected string $token)
     {
         $this->onQueue('critical');
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function tags(): array
     {
         return ['user:'.$this->user->uuid, 'password-reset'];

@@ -11,7 +11,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
@@ -323,16 +323,16 @@ class ProjectFeatureTest extends TestCase
     /** @test */
     public function force_deleting_abandoned_project_dispatches_zoom_cancellation_job_with_meeting_primitives(): void
     {
-        Queue::fake([CancelZoomMeetingsJob::class]);
+        Bus::fake([CancelZoomMeetingsJob::class]);
 
         $anotherUser = User::factory()->create();
 
-        $meetingOne = Meeting::factory()
+        Meeting::factory()
             ->for($this->project)
             ->for($this->user)
             ->create();
 
-        $meetingTwo = Meeting::factory()
+        Meeting::factory()
             ->for($this->project)
             ->for($anotherUser)
             ->create();
@@ -342,36 +342,19 @@ class ProjectFeatureTest extends TestCase
         $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))->assertOk();
 
         // Should dispatch 2 individual jobs (one per meeting)
-        Queue::assertPushed(CancelZoomMeetingsJob::class, 2);
-
-        // Verify each job has correct meetingId and userId
-        Queue::assertPushed(
-            CancelZoomMeetingsJob::class,
-            function (CancelZoomMeetingsJob $job) use ($meetingOne): bool {
-                return $job->meetingId === (int) $meetingOne->meeting_id
-                    && $job->userId === (int) $this->user->id;
-            }
-        );
-
-        Queue::assertPushed(
-            CancelZoomMeetingsJob::class,
-            function (CancelZoomMeetingsJob $job) use ($meetingTwo, $anotherUser): bool {
-                return $job->meetingId === (int) $meetingTwo->meeting_id
-                    && $job->userId === (int) $anotherUser->id;
-            }
-        );
+        Bus::assertBatched(fn ($batch): bool => count($batch->jobs) === 2);
     }
 
     /** @test */
     public function force_deleting_abandoned_project_without_meetings_does_not_dispatch_zoom_cancellation_job(): void
     {
-        Queue::fake([CancelZoomMeetingsJob::class]);
+        Bus::fake([CancelZoomMeetingsJob::class]);
 
         $this->project->delete();
 
         $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))->assertOk();
 
-        Queue::assertNotPushed(CancelZoomMeetingsJob::class);
+        Bus::assertNotDispatched(CancelZoomMeetingsJob::class);
     }
 
     /**

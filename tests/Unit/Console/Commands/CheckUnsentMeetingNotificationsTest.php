@@ -7,7 +7,6 @@ namespace Tests\Unit\Console\Commands;
 use App\Enums\MeetingState;
 use App\Jobs\SendMeetingEndedNotification;
 use App\Jobs\SendMeetingStartedNotification;
-use App\Models\Meeting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Tests\Support\Meeting\MeetingTestHelper;
@@ -91,7 +90,7 @@ class CheckUnsentMeetingNotificationsTest extends TestCase
     {
         Bus::fake();
 
-        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+        MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 813,
             'status' => MeetingState::START->value,
             'started_notification_sent_at' => null,

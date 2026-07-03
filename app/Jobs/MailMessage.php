@@ -13,7 +13,6 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
@@ -23,9 +22,13 @@ class MailMessage implements ShouldQueue
     use Batchable, Dispatchable, InteractsWithQueue, Queueable;
 
     public int $tries = 3;
+
     public int $timeout = 60;
+
     public bool $failOnTimeout = true;
-    public $backoff = [30, 120];
+
+    /** @var array<int, int> */
+    public array $backoff = [30, 120];
 
     /**
      * Create a new job instance.
@@ -39,6 +42,9 @@ class MailMessage implements ShouldQueue
         $this->onQueue('default');
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function tags(): array
     {
         return ['project:'.$this->projectId, 'message:'.$this->messageId, 'user:'.$this->userUuid];

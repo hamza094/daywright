@@ -18,7 +18,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $scheduleMessage = collect($events)->first(fn ($event) => str_contains($event->command, 'schedule:message'));
+        $scheduleMessage = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'schedule:message'));
 
         $this->assertNotNull($scheduleMessage, 'schedule:message command not found in schedule');
         $this->assertTrue($scheduleMessage->withoutOverlapping);
@@ -32,7 +32,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $tasksNotify = collect($events)->first(fn ($event) => str_contains($event->command, 'tasks:notify'));
+        $tasksNotify = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'tasks:notify'));
 
         $this->assertNotNull($tasksNotify, 'tasks:notify command not found in schedule');
         $this->assertTrue($tasksNotify->withoutOverlapping);
@@ -46,7 +46,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $removeAbandon = collect($events)->first(fn ($event) => str_contains($event->command, 'remove:abandon'));
+        $removeAbandon = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'remove:abandon'));
 
         $this->assertNotNull($removeAbandon, 'remove:abandon command not found in schedule');
         $this->assertTrue($removeAbandon->withoutOverlapping);
@@ -59,7 +59,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $queuePruneBatches = collect($events)->first(fn ($event) => str_contains($event->command, 'queue:prune-batches'));
+        $queuePruneBatches = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'queue:prune-batches'));
 
         $this->assertNotNull($queuePruneBatches, 'queue:prune-batches command not found in schedule');
         $this->assertTrue($queuePruneBatches->withoutOverlapping);
@@ -72,7 +72,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $queuePruneFailed = collect($events)->first(fn ($event) => str_contains($event->command, 'queue:prune-failed'));
+        $queuePruneFailed = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'queue:prune-failed'));
 
         $this->assertNotNull($queuePruneFailed, 'queue:prune-failed command not found in schedule');
         $this->assertTrue($queuePruneFailed->withoutOverlapping);
@@ -86,7 +86,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $backupClean = collect($events)->first(fn ($event) => str_contains($event->command, 'backup:clean'));
+        $backupClean = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'backup:clean'));
 
         $this->assertNotNull($backupClean, 'backup:clean command not found in schedule');
         $this->assertTrue($backupClean->withoutOverlapping);
@@ -99,7 +99,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $backupRun = collect($events)->first(fn ($event) => str_contains($event->command, 'backup:run'));
+        $backupRun = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'backup:run'));
 
         $this->assertNotNull($backupRun, 'backup:run command not found in schedule');
         $this->assertTrue($backupRun->withoutOverlapping);
@@ -112,7 +112,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $telescopePrune = collect($events)->first(fn ($event) => str_contains($event->command, 'telescope:prune'));
+        $telescopePrune = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'telescope:prune'));
 
         $this->assertNotNull($telescopePrune, 'telescope:prune command not found in schedule');
         $this->assertTrue($telescopePrune->withoutOverlapping);
@@ -125,7 +125,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $userProfileDelete = collect($events)->first(fn ($event) => str_contains($event->command, 'user:profile-delete'));
+        $userProfileDelete = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'user:profile-delete'));
 
         $this->assertNotNull($userProfileDelete, 'user:profile-delete command not found in schedule');
         $this->assertTrue($userProfileDelete->withoutOverlapping);
@@ -138,7 +138,7 @@ class KernelScheduleTest extends TestCase
         $schedule = app(Schedule::class);
         $events = $schedule->events();
 
-        $recalculateHealth = collect($events)->first(fn ($event) => str_contains($event->command, 'projects:recalculate-health'));
+        $recalculateHealth = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'projects:recalculate-health'));
 
         $this->assertNotNull($recalculateHealth, 'projects:recalculate-health command not found in schedule');
         $this->assertTrue($recalculateHealth->withoutOverlapping);

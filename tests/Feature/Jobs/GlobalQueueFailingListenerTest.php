@@ -6,7 +6,6 @@ namespace Tests\Feature\Jobs;
 
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Queue;
 use Mockery;
 use RuntimeException;
 use Tests\TestCase;
@@ -17,7 +16,7 @@ class GlobalQueueFailingListenerTest extends TestCase
     public function global_listener_logs_critical_queue_failures(): void
     {
         $exception = new RuntimeException('Test exception');
-        
+
         $job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
         $job->shouldReceive('resolveName')->andReturn('App\\Jobs\\TestJob');
         $job->shouldReceive('getQueue')->andReturn('critical');
@@ -36,15 +35,13 @@ class GlobalQueueFailingListenerTest extends TestCase
             ->once()
             ->with(
                 'Critical queue job failed permanently',
-                Mockery::on(function (array $context) {
-                    return $context['job'] === 'App\\Jobs\\TestJob' &&
-                           $context['queue'] === 'critical' &&
-                           $context['uuid'] === 'test-uuid' &&
-                           $context['attempts'] === 3 &&
-                           $context['exception'] === RuntimeException::class &&
-                           $context['message'] === 'Test exception' &&
-                           $context['tags'] === ['tag1', 'tag2'];
-                })
+                Mockery::on(fn (array $context): bool => $context['job'] === 'App\\Jobs\\TestJob' &&
+                       $context['queue'] === 'critical' &&
+                       $context['uuid'] === 'test-uuid' &&
+                       $context['attempts'] === 3 &&
+                       $context['exception'] === RuntimeException::class &&
+                       $context['message'] === 'Test exception' &&
+                       $context['tags'] === ['tag1', 'tag2'])
             );
 
         // Dispatch the event that AppServiceProvider listens to

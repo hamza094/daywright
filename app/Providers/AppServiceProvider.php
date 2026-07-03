@@ -16,10 +16,10 @@ use App\Services\VonageSmsService;
 use App\Services\Zoom\ZoomService;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -80,24 +80,22 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });*/
 
-        Queue::failing(function (JobFailed $event) {
-            $payload = method_exists($event->job, 'payload') ? $event->job->payload() : [];
-            
+        Queue::failing(function (JobFailed $event): void {
+            $payload = method_exists($event->job, 'payload') ? $event->job->payload() : []; // @phpstan-ignore-line
+
             Log::channel('queue_critical')->error('Critical queue job failed permanently', [
                 'job' => $event->job->resolveName(),
                 'connection' => $event->connectionName,
                 'queue' => $event->job->getQueue(),
-                'uuid' => method_exists($event->job, 'uuid') ? $event->job->uuid() : null,
+                'uuid' => method_exists($event->job, 'uuid') ? $event->job->uuid() : null, // @phpstan-ignore-line
                 'attempts' => $event->job->attempts(),
-                'exception' => get_class($event->exception),
+                'exception' => $event->exception::class,
                 'message' => $event->exception->getMessage(),
                 'tags' => $payload['tags'] ?? [],
             ]);
         });
 
-        RateLimiter::for('zoom-api', function () {
-            return Limit::perMinute(10);
-        });
+        RateLimiter::for('zoom-api', fn () => Limit::perMinute(10));
     }
 
     // Scramble/OpenAPI related methods extracted to ScrambleServiceProvider

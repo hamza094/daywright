@@ -102,7 +102,7 @@ class CheckUnsentMeetingNotifications extends Command
                     'meeting_topic' => $meeting->topic,
                     'meeting_timezone' => $meeting->timezone,
                     'start_time' => $meeting->start_time,
-                    'end_time' => $meeting->end_time,
+                    'end_time' => null,
                     'notifier' => [
                         'name' => $meeting->project->user->name,
                         'email' => $meeting->project->user->email,

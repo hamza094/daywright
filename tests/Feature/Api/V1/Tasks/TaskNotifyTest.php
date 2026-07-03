@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\TaskDue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use RuntimeException;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -146,7 +147,7 @@ class TaskNotifyTest extends TestCase
         // Mock notification to throw exception
         Notification::shouldReceive('send')
             ->once()
-            ->andThrow(new \RuntimeException('Queue connection failed'));
+            ->andThrow(new RuntimeException('Queue connection failed'));
 
         $this->artisan('tasks:notify')->assertSuccessful();
 
