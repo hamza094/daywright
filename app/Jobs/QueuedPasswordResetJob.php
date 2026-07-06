@@ -27,7 +27,7 @@ class QueuedPasswordResetJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [10, 30, 60];
 
-    public function __construct(protected int $userId, protected string $token)
+    public function __construct(protected readonly int $userId, protected readonly string $token)
     {
         $this->onQueue('critical');
     }
@@ -55,9 +55,6 @@ class QueuedPasswordResetJob implements ShouldQueue
             return;
         }
 
-        // This queued job sends
-        // Illuminate\Auth\Notifications\ResetPassword notification
-        // to the user by triggering the notification
         $user->notify(new ResetPassword($this->token));
     }
 

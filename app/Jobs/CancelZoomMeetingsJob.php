@@ -7,7 +7,7 @@ namespace App\Jobs;
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Interfaces\Zoom;
 use App\Models\User;
-use DateTimeImmutable;
+use DateTimeInterface;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -35,7 +35,7 @@ class CancelZoomMeetingsJob implements ShouldQueue
         $this->onQueue('default');
     }
 
-    public function retryUntil(): DateTimeImmutable
+    public function retryUntil(): DateTimeInterface
     {
         return now()->addMinutes(30);
     }

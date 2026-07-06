@@ -35,8 +35,8 @@ final class SendMeetingStartedNotification implements ShouldBeUnique, ShouldQueu
      * @param  array<string, mixed>  $notificationData
      */
     public function __construct(
-        public int $meetingId,
-        public array $notificationData,
+        public readonly int $meetingId,
+        public readonly array $notificationData,
     ) {
         $this->onQueue('default');
     }
