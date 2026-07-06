@@ -27,7 +27,7 @@ class QueuedVerifyEmailJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [10, 30, 60];
 
-    public function __construct(protected User $user)
+    public function __construct(protected int $userId)
     {
         $this->onQueue('critical');
     }
@@ -37,7 +37,9 @@ class QueuedVerifyEmailJob implements ShouldQueue
      */
     public function tags(): array
     {
-        return ['user:'.$this->user->uuid, 'verify-email'];
+        $user = User::find($this->userId);
+
+        return ['user:'.$user?->uuid, 'verify-email'];
     }
 
     /**
@@ -45,13 +47,19 @@ class QueuedVerifyEmailJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $this->user->notify(new VerifyEmail);
+        $user = User::find($this->userId);
+        if (! $user) {
+            return;
+        }
+        $user->notify(new VerifyEmail);
     }
 
     public function failed(Throwable $exception): void
     {
+        $user = User::find($this->userId);
         Log::error('QueuedVerifyEmailJob failed', [
-            'user_uuid' => $this->user->uuid,
+            'user_uuid' => $user?->uuid,
+            'user_id' => $this->userId,
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString(),
         ]);

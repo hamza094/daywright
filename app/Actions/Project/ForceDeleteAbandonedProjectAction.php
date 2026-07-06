@@ -73,7 +73,7 @@ final readonly class ForceDeleteAbandonedProjectAction
         Bus::batch($jobs)
             ->allowFailures()
             ->catch(function (Batch $batch, Throwable $e) use ($project): void {
-                Log::error('Failed to dispatch Zoom cancellation batch', [
+                Log::error('Zoom cancellation batch encountered a failing job', [
                     'project_id' => $project->id,
                     'batch_id' => $batch->id,
                     'error' => $e->getMessage(),

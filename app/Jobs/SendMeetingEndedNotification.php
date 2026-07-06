@@ -35,8 +35,8 @@ final class SendMeetingEndedNotification implements ShouldBeUnique, ShouldQueue
      * @param  array<string, mixed>  $notificationData
      */
     public function __construct(
-        public int $meetingId,
-        public array $notificationData,
+        public readonly int $meetingId,
+        public readonly array $notificationData,
     ) {
         $this->onQueue('default');
     }
@@ -64,26 +64,14 @@ final class SendMeetingEndedNotification implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $claimed = Meeting::query()
+        Notification::send(
+            $meeting->project->asignees,
+            new MeetingEnded($this->notificationData),
+        );
+
+        Meeting::query()
             ->where('id', $this->meetingId)
-            ->whereNull('ended_notification_sent_at')
             ->update(['ended_notification_sent_at' => now()]);
-
-        if ($claimed === 0) {
-            return;
-        }
-
-        try {
-            Notification::send(
-                $meeting->project->asignees,
-                new MeetingEnded($this->notificationData),
-            );
-        } catch (Throwable $e) {
-            Meeting::query()
-                ->where('id', $this->meetingId)
-                ->update(['ended_notification_sent_at' => null]);
-            throw $e;
-        }
     }
 
     public function failed(Throwable $exception): void

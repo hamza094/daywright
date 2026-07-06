@@ -342,7 +342,10 @@ class ProjectFeatureTest extends TestCase
         $this->deleteJson($this->apiV1Route('projects.force-delete', ['project' => $this->project]))->assertOk();
 
         // Should dispatch 2 individual jobs (one per meeting)
-        Bus::assertBatched(fn ($batch): bool => count($batch->jobs) === 2);
+        Bus::assertBatched(fn ($batch): bool => count($batch->jobs) === 2
+            && collect($batch->jobs)->every(
+                fn ($job): bool => $job->meetingId > 0 && $job->userId > 0
+            ));
     }
 
     /** @test */

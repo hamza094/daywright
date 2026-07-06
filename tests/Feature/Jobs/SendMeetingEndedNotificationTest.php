@@ -147,8 +147,14 @@ class SendMeetingEndedNotificationTest extends TestCase
             ]
         );
 
-        $this->expectException(RuntimeException::class);
-        $job->handle();
+        $exceptionThrown = false;
+        try {
+            $job->handle();
+        } catch (RuntimeException) {
+            $exceptionThrown = true;
+        }
+
+        $this->assertTrue($exceptionThrown, 'RuntimeException should be thrown');
 
         // Flag should be rolled back
         $this->assertNull($meeting->fresh()->ended_notification_sent_at);

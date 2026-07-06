@@ -35,7 +35,7 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->withoutOverlapping()
             ->everyMinute()
-            ->appendOutputTo(storage_path('logs/scheduler.log'))
+            ->appendOutputTo($this->schedulerLogPath())
             ->when(fn (): bool => Message::messageScheduled()->exists());
 
         $schedule->command('tasks:notify')
@@ -43,7 +43,7 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->withoutOverlapping()
             ->everyTwoMinutes()
-            ->appendOutputTo(storage_path('logs/scheduler.log'))
+            ->appendOutputTo($this->schedulerLogPath())
             ->when(fn (): bool => Task::dueForNotifications()
                 ->count() > 0);
 
@@ -87,20 +87,18 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->daily();
 
-        // Daily health score sweep (recalculate persisted health scores)
         $schedule->command('projects:recalculate-health --queue=metrics')
             ->name('recalculate-project-health')
             ->onOneServer()
             ->withoutOverlapping()
             ->dailyAt('02:00');
 
-        // Check for stuck meeting notifications (defense in depth)
         $schedule->command('meetings:check-unsent-notifications')
             ->name('check-unsent-meeting-notifications')
             ->onOneServer()
             ->withoutOverlapping()
             ->everyThirtyMinutes()
-            ->appendOutputTo(storage_path('logs/scheduler.log'));
+            ->appendOutputTo($this->schedulerLogPath());
     }
 
     /**
@@ -123,5 +121,10 @@ class Kernel extends ConsoleKernel
             [\Bugsnag\BugsnagLaravel\OomBootstrapper::class],
             parent::bootstrappers(),
         );
+    }
+
+    private function schedulerLogPath(): string
+    {
+        return storage_path('logs/scheduler.log');
     }
 }

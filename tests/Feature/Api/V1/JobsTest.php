@@ -83,7 +83,7 @@ class JobsTest extends TestCase
         Queue::fake();
 
         $user = User::factory()->create();
-        $job = new QueuedPasswordResetJob($user, 'test-token');
+        $job = new QueuedPasswordResetJob($user->id, 'test-token');
 
         dispatch($job);
 
@@ -96,7 +96,7 @@ class JobsTest extends TestCase
         Queue::fake();
 
         $user = User::factory()->create();
-        $job = new QueuedVerifyEmailJob($user);
+        $job = new QueuedVerifyEmailJob($user->id);
 
         dispatch($job);
 

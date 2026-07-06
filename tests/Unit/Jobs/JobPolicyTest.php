@@ -37,8 +37,7 @@ class JobPolicyTest extends TestCase
     /** @test */
     public function queued_password_reset_job_has_expected_job_policies(): void
     {
-        $user = \App\Models\User::factory()->make();
-        $job = new QueuedPasswordResetJob($user, 'token');
+        $job = new QueuedPasswordResetJob(1, 'token');
 
         $this->assertEquals(3, $job->tries);
         $this->assertEquals(30, $job->timeout);
@@ -49,8 +48,7 @@ class JobPolicyTest extends TestCase
     /** @test */
     public function queued_verify_email_job_has_expected_job_policies(): void
     {
-        $user = \App\Models\User::factory()->make();
-        $job = new QueuedVerifyEmailJob($user);
+        $job = new QueuedVerifyEmailJob(1);
 
         $this->assertEquals(3, $job->tries);
         $this->assertEquals(30, $job->timeout);

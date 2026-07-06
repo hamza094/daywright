@@ -180,6 +180,28 @@ class TaskNotifyTest extends TestCase
         $this->assertEquals(1, (int) $task->fresh()->notify_sent);
     }
 
+    /** @test */
+    public function task_notify_command_ignores_tasks_older_than_the_catch_up_window(): void
+    {
+        Notification::fake();
+
+        $status = $this->createTaskStatus();
+        $user = $this->createUser();
+
+        $task = $this->createTask([
+            'notified' => '1 Day Before',
+            'due_at' => now()->subHours(25),
+            'status_id' => $status->id,
+        ]);
+
+        $task->assignee()->attach($user);
+
+        $this->artisan('tasks:notify')->assertSuccessful();
+
+        Notification::assertNotSentTo($user, TaskDue::class);
+        $this->assertEquals(0, (int) $task->fresh()->notify_sent);
+    }
+
     /**
      * @param  array<string, mixed>  $attributes
      */

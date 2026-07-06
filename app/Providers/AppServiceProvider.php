@@ -81,13 +81,13 @@ class AppServiceProvider extends ServiceProvider
         });*/
 
         Queue::failing(function (JobFailed $event): void {
-            $payload = method_exists($event->job, 'payload') ? $event->job->payload() : []; // @phpstan-ignore-line
+            $payload = $event->job->payload();
 
             Log::channel('queue_critical')->error('Critical queue job failed permanently', [
                 'job' => $event->job->resolveName(),
                 'connection' => $event->connectionName,
                 'queue' => $event->job->getQueue(),
-                'uuid' => method_exists($event->job, 'uuid') ? $event->job->uuid() : null, // @phpstan-ignore-line
+                'uuid' => $event->job->uuid(),
                 'attempts' => $event->job->attempts(),
                 'exception' => $event->exception::class,
                 'message' => $event->exception->getMessage(),
@@ -95,7 +95,7 @@ class AppServiceProvider extends ServiceProvider
             ]);
         });
 
-        RateLimiter::for('zoom-api', fn () => Limit::perMinute(10));
+        RateLimiter::for('zoom-api', fn () => Limit::perMinute(60));
     }
 
     // Scramble/OpenAPI related methods extracted to ScrambleServiceProvider

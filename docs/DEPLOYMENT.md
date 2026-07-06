@@ -30,6 +30,7 @@ This guide provides detailed instructions for deploying DayWright to production 
 ### PHP Extensions
 
 Required PHP extensions:
+
 - BCMath
 - Ctype
 - cURL
@@ -125,7 +126,8 @@ Set up automated backups:
 
 ```bash
 # Daily backup example (add to cron)
-0 2 * * * mysqldump -u user -p'password' daywright > /backups/daywright_$(date +\%Y\%m\%d).sql
+# Use environment variables or a MySQL defaults file for credentials
+0 2 * * * mysqldump -u $DB_USER -p$DB_PASSWORD $DB_DATABASE > /backups/daywright_$(date +\%Y\%m\%d).sql
 ```
 
 ## Redis Configuration
@@ -133,6 +135,7 @@ Set up automated backups:
 ### Why Redis is Required
 
 Redis is **required** for production deployments because it powers:
+
 - Cache driver
 - Session storage
 - Queue locks (for `withoutOverlapping` middleware)
@@ -157,13 +160,14 @@ redis-cli -h 127.0.0.1 -p 6379
 
 Configure Redis persistence in `redis.conf`:
 
-```
+```ini
 save 900 1
 save 300 10
 save 60 10000
 ```
 
 This saves the dataset to disk if:
+
 - At least 1 key changed in 900 seconds
 - At least 10 keys changed in 300 seconds
 - At least 10000 keys changed in 60 seconds
@@ -174,12 +178,12 @@ This saves the dataset to disk if:
 
 DayWright uses multiple queues for different priorities:
 
-| Queue | Purpose | Priority |
-|-------|---------|----------|
-| `critical` | Password resets, email verification, auth notifications | Highest |
-| `default` | Messages, notifications, Zoom operations | Normal |
-| `metrics` | Analytics and reporting | Lower |
-| `webhooks` | Zoom webhook processing | Normal |
+| Queue      | Purpose                                                 | Priority |
+| ---------- | ------------------------------------------------------- | -------- |
+| `critical` | Password resets, email verification, auth notifications | Highest  |
+| `default`  | Messages, notifications, Zoom operations                | Normal   |
+| `metrics`  | Analytics and reporting                                 | Lower    |
+| `webhooks` | Zoom webhook processing                                 | Normal   |
 
 ### Worker Commands
 
@@ -208,9 +212,9 @@ php artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=1
 
 The queue `retry_after` configuration is set to 150 seconds. Worker `--timeout` must be **lower** than this to prevent jobs from being retried while still running:
 
-```
+```text
 retry_after (150s) > worker timeout (120s) ✅ CORRECT - safe
-retry_after (90s) > worker timeout (120s)  ❌ WRONG - causes duplicate executions
+retry_after (90s) < worker timeout (120s)  ❌ WRONG - causes duplicate executions
 ```
 
 ## Scheduler Configuration
@@ -226,6 +230,7 @@ Add this to your crontab (`crontab -e`):
 ### Scheduled Tasks
 
 The scheduler handles:
+
 - **Scheduled message dispatching**: Sends messages at their scheduled delivery time
 - **Failed job pruning**: Automatically removes failed jobs older than 7 days
 - **Other periodic tasks**: Future scheduled tasks
@@ -310,6 +315,7 @@ sudo supervisorctl status
 1. **Deploy code** to server (git pull, CI/CD, etc.)
 
 2. **Install dependencies**:
+
    ```bash
    composer install --no-dev --optimize-autoloader
    npm ci --production
@@ -317,11 +323,13 @@ sudo supervisorctl status
    ```
 
 3. **Run migrations**:
+
    ```bash
    php artisan migrate --force
    ```
 
 4. **Cache configuration and routes**:
+
    ```bash
    php artisan config:cache
    php artisan route:cache
@@ -329,6 +337,7 @@ sudo supervisorctl status
    ```
 
 5. **Restart queue workers** (loads new code):
+
    ```bash
    php artisan queue:restart
    sudo supervisorctl restart daywright-worker-*
@@ -342,6 +351,7 @@ sudo supervisorctl status
 ### Zero-Downtime Deployment
 
 For zero-downtime deployments:
+
 1. Deploy to a new directory
 2. Switch symlink to new directory
 3. Restart workers after symlink switch
@@ -390,6 +400,7 @@ php artisan tinker
 ### Log Monitoring
 
 Important log locations:
+
 - Application logs: `storage/logs/laravel.log`
 - Queue worker logs: `/var/log/daywright-worker-*.log`
 - Zoom integration logs: `storage/logs/zoom.log` (if configured)
@@ -397,6 +408,7 @@ Important log locations:
 ### Health Checks
 
 Set up health checks for:
+
 - Database connectivity
 - Redis connectivity
 - Queue worker status
@@ -409,6 +421,7 @@ Set up health checks for:
 **Symptoms**: Jobs queued but not executing
 
 **Solutions**:
+
 1. Check if workers are running: `sudo supervisorctl status`
 2. Check worker logs for errors
 3. Verify Redis is running: `redis-cli ping`
@@ -419,6 +432,7 @@ Set up health checks for:
 **Symptoms**: Scheduled messages not sending
 
 **Solutions**:
+
 1. Check crontab: `crontab -l`
 2. Verify cron is running: `systemctl status cron`
 3. Check scheduler logs: `storage/logs/scheduler.log`
@@ -429,6 +443,7 @@ Set up health checks for:
 **Symptoms**: Cache/queue errors, locks not working
 
 **Solutions**:
+
 1. Check Redis status: `systemctl status redis`
 2. Test connection: `redis-cli ping`
 3. Verify Redis configuration in `.env`
@@ -439,6 +454,7 @@ Set up health checks for:
 **Symptoms**: Workers consuming too much memory
 
 **Solutions**:
+
 1. Reduce `numprocs` in Supervisor config
 2. Lower `--max-time` to restart workers more frequently
 3. Check for memory leaks in custom jobs
@@ -449,6 +465,7 @@ Set up health checks for:
 **Symptoms**: Jobs failing with timeout errors
 
 **Solutions**:
+
 1. Increase `--timeout` in worker command (but keep < retry_after)
 2. Check if job is actually slow or stuck
 3. Add logging to identify slow operations

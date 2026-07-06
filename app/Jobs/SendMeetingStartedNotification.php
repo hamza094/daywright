@@ -64,26 +64,14 @@ final class SendMeetingStartedNotification implements ShouldBeUnique, ShouldQueu
             return;
         }
 
-        $claimed = Meeting::query()
+        Notification::send(
+            $meeting->project->asignees,
+            new MeetingStarted($this->notificationData),
+        );
+
+        Meeting::query()
             ->where('id', $this->meetingId)
-            ->whereNull('started_notification_sent_at')
             ->update(['started_notification_sent_at' => now()]);
-
-        if ($claimed === 0) {
-            return;
-        }
-
-        try {
-            Notification::send(
-                $meeting->project->asignees,
-                new MeetingStarted($this->notificationData),
-            );
-        } catch (Throwable $e) {
-            Meeting::query()
-                ->where('id', $this->meetingId)
-                ->update(['started_notification_sent_at' => null]);
-            throw $e;
-        }
     }
 
     public function failed(Throwable $exception): void

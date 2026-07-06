@@ -19,26 +19,20 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, InteractsWithZoomWebhookLogging, Queueable, SerializesModels;
 
-    public int $tries = 3;
+    public int $tries = 5;
 
     public int $timeout = 60;
 
     public bool $failOnTimeout = true;
 
-    public int|string $meeting_id;
-
-    public ?string $request_id = null;
-
     /**
      * @param  array<string, mixed>  $payload
      */
     public function __construct(
-        public int $meetingId,
-        public ?string $requestId = null,
-        public array $payload = [],
+        public readonly int $meetingId,
+        public readonly ?string $requestId = null,
+        public readonly array $payload = [],
     ) {
-        $this->meeting_id = $meetingId;
-        $this->request_id = $requestId;
         $this->onQueue('webhooks');
     }
 
@@ -50,7 +44,7 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
     public function middleware(): array
     {
         return [
-            (new WithoutOverlapping(key: "zoom-meeting:{$this->meeting_id}", releaseAfter: 5))
+            (new WithoutOverlapping(key: "zoom-meeting:{$this->meetingId}", releaseAfter: 5))
                 ->shared()
                 ->expireAfter(120),
         ];
@@ -61,12 +55,12 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
      */
     public function backoff(): array
     {
-        return [5, 30];
+        return [15, 30, 60, 120, 240];
     }
 
     public function failed(Throwable $exception): void
     {
-        $meeting = Meeting::query()->where('meeting_id', $this->meeting_id)->first();
+        $meeting = Meeting::query()->where('meeting_id', $this->meetingId)->first();
 
         $userUuid = null;
 
@@ -76,8 +70,8 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
 
         app(ZoomWebhookLogger::class)->logWebhookFailed(
             operation: $this->operation(),
-            meetingId: $this->meeting_id,
-            requestId: $this->request_id,
+            meetingId: $this->meetingId,
+            requestId: $this->requestId,
             exception: $exception,
             userIdentifier: $userUuid,
         );

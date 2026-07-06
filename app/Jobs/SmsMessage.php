@@ -15,7 +15,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class SmsMessage implements ShouldQueue
+final class SmsMessage implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable;
 
@@ -29,8 +29,8 @@ class SmsMessage implements ShouldQueue
     public array $backoff = [30, 120];
 
     public function __construct(
-        private int $projectId,
-        private int $messageId
+        private readonly int $projectId,
+        private readonly int $messageId
     ) {
         $this->onQueue('default');
     }

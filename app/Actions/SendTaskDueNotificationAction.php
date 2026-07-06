@@ -28,7 +28,7 @@ final class SendTaskDueNotificationAction
             return false;
         }
 
-        $taskForNotification = DB::transaction(function () use ($task, $project): ?Task {
+        $taskForNotification = DB::transaction(function () use ($task): ?Task {
             $lockedTask = $this->lockTask($task);
             $lockedTask->loadMissing(['assignee', 'project', 'owner']);
 
@@ -39,13 +39,14 @@ final class SendTaskDueNotificationAction
             foreach ($lockedTask->assignee as $user) {
                 $user->notify(
                     new TaskDue(
-                        $lockedTask->due_at,
-                        $lockedTask->title,
-                        $lockedTask->notified,
-                        NotificationActorData::fromUser($lockedTask->owner),
-                        $project->name,
-                        $project->slug
-                    ));
+                        dueDate: $lockedTask->due_at,
+                        taskTitle: $lockedTask->title,
+                        notifiedOption: $lockedTask->notified,
+                        notifierData: NotificationActorData::fromUser($lockedTask->owner),
+                        projectName: $lockedTask->project->name,
+                        projectSlug: $lockedTask->project->slug
+                    )
+                );
             }
 
             $lockedTask->notify_sent = true;

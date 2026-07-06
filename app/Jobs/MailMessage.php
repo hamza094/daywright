@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
-class MailMessage implements ShouldQueue
+final class MailMessage implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable;
 
@@ -34,10 +34,10 @@ class MailMessage implements ShouldQueue
      * Create a new job instance.
      */
     public function __construct(
-        private int $projectId,
-        private int $messageId,
-        private int $userId,
-        private string $userUuid
+        private readonly int $projectId,
+        private readonly int $messageId,
+        private readonly int $userId,
+        private readonly string $userUuid
     ) {
         $this->onQueue('default');
     }

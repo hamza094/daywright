@@ -87,7 +87,11 @@ final class DispatchProjectMessageAction
                         ->whereKey($message->getKey())
                         ->update(['delivered' => true]);
                 } else {
-                    Log::warning('Message batch completed with failures', [
+                    Message::query()
+                        ->whereKey($message->getKey())
+                        ->update(['batch_id' => null]);
+
+                    Log::warning('Message batch completed with failures, cleared batch_id for retry', [
                         'message_id' => $message->getKey(),
                         'batch_id' => $batch->id,
                         'failed_jobs' => $batch->failedJobs,

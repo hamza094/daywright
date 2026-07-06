@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Interfaces\Zoom;
 use App\Models\User;
+use DateTimeImmutable;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -23,8 +24,6 @@ class CancelZoomMeetingsJob implements ShouldQueue
 
     private const string LOG_CHANNEL = 'zoom';
 
-    public int $tries = 3;
-
     public int $timeout = 60;
 
     public bool $failOnTimeout = true;
@@ -34,6 +33,19 @@ class CancelZoomMeetingsJob implements ShouldQueue
         public int $userId
     ) {
         $this->onQueue('default');
+    }
+
+    public function retryUntil(): DateTimeImmutable
+    {
+        return now()->addMinutes(30);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [30, 60, 300];
     }
 
     /**
@@ -66,6 +78,17 @@ class CancelZoomMeetingsJob implements ShouldQueue
             $zoomService->deleteMeeting($this->meetingId, $user);
         } catch (NotFoundException) {
             return;
+        } catch (\Saloon\Exceptions\Request\RequestException $e) {
+            if ($e->getResponse()->clientError()) {
+                Log::channel(self::LOG_CHANNEL)->warning('Zoom API Client Error during cancellation', [
+                    'meeting_id' => $this->meetingId,
+                    'status' => $e->getResponse()->status(),
+                    'error' => $e->getMessage(),
+                ]);
+
+                return; // Don't retry permanent client errors (4xx)
+            }
+            throw $e; // Re-throw 5xx errors to trigger retry
         }
     }
 

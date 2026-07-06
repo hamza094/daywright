@@ -27,7 +27,7 @@ class QueuedPasswordResetJob implements ShouldQueue
     /** @var array<int, int> */
     public array $backoff = [10, 30, 60];
 
-    public function __construct(protected User $user, protected string $token)
+    public function __construct(protected int $userId, protected string $token)
     {
         $this->onQueue('critical');
     }
@@ -37,7 +37,9 @@ class QueuedPasswordResetJob implements ShouldQueue
      */
     public function tags(): array
     {
-        return ['user:'.$this->user->uuid, 'password-reset'];
+        $user = User::find($this->userId);
+
+        return $user ? ["user:{$user->uuid}", 'password-reset'] : ['password-reset'];
     }
 
     /**
@@ -45,16 +47,27 @@ class QueuedPasswordResetJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $user = User::find($this->userId);
+
+        if ($user === null) {
+            Log::warning('QueuedPasswordResetJob: User not found', ['user_id' => $this->userId]);
+
+            return;
+        }
+
         // This queued job sends
         // Illuminate\Auth\Notifications\ResetPassword notification
         // to the user by triggering the notification
-        $this->user->notify(new ResetPassword($this->token));
+        $user->notify(new ResetPassword($this->token));
     }
 
     public function failed(Throwable $exception): void
     {
+        $user = User::find($this->userId);
+
         Log::error('QueuedPasswordResetJob failed', [
-            'user_uuid' => $this->user->uuid,
+            'user_id' => $this->userId,
+            'user_uuid' => $user?->uuid,
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString(),
         ]);

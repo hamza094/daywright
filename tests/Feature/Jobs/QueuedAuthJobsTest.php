@@ -34,7 +34,7 @@ class QueuedAuthJobsTest extends TestCase
                 })
             );
 
-        $job = new QueuedPasswordResetJob($user, $token);
+        $job = new QueuedPasswordResetJob($user->id, $token);
         $job->failed(new RuntimeException('Simulated failure'));
 
         // Assert true because the mock expectation does the real asserting
@@ -53,7 +53,7 @@ class QueuedAuthJobsTest extends TestCase
                 Mockery::on(fn (array $context): bool => isset($context['user_uuid']) && $context['user_uuid'] === $user->uuid)
             );
 
-        $job = new QueuedVerifyEmailJob($user);
+        $job = new QueuedVerifyEmailJob($user->id);
         $job->failed(new RuntimeException('Simulated failure'));
 
         $this->assertTrue(true);

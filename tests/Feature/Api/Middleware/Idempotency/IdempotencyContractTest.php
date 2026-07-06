@@ -411,7 +411,7 @@ final class IdempotencyContractTest extends TestCase
             'uuid' => $object['uuid'],
         ];
 
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId && $job->data->changes === $updateData);
+        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meetingId === $meetingId && $job->data->changes === $updateData);
         Queue::assertPushed(UpdateMeetingWebhook::class, 1);
     }
 

@@ -12,7 +12,7 @@ use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
-class CheckUnsentMeetingNotifications extends Command
+final class CheckUnsentMeetingNotifications extends Command
 {
     protected $signature = 'meetings:check-unsent-notifications';
 
@@ -31,6 +31,7 @@ class CheckUnsentMeetingNotifications extends Command
     private function checkStuckStartedNotifications(): void
     {
         Meeting::query()
+            ->with(['project.user'])
             ->where('status', MeetingState::START->value)
             ->whereNull('started_notification_sent_at')
             ->where('updated_at', '<', now()->subMinutes(10))
@@ -43,6 +44,7 @@ class CheckUnsentMeetingNotifications extends Command
     private function checkStuckEndedNotifications(): void
     {
         Meeting::query()
+            ->with(['project.user'])
             ->where('status', MeetingState::ENDS->value)
             ->whereNull('ended_notification_sent_at')
             ->where('updated_at', '<', now()->subMinutes(10))
