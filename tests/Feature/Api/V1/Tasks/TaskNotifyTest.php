@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\TaskDue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use RuntimeException;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -95,6 +96,110 @@ class TaskNotifyTest extends TestCase
 
         Notification::assertSentToTimes($user, TaskDue::class, 1);
         $this->assertEquals(1, (int) $task->fresh()->notify_sent);
+    }
+
+    /** @test */
+    public function task_notify_command_processes_tasks_in_chunks(): void
+    {
+        Notification::fake();
+
+        $status = $this->createTaskStatus();
+
+        $user = $this->createUser();
+
+        // Create 120 tasks (more than chunk size of 50)
+        $tasks = Task::factory()
+            ->count(120)
+            ->for($this->project)
+            ->create([
+                'notified' => '1 Day Before',
+                'due_at' => now()->addDay(),
+                'status_id' => $status->id,
+            ]);
+
+        foreach ($tasks as $task) {
+            $task->assignee()->attach($user);
+        }
+
+        $this->artisan('tasks:notify')->assertSuccessful();
+
+        // All tasks should have notify_sent set
+        $this->assertEquals(120, Task::where('notify_sent', true)->count());
+    }
+
+    /** @test */
+    public function task_notify_command_handles_notification_dispatch_failure(): void
+    {
+        Notification::fake();
+
+        $status = $this->createTaskStatus();
+
+        $user = $this->createUser();
+
+        $task = $this->createTask([
+            'notified' => '1 Day Before',
+            'due_at' => now()->addDay(),
+            'status_id' => $status->id,
+        ]);
+
+        $task->assignee()->attach($user);
+
+        // Mock notification to throw exception
+        Notification::shouldReceive('send')
+            ->once()
+            ->andThrow(new RuntimeException('Queue connection failed'));
+
+        $this->artisan('tasks:notify')->assertSuccessful();
+
+        // notify_sent should NOT be set due to transaction rollback
+        $this->assertEquals(0, (int) $task->fresh()->notify_sent);
+    }
+
+    /** @test */
+    public function task_notify_command_catches_missed_tasks_during_downtime(): void
+    {
+        Notification::fake();
+
+        $status = $this->createTaskStatus();
+
+        $user = $this->createUser();
+
+        // Task that became due 2 hours ago (simulating scheduler downtime)
+        $task = $this->createTask([
+            'notified' => '1 Day Before',
+            'due_at' => now()->subHours(2),
+            'status_id' => $status->id,
+        ]);
+
+        $task->assignee()->attach($user);
+
+        $this->artisan('tasks:notify')->assertSuccessful();
+
+        // Task should still be processed (within 24-hour window)
+        Notification::assertSentTo($user, TaskDue::class);
+        $this->assertEquals(1, (int) $task->fresh()->notify_sent);
+    }
+
+    /** @test */
+    public function task_notify_command_ignores_tasks_older_than_the_catch_up_window(): void
+    {
+        Notification::fake();
+
+        $status = $this->createTaskStatus();
+        $user = $this->createUser();
+
+        $task = $this->createTask([
+            'notified' => '1 Day Before',
+            'due_at' => now()->subHours(25),
+            'status_id' => $status->id,
+        ]);
+
+        $task->assignee()->attach($user);
+
+        $this->artisan('tasks:notify')->assertSuccessful();
+
+        Notification::assertNotSentTo($user, TaskDue::class);
+        $this->assertEquals(0, (int) $task->fresh()->notify_sent);
     }
 
     /**

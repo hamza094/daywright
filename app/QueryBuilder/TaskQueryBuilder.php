@@ -75,11 +75,12 @@ class TaskQueryBuilder extends Builder
 
     /**
      * Filter tasks due for notifications
+     * Includes a 24-hour window to catch tasks that became due during scheduler downtime
      */
     public function dueForNotifications(): self
     {
         return $this->whereNotNull(['notified', 'due_at'])
-            ->where('due_at', '>=', now())
+            ->where('due_at', '>=', now()->subHours(24))
             ->where('notify_sent', false);
     }
 

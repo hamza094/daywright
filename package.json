@@ -7,8 +7,8 @@
     "format": "prettier --write '**/*.{js,vue,css,scss,json,yml,md}'",
     "stylelint": "stylelint \"resources/sass/**/*.scss\"",
     "stylelint:fix": "stylelint \"resources/sass/**/*.scss\" --fix",
-    "postinstall": "husky install",
-    "dev:all": "concurrently \"php artisan serve --host=127.0.0.1 --port=8000\" \"npm run dev\""
+    "dev:all": "concurrently \"php artisan serve --host=127.0.0.1 --port=8000\" \"npm run dev\"",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@vitejs/plugin-vue2": "^2.3.3",

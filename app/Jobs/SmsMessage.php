@@ -12,22 +12,35 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
-class SmsMessage implements ShouldQueue
+final class SmsMessage implements ShouldQueue
 {
-    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable;
 
-    // private $user;
+    public int $tries = 3;
+
+    public int $timeout = 60;
+
+    public bool $failOnTimeout = true;
+
+    /** @var array<int, int> */
+    public array $backoff = [30, 120];
+
+    public function __construct(
+        private readonly int $projectId,
+        private readonly int $messageId
+    ) {
+        $this->onQueue('default');
+    }
+
     /**
-     * Create a new job instance.
+     * @return array<int, string>
      */
-    public function __construct(/**
-     * The project instance.
-     */
-        private Project $project, private Message $message)
+    public function tags(): array
     {
-        // $this->user=$user;
+        return ['project:'.$this->projectId, 'message:'.$this->messageId];
     }
 
     /**
@@ -35,6 +48,33 @@ class SmsMessage implements ShouldQueue
      */
     public function handle(VonageSmsService $service): void
     {
-        $service->send($this->project, $this->message);
+        // Early return if batch is cancelled
+        if ($this->batch()?->cancelled()) {
+            return;
+        }
+
+        $message = Message::find($this->messageId);
+        $project = Project::find($this->projectId);
+
+        // Idempotency check: don't send if message is already delivered
+        if ($message?->delivered) {
+            return;
+        }
+
+        if (! $project || ! $message) {
+            return;
+        }
+
+        $service->send($project, $message);
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        Log::error('SmsMessage job failed', [
+            'message_id' => $this->messageId,
+            'project_id' => $this->projectId,
+            'error' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
+        ]);
     }
 }

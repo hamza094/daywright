@@ -6,6 +6,7 @@ namespace App\Notifications;
 
 use App\DataTransferObjects\Notification\NotificationActorData;
 use App\DataTransferObjects\Notification\NotificationPayloadData;
+use App\Notifications\Concerns\QueuesAfterCommit;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,7 +15,7 @@ use Illuminate\Notifications\Notification;
 
 class ProjectInvitation extends Notification implements ShouldBroadcast, ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesAfterCommit;
 
     /**
      * Create a new notification instance.
@@ -23,7 +24,9 @@ class ProjectInvitation extends Notification implements ShouldBroadcast, ShouldQ
         protected string $projectName,
         protected string $projectSlug,
         protected NotificationActorData $notifierData
-    ) {}
+    ) {
+        $this->configureQueue();
+    }
 
     /**
      * Get the notification's delivery channels.

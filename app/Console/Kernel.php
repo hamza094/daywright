@@ -31,29 +31,74 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('schedule:message')
+            ->name('schedule-message')
+            ->onOneServer()
             ->withoutOverlapping()
-            ->runInBackground()
             ->everyMinute()
+            ->appendOutputTo($this->schedulerLogPath())
             ->when(fn (): bool => Message::messageScheduled()->exists());
 
         $schedule->command('tasks:notify')
+            ->name('tasks-notify')
+            ->onOneServer()
             ->withoutOverlapping()
-            ->runInBackground()
             ->everyTwoMinutes()
+            ->appendOutputTo($this->schedulerLogPath())
             ->when(fn (): bool => Task::dueForNotifications()
                 ->count() > 0);
 
-        $schedule->command('remove:abandon')->daily();
-        $schedule->command('queue:prune-batches --hours=48 --unfinished=72')->daily();
+        $schedule->command('remove:abandon')
+            ->name('remove-abandon')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->daily();
+        $schedule->command('queue:prune-batches --hours=48 --unfinished=72')
+            ->name('queue-prune-batches')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->daily();
+        $schedule->command('queue:prune-failed --hours=720')
+            ->name('queue-prune-failed')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->daily();
 
-        $schedule->command('backup:clean')->daily()->at('01:00');
-        $schedule->command('backup:run')->daily()->at('01:30');
+        $schedule->command('backup:clean')
+            ->name('backup-clean')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->daily()
+            ->at('01:00');
+        $schedule->command('backup:run')
+            ->name('backup-run')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->daily()
+            ->at('01:30');
 
-        $schedule->command('telescope:prune --hours=10')->daily();
-        $schedule->command('user:profile-delete')->daily();
+        $schedule->command('telescope:prune --hours=10')
+            ->name('telescope-prune')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->daily();
+        $schedule->command('user:profile-delete')
+            ->name('user-profile-delete')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->daily();
 
-        // Daily health score sweep (recalculate persisted health scores)
-        $schedule->command('projects:recalculate-health --queue=metrics')->dailyAt('02:00')->name('recalculate-project-health');
+        $schedule->command('projects:recalculate-health --queue=metrics')
+            ->name('recalculate-project-health')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->dailyAt('02:00');
+
+        $schedule->command('meetings:check-unsent-notifications')
+            ->name('check-unsent-meeting-notifications')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->everyThirtyMinutes()
+            ->appendOutputTo($this->schedulerLogPath());
     }
 
     /**
@@ -76,5 +121,10 @@ class Kernel extends ConsoleKernel
             [\Bugsnag\BugsnagLaravel\OomBootstrapper::class],
             parent::bootstrappers(),
         );
+    }
+
+    private function schedulerLogPath(): string
+    {
+        return storage_path('logs/scheduler.log');
     }
 }

@@ -69,15 +69,35 @@ final class DispatchProjectMessageAction
     private function dispatchBatch(Project $project, Message $message): Batch
     {
         $jobs = $message->type === 'mail'
-            ? $message->users->map(fn ($user): MailMessage => new MailMessage($project, $message, $user))
-            : collect([new SmsMessage($project, $message)]);
+            ? $message->users->map(fn ($user): MailMessage => new MailMessage($project->id, $message->id, $user->id, $user->uuid))
+            : collect([new SmsMessage($project->id, $message->id)]);
 
         return Bus::batch($jobs)
             ->allowFailures()
-            ->then(function () use ($message): void {
-                Message::query()
-                    ->whereKey($message->getKey())
-                    ->update(['delivered' => true]);
+            /**
+             * allowFailures() is used to ensure the batch completes even if individual jobs fail.
+             * This means the message will be marked as delivered even if one recipient fails.
+             * Trade-off: Without per-recipient delivery tracking, failed recipients won't be retried.
+             * This is acceptable for task notifications where delivery is not critical.
+             * For critical notifications, per-recipient tracking should be added.
+             */
+            ->then(function (Batch $batch) use ($message): void {
+                if ($batch->failedJobs === 0) {
+                    Message::query()
+                        ->whereKey($message->getKey())
+                        ->update(['delivered' => true]);
+                } else {
+                    Message::query()
+                        ->whereKey($message->getKey())
+                        ->update(['batch_id' => null]);
+
+                    Log::warning('Message batch completed with failures, cleared batch_id for retry', [
+                        'message_id' => $message->getKey(),
+                        'batch_id' => $batch->id,
+                        'failed_jobs' => $batch->failedJobs,
+                        'total_jobs' => $batch->totalJobs,
+                    ]);
+                }
             })
             ->catch(function (Batch $batch, Throwable $throwable): void {
                 Log::error('Message batch failed', [

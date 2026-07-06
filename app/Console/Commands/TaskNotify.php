@@ -34,7 +34,7 @@ class TaskNotify extends Command
                 'assignee:id,name',
                 'project:id,name,slug',
             ])
-            ->chunk(50, fn (\Illuminate\Support\Collection $tasks) => $this->processTasks($tasks));
+            ->chunkById(50, fn (\Illuminate\Support\Collection $tasks) => $this->processTasks($tasks));
 
         $this->info('Task notifications sent successfully.');
 
@@ -55,7 +55,12 @@ class TaskNotify extends Command
             } catch (Exception $e) {
                 Log::error('Failed to process task notification', [
                     'task_id' => $task->id,
+                    'project_id' => $task->project_id,
+                    'assignee_ids' => $task->assignee->pluck('id')->toArray(),
+                    'notification_type' => 'TaskDue',
+                    'notified' => $task->notified,
                     'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
             }
         }

@@ -72,7 +72,7 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meeting_id === (int) $meetingId
+        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meetingId === (int) $meetingId
             && $job->data->changes === $updateData
             && $job->data->requestId === $requestId);
     }
@@ -96,7 +96,7 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->meeting_id === $meetingId
+        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->meetingId === $meetingId
             && $job->data->requestId === 'zoom-delete-813');
     }
 
@@ -120,7 +120,7 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId
+        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => (int) $job->meetingId === (int) $meetingId
             && $job->data->startTime === $startTime
             && $job->data->requestId === 'zoom-start-813');
     }
@@ -146,7 +146,7 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(MeetingEndedWebhook::class, fn ($job): bool => (int) $job->meeting_id === (int) $meetingId
+        Queue::assertPushed(MeetingEndedWebhook::class, fn ($job): bool => (int) $job->meetingId === (int) $meetingId
             && $job->data->startTime === $startTime
             && $job->data->endTime === $endTime
             && $job->data->requestId === 'zoom-ended-813');

@@ -129,6 +129,13 @@ return [
             'level' => 'info',
             'days' => 14,
         ],
+
+        'queue_critical' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/queue-critical.log'),
+            'level' => 'error',
+            'days' => 30,
+        ],
     ],
 
 ];

@@ -12,8 +12,10 @@ class DeleteMeetingWebhook extends ZoomMeetingWebhookJob implements ShouldQueue
 {
     public function __construct(public MeetingDeletedWebhookData $data)
     {
-        $this->meeting_id = $this->data->meetingId;
-        $this->request_id = $this->data->requestId;
+        parent::__construct(
+            meetingId: (int) $this->data->meetingId,
+            requestId: $this->data->requestId,
+        );
     }
 
     /**

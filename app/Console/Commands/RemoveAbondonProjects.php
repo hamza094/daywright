@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Actions\Project\ForceDeleteAbandonedProjectAction;
 use App\Models\Project;
 use Illuminate\Console\Command;
 
@@ -26,15 +27,14 @@ class RemoveAbondonProjects extends Command
     /**
      * Execute the console command.
      */
-    public function handle(): void
+    public function handle(ForceDeleteAbandonedProjectAction $forceDeleteAbandonedProjectAction): void
     {
-        $projects = Project::onlyTrashed()
+        Project::onlyTrashed()
             ->pastAbandonedLimit()
-            ->get();
-
-        $projects->each(function ($project): void {
-            $project->forceDelete();
-        });
-
+            ->chunkById(100, function ($projects) use ($forceDeleteAbandonedProjectAction): void {
+                $projects->each(function (Project $project) use ($forceDeleteAbandonedProjectAction): void {
+                    $forceDeleteAbandonedProjectAction->execute($project);
+                });
+            });
     }
 }

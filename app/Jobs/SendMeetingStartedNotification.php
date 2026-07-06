@@ -6,67 +6,36 @@ namespace App\Jobs;
 
 use App\Models\Meeting;
 use App\Notifications\Zoom\MeetingStarted;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
-use Throwable;
 
-final class SendMeetingStartedNotification implements ShouldBeUnique, ShouldQueue
+final class SendMeetingStartedNotification extends SendMeetingNotificationJob
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public int $tries = 1;
-
-    public int $uniqueFor = 120;
+    protected function uniqueIdPrefix(): string
+    {
+        return 'meeting-started-notification';
+    }
 
     /**
-     * @param  array<string, mixed>  $notificationData
+     * @param  array<string, mixed>  $data
      */
-    public function __construct(
-        public int $meetingId,
-        public array $notificationData,
-    ) {}
-
-    public function uniqueId(): string
+    protected function createNotification(array $data): MeetingStarted
     {
-        return "meeting-started-notification-{$this->meetingId}";
+        return new MeetingStarted($data);
     }
 
-    public function handle(): void
+    protected function hasAlreadySentNotification(Meeting $meeting): bool
     {
-        $meeting = Meeting::query()
-            ->with(['project.asignees', 'project.user'])
-            ->findOrFail($this->meetingId);
-
-        Notification::send(
-            $meeting->project->asignees,
-            new MeetingStarted($this->notificationData),
-        );
-
-        try {
-            if ($meeting->started_notification_sent_at === null) {
-                $meeting->update(['started_notification_sent_at' => now()]);
-            }
-        } catch (Throwable $e) {
-            // Log but don't fail the job - notification was already sent
-            Log::warning('Failed to update started notification flag', [
-                'meeting_id' => $this->meetingId,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        return $meeting->started_notification_sent_at !== null;
     }
 
-    public function failed(Throwable $exception): void
+    protected function markNotificationAsSent(Meeting $meeting): void
     {
-        Log::error('Meeting started notification job failed', [
-            'meeting_id' => $this->meetingId,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
-        ]);
+        Meeting::query()
+            ->where('id', $this->meetingId)
+            ->update(['started_notification_sent_at' => now()]);
+    }
+
+    protected function failedLogMessage(): string
+    {
+        return 'Meeting started notification job failed';
     }
 }

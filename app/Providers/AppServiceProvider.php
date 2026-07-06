@@ -16,7 +16,12 @@ use App\Services\VonageSmsService;
 use App\Services\Zoom\ZoomService;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Pennant\Feature;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
@@ -74,6 +79,23 @@ class AppServiceProvider extends ServiceProvider
                 'ressie03@example.net',
             ]);
         });*/
+
+        Queue::failing(function (JobFailed $event): void {
+            $payload = $event->job->payload();
+
+            Log::channel('queue_critical')->error('Critical queue job failed permanently', [
+                'job' => $event->job->resolveName(),
+                'connection' => $event->connectionName,
+                'queue' => $event->job->getQueue(),
+                'uuid' => $event->job->uuid(),
+                'attempts' => $event->job->attempts(),
+                'exception' => $event->exception::class,
+                'message' => $event->exception->getMessage(),
+                'tags' => $payload['tags'] ?? [],
+            ]);
+        });
+
+        RateLimiter::for('zoom-api', fn () => Limit::perMinute(60));
     }
 
     // Scramble/OpenAPI related methods extracted to ScrambleServiceProvider

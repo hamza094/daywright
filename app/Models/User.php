@@ -69,15 +69,15 @@ class User extends Authenticatable implements MustVerifyEmail, TwoFactorAuthenti
     #[Override]
     public function sendEmailVerificationNotification(): void
     {
-        // dispactches the job to the queue passing it this User object
-        QueuedVerifyEmailJob::dispatch($this);
+        // dispatches the job to the queue passing it the user ID
+        QueuedVerifyEmailJob::dispatch($this->id);
     }
 
     #[Override]
     public function sendPasswordResetNotification($token): void
     {
-        // dispactches the job to the queue passing it this User object
-        QueuedPasswordResetJob::dispatch($this, $token);
+        // dispactches the job to the queue passing it the user ID
+        QueuedPasswordResetJob::dispatch($this->id, $token);
     }
 
     /**

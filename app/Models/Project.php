@@ -324,7 +324,7 @@ class Project extends Model
             ->messages()
             ->where('delivered', false)
             ->whereNotNull('delivered_at')
-            ->whereDate('delivered_at', '>', Carbon::now())
+            ->where('delivered_at', '>', Carbon::now())
             ->with('users:id,uuid,name,username,avatar_path')
             ->get();
     }

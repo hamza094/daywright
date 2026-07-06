@@ -29,13 +29,8 @@ final readonly class HandleMeetingStartedWebhook
 
             $transitioned = $this->transitionToStarted($meeting, $data->meetingId, $data->requestId);
 
-            // Dispatch notification if transition succeeded OR if meeting is started but notification not sent (retry case)
-            // Do NOT dispatch if meeting is ended
-            if ($transitioned || ($meeting->status === MeetingState::START->value && $meeting->started_notification_sent_at === null)) {
-                $this->dispatchNotificationJob($meeting, $data->startTime);
-            }
-
             if ($transitioned) {
+                $this->dispatchNotificationJob($meeting, $data->startTime);
                 $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
             }
         });

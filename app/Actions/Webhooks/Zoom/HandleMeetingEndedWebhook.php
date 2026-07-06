@@ -27,12 +27,12 @@ final readonly class HandleMeetingEndedWebhook
                 return;
             }
 
-            $this->transitionToEnded($meeting, $data->meetingId, $data->requestId);
+            $transitioned = $this->transitionToEnded($meeting, $data->meetingId, $data->requestId);
 
-            if ($meeting->ended_notification_sent_at === null) {
+            if ($transitioned) {
                 $this->dispatchNotificationJob($meeting, $data->startTime, $data->endTime);
+                $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
             }
-            $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
         });
     }
 

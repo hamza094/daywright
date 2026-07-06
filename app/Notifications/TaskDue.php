@@ -6,6 +6,7 @@ namespace App\Notifications;
 
 use App\DataTransferObjects\Notification\NotificationActorData;
 use App\DataTransferObjects\Notification\NotificationPayloadData;
+use App\Notifications\Concerns\QueuesAfterCommit;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -16,7 +17,7 @@ use Illuminate\Notifications\Notification;
 
 class TaskDue extends Notification implements ShouldBroadcast, ShouldQueue
 {
-    use Queueable;
+    use Queueable, QueuesAfterCommit;
 
     /**
      * Create a new notification instance.
@@ -29,7 +30,7 @@ class TaskDue extends Notification implements ShouldBroadcast, ShouldQueue
         protected string $projectName,
         protected string $projectSlug
     ) {
-        $this->afterCommit();
+        $this->configureQueue();
     }
 
     /**
