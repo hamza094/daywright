@@ -19,35 +19,17 @@ class UserTasksDataRepository
         $this->applyUserContextFilters($query, $userId, $filters);
 
         return $query
+            ->select('id', 'title', 'user_id', 'project_id', 'status_id', 'due_at', 'created_at')
             ->when($filters->completed, fn ($q) => $q->completed())
             ->when($filters->overdue, fn ($q) => $q->overdue())
             ->when($filters->remaining, fn ($q) => $q->remaining())
             ->with([
                 'project' => fn ($q) => $q->withTrashed(),
                 'status',
-                'assignee',
+                'assignee' => fn ($query) => $query->select('users.id', 'users.uuid', 'users.name'),
+
             ])
             ->get();
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    public function appliedFilters(UserTaskFilters $filters): array
-    {
-        $labels = [
-            'user_created' => 'Filter by Created',
-            'task_assigned' => 'Filter by Assigned',
-            'completed' => 'Filter by Completed',
-            'overdue' => 'Filter by Overdue',
-            'remaining' => 'Filter by Remaining',
-        ];
-
-        $enabled = collect($filters->toArray())
-            ->filter()
-            ->keys();
-
-        return collect($labels)->only($enabled)->values()->all();
     }
 
     protected function applyUserContextFilters(Builder $query, int $userId, UserTaskFilters $filters): void
@@ -55,22 +37,18 @@ class UserTasksDataRepository
         $created = $filters->userCreated;
         $assigned = $filters->taskAssigned;
 
-        if ($created && $assigned) {
-            // Both filters: tasks created by user OR assigned to user
-            $query->where(function ($q) use ($userId): void {
-                $q->where('user_id', $userId)
-                    ->orWhereHas('assignee', fn ($sub) => $sub->where('users.id', $userId));
-            });
-        } elseif ($created) {
-            $query->where('user_id', $userId);
-        } elseif ($assigned) {
-            $query->whereHas('assignee', fn ($sub) => $sub->where('users.id', $userId));
-        } else {
-            // No explicit user context filters - default to user's tasks (created OR assigned)
-            $query->where(function ($q) use ($userId): void {
-                $q->where('user_id', $userId)
-                    ->orWhereHas('assignee', fn ($sub) => $sub->where('users.id', $userId));
-            });
+        if (($created && $assigned) || (! $created && ! $assigned)) {
+            $query->ownedOrAssignedToUser($userId);
+
+            return;
         }
+
+        if ($created) {
+            $query->where('user_id', $userId);
+
+            return;
+        }
+
+        $query->assignedToUser($userId);
     }
 }
