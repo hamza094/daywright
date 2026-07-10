@@ -23,8 +23,8 @@ final class DashboardActivitiesController extends ApiController
 
         $activities = $repository->getUserActivities(
             $this->authenticatedUser()->id,
-            $dateRange['start_date'],
-            $dateRange['end_date']
+            $dateRange->startDate,
+            $dateRange->endDate
         );
 
         return UserActivitiesResource::collection($activities);

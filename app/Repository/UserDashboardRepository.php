@@ -8,7 +8,7 @@ use App\Models\Activity;
 use App\Models\Project;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class UserDashboardRepository
 {
@@ -57,19 +57,24 @@ class UserDashboardRepository
      */
     public function getUserActivities(int $userId, Carbon $startDate, Carbon $endDate): EloquentCollection
     {
-        $cacheKey = "activities_{$userId}_{$startDate->format('Ymd')}_{$endDate->format('Ymd')}";
-
-        return Cache::remember($cacheKey, now()->addSeconds(60), fn (): EloquentCollection => Activity::query()
+        return Activity::query()
             ->where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->with([
                 'subject',
-                'project' => function ($query): void {
-                    $query->withTrashed();
+                'project' => function (BelongsTo $query): void {
+                    $query->withTrashed()
+                        ->select([
+                            'id',
+                            'name',
+                            'slug',
+                            'stage_id',
+                            'created_at',
+                        ]);
                 },
                 'project.stage',
             ])
             ->orderBy('created_at')
-            ->get());
+            ->get();
     }
 }

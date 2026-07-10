@@ -6,6 +6,7 @@ namespace App\QueryBuilder;
 
 use App\Enums\TaskStatus as TaskStatusEnum;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 /**
  * @extends Builder<\App\Models\Task>
