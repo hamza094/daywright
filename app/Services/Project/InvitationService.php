@@ -59,7 +59,7 @@ class InvitationService
     public function usersSearch(string $searchTerm): EloquentCollection
     {
         return User::query()
-            ->whereAny(['name', 'email'], 'LIKE', '%'.$searchTerm.'%')
+            ->whereAny(['name', 'email'], 'LIKE', $searchTerm.'%')
             ->select('uuid', 'name', 'email')
             ->limit(5)
             ->get();
@@ -73,7 +73,7 @@ class InvitationService
     public function pendingForUser(User $user, int $perPage, int $page): LengthAwarePaginator
     {
         return $user->inactiveMembers()
-            ->with('user')
+            ->with('user.twoFactorAuth')
             ->orderByPivot('created_at')
             ->paginate($perPage, ['*'], 'page', $page)
             ->withQueryString();
