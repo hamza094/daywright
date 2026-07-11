@@ -47,6 +47,8 @@ class DashboardChartDataTest extends TestCase
 
         $response->assertOk()
             ->assertJsonStructure([
+                'success',
+                'message',
                 'data' => [
                     'active_projects',
                     'trashed_projects',
@@ -129,14 +131,12 @@ class DashboardChartDataTest extends TestCase
     }
 
     /** @test */
-    public function chart_data_validates_month_range(): void
+    public function chart_data_validates_year_and_month_filters(): void
     {
-        $this->getJson($this->apiV1Route('dashboard.chart-data', query: [
-            'year' => now()->year,
-            'month' => 13,
-        ]))
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['month']);
+        $response = $this->getJson('/api/v1/dashboard/chart-data?year=invalid&month=13');
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['year', 'month']);
     }
 
     /** @test */

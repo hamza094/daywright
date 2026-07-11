@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1\Dashboard;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Dashboard\DashboardChartDataRequest;
-use App\Repository\UserDashboardRepository;
+use App\Repository\Dashboard\ProjectStatsRepository;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 
@@ -22,12 +22,14 @@ final class DashboardChartDataController extends ApiController
         description: 'Dashboard project counts grouped by active, trashed, and member access.',
         type: 'array{data: array{active_projects: int, trashed_projects: int, member_projects: int, total_projects: int}}',
     )]
-    public function __invoke(DashboardChartDataRequest $request, UserDashboardRepository $dashboardRepository): JsonResponse
+    public function __invoke(DashboardChartDataRequest $request, ProjectStatsRepository $projectStatsRepository): JsonResponse
     {
-        $data = $dashboardRepository->getProjectStats(
+        $dateFilter = $request->getDateFilter();
+
+        $data = $projectStatsRepository->getProjectStats(
             $this->authenticatedUser()->id,
-            $request->year(),
-            $request->month(),
+            $dateFilter->year,
+            $dateFilter->month,
         );
 
         return $this->respondWithData($data);

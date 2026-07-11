@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Dashboard;
 
+use App\DataTransferObjects\Dashboard\DateFilter;
 use App\Http\Requests\Api\V1\ApiQueryRequest;
 use Override;
 
@@ -35,18 +36,9 @@ class DashboardChartDataRequest extends ApiQueryRequest
         ];
     }
 
-    public function year(): ?int
+    public function getDateFilter(): DateFilter
     {
-        $year = $this->validated('year');
-
-        return is_numeric($year) ? (int) $year : null;
-    }
-
-    public function month(): ?int
-    {
-        $month = $this->validated('month');
-
-        return is_numeric($month) ? (int) $month : null;
+        return DateFilter::fromArray($this->validated());
     }
 
     #[Override]

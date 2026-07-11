@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Api\V1\Dashboard;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\User\UserActivitiesRequest;
 use App\Http\Resources\Api\V1\User\UserActivitiesResource;
-use App\Repository\UserDashboardRepository;
+use App\Repository\Dashboard\ActivityRepository;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 final class DashboardActivitiesController extends ApiController
@@ -17,11 +17,11 @@ final class DashboardActivitiesController extends ApiController
      *
      * Lists dashboard activity entries between the requested start and end dates.
      */
-    public function __invoke(UserActivitiesRequest $request, UserDashboardRepository $repository): AnonymousResourceCollection
+    public function __invoke(UserActivitiesRequest $request, ActivityRepository $activityRepository): AnonymousResourceCollection
     {
         $dateRange = $request->getDateRange();
 
-        $activities = $repository->getUserActivities(
+        $activities = $activityRepository->getUserActivities(
             $this->authenticatedUser()->id,
             $dateRange->startDate,
             $dateRange->endDate

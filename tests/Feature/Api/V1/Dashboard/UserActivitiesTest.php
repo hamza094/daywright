@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\V1\Dashboard;
 
 use App\Models\Activity;
 use App\Models\User;
-use App\Repository\UserDashboardRepository;
+use App\Repository\Dashboard\ActivityRepository;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -168,7 +168,7 @@ class UserActivitiesTest extends TestCase
         $start = Carbon::parse('2025-08-01')->startOfDay();
         $end = Carbon::parse('2025-08-31')->endOfDay();
 
-        $repo = new UserDashboardRepository;
+        $repo = new ActivityRepository;
 
         $collection = $repo->getUserActivities($this->user->id, $start, $end);
 
