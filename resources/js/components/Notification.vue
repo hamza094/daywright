@@ -64,6 +64,9 @@ export default {
         return this.$store.state.currentUser.user;
       },
     },
+    userChannelId() {
+      return this.user?.uuid || null;
+    },
   },
   created() {
     this.fetchNotifications();
@@ -77,7 +80,10 @@ export default {
       this.$store.dispatch('markAsRead', notification);
     },
     listenNotifications() {
-      Echo.private(`App.Models.User.${this.user.id}`).notification((notification) => {
+      if (!this.userChannelId) {
+        return;
+      }
+      Echo.private(`App.Models.User.${this.userChannelId}`).notification((notification) => {
         this.$vToastify.success('You have one new notification');
         this.$store.commit('addNotification', notification);
       });
