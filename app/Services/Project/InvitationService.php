@@ -11,6 +11,7 @@ use App\Actions\Project\RemoveProjectMemberAction;
 use App\Actions\Project\SendProjectInvitationAction;
 use App\Models\Project;
 use App\Models\User;
+use App\Repository\InvitationRepository;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -23,6 +24,7 @@ class InvitationService
         private readonly RejectProjectInvitationAction $rejectProjectInvitationAction,
         private readonly CancelProjectInvitationAction $cancelProjectInvitationAction,
         private readonly RemoveProjectMemberAction $removeProjectMemberAction,
+        private readonly InvitationRepository $invitationRepository,
     ) {}
 
     public function sendInvitationByEmail(Project $project, string $email): User
@@ -54,15 +56,13 @@ class InvitationService
     }
 
     /**
+     * Search for users who can be invited to a project.
+     *
      * @return EloquentCollection<int, User>
      */
-    public function usersSearch(string $searchTerm): EloquentCollection
+    public function usersSearch(Project $project, string $searchTerm): EloquentCollection
     {
-        return User::query()
-            ->whereAny(['name', 'email'], 'LIKE', $searchTerm.'%')
-            ->select('uuid', 'name', 'email')
-            ->limit(5)
-            ->get();
+        return $this->invitationRepository->searchInvitableUsers($project, $searchTerm);
     }
 
     /**
