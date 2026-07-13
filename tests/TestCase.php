@@ -17,37 +17,11 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutVite();
         Config::preventStrayRequests();
         // Ensure tests that generate Zoom JWTs have a sufficiently long secret
         \Illuminate\Support\Facades\Config::set('services.zoom.client_id', 'fake-key');
         \Illuminate\Support\Facades\Config::set('services.zoom.client_secret', str_repeat('a', 64));
-
-        // Ensure a minimal Vite manifest exists so Blade's @vite() helper
-        // doesn't throw when rendering views during tests.
-        $manifestPath = public_path('build/manifest.json');
-        $dir = dirname($manifestPath);
-        if (! is_dir($dir)) {
-            mkdir($dir, 0755, true);
-        }
-
-        $manifest = [
-            'resources/js/app.js' => [
-                'file' => 'js/app.js',
-                'src' => 'resources/js/app.js',
-                'isEntry' => true,
-                'imports' => [],
-                'css' => [],
-            ],
-            'resources/sass/app.scss' => [
-                'file' => 'css/app.css',
-                'src' => 'resources/sass/app.scss',
-                'isEntry' => true,
-                'imports' => [],
-                'css' => [],
-            ],
-        ];
-
-        file_put_contents($manifestPath, json_encode($manifest, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
     }
 
     /**
