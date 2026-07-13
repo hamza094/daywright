@@ -7,8 +7,8 @@ return [
         'max_owned_projects' => 3,
         'max_tasks_per_project' => 10,
         'max_members_per_project' => 3,
-        'max_created_meetings' => 1,
-        'max_api_tokens' => 1,
+        'max_created_meetings' => 2,
+        'max_api_tokens' => 3,
     ],
 
     'pro' => [
