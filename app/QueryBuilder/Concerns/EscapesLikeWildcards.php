@@ -27,7 +27,7 @@ trait EscapesLikeWildcards
 
         return $query->whereRaw(
             "{$wrappedColumn} LIKE ? ESCAPE '\\'",
-            ['%'.$this->escapeLikeWildcards($value).'%'],
+            [$this->escapeLikeWildcards($value).'%'],
             $boolean,
         );
     }

@@ -92,14 +92,17 @@ export default {
     ...mapMutations('SingleTask', ['setErrors', 'updateTaskMembers']),
 
     performSearch(searchTerm) {
-      if (typeof searchTerm !== 'string' || searchTerm.trim() === '') {
+      const normalizedSearch = searchTerm.trim().replace(/\s+/g, ' ');
+
+      if (normalizedSearch.length < 2) {
         this.searchResults = [];
+        this.setErrors([]);
         return;
       }
 
       axios
         .get(`/projects/${this.slug}/tasks/${this.taskId}/members/search`, {
-          params: { search: searchTerm },
+          params: { search: normalizedSearch },
         })
         .then((response) => {
           this.searchResults = getArrayData(response);
