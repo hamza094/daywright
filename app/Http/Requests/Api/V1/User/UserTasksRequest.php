@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\User;
 
 use App\DataTransferObjects\Task\UserTaskFilters;
-use Illuminate\Validation\ValidationException;
+use App\Http\Requests\Api\V1\ApiQueryRequest;
 use Override;
 
-class UserTasksRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
+class UserTasksRequest extends ApiQueryRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -99,18 +99,5 @@ class UserTasksRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
         $filters = $this->normalizeBooleanFilters($filters, ['user_created', 'task_assigned', 'completed', 'overdue', 'remaining']);
 
         $this->mergeFilters($filters);
-    }
-
-    /**
-     * Handle a passed validation attempt.
-     */
-    #[Override]
-    protected function passedValidation(): void
-    {
-        if (! $this->filters()->hasAnyFilter()) {
-            throw ValidationException::withMessages([
-                'filter' => 'At least one filter must be provided.',
-            ]);
-        }
     }
 }

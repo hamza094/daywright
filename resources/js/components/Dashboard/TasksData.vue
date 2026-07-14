@@ -195,14 +195,6 @@ export default {
         activeFilter: this.activeFilter,
       });
 
-      if (Object.keys(params.filter).length === 0) {
-        this.userTasks = [];
-        this.appliedFilters = [];
-        this.totalTasks = 0;
-        this.loading = false;
-        return;
-      }
-
       axios
         .get('/dashboard/tasks', { params })
         .then((response) => {
