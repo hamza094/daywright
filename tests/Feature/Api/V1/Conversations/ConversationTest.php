@@ -30,8 +30,8 @@ class ConversationTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonStructure([
                 'data',
-                'links',
-                'meta',
+                'links' => ['next', 'prev'],
+                'meta' => ['per_page', 'next_cursor', 'prev_cursor'],
             ])
             ->assertJsonFragment([
                 'message' => $conversation->message,
@@ -47,13 +47,14 @@ class ConversationTest extends TestCase
             'project_id' => $this->project->id,
         ]);
 
-        $this->getJson($this->apiV1ProjectRoute('conversations.index', $this->project, query: [
+        $response = $this->getJson($this->apiV1ProjectRoute('conversations.index', $this->project, query: [
             'per_page' => 2,
-        ]))
-            ->assertOk()
+        ]));
+
+        $response->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('meta.per_page', 2)
-            ->assertJsonPath('meta.total', 4);
+            ->assertNotNull($response->json('meta.next_cursor'));
     }
 
     /** @test */
@@ -64,8 +65,8 @@ class ConversationTest extends TestCase
             ->assertJsonCount(0, 'data')
             ->assertJsonStructure([
                 'data',
-                'links',
-                'meta',
+                'links' => ['next', 'prev'],
+                'meta' => ['per_page', 'next_cursor', 'prev_cursor'],
             ]);
     }
 
@@ -79,6 +80,34 @@ class ConversationTest extends TestCase
         ]))
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['sort', 'include', 'random']);
+    }
+
+    /** @test */
+    public function conversation_index_supports_cursor_pagination(): void
+    {
+        Conversation::factory()->count(4)->create([
+            'project_id' => $this->project->id,
+        ]);
+
+        // Fetch first page with per_page=2
+        $firstPage = $this->getJson($this->apiV1ProjectRoute('conversations.index', $this->project, query: [
+            'per_page' => 2,
+        ]));
+
+        $firstPage->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertNotNull($firstPage->json('meta.next_cursor'));
+
+        $nextCursor = $firstPage->json('meta.next_cursor');
+
+        // Fetch next page using the returned next_cursor
+        $secondPage = $this->getJson($this->apiV1ProjectRoute('conversations.index', $this->project, query: [
+            'per_page' => 2,
+            'cursor' => $nextCursor,
+        ]));
+
+        $secondPage->assertOk()
+            ->assertJsonCount(2, 'data');
     }
 
     /** @test */

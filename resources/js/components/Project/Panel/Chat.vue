@@ -22,56 +22,18 @@
       <div class="chat-wrapper">
         <div class="card-body chat-panel">
           <ul class="chat">
-            <li
+            <div ref="scrollSentinel"></div>
+            <div v-if="loadingMore" class="text-center py-2">
+              <small>Loading older messages...</small>
+            </div>
+            <ChatMessageItem
               v-for="conversation in conversations.data"
               :key="conversation.id || conversation.created_at"
-              :class="{ 'chat-item_own': auth.uuid === conversation.user.uuid }">
-              <div class="chat-body clearfix">
-                <div class="header d-flex align-items-start">
-                  <div class="d-flex align-items-center gap-2">
-                    <router-link :to="'/user/' + conversation.user.uuid + '/profile'">
-                      <img
-                        v-if="conversation.user.avatar"
-                        :src="$safeUrl(conversation.user.avatar)"
-                        alt="User Avatar"
-                        class="chat-user_image" />
-                    </router-link>
-
-                    <strong class="primary-font"> {{ conversation.user.name }}</strong>
-                  </div>
-
-                  <div v-if="auth.uuid === conversation.user.uuid" class="chat-message_actions ml-auto">
-                    <FeatureDropdown
-                      :feature-pop="openMenuId === (conversation.id || conversation.created_at)"
-                      @update:featurePop="(val) => toggleMenu(conversation.id || conversation.created_at, val)">
-                      <ul class="feature-dropdown_menu">
-                        <li class="feature-dropdown_item-content" @click="handleDelete(conversation.id)">
-                          <i class="fa-solid fa-ban"></i> Delete
-                        </li>
-                      </ul>
-                    </FeatureDropdown>
-                  </div>
-                </div>
-                <p v-if="conversation.message" class="mt-2">
-                  <span class="chat-message" v-text="conversation.message"></span>
-                </p>
-
-                <p v-if="conversation.file" class="mt-2">
-                  <span v-if="isImage(conversation.file)"
-                    ><img :src="$safeUrl(conversation.file)" class="chat-image" alt=""
-                  /></span>
-
-                  <span v-else>
-                    <a :href="$safeUrl(conversation.file)" target="_blank" rel="noopener noreferrer">
-                      {{ conversation.file }}
-                    </a>
-                  </span>
-                </p>
-                <span class="float-right chat-time">
-                  <i>{{ conversation.created_at | msgTime }}</i>
-                </span>
-              </div>
-            </li>
+              :conversation="conversation"
+              :auth="auth"
+              :is-open="openMenuId === (conversation.id || conversation.created_at)"
+              @toggle-menu="toggleMenu"
+              @delete="handleDelete" />
             <div v-if="typing" class="chat-typing">
               <span class="chat-typing_icon">💬</span>
               <span class="chat-typing_text">@{{ (user && user.name) || 'Someone' }} is typing...</span>
@@ -168,21 +130,18 @@
   </div>
 </template>
 <script>
-import data from 'emoji-mart-vue-fast/data/all.json';
+import { ref } from 'vue';
 import { Mentionable } from 'vue-mention';
-import { Picker, EmojiIndex } from 'emoji-mart-vue-fast';
-import FeatureDropdown from '../../FeatureDropdown.vue';
-import { debounce } from 'lodash';
-import { getPaginatedData } from '../../../utils/apiResponse.js';
-
-const EMPTY_PAGINATED_CONVERSATIONS = {
-  data: [],
-  links: {},
-  meta: {},
-};
+import { Picker } from 'emoji-mart-vue-fast';
+import ChatMessageItem from './ChatMessageItem.vue';
+import { useChatMessages } from '../../../composables/useChatMessages';
+import { useFileUpload } from '../../../composables/useFileUpload';
+import { useTypingIndicator } from '../../../composables/useTypingIndicator';
+import { useEmojiPicker } from '../../../composables/useEmojiPicker';
+import { useRealtimeChat } from '../../../composables/useRealtimeChat';
 
 export default {
-  components: { Picker, Mentionable, FeatureDropdown },
+  components: { Picker, Mentionable, ChatMessageItem },
   props: {
     slug: {
       type: String,
@@ -209,26 +168,56 @@ export default {
       default: true,
     },
   },
+  setup(props) {
+    const {
+      conversations,
+      loadingMore,
+      loadConversations,
+      loadMoreConversations,
+      setupScrollObserver,
+      disconnectScrollObserver,
+    } = useChatMessages(props.slug);
+    const { file, fileName, fileUpload: composableFileUpload, removeFile } = useFileUpload(null);
+    const { typing, user, isTyping, listenToWhisperEvent } = useTypingIndicator(props.slug, props.auth);
+    const {
+      emojiIndex,
+      emojiModal,
+      toggleEmojiModal: composableToggleEmojiModal,
+      showEmoji: composableShowEmoji,
+    } = useEmojiPicker();
+    const { listenForNewMessage, listenToDeleteConversation } = useRealtimeChat(props.slug, conversations);
+
+    const message = ref('');
+
+    return {
+      conversations,
+      loadingMore,
+      loadConversations,
+      loadMoreConversations,
+      setupScrollObserver,
+      disconnectScrollObserver,
+      file,
+      fileName,
+      composableFileUpload,
+      removeFile,
+      typing,
+      user,
+      isTyping,
+      listenToWhisperEvent,
+      emojiIndex,
+      emojiModal,
+      composableToggleEmojiModal,
+      composableShowEmoji,
+      listenForNewMessage,
+      listenToDeleteConversation,
+      message,
+    };
+  },
+
   data() {
     return {
-      emojiIndex: new EmojiIndex(data),
-      message: '',
-      typing: false,
-      emojiModal: false,
-      user: null,
-      fileName: '',
-      file: '',
       isSending: false,
-      maxFileBytes: 700 * 1024,
-      allowedFileTypes: [
-        'image/jpeg',
-        'image/png',
-        'image/jpg',
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      ],
       items: [],
-      conversations: { ...EMPTY_PAGINATED_CONVERSATIONS },
       errors: [],
       users: [...this.members, this.owner],
       openMenuId: null,
@@ -261,11 +250,15 @@ export default {
     this.listenToDeleteConversation();
   },
 
-  methods: {
-    isImage(file) {
-      return /\.(png|jpg|jpeg)$/i.test(file);
-    },
+  mounted() {
+    this.setupScrollObserver(this.$refs.scrollSentinel, this.$el.querySelector('.chat-panel'));
+  },
 
+  beforeDestroy() {
+    this.disconnectScrollObserver();
+  },
+
+  methods: {
     async handleOpen(key) {
       this.items = key === '@' ? this.users : [];
     },
@@ -276,42 +269,17 @@ export default {
     },
 
     showEmoji(emoji) {
-      if (!emoji) return;
-      this.message += emoji.native;
+      this.composableShowEmoji(emoji, this.message);
     },
 
     openFilePicker() {
-      this.$refs.fileInput.click(); // Open file picker when button is clicked
+      this.$refs.fileInput.click();
     },
 
     fileUpload(event) {
-      const [file] = event.target.files;
-
-      if (!file) {
-        return;
-      }
-
-      if (!this.allowedFileTypes.includes(file.type)) {
-        this.$vToastify.warning('Allowed files: JPG, PNG, PDF, DOCX');
-        this.removeFile();
-        return;
-      }
-
-      if (file.size > this.maxFileBytes) {
-        this.$vToastify.warning('Attachments must be 700KB or smaller');
-        this.removeFile();
-        return;
-      }
-
-      this.file = file;
-      this.fileName = file.name;
-    },
-
-    removeFile() {
-      this.file = null;
-      this.fileName = '';
-      if (this.$refs.fileInput) {
-        this.$refs.fileInput.value = ''; // Clear input field
+      this.composableFileUpload(event, this.$refs.fileInput);
+      if (this.file) {
+        this.$vToastify.success('File attached');
       }
     },
 
@@ -368,61 +336,8 @@ export default {
         });
     },
 
-    isTyping: debounce(function () {
-      Echo.private(`typing.${this.slug}`).whisper('typing-indicator', {
-        user: this.auth,
-        typing: true,
-      });
-    }, 500), // Only fires every 500ms
-
     toggleEmojiModal() {
-      this.emojiModal = !this.emojiModal;
-    },
-
-    loadConversations() {
-      return axios
-        .get('/projects/' + this.slug + `/conversations`)
-        .then((response) => {
-          this.conversations = getPaginatedData(response);
-        })
-        .catch((error) => {
-          this.conversations = { ...EMPTY_PAGINATED_CONVERSATIONS };
-          this.handleErrorResponse(error);
-        });
-    },
-
-    listenForNewMessage() {
-      Echo.private(`project.${this.slug}.conversations`)
-        .listen('NewMessage', (e) => {
-          if (!this.conversations.data.some((conv) => conv.id === e.id)) {
-            this.conversations.data.push(e);
-          }
-        })
-        .error((error) => {
-          this.handleErrorResponse(error);
-        });
-    },
-
-    listenToDeleteConversation() {
-      Echo.private(`deleteConversation.${this.slug}`).listen('DeleteConversation', (e) => {
-        const index = this.conversations.data.findIndex((c) => c.id === e.conversation_id);
-        if (index !== -1) {
-          this.conversations.data.splice(index, 1);
-        }
-        this.$vToastify.success('conversation deleted');
-      });
-    },
-
-    listenToWhisperEvent() {
-      Echo.private(`typing.${this.slug}`).listenForWhisper('typing-indicator', (e) => {
-        this.user = e.user;
-        this.typing = e.typing;
-
-        // remove is typing indicator after 0.3s
-        setTimeout(() => {
-          this.typing = false;
-        }, 3000);
-      });
+      this.composableToggleEmojiModal();
     },
   },
 };

@@ -28,7 +28,7 @@ class ConversationController extends ApiController
         $this->authorize('access', $project);
 
         return ConversationResource::collection(
-            $repository->getProjectConversations($project, $request->perPage(), $request->pageNumber())
+            $repository->getProjectConversations($project, $request->perPage())
         )->response();
     }
 
