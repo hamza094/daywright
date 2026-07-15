@@ -62,6 +62,8 @@ class UserTasksRequest extends ApiQueryRequest
              */
             'filter.remaining' => ['sometimes', 'boolean'],
             ...$this->topLevelFilterAliasRules(['user_created', 'task_assigned', 'completed', 'overdue', 'remaining']),
+            'cursor' => $this->cursorRule(),
+            'per_page' => $this->perPageRule(),
             ...$this->unsupportedQueryParameterRules(),
         ];
     }
@@ -83,13 +85,18 @@ class UserTasksRequest extends ApiQueryRequest
         return UserTaskFilters::fromArray($validatedFilters);
     }
 
+    public function perPage(): int
+    {
+        return $this->perPageValue(15);
+    }
+
     /**
      * @return array<int, string>
      */
     #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
-        return ['filter'];
+        return ['filter', 'cursor', 'per_page'];
     }
 
     #[Override]

@@ -4,7 +4,7 @@
       <div class="d-flex justify-content-between align-items-center">
         <div>
           <h5 class="mb-0 text-primary">Your Tasks</h5>
-          <small class="text-muted" v-if="totalTasks > 0">{{ totalTasks }} tasks found</small>
+          <small class="text-muted" v-if="userTasks.length > 0">{{ userTasks.length }} tasks loaded</small>
           <div class="mt-1" v-if="appliedFilters.length > 0">
             <span v-for="filter in appliedFilters" :key="filter" class="badge badge-info mr-1">
               {{ filter }}
@@ -161,6 +161,13 @@
           </div>
         </div>
       </div>
+
+      <!-- Load More Button -->
+      <div v-if="hasMoreTasks" class="px-3 py-2 bg-light border-top">
+        <button @click="loadMoreTasks" :disabled="loadingMore" class="btn btn-outline-primary btn-sm btn-block">
+          {{ loadingMore ? 'Loading...' : 'Load More' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -177,12 +184,25 @@ export default {
       },
       userTasks: [],
       appliedFilters: [],
-      totalTasks: 0,
+      meta: {
+        next_cursor: null,
+        prev_cursor: null,
+        per_page: 15,
+      },
+      links: {
+        next: null,
+        prev: null,
+      },
       activeFilter: 'all',
       loading: false,
+      loadingMore: false,
     };
   },
-  computed: {},
+  computed: {
+    hasMoreTasks() {
+      return this.meta.next_cursor !== null;
+    },
+  },
   mounted() {
     this.loadTasks();
   },
@@ -198,20 +218,60 @@ export default {
       axios
         .get('/dashboard/tasks', { params })
         .then((response) => {
-          const { tasks, appliedFilters, total } = readDashboardTasks(response);
+          const { tasks, appliedFilters, meta, links } = readDashboardTasks(response);
 
           this.userTasks = tasks;
           this.appliedFilters = appliedFilters;
-          this.totalTasks = total;
+          this.meta = meta;
+          this.links = links;
         })
         .catch((error) => {
           this.handleErrorResponse(error);
           this.userTasks = [];
           this.appliedFilters = [];
-          this.totalTasks = 0;
+          this.meta = {
+            next_cursor: null,
+            prev_cursor: null,
+            per_page: 15,
+          };
+          this.links = {
+            next: null,
+            prev: null,
+          };
         })
         .finally(() => {
           this.loading = false;
+        });
+    },
+
+    loadMoreTasks() {
+      if (!this.meta.next_cursor) {
+        return;
+      }
+
+      this.loadingMore = true;
+      const params = buildDashboardTaskParams({
+        assigned: this.form.assigned,
+        created: this.form.created,
+        activeFilter: this.activeFilter,
+      });
+
+      params.cursor = this.meta.next_cursor;
+
+      axios
+        .get('/dashboard/tasks', { params })
+        .then((response) => {
+          const { tasks, meta, links } = readDashboardTasks(response);
+
+          this.userTasks = [...this.userTasks, ...tasks];
+          this.meta = meta;
+          this.links = links;
+        })
+        .catch((error) => {
+          this.handleErrorResponse(error);
+        })
+        .finally(() => {
+          this.loadingMore = false;
         });
     },
 

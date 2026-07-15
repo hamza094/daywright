@@ -21,18 +21,18 @@ final class DashboardTasksController extends ApiController
     #[ScrambleResponse(
         status: 200,
         description: 'Filtered dashboard task list with the human-readable filters that were applied.',
-        type: 'array{data: array<int, UserTasksResource>, meta: array{applied_filters: array<int, string>, total: int}}',
+        type: 'array{data: array<int, UserTasksResource>, meta: array{applied_filters: array<int, string>, next_cursor: string|null, prev_cursor: string|null, per_page: int}, links: array{next: string|null, prev: string|null}}',
     )]
     public function __invoke(UserTasksRequest $request, UserTasksDataRepository $repository): JsonResponse
     {
         $filters = $request->filters();
-        $tasks = $repository->getTasks($this->authenticatedUser()->id, $filters);
+        $tasks = $repository->getTasks($this->authenticatedUser()->id, $filters, $request->perPage());
 
-        return $this->respondWithData(
+        return $this->respondWithCursorPaginatedData(
             UserTasksResource::collection($tasks),
+            $tasks,
             meta: [
                 'applied_filters' => UserTasksResource::appliedFilters($filters),
-                'total' => $tasks->count(),
             ],
         );
     }

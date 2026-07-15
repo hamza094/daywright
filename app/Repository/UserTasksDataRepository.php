@@ -7,11 +7,11 @@ namespace App\Repository;
 use App\DataTransferObjects\Task\UserTaskFilters;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Pagination\CursorPaginator;
 
 class UserTasksDataRepository
 {
-    public function getTasks(int $userId, UserTaskFilters $filters): Collection
+    public function getTasks(int $userId, UserTaskFilters $filters, int $perPage = 15): CursorPaginator
     {
         $query = Task::query();
 
@@ -29,7 +29,8 @@ class UserTasksDataRepository
                 'assignee' => fn ($query) => $query->select('users.id', 'users.uuid', 'users.name'),
 
             ])
-            ->get();
+            ->orderBy('id')
+            ->cursorPaginate($perPage);
     }
 
     protected function applyUserContextFilters(Builder $query, int $userId, UserTaskFilters $filters): void
