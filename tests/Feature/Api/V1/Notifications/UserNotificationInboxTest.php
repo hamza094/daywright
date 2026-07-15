@@ -26,8 +26,15 @@ class UserNotificationInboxTest extends TestCase
             ->assertOk()
             ->assertJsonStructure([
                 'data',
-                'meta',
-                'links',
+                'meta' => [
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
             ])
             ->assertJsonPath('data.0.type', 'ProjectInvitation')
             ->assertJsonPath('data.0.message', 'Sent you a project '.$this->project->name.' invitation')
@@ -46,8 +53,15 @@ class UserNotificationInboxTest extends TestCase
             ->assertOk()
             ->assertJsonStructure([
                 'data',
-                'meta',
-                'links',
+                'meta' => [
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
             ]);
 
         $this->assertSame([], $response->json('data'));
@@ -155,6 +169,35 @@ class UserNotificationInboxTest extends TestCase
         $response->assertStatus(200);
         $response->assertJson(['message' => 'Notification deleted successfully.']);
         $this->assertCount(0, $user->fresh()->notifications);
+    }
+
+    /** @test */
+    public function notification_index_supports_cursor_pagination(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        // Create 4 notifications for the user
+        $this->sendInvitationToUser($this->project, $user);
+        $this->addMember($this->project, $user);
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), ['title' => 'task 1']);
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), ['title' => 'task 2']);
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), ['title' => 'task 3']);
+
+        // Fetch first page with per_page=2
+        $firstPage = $this->getJson($this->apiV1Route('notifications.index', query: ['per_page' => 2]));
+
+        $firstPage->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertNotNull($firstPage->json('meta.next_cursor'));
+
+        $nextCursor = $firstPage->json('meta.next_cursor');
+
+        // Fetch second page using cursor
+        $secondPage = $this->getJson($this->apiV1Route('notifications.index', query: ['per_page' => 2, 'cursor' => $nextCursor]));
+
+        $secondPage->assertOk()
+            ->assertJsonCount(2, 'data');
     }
 
     /** @test */

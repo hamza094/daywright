@@ -7,21 +7,21 @@ namespace App\Repository;
 use App\Enums\NotificationFilter;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\CursorPaginator;
 
 class NotificationRepository
 {
     /**
-     * @return LengthAwarePaginator<int, DatabaseNotification>
+     * @return CursorPaginator<int, DatabaseNotification>
      */
-    public function paginateForUser(User $user, ?string $status, int $perPage = 25): LengthAwarePaginator
+    public function paginateForUser(User $user, ?string $status, int $perPage = 25): CursorPaginator
     {
         /** @var \Illuminate\Database\Eloquent\Builder<DatabaseNotification> $query */
         $query = $user->notifications()->latest();
 
         $this->applyStatusFilter($query, $status);
 
-        return $query->paginate($perPage);
+        return $query->cursorPaginate($perPage);
     }
 
     public function findUserNotification(User $user, string $notificationId): DatabaseNotification

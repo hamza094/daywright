@@ -6,7 +6,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Repository\NotificationRepository;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\CursorPaginator;
 
 class UserNotificationService
 {
@@ -15,9 +15,9 @@ class UserNotificationService
     ) {}
 
     /**
-     * @return LengthAwarePaginator<int, DatabaseNotification>
+     * @return CursorPaginator<int, DatabaseNotification>
      */
-    public function paginateForUser(User $user, ?string $status, int $perPage = 25): LengthAwarePaginator
+    public function paginateForUser(User $user, ?string $status, int $perPage = 25): CursorPaginator
     {
         return $this->notificationRepository->paginateForUser(
             $user,

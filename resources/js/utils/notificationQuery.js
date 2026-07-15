@@ -1,8 +1,8 @@
-export const buildNotificationIndexParams = (filter = null, page = 1) => {
+export const buildNotificationIndexParams = (filter = null, cursor = null) => {
   const params = {};
 
-  if (typeof page === 'number' && Number.isFinite(page) && page > 0) {
-    params.page = page;
+  if (typeof cursor === 'string' && cursor.trim() !== '') {
+    params.cursor = cursor;
   }
 
   if (filter === 'read' || filter === 'unread') {

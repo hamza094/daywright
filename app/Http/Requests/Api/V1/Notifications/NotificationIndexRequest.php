@@ -37,11 +37,11 @@ class NotificationIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
             ...$this->topLevelFilterAliasRules(['status']),
             ...$this->unsupportedQueryParameterRules(),
             /**
-             * Paginator page number.
+             * Cursor for pagination.
              *
-             * @example 1
+             * @example eyJpdiI6IjEiLCJpZF9jb2x1bW4iOiJpZCJ9
              */
-            'page' => $this->pageRule(),
+            'cursor' => $this->cursorRule(),
             /**
              * Number of notifications to return per page.
              *
@@ -79,7 +79,7 @@ class NotificationIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
     #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
-        return ['filter', 'page', 'per_page'];
+        return ['filter', 'cursor', 'per_page'];
     }
 
     #[Override]
