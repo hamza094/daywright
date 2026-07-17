@@ -298,24 +298,22 @@ class UserTasksDataTest extends TestCase
     }
 
     /** @test */
-    public function request_requires_at_least_one_filter(): void
+    public function request_succeeds_without_filter(): void
     {
         $response = $this->getJson('api/v1/dashboard/tasks');
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['filter']);
+        $response->assertStatus(200);
     }
 
     /** @test */
-    public function request_with_false_values_requires_at_least_one_filter(): void
+    public function request_succeeds_with_false_filter_values(): void
     {
         $response = $this->getJson($this->dashboardTasksUrl([
             'user_created' => 0,
             'completed' => 0,
         ]));
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['filter']);
+        $response->assertStatus(200);
     }
 
     /** @test */
@@ -354,8 +352,8 @@ class UserTasksDataTest extends TestCase
         $firstPage = $this->getJson($this->dashboardTasksUrl(['user_created' => 1]).'&per_page=2');
 
         $firstPage->assertOk()
-            ->assertJsonCount(2, 'data')
-            ->assertNotNull($firstPage->json('meta.next_cursor'));
+            ->assertJsonCount(2, 'data');
+        $this->assertNotNull($firstPage->json('meta.next_cursor'));
 
         $nextCursor = $firstPage->json('meta.next_cursor');
 

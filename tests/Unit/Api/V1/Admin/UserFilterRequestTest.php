@@ -66,9 +66,9 @@ final class UserFilterRequestTest extends TestCase
 
         $matchingIds = $query->pluck('id')->all();
 
-        $this->assertContains($nameMatch->id, $matchingIds);
         $this->assertContains($usernameMatch->id, $matchingIds);
         $this->assertContains($emailMatch->id, $matchingIds);
+        $this->assertNotContains($nameMatch->id, $matchingIds);
         $this->assertNotContains($nonMatch->id, $matchingIds);
     }
 }

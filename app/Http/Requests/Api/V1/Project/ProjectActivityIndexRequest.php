@@ -51,6 +51,15 @@ class ProjectActivityIndexRequest extends ApiQueryRequest
         ];
     }
 
+    /**
+     * @return array<int, string>
+     */
+    #[Override]
+    protected function supportedTopLevelQueryParameters(): array
+    {
+        return ['filter', 'page', 'per_page'];
+    }
+
     #[Override]
     protected function prepareForValidation(): void
     {

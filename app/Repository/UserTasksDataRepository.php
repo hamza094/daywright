@@ -11,6 +11,9 @@ use Illuminate\Pagination\CursorPaginator;
 
 class UserTasksDataRepository
 {
+    /**
+     * @return CursorPaginator<int, Task>
+     */
     public function getTasks(int $userId, UserTaskFilters $filters, int $perPage = 15): CursorPaginator
     {
         $query = Task::query();
@@ -39,6 +42,7 @@ class UserTasksDataRepository
         $assigned = $filters->taskAssigned;
 
         if (($created && $assigned) || (! $created && ! $assigned)) {
+            /** @var TaskQueryBuilder $query */
             $query->ownedOrAssignedToUser($userId);
 
             return;
@@ -50,6 +54,7 @@ class UserTasksDataRepository
             return;
         }
 
+        /** @var TaskQueryBuilder $query */
         $query->assignedToUser($userId);
     }
 }

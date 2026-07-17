@@ -31,7 +31,6 @@ class ScrambleDocsTest extends TestCase
         $this->assertSame('/api', $docs['servers'][0]['url'] ?? null);
 
         foreach ([
-            '/v1/users/search',
             '/v1/twofactor/login-confirm',
             '/v1/users/{user}/avatar',
         ] as $path) {

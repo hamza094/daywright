@@ -7,7 +7,6 @@ namespace App\Repository\Dashboard;
 use App\Models\Activity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ActivityRepository
 {
@@ -19,20 +18,17 @@ class ActivityRepository
         return Activity::query()
             ->where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
-            ->with([
-                'subject',
-                'project' => function (BelongsTo $query): void {
-                    $query->withTrashed()
-                        ->select([
-                            'id',
-                            'name',
-                            'slug',
-                            'stage_id',
-                            'created_at',
-                        ]);
-                },
-                'project.stage',
-            ])
+            ->with(['subject', 'project.stage'])
+            ->with(['project' => function (mixed $query): void {
+                $query->withTrashed()
+                    ->select([
+                        'id',
+                        'name',
+                        'slug',
+                        'stage_id',
+                        'created_at',
+                    ]);
+            }])
             ->orderBy('created_at')
             ->get();
     }

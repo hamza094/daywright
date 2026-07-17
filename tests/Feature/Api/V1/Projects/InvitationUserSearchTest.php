@@ -16,7 +16,7 @@ class InvitationUserSearchTest extends TestCase
     /** @test */
     public function project_manager_can_search_for_invitable_users(): void
     {
-        $otherUser = User::factory()->create(['name' => 'John Doe', 'email' => 'john@example.com']);
+        User::factory()->create(['name' => 'John Doe', 'email' => 'john@example.com']);
 
         $response = $this->actingAs($this->user)
             ->getJson($this->apiV1Route('projects.users.search', [
@@ -27,7 +27,7 @@ class InvitationUserSearchTest extends TestCase
         $response->assertOk()
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['uuid', 'name', 'username', 'email', 'avatar_path'],
+                    '*' => ['uuid', 'name', 'username', 'email', 'avatar'],
                 ],
             ])
             ->assertJsonFragment(['name' => 'John Doe'])

@@ -40,7 +40,7 @@ class UserActivitiesTest extends TestCase
             ->assertJsonValidationErrors(['start_date', 'end_date']);
 
         // Test date range larger than one month
-        $response = $this->getJson('api/v1/user/activities?start_date=2025-08-01&end_date=2025-09-01');
+        $response = $this->getJson('api/v1/dashboard/activities?start_date=2025-08-01&end_date=2025-09-01');
         $response->assertUnprocessable()
             ->assertJsonValidationErrors(['end_date'])
             ->assertJsonPath('errors.end_date.0', 'The selected date range may not exceed 31 days.');

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\QueryBuilder;
 
 use App\Enums\TaskStatus as TaskStatusEnum;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**

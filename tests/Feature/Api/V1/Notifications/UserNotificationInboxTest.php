@@ -177,19 +177,41 @@ class UserNotificationInboxTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        // Create 4 notifications for the user
-        $this->sendInvitationToUser($this->project, $user);
-        $this->addMember($this->project, $user);
-        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), ['title' => 'task 1']);
-        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), ['title' => 'task 2']);
-        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), ['title' => 'task 3']);
+        // Create a project for this user
+        $userProject = $this->project->replicate();
+        $userProject->user_id = $user->id;
+        $userProject->save();
 
+        // Add the user as an active member
+        $userProject->members()->syncWithoutDetaching([
+            $user->id => ['active' => true],
+        ]);
+
+        // Add another member who will create tasks (generating notifications for the user)
+        $otherMember = User::factory()->create();
+        $userProject->members()->syncWithoutDetaching([
+            $otherMember->id => ['active' => true],
+        ]);
+
+        // Create 4 notifications for the user by having the other member create tasks
+        Sanctum::actingAs($otherMember);
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $userProject), ['title' => 'task 1']);
+        $this->travelTo(now()->addSecond());
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $userProject), ['title' => 'task 2']);
+        $this->travelTo(now()->addSecond());
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $userProject), ['title' => 'task 3']);
+        $this->travelTo(now()->addSecond());
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $userProject), ['title' => 'task 4']);
+        $this->travelBack();
+
+        // Switch back to the original user to check their notifications
+        Sanctum::actingAs($user);
         // Fetch first page with per_page=2
         $firstPage = $this->getJson($this->apiV1Route('notifications.index', query: ['per_page' => 2]));
 
         $firstPage->assertOk()
             ->assertJsonCount(2, 'data')
-            ->assertNotNull($firstPage->json('meta.next_cursor'));
+            ->assertJsonPath('meta.next_cursor', fn ($cursor) => $cursor !== null);
 
         $nextCursor = $firstPage->json('meta.next_cursor');
 

@@ -7,6 +7,8 @@ namespace App\Http\Requests\Api\V1\Task;
 use App\Http\Requests\Api\V1\ApiQueryRequest;
 use Override;
 
+use function Safe\preg_replace;
+
 class TaskMemberSearchRequest extends ApiQueryRequest
 {
     public function authorize(): bool

@@ -53,8 +53,8 @@ class ConversationTest extends TestCase
 
         $response->assertOk()
             ->assertJsonCount(2, 'data')
-            ->assertJsonPath('meta.per_page', 2)
-            ->assertNotNull($response->json('meta.next_cursor'));
+            ->assertJsonPath('meta.per_page', 2);
+        $this->assertNotNull($response->json('meta.next_cursor'));
     }
 
     /** @test */
@@ -95,8 +95,8 @@ class ConversationTest extends TestCase
         ]));
 
         $firstPage->assertOk()
-            ->assertJsonCount(2, 'data')
-            ->assertNotNull($firstPage->json('meta.next_cursor'));
+            ->assertJsonCount(2, 'data');
+        $this->assertNotNull($firstPage->json('meta.next_cursor'));
 
         $nextCursor = $firstPage->json('meta.next_cursor');
 

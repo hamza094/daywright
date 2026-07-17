@@ -49,21 +49,6 @@ class UserActivitiesRequest extends ApiQueryRequest
     }
 
     /**
-     * Get the validated and transformed date range.
-     *
-     * @return array{start_date: Carbon, end_date: Carbon}
-     */
-    public function getDateRange(): array
-    {
-        $validated = $this->validated();
-
-        return [
-            'start_date' => Carbon::parse($validated['start_date'])->startOfDay(),
-            'end_date' => Carbon::parse($validated['end_date'])->endOfDay(),
-        ];
-    }
-
-    /**
      * @return array<int, Closure(Validator): void>
      */
     public function after(): array

@@ -6,6 +6,8 @@ namespace App\Http\Requests\Api\V1\User;
 
 use Override;
 
+use function Safe\preg_replace;
+
 class InvitationUserSearchRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
 {
     public function authorize(): bool

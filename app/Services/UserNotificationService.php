@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\NotificationFilter;
 use App\Models\User;
 use App\Repository\NotificationRepository;
 use Illuminate\Pagination\CursorPaginator;
@@ -15,7 +16,7 @@ class UserNotificationService
     ) {}
 
     /**
-     * @return CursorPaginator<int, DatabaseNotification>
+     * @return CursorPaginator<int, \Illuminate\Notifications\DatabaseNotification>
      */
     public function paginateForUser(User $user, ?string $status, int $perPage = 25): CursorPaginator
     {

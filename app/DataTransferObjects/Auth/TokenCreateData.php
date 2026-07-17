@@ -8,15 +8,10 @@ use Illuminate\Support\Arr;
 
 final readonly class TokenCreateData
 {
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    public function __construct(private array $attributes) {}
-
-    public function __get(string $key): mixed
-    {
-        return $this->attributes[$key] ?? null;
-    }
+    public function __construct(
+        public ?string $name,
+        public mixed $expires_at,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $payload
@@ -26,7 +21,10 @@ final readonly class TokenCreateData
         $data = Arr::only($payload, ['name', 'expires_at']);
         $data['expires_at'] = empty($data['expires_at']) ? null : \Carbon\Carbon::parse($data['expires_at']);
 
-        return new self(attributes: $data);
+        return new self(
+            name: $data['name'] ?? null,
+            expires_at: $data['expires_at'] ?? null,
+        );
     }
 
     /**
@@ -34,6 +32,9 @@ final readonly class TokenCreateData
      */
     public function toArray(): array
     {
-        return $this->attributes;
+        return [
+            'name' => $this->name,
+            'expires_at' => $this->expires_at,
+        ];
     }
 }

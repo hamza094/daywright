@@ -19,7 +19,7 @@ class SearchableTest extends TestCase
     {
         $service = app(InvitationService::class);
 
-        $result = $service->usersSearch('missing-user');
+        $result = $service->usersSearch($this->project, 'missing-user');
 
         $this->assertTrue($result->isEmpty());
     }
@@ -27,12 +27,13 @@ class SearchableTest extends TestCase
     /** @test */
     public function it_searches_for_users_by_name_or_email(): void
     {
-        $user = User::first();
+        // Create a user that can be invited (not the project owner or member)
+        User::factory()->create(['name' => 'Searchable User']);
 
-        $searchTerm = $user->name;
+        $searchTerm = 'Searchable';
 
         $service = app(InvitationService::class);
-        $result = $service->usersSearch($searchTerm);
+        $result = $service->usersSearch($this->project, $searchTerm);
 
         $this->assertCount(1, $result);
     }
@@ -47,7 +48,8 @@ class SearchableTest extends TestCase
         $searchTerm = 'Test';
 
         // Act
-        $response = $this->withoutExceptionHandling()->getJson(route('api.v1.users.search', [
+        $response = $this->withoutExceptionHandling()->getJson(route('api.v1.projects.users.search', [
+            'project' => $this->project->slug,
             'search' => $searchTerm,
         ]));
 
@@ -64,7 +66,8 @@ class SearchableTest extends TestCase
     /** @test */
     public function search_endpoint_rejects_legacy_query_alias(): void
     {
-        $this->getJson(route('api.v1.users.search', [
+        $this->getJson(route('api.v1.projects.users.search', [
+            'project' => $this->project->slug,
             'query' => 'Test',
         ]))
             ->assertUnprocessable()
@@ -74,7 +77,8 @@ class SearchableTest extends TestCase
     /** @test */
     public function search_endpoint_rejects_unsupported_top_level_query_parameters(): void
     {
-        $this->getJson(route('api.v1.users.search', [
+        $this->getJson(route('api.v1.projects.users.search', [
+            'project' => $this->project->slug,
             'search' => 'Test',
             'sort' => 'name',
             'include' => 'projects',

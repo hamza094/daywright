@@ -22,6 +22,8 @@ class ProjectStatsRepository
 
     /**
      * Build the base project query used for stats.
+     *
+     * @return EloquentBuilder<Project>
      */
     private function buildUserProjectQuery(int $userId, ?int $year, ?int $month): EloquentBuilder
     {
@@ -39,6 +41,8 @@ class ProjectStatsRepository
 
     /**
      * Apply the stats select and return the raw result object.
+     *
+     * @param  EloquentBuilder<Project>  $query
      */
     private function selectProjectStats(EloquentBuilder $query, int $userId): ?object
     {

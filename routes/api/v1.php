@@ -198,7 +198,7 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 ->can('canAcceptInvitation', 'project');
 
             Route::get('users/search', InvitationUserSearchController::class)
-                ->name('users.search')
+                ->name('projects.users.search')
                 ->can('manage', 'project');
 
             Route::delete('invitations/{user}', [ProjectInvitationController::class, 'destroy'])
