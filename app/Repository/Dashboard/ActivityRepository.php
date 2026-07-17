@@ -19,7 +19,7 @@ class ActivityRepository
             ->where('user_id', $userId)
             ->whereBetween('created_at', [$startDate, $endDate])
             ->with(['subject', 'project.stage'])
-            ->with(['project' => function (mixed $query): void {
+            ->with(['project' => function (\Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Relations\Relation $query): void {
                 $query->withTrashed()
                     ->select([
                         'id',
@@ -30,6 +30,7 @@ class ActivityRepository
                     ]);
             }])
             ->orderBy('created_at')
+            ->limit(100)
             ->get();
     }
 }

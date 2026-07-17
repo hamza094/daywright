@@ -3,7 +3,7 @@ export function useRealtimeChat(slug, conversations) {
     Echo.private(`project.${slug}.conversations`)
       .listen('NewMessage', (e) => {
         if (!conversations.value.data.some((conv) => conv.id === e.id)) {
-          conversations.value.data.push(e);
+          conversations.value.data.unshift(e);
         }
       })
       .error((error) => {

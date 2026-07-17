@@ -49,8 +49,8 @@ class ProjectStatsRepository
         return $query->toBase()->selectRaw(
             'SUM(CASE WHEN projects.user_id = ? AND projects.deleted_at IS NULL THEN 1 ELSE 0 END) AS active_projects,
              SUM(CASE WHEN projects.user_id = ? AND projects.deleted_at IS NOT NULL THEN 1 ELSE 0 END) AS trashed_projects,
-             SUM(CASE WHEN pm.user_id IS NOT NULL AND projects.deleted_at IS NULL THEN 1 ELSE 0 END) AS member_projects',
-            [$userId, $userId]
+             SUM(CASE WHEN pm.user_id IS NOT NULL AND projects.user_id != ? AND projects.deleted_at IS NULL THEN 1 ELSE 0 END) AS member_projects',
+            [$userId, $userId, $userId]
         )->first();
     }
 

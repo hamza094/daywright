@@ -10,7 +10,7 @@ final readonly class TokenCreateData
 {
     public function __construct(
         public ?string $name,
-        public mixed $expires_at,
+        public ?\Carbon\Carbon $expires_at,
     ) {}
 
     /**

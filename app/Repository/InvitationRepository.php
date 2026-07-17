@@ -6,11 +6,14 @@ namespace App\Repository;
 
 use App\Models\Project;
 use App\Models\User;
+use App\QueryBuilder\Concerns\EscapesLikeWildcards;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
 class InvitationRepository
 {
+    use EscapesLikeWildcards;
+
     private const int SEARCH_LIMIT = 5;
 
     /**
@@ -22,7 +25,7 @@ class InvitationRepository
      */
     public function searchInvitableUsers(Project $project, string $searchTerm): EloquentCollection
     {
-        $searchPattern = $searchTerm.'%';
+        $searchPattern = $this->escapeLikeWildcards($searchTerm).'%';
 
         return User::query()
             ->where('id', '!=', $project->user_id)
