@@ -20,7 +20,7 @@
             @update:featurePop="(val) => $emit('toggle-menu', conversation.id || conversation.created_at, val)">
             <ul class="feature-dropdown_menu">
               <li class="feature-dropdown_item-content">
-                <button type="button" @click="$emit('delete', conversation.id)">
+                <button v-if="conversation.id" type="button" @click="$emit('delete', conversation.id)">
                   <i class="fa-solid fa-ban"></i> Delete
                 </button>
               </li>
