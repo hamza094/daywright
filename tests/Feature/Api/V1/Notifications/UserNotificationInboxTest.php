@@ -211,7 +211,7 @@ class UserNotificationInboxTest extends TestCase
 
         $firstPage->assertOk()
             ->assertJsonCount(2, 'data')
-            ->assertJsonPath('meta.next_cursor', fn ($cursor) => $cursor !== null);
+            ->assertJsonPath('meta.next_cursor', fn ($cursor): bool => $cursor !== null);
 
         $nextCursor = $firstPage->json('meta.next_cursor');
 

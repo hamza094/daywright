@@ -9,6 +9,7 @@ const TYPING_CONFIG = {
 export function useTypingIndicator(slug, auth) {
   const typing = ref(false);
   const user = ref(null);
+  let timeout = null;
 
   const isTyping = debounce(function () {
     Echo.private(`typing.${slug}`).whisper('typing-indicator', {
@@ -23,7 +24,8 @@ export function useTypingIndicator(slug, auth) {
       typing.value = e.typing;
 
       // Remove is typing indicator after timeout
-      setTimeout(() => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
         typing.value = false;
       }, TYPING_CONFIG.INDICATOR_TIMEOUT_MS);
     });

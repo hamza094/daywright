@@ -69,11 +69,12 @@ const actions = {
     });
   },
 
-  async loadMoreNotifications({ state, dispatch }) {
+  async loadMoreNotifications({ state, dispatch }, { filter = null } = {}) {
     if (!state.allNotifications.meta.next_cursor) {
       return;
     }
     return dispatch('fetchNotificationsFromApi', {
+      filter,
       cursor: state.allNotifications.meta.next_cursor,
       mutation: 'appendAllNotifications',
     });

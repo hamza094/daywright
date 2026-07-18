@@ -76,7 +76,7 @@ class PerformanceSeeder extends Seeder
     private array $timezones = [
         'UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo',
         'America/Los_Angeles', 'Europe/Berlin', 'Australia/Sydney',
-        'Asia/Kolachi', 'America/Chicago', 'Pacific/Auckland',
+        'Asia/Karachi', 'America/Chicago', 'Pacific/Auckland',
     ];
 
     /** Weighted: 40% pending, 25% in-progress, 10% under-review, 20% completed, 5% cancelled */
@@ -537,6 +537,8 @@ class PerformanceSeeder extends Seeder
 
         for ($projId = $projectStart; $projId <= $projectEnd; $projId++) {
             $ownerId = $projectUserMap[$projId];
+            $projectTaskStart = $taskStart + ($projId - $projectStart) * self::TASKS_PER_PROJECT;
+            $projectTaskEnd = $projectTaskStart + self::TASKS_PER_PROJECT - 1;
 
             for ($a = 0; $a < self::ACTIVITIES_PER_PROJECT; $a++) {
                 $description = $this->activityDescriptions[array_rand($this->activityDescriptions)];
@@ -547,7 +549,7 @@ class PerformanceSeeder extends Seeder
                     'user_id' => $ownerId,
                     'project_id' => $projId,
                     'subject_type' => $isTask ? 'App\\Models\\Task' : 'App\\Models\\Project',
-                    'subject_id' => $isTask ? rand($taskStart, max($taskStart, $taskEnd)) : $projId,
+                    'subject_id' => $isTask ? rand($projectTaskStart, $projectTaskEnd) : $projId,
                     'is_hidden' => false,
                     'changes' => null,
                     'description' => $description,

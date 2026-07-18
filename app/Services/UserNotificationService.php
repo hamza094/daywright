@@ -9,10 +9,10 @@ use App\Models\User;
 use App\Repository\NotificationRepository;
 use Illuminate\Pagination\CursorPaginator;
 
-class UserNotificationService
+final readonly class UserNotificationService
 {
     public function __construct(
-        private readonly NotificationRepository $notificationRepository,
+        private NotificationRepository $notificationRepository,
     ) {}
 
     /**

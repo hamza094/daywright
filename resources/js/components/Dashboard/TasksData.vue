@@ -196,6 +196,7 @@ export default {
       activeFilter: 'all',
       loading: false,
       loadingMore: false,
+      loadMoreRequestId: 0,
     };
   },
   computed: {
@@ -250,6 +251,7 @@ export default {
       }
 
       this.loadingMore = true;
+      const currentRequestId = ++this.loadMoreRequestId;
       const params = buildDashboardTaskParams({
         assigned: this.form.assigned,
         created: this.form.created,
@@ -261,6 +263,9 @@ export default {
       axios
         .get('/dashboard/tasks', { params })
         .then((response) => {
+          if (currentRequestId !== this.loadMoreRequestId) {
+            return;
+          }
           const { tasks, meta, links } = readDashboardTasks(response);
 
           this.userTasks = [...this.userTasks, ...tasks];
@@ -268,10 +273,15 @@ export default {
           this.links = links;
         })
         .catch((error) => {
+          if (currentRequestId !== this.loadMoreRequestId) {
+            return;
+          }
           this.handleErrorResponse(error);
         })
         .finally(() => {
-          this.loadingMore = false;
+          if (currentRequestId === this.loadMoreRequestId) {
+            this.loadingMore = false;
+          }
         });
     },
 

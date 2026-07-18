@@ -22,10 +22,10 @@
       <div class="chat-wrapper">
         <div class="card-body chat-panel">
           <ul class="chat">
-            <div ref="scrollSentinel"></div>
-            <div v-if="loadingMore" class="text-center py-2">
+            <li ref="scrollSentinel" aria-hidden="true"></li>
+            <li v-if="loadingMore" class="text-center py-2">
               <small>Loading older messages...</small>
-            </div>
+            </li>
             <ChatMessageItem
               v-for="conversation in conversations.data"
               :key="conversation.id || conversation.created_at"
@@ -34,14 +34,14 @@
               :is-open="openMenuId === (conversation.id || conversation.created_at)"
               @toggle-menu="toggleMenu"
               @delete="handleDelete" />
-            <div v-if="typing" class="chat-typing">
+            <li v-if="typing" class="chat-typing">
               <span class="chat-typing_icon">💬</span>
               <span class="chat-typing_text">@{{ (user && user.name) || 'Someone' }} is typing...</span>
-            </div>
-            <div v-else class="chat-typing chat-typing_idle">
+            </li>
+            <li v-else class="chat-typing chat-typing_idle">
               <span class="chat-typing_icon">💬</span>
               <span class="chat-typing_text">Waiting for new messages</span>
-            </div>
+            </li>
           </ul>
         </div>
 
@@ -179,12 +179,7 @@ export default {
     } = useChatMessages(props.slug);
     const { file, fileName, fileUpload: composableFileUpload, removeFile } = useFileUpload(null);
     const { typing, user, isTyping, listenToWhisperEvent } = useTypingIndicator(props.slug, props.auth);
-    const {
-      emojiIndex,
-      emojiModal,
-      toggleEmojiModal: composableToggleEmojiModal,
-      showEmoji: composableShowEmoji,
-    } = useEmojiPicker();
+    const { emojiIndex, emojiModal, toggleEmojiModal: composableToggleEmojiModal } = useEmojiPicker();
     const { listenForNewMessage, listenToDeleteConversation } = useRealtimeChat(props.slug, conversations);
 
     const message = ref('');
@@ -207,10 +202,10 @@ export default {
       emojiIndex,
       emojiModal,
       composableToggleEmojiModal,
-      composableShowEmoji,
       listenForNewMessage,
       listenToDeleteConversation,
       message,
+      messageRef: message,
     };
   },
 
@@ -269,7 +264,8 @@ export default {
     },
 
     showEmoji(emoji) {
-      this.composableShowEmoji(emoji, this.message);
+      if (!emoji) return;
+      this.message += emoji.native;
     },
 
     openFilePicker() {

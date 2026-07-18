@@ -17,14 +17,4 @@ return new class extends Migration
             $table->index('created_at');
         });
     }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::table('projects', function (Blueprint $table) {
-            $table->dropIndex(['created_at']);
-        });
-    }
 };

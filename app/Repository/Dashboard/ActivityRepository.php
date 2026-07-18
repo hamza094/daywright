@@ -20,7 +20,7 @@ class ActivityRepository
             ->whereBetween('created_at', [$startDate, $endDate])
             ->with(['subject', 'project.stage'])
             ->with(['project' => function (\Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Relations\Relation $query): void {
-                $query->withTrashed()
+                $query->withTrashed() // @phpstan-ignore-line
                     ->select([
                         'id',
                         'name',

@@ -68,9 +68,18 @@ export default {
       return this.user?.uuid || null;
     },
   },
+  watch: {
+    userChannelId: {
+      immediate: true,
+      handler(newId) {
+        if (newId) {
+          this.listenNotifications();
+        }
+      },
+    },
+  },
   created() {
     this.fetchNotifications();
-    this.listenNotifications();
   },
   methods: {
     fetchNotifications() {

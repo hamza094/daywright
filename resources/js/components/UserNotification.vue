@@ -114,7 +114,7 @@ export default {
     },
     loadMore() {
       this.loadingMore = true;
-      this.$store.dispatch('loadMoreNotifications').finally(() => {
+      this.$store.dispatch('loadMoreNotifications', { filter: this.filter }).finally(() => {
         this.loadingMore = false;
       });
     },

@@ -48,7 +48,7 @@ class SearchableTest extends TestCase
         $searchTerm = 'Test';
 
         // Act
-        $response = $this->withoutExceptionHandling()->getJson(route('api.v1.projects.users.search', [
+        $response = $this->withoutExceptionHandling()->getJson($this->apiV1Route('projects.users.search', [
             'project' => $this->project->slug,
             'search' => $searchTerm,
         ]));
@@ -66,7 +66,7 @@ class SearchableTest extends TestCase
     /** @test */
     public function search_endpoint_rejects_legacy_query_alias(): void
     {
-        $this->getJson(route('api.v1.projects.users.search', [
+        $this->getJson($this->apiV1Route('projects.users.search', [
             'project' => $this->project->slug,
             'query' => 'Test',
         ]))
@@ -77,7 +77,7 @@ class SearchableTest extends TestCase
     /** @test */
     public function search_endpoint_rejects_unsupported_top_level_query_parameters(): void
     {
-        $this->getJson(route('api.v1.projects.users.search', [
+        $this->getJson($this->apiV1Route('projects.users.search', [
             'project' => $this->project->slug,
             'search' => 'Test',
             'sort' => 'name',

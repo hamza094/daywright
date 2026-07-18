@@ -40,6 +40,9 @@ export function useFileUpload(toastNotification = null) {
       if (toastNotification) {
         toastNotification.warning(validation.message);
       }
+      if (event?.target) {
+        event.target.value = '';
+      }
       removeFile(fileInputRef);
       return;
     }
@@ -52,7 +55,12 @@ export function useFileUpload(toastNotification = null) {
     file.value = null;
     fileName.value = '';
     if (fileInputRef) {
-      fileInputRef.value = '';
+      const element = fileInputRef.value ? fileInputRef.value : fileInputRef;
+      try {
+        element.value = '';
+      } catch {
+        /* ignore */
+      }
     }
   };
 

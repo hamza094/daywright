@@ -17,7 +17,7 @@ class NotificationRepository
     public function paginateForUser(User $user, ?string $status, int $perPage = 25): CursorPaginator
     {
         /** @var \Illuminate\Database\Eloquent\Builder<DatabaseNotification> $query */
-        $query = $user->notifications()->latest();
+        $query = $user->notifications()->latest()->orderByDesc('id');
 
         $this->applyStatusFilter($query, $status);
 

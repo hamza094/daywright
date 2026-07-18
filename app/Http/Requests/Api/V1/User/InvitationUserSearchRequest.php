@@ -56,7 +56,7 @@ class InvitationUserSearchRequest extends \App\Http\Requests\Api\V1\ApiQueryRequ
         $normalizedSearch = preg_replace('/\s+/u', ' ', trim($search));
 
         $this->merge([
-            'search' => $normalizedSearch ?? trim($search),
+            'search' => $normalizedSearch,
         ]);
     }
 

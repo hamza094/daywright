@@ -39,8 +39,6 @@ import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 window.Pusher = Pusher;
 
-const broadcastAuthEndpoint = new URL('/api/broadcasting/auth', window.location.origin).toString();
-
 window.Echo = new Echo({
   broadcaster: 'pusher',
   key: import.meta.env.VITE_PUSHER_APP_KEY,
@@ -50,7 +48,7 @@ window.Echo = new Echo({
   authorizer: (channel) => ({
     authorize: (socketId, callback) => {
       axios
-        .post(broadcastAuthEndpoint, {
+        .post('/api/broadcasting/auth', {
           socket_id: socketId,
           channel_name: channel.name,
         })

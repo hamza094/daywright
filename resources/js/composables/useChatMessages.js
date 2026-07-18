@@ -38,7 +38,7 @@ export function useChatMessages(slug) {
       .then((response) => {
         const newData = getCursorPaginatedData(response);
         conversations.value = {
-          data: [...newData.data, ...conversations.value.data],
+          data: [...conversations.value.data, ...newData.data],
           meta: newData.meta,
           links: newData.links,
         };
@@ -59,7 +59,7 @@ export function useChatMessages(slug) {
     scrollObserver.value = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !loadingMore.value) {
-          loadMoreConversations();
+          loadMoreConversations().catch(() => {});
         }
       },
       {

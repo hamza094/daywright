@@ -27,11 +27,12 @@ class ProjectStatsRepository
      */
     private function buildUserProjectQuery(int $userId, ?int $year, ?int $month): EloquentBuilder
     {
-        return Project::leftJoin('project_members as pm', function ($join) use ($userId): void {
-            $join->on('projects.id', '=', 'pm.project_id')
-                ->where('pm.user_id', $userId)
-                ->where('pm.active', 1);
-        })
+        return Project::withTrashed()
+            ->leftJoin('project_members as pm', function ($join) use ($userId): void {
+                $join->on('projects.id', '=', 'pm.project_id')
+                    ->where('pm.user_id', $userId)
+                    ->where('pm.active', 1);
+            })
             ->where(function (EloquentBuilder $query) use ($userId): void {
                 $query->where('projects.user_id', $userId)
                     ->orWhere('pm.user_id', $userId);

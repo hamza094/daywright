@@ -9,9 +9,9 @@ use App\Models\Project;
 use App\Repository\ActivityRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-class ProjectActivityListingService
+final readonly class ProjectActivityListingService
 {
-    public function __construct(private readonly ActivityRepository $activityRepository) {}
+    public function __construct(private ActivityRepository $activityRepository) {}
 
     /**
      * @return LengthAwarePaginator<int, Activity>

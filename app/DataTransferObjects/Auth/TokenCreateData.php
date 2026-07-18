@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\DataTransferObjects\Auth;
 
 use Illuminate\Support\Arr;
+use InvalidArgumentException;
 
 final readonly class TokenCreateData
 {
     public function __construct(
-        public ?string $name,
-        public ?\Carbon\Carbon $expires_at,
+        public string $name,
+        public ?\Carbon\Carbon $expires_at = null,
     ) {}
 
     /**
@@ -21,8 +22,12 @@ final readonly class TokenCreateData
         $data = Arr::only($payload, ['name', 'expires_at']);
         $data['expires_at'] = empty($data['expires_at']) ? null : \Carbon\Carbon::parse($data['expires_at']);
 
+        if (! isset($data['name']) || $data['name'] === '') {
+            throw new InvalidArgumentException('Name is required');
+        }
+
         return new self(
-            name: $data['name'] ?? null,
+            name: $data['name'],
             expires_at: $data['expires_at'] ?? null,
         );
     }

@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\DataTransferObjects\Task\UserTaskFilters;
 use App\Models\Task;
+use App\QueryBuilder\TaskQueryBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\CursorPaginator;
 

@@ -77,7 +77,7 @@ function canvasToBlob(canvas) {
 export default {
   components: { VueCropper },
   props: {
-    userUuid: { type: [Number, String], required: true },
+    userUuid: { type: String, required: true },
     name: { type: String, required: true },
     avatar: { type: String, default: '' },
   },
