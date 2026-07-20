@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Services\Project;
+namespace App\Repository;
 
 use Illuminate\Database\Eloquent\Builder;
 
-class ProjectActivityQueryFilter
+class ActivityRepository
 {
     /**
      * @template TModel of \Illuminate\Database\Eloquent\Model

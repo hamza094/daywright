@@ -81,7 +81,11 @@
       </li>
     </ul>
 
-    <pagination :data="notifications" @pagination-change-page="getResults"></pagination>
+    <div v-if="hasMoreNotifications" class="text-center mt-3 mb-3">
+      <button @click="loadMore" :disabled="loadingMore" class="btn btn-outline-primary btn-sm">
+        {{ loadingMore ? 'Loading...' : 'Load More' }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -90,19 +94,29 @@ export default {
   data() {
     return {
       filter: 'all',
+      loadingMore: false,
     };
   },
   computed: {
     notifications() {
       return this.$store.state.notifications.allNotifications;
     },
+    hasMoreNotifications() {
+      return this.notifications.meta?.next_cursor != null;
+    },
   },
   created() {
-    this.getResults(1);
+    this.getResults();
   },
   methods: {
-    getResults(page) {
-      this.$store.dispatch('getAllNotifications', { filter: this.filter, page });
+    getResults() {
+      this.$store.dispatch('getAllNotifications', { filter: this.filter });
+    },
+    loadMore() {
+      this.loadingMore = true;
+      this.$store.dispatch('loadMoreNotifications', { filter: this.filter }).finally(() => {
+        this.loadingMore = false;
+      });
     },
     deleteNotification(notificationId) {
       this.$store.dispatch('deleteNotification', notificationId);
@@ -125,7 +139,7 @@ export default {
     },
     filterNotifications(type) {
       this.filter = type;
-      this.getResults(1);
+      this.getResults();
     },
   },
 };

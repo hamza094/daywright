@@ -77,7 +77,7 @@ function canvasToBlob(canvas) {
 export default {
   components: { VueCropper },
   props: {
-    userId: { type: [Number, String], required: true },
+    userUuid: { type: String, required: true },
     name: { type: String, required: true },
     avatar: { type: String, default: '' },
   },
@@ -256,7 +256,7 @@ export default {
       formData.append('avatar', blob, 'avatar.png');
 
       try {
-        const response = await axios.post('/users/' + this.userId + '/avatar', formData);
+        const response = await axios.post('/users/' + encodeURIComponent(this.userUuid) + '/avatar', formData);
         this.updateUserAvatar(getObjectData(response).avatar || null);
         this.$vToastify.success('Avatar Updated Successfully');
         this.closeAvatarModal();

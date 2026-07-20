@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\User;
 
+use App\DataTransferObjects\Activity\DateRange;
 use App\Http\Requests\Api\V1\ApiQueryRequest;
 use Carbon\Carbon;
+use Closure;
 use Illuminate\Validation\Validator;
 use Override;
 
 class UserActivitiesRequest extends ApiQueryRequest
 {
+    private const int MAX_DATE_RANGE_DAYS = 31;
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -45,37 +49,35 @@ class UserActivitiesRequest extends ApiQueryRequest
     }
 
     /**
-     * Get the validated and transformed date range.
-     *
-     * @return array{start_date: Carbon, end_date: Carbon}
+     * @return array<int, Closure(Validator): void>
      */
-    public function getDateRange(): array
+    public function after(): array
     {
-        $validated = $this->validated();
-
         return [
-            'start_date' => Carbon::parse($validated['start_date'])->startOfDay(),
-            'end_date' => Carbon::parse($validated['end_date'])->endOfDay(),
+            function (Validator $validator): void {
+                if ($validator->errors()->has('start_date') || $validator->errors()->has('end_date')) {
+                    return;
+                }
+
+                $startDate = Carbon::createFromFormat('Y-m-d', (string) $this->input('start_date'));
+                $endDate = Carbon::createFromFormat('Y-m-d', (string) $this->input('end_date'));
+
+                if ($endDate->greaterThan($startDate->copy()->addDays(self::MAX_DATE_RANGE_DAYS - 1))) {
+                    $validator->errors()->add(
+                        'end_date',
+                        sprintf('The selected date range may not exceed %d days.', self::MAX_DATE_RANGE_DAYS)
+                    );
+                }
+            },
         ];
     }
 
-    #[Override]
-    protected function withValidator(Validator $validator): void
+    /**
+     * Get the validated and transformed date range.
+     */
+    public function getDateRange(): DateRange
     {
-        parent::withValidator($validator);
-
-        $validator->after(function ($validator): void {
-            if ($validator->errors()->has('start_date') || $validator->errors()->has('end_date')) {
-                return;
-            }
-
-            $start = $this->input('start_date');
-            $end = $this->input('end_date');
-
-            if ($start && $end && Carbon::parse($start)->diffInDays(Carbon::parse($end)) > 365) {
-                $validator->errors()->add('end_date', 'The date range may not exceed 365 days.');
-            }
-        });
+        return DateRange::fromArray($this->validated());
     }
 
     /**

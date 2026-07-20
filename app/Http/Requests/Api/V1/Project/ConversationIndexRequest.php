@@ -21,7 +21,7 @@ class ConversationIndexRequest extends ApiQueryRequest
     {
         return [
             ...$this->unsupportedQueryParameterRules(),
-            'page' => $this->pageRule(),
+            'cursor' => $this->cursorRule(),
             'per_page' => $this->perPageRule(),
         ];
     }
@@ -37,6 +37,6 @@ class ConversationIndexRequest extends ApiQueryRequest
     #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
-        return ['page', 'per_page'];
+        return ['cursor', 'per_page'];
     }
 }

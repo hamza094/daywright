@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\User;
 
 use App\DataTransferObjects\Task\UserTaskFilters;
-use Illuminate\Validation\ValidationException;
+use App\Http\Requests\Api\V1\ApiQueryRequest;
 use Override;
 
-class UserTasksRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
+class UserTasksRequest extends ApiQueryRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -62,6 +62,8 @@ class UserTasksRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
              */
             'filter.remaining' => ['sometimes', 'boolean'],
             ...$this->topLevelFilterAliasRules(['user_created', 'task_assigned', 'completed', 'overdue', 'remaining']),
+            'cursor' => $this->cursorRule(),
+            'per_page' => $this->perPageRule(),
             ...$this->unsupportedQueryParameterRules(),
         ];
     }
@@ -83,13 +85,18 @@ class UserTasksRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
         return UserTaskFilters::fromArray($validatedFilters);
     }
 
+    public function perPage(): int
+    {
+        return $this->perPageValue(15);
+    }
+
     /**
      * @return array<int, string>
      */
     #[Override]
     protected function supportedTopLevelQueryParameters(): array
     {
-        return ['filter'];
+        return ['filter', 'cursor', 'per_page'];
     }
 
     #[Override]
@@ -99,18 +106,5 @@ class UserTasksRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
         $filters = $this->normalizeBooleanFilters($filters, ['user_created', 'task_assigned', 'completed', 'overdue', 'remaining']);
 
         $this->mergeFilters($filters);
-    }
-
-    /**
-     * Handle a passed validation attempt.
-     */
-    #[Override]
-    protected function passedValidation(): void
-    {
-        if (! $this->filters()->hasAnyFilter()) {
-            throw ValidationException::withMessages([
-                'filter' => 'At least one filter must be provided.',
-            ]);
-        }
     }
 }

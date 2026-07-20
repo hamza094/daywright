@@ -86,7 +86,13 @@ class UserTasksDataTest extends TestCase
                 'data' => [],
                 'meta' => [
                     'applied_filters',
-                    'total',
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
                 ],
             ]);
 
@@ -94,7 +100,6 @@ class UserTasksDataTest extends TestCase
 
         $this->assertEquals(['Filter by Created', 'Filter by Assigned'], $responseData['meta']['applied_filters']);
         $this->assertCount(4, $responseData['data']);
-        $this->assertEquals(4, $responseData['meta']['total']);
         $this->assertEquals($assignedTask->title, $responseData['data'][3]['title']);
     }
 
@@ -110,12 +115,24 @@ class UserTasksDataTest extends TestCase
 
         $response = $this->getJson($this->dashboardTasksUrl(['user_created' => 1]));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [],
+                'meta' => [
+                    'applied_filters',
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
+            ]);
         $responseData = $response->json();
 
         $this->assertEquals(['Filter by Created'], $responseData['meta']['applied_filters']);
         $this->assertCount(2, $responseData['data']);
-        $this->assertEquals(2, $responseData['meta']['total']);
     }
 
     /** @test */
@@ -131,12 +148,24 @@ class UserTasksDataTest extends TestCase
 
         $response = $this->getJson($this->dashboardTasksUrl(['task_assigned' => 1]));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [],
+                'meta' => [
+                    'applied_filters',
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
+            ]);
         $responseData = $response->json();
 
         $this->assertEquals(['Filter by Assigned'], $responseData['meta']['applied_filters']);
         $this->assertCount(1, $responseData['data']);
-        $this->assertEquals(1, $responseData['meta']['total']);
         $this->assertEquals($assignedTask->title, $responseData['data'][0]['title']);
     }
 
@@ -162,12 +191,24 @@ class UserTasksDataTest extends TestCase
             'completed' => 1,
         ]));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [],
+                'meta' => [
+                    'applied_filters',
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
+            ]);
         $responseData = $response->json();
 
         $this->assertEquals(['Filter by Created', 'Filter by Completed'], $responseData['meta']['applied_filters']);
         $this->assertCount(2, $responseData['data']);
-        $this->assertEquals(2, $responseData['meta']['total']);
     }
 
     /** @test */
@@ -194,7 +235,20 @@ class UserTasksDataTest extends TestCase
             'overdue' => 1,
         ]));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [],
+                'meta' => [
+                    'applied_filters',
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
+            ]);
         $responseData = $response->json();
 
         $this->assertEquals(['Filter by Created', 'Filter by Overdue'], $responseData['meta']['applied_filters']);
@@ -223,7 +277,20 @@ class UserTasksDataTest extends TestCase
             'remaining' => 1,
         ]));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [],
+                'meta' => [
+                    'applied_filters',
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
+            ]);
         $responseData = $response->json();
 
         $this->assertEquals(['Filter by Created', 'Filter by Remaining'], $responseData['meta']['applied_filters']);
@@ -231,24 +298,22 @@ class UserTasksDataTest extends TestCase
     }
 
     /** @test */
-    public function request_requires_at_least_one_filter(): void
+    public function request_succeeds_without_filter(): void
     {
         $response = $this->getJson('api/v1/dashboard/tasks');
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['filter']);
+        $response->assertStatus(200);
     }
 
     /** @test */
-    public function request_with_false_values_requires_at_least_one_filter(): void
+    public function request_succeeds_with_false_filter_values(): void
     {
         $response = $this->getJson($this->dashboardTasksUrl([
             'user_created' => 0,
             'completed' => 0,
         ]));
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['filter']);
+        $response->assertStatus(200);
     }
 
     /** @test */
@@ -275,6 +340,28 @@ class UserTasksDataTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['sort', 'include', 'random']);
+    }
+
+    /** @test */
+    public function user_tasks_index_supports_cursor_pagination(): void
+    {
+        // Create 4 tasks for the authenticated user
+        Task::factory(['user_id' => $this->user->id, 'project_id' => $this->project->id])->count(4)->create();
+
+        // Fetch first page with per_page=2
+        $firstPage = $this->getJson($this->dashboardTasksUrl(['user_created' => 1]).'&per_page=2');
+
+        $firstPage->assertOk()
+            ->assertJsonCount(2, 'data');
+        $this->assertNotNull($firstPage->json('meta.next_cursor'));
+
+        $nextCursor = $firstPage->json('meta.next_cursor');
+
+        // Fetch second page using cursor
+        $secondPage = $this->getJson($this->dashboardTasksUrl(['user_created' => 1]).'&per_page=2&cursor='.$nextCursor);
+
+        $secondPage->assertOk()
+            ->assertJsonCount(2, 'data');
     }
 
     /** @test */
@@ -306,12 +393,24 @@ class UserTasksDataTest extends TestCase
 
         $response = $this->getJson($this->dashboardTasksUrl(['overdue' => 1]));
 
-        $response->assertOk();
+        $response->assertOk()
+            ->assertJsonStructure([
+                'data' => [],
+                'meta' => [
+                    'applied_filters',
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
+            ]);
         $responseData = $response->json();
 
         // Should return 2 tasks: 1 created by user + 1 assigned to user
         $this->assertCount(2, $responseData['data']);
-        $this->assertEquals(2, $responseData['meta']['total']);
     }
 
     /**

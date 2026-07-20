@@ -11,6 +11,7 @@ use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use JsonSerializable;
 use Symfony\Component\HttpFoundation\Response;
@@ -86,6 +87,42 @@ class ApiController extends Controller
                 'last' => $paginator->url($paginator->lastPage()),
                 'prev' => $paginator->previousPageUrl(),
                 'next' => $paginator->nextPageUrl(),
+            ],
+        );
+    }
+
+    /**
+     * @param  array<int|string,mixed>|Arrayable<int,mixed>|JsonSerializable  $data
+     * @param  CursorPaginator<int,mixed>  $paginator
+     * @param  array<string,mixed>  $meta
+     */
+    protected function respondWithCursorPaginatedData(
+        array|Arrayable|JsonSerializable $data,
+        CursorPaginator $paginator,
+        int $status = Response::HTTP_OK,
+        array $meta = [],
+    ): JsonResponse {
+        // If the caller already built a resource collection from a paginator,
+        // prefer Laravel's native response which handles `data/meta/links`.
+        if ($data instanceof AnonymousResourceCollection && $data->resource instanceof CursorPaginator) {
+            if ($meta !== []) {
+                $data->additional(['meta' => $meta]);
+            }
+
+            return $data->response()->setStatusCode($status);
+        }
+
+        return $this->respondWithPayload(
+            $data,
+            $status,
+            array_merge([
+                'per_page' => $paginator->perPage(),
+                'next_cursor' => $paginator->nextCursor()?->encode(),
+                'prev_cursor' => $paginator->previousCursor()?->encode(),
+            ], $meta),
+            [
+                'next' => $paginator->nextPageUrl(),
+                'prev' => $paginator->previousPageUrl(),
             ],
         );
     }

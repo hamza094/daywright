@@ -1,15 +1,15 @@
-import { getPaginatedData } from '../utils/apiResponse.js';
+import { getCursorPaginatedData } from '../utils/apiResponse.js';
 import { buildNotificationIndexParams } from '../utils/notificationQuery.js';
 
-const EMPTY_PAGINATED_RESPONSE = {
+const EMPTY_CURSOR_RESPONSE = {
   data: [],
+  meta: { next_cursor: null, prev_cursor: null, per_page: 25 },
   links: {},
-  meta: {},
 };
 
 const state = {
-  notifications: { ...EMPTY_PAGINATED_RESPONSE },
-  allNotifications: { ...EMPTY_PAGINATED_RESPONSE },
+  notifications: { ...EMPTY_CURSOR_RESPONSE },
+  allNotifications: { ...EMPTY_CURSOR_RESPONSE },
 };
 
 const mutations = {
@@ -19,6 +19,14 @@ const mutations = {
 
   setAllNotifications(state, payload) {
     state.allNotifications = payload; // Assign the entire response object
+  },
+
+  appendAllNotifications(state, payload) {
+    state.allNotifications = {
+      data: [...state.allNotifications.data, ...payload.data],
+      meta: payload.meta,
+      links: payload.links,
+    };
   },
 
   addNotification(state, notification) {
@@ -48,25 +56,36 @@ const actions = {
   async fetchNotifications({ dispatch }, { filter = null } = {}) {
     return dispatch('fetchNotificationsFromApi', {
       filter,
-      page: 1,
+      cursor: null,
       mutation: 'setNotifications',
     });
   },
 
-  async getAllNotifications({ dispatch }, { filter = null, page = 1 } = {}) {
+  async getAllNotifications({ dispatch }, { filter = null, cursor = null } = {}) {
     return dispatch('fetchNotificationsFromApi', {
       filter,
-      page,
+      cursor,
       mutation: 'setAllNotifications',
     });
   },
 
-  async fetchNotificationsFromApi({ commit }, { filter = null, page = 1, mutation }) {
+  async loadMoreNotifications({ state, dispatch }, { filter = null } = {}) {
+    if (!state.allNotifications.meta.next_cursor) {
+      return;
+    }
+    return dispatch('fetchNotificationsFromApi', {
+      filter,
+      cursor: state.allNotifications.meta.next_cursor,
+      mutation: 'appendAllNotifications',
+    });
+  },
+
+  async fetchNotificationsFromApi({ commit }, { filter = null, cursor = null, mutation }) {
     const response = await axios.get('/notifications', {
-      params: buildNotificationIndexParams(filter, page),
+      params: buildNotificationIndexParams(filter, cursor),
     });
 
-    commit(mutation, getPaginatedData(response));
+    commit(mutation, getCursorPaginatedData(response));
   },
 
   deleteNotification({ commit }, notificationId) {

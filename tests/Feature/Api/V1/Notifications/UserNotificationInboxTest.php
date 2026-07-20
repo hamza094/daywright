@@ -26,8 +26,15 @@ class UserNotificationInboxTest extends TestCase
             ->assertOk()
             ->assertJsonStructure([
                 'data',
-                'meta',
-                'links',
+                'meta' => [
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
             ])
             ->assertJsonPath('data.0.type', 'ProjectInvitation')
             ->assertJsonPath('data.0.message', 'Sent you a project '.$this->project->name.' invitation')
@@ -46,8 +53,15 @@ class UserNotificationInboxTest extends TestCase
             ->assertOk()
             ->assertJsonStructure([
                 'data',
-                'meta',
-                'links',
+                'meta' => [
+                    'next_cursor',
+                    'prev_cursor',
+                    'per_page',
+                ],
+                'links' => [
+                    'next',
+                    'prev',
+                ],
             ]);
 
         $this->assertSame([], $response->json('data'));
@@ -155,6 +169,57 @@ class UserNotificationInboxTest extends TestCase
         $response->assertStatus(200);
         $response->assertJson(['message' => 'Notification deleted successfully.']);
         $this->assertCount(0, $user->fresh()->notifications);
+    }
+
+    /** @test */
+    public function notification_index_supports_cursor_pagination(): void
+    {
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        // Create a project for this user
+        $userProject = $this->project->replicate();
+        $userProject->user_id = $user->id;
+        $userProject->save();
+
+        // Add the user as an active member
+        $userProject->members()->syncWithoutDetaching([
+            $user->id => ['active' => true],
+        ]);
+
+        // Add another member who will create tasks (generating notifications for the user)
+        $otherMember = User::factory()->create();
+        $userProject->members()->syncWithoutDetaching([
+            $otherMember->id => ['active' => true],
+        ]);
+
+        // Create 4 notifications for the user by having the other member create tasks
+        Sanctum::actingAs($otherMember);
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $userProject), ['title' => 'task 1']);
+        $this->travelTo(now()->addSecond());
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $userProject), ['title' => 'task 2']);
+        $this->travelTo(now()->addSecond());
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $userProject), ['title' => 'task 3']);
+        $this->travelTo(now()->addSecond());
+        $this->postJson($this->apiV1ProjectRoute('tasks.store', $userProject), ['title' => 'task 4']);
+        $this->travelBack();
+
+        // Switch back to the original user to check their notifications
+        Sanctum::actingAs($user);
+        // Fetch first page with per_page=2
+        $firstPage = $this->getJson($this->apiV1Route('notifications.index', query: ['per_page' => 2]));
+
+        $firstPage->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.next_cursor', fn ($cursor): bool => $cursor !== null);
+
+        $nextCursor = $firstPage->json('meta.next_cursor');
+
+        // Fetch second page using cursor
+        $secondPage = $this->getJson($this->apiV1Route('notifications.index', query: ['per_page' => 2, 'cursor' => $nextCursor]));
+
+        $secondPage->assertOk()
+            ->assertJsonCount(2, 'data');
     }
 
     /** @test */

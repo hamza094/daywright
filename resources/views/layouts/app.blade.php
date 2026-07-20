@@ -17,7 +17,7 @@
 
 </head>
 <body>
-<div id="app">
+<div id="app" @if(auth()->check()) data-bootstrap-session="true" @endif>
     <main class="">
 
       <navbar></navbar>

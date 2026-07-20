@@ -1,4 +1,4 @@
-import { getPaginatedData, getResponseData, getResponsePayload } from './apiResponse.js';
+import { getCursorPaginatedData, getResponsePayload } from './apiResponse.js';
 
 const asStringArray = (value) => {
   if (!Array.isArray(value)) {
@@ -54,11 +54,12 @@ export const buildDashboardTaskParams = ({ assigned, created, activeFilter = 'al
 
 export const readDashboardTasks = (response) => {
   const payload = getResponsePayload(response);
-  const tasks = getResponseData(response);
+  const cursorPaginated = getCursorPaginatedData(response);
 
   return {
-    tasks: Array.isArray(tasks) ? tasks : [],
+    tasks: Array.isArray(cursorPaginated.data) ? cursorPaginated.data : [],
     appliedFilters: asStringArray(payload.meta?.applied_filters),
-    total: asNumber(payload.meta?.total),
+    meta: cursorPaginated.meta,
+    links: cursorPaginated.links,
   };
 };

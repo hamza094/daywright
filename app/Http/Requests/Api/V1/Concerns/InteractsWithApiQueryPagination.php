@@ -11,12 +11,25 @@ trait InteractsWithApiQueryPagination
         return (int) $this->validated('page', 1);
     }
 
+    public function cursorValue(): ?string
+    {
+        return $this->validated('cursor', null);
+    }
+
     /**
      * @return array<int, string>
      */
     protected function pageRule(string $presence = 'sometimes'): array
     {
         return [$presence, 'integer', 'min:1'];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    protected function cursorRule(string $presence = 'sometimes'): array
+    {
+        return [$presence, 'string'];
     }
 
     /**

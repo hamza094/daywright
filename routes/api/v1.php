@@ -197,6 +197,10 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
                 ->name('reject.invitation')
                 ->can('canAcceptInvitation', 'project');
 
+            Route::get('users/search', InvitationUserSearchController::class)
+                ->name('projects.users.search')
+                ->can('manage', 'project');
+
             Route::delete('invitations/{user}', [ProjectInvitationController::class, 'destroy'])
                 ->withoutScopedBindings()
                 ->name('projects.cancel-invitation');
@@ -221,9 +225,6 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
 
         });
     });
-
-    Route::get('users/search', InvitationUserSearchController::class)
-        ->name('users.search');
 
     Route::apiResource('/users', UserController::class)->except(['store']);
     Route::delete('/users/{user}/force', ForceDeleteUserController::class)->name('users.forceDestroy')->withTrashed();

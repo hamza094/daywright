@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\User;
 
+use App\DataTransferObjects\Task\UserTaskFilters;
 use App\Http\Resources\Api\V1\Project\ProjectSummaryResource;
 use App\Http\Resources\Api\V1\Task\TaskStatusResource;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -14,6 +15,28 @@ use Override;
  */
 class UserTasksResource extends JsonResource
 {
+    /**
+     * Get human-readable applied filter labels.
+     *
+     * @return array<int, string>
+     */
+    public static function appliedFilters(UserTaskFilters $filters): array
+    {
+        $labels = [
+            'user_created' => 'Filter by Created',
+            'task_assigned' => 'Filter by Assigned',
+            'completed' => 'Filter by Completed',
+            'overdue' => 'Filter by Overdue',
+            'remaining' => 'Filter by Remaining',
+        ];
+
+        $enabled = collect($filters->toArray())
+            ->filter()
+            ->keys();
+
+        return collect($labels)->only($enabled)->values()->all();
+    }
+
     /**
      * Transform the resource into an array.
      *

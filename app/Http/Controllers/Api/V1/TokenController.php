@@ -9,10 +9,8 @@ use App\Http\Requests\Api\V1\User\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
 use App\Http\Resources\Api\V1\TokenStoreResource;
 use App\Services\Auth\ApiTokenService;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 class TokenController extends ApiController
 {
@@ -37,14 +35,9 @@ class TokenController extends ApiController
      */
     public function store(UserTokenRequest $request): JsonResponse
     {
-        $data = $request->validated();
-        try {
-            $expiresAt = empty($data['expires_at']) ? null : Carbon::parse($data['expires_at']);
-        } catch (Throwable) {
-            abort(Response::HTTP_UNPROCESSABLE_ENTITY, 'Invalid expires_at format.');
-        }
+        $data = $request->tokenCreateData();
 
-        $token = $this->apiTokenService->createForUser($this->authenticatedUser(), $data['name'], $expiresAt);
+        $token = $this->apiTokenService->createForUser($this->authenticatedUser(), $data->name, $data->expires_at);
 
         return $this->respondWithData(
             new TokenStoreResource($token->plainTextToken, $token->accessToken),

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\User;
 
+use App\DataTransferObjects\Auth\TokenCreateData;
 use App\Rules\Iso8601Timestamp;
 use Closure;
 use Dedoc\Scramble\Attributes\SchemaName;
@@ -54,6 +55,11 @@ class UserTokenRequest extends FormRequest
                 },
             ],
         ];
+    }
+
+    public function tokenCreateData(): TokenCreateData
+    {
+        return TokenCreateData::fromArray($this->validated());
     }
 
     #[Override]

@@ -6,22 +6,25 @@ namespace App\Services;
 
 use App\Enums\NotificationFilter;
 use App\Models\User;
-use Illuminate\Notifications\DatabaseNotification;
-use Illuminate\Pagination\LengthAwarePaginator;
+use App\Repository\NotificationRepository;
+use Illuminate\Pagination\CursorPaginator;
 
-class UserNotificationService
+final readonly class UserNotificationService
 {
+    public function __construct(
+        private NotificationRepository $notificationRepository,
+    ) {}
+
     /**
-     * @return LengthAwarePaginator<int, DatabaseNotification>
+     * @return CursorPaginator<int, \Illuminate\Notifications\DatabaseNotification>
      */
-    public function paginateForUser(User $user, ?string $status, int $perPage = 25): LengthAwarePaginator
+    public function paginateForUser(User $user, ?string $status, int $perPage = 25): CursorPaginator
     {
-        /** @var \Illuminate\Database\Eloquent\Builder<DatabaseNotification> $query */
-        $query = $user->notifications()->latest();
-
-        $this->applyStatusFilter($query, $status);
-
-        return $query->paginate($perPage);
+        return $this->notificationRepository->paginateForUser(
+            $user,
+            $status,
+            $perPage,
+        );
     }
 
     public function markAllAsRead(User $user): void
@@ -33,33 +36,23 @@ class UserNotificationService
 
     public function deleteForUser(User $user, string $notificationId): void
     {
-        $this->findUserNotification($user, $notificationId)->delete();
+        $notification = $this->notificationRepository->findUserNotification(
+            $user,
+            $notificationId,
+        );
+
+        $notification->delete();
     }
 
     public function updateStatus(User $user, string $notificationId, string $status): void
     {
-        $notification = $this->findUserNotification($user, $notificationId);
+        $notification = $this->notificationRepository->findUserNotification(
+            $user,
+            $notificationId,
+        );
 
         $status === NotificationFilter::READ->value
             ? $notification->markAsRead()
             : $notification->update(['read_at' => null]);
-    }
-
-    private function findUserNotification(User $user, string $notificationId): DatabaseNotification
-    {
-        return $user->notifications()->findOrFail($notificationId);
-    }
-
-    private function applyStatusFilter(mixed $query, ?string $status): void
-    {
-        if ($status === NotificationFilter::READ->value) {
-            $query->whereNotNull('read_at');
-
-            return;
-        }
-
-        if ($status === NotificationFilter::UNREAD->value) {
-            $query->whereNull('read_at');
-        }
     }
 }

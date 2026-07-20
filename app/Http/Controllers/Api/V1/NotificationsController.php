@@ -17,12 +17,12 @@ class NotificationsController extends ApiController
     /**
      * Display a paginated listing of the authenticated user's notifications.
      *
-     * Returns the notification feed using Laravel-style pagination links and metadata.
+     * Returns the notification feed using cursor pagination links and metadata.
      */
     #[ScrambleResponse(
         status: 200,
-        description: 'Paginated notification feed with Laravel-style pagination metadata and links.',
-        type: 'array{data: array<int, NotificationResource>, meta: array{current_page: int, from: int|null, last_page: int, links: array<int, array{url: string|null, label: string, active: bool}>, path: string, per_page: int, to: int|null, total: int}, links: array{first: string|null, last: string|null, prev: string|null, next: string|null}}',
+        description: 'Paginated notification feed with cursor pagination metadata and links.',
+        type: 'array{data: array<int, NotificationResource>, meta: array{next_cursor: string|null, prev_cursor: string|null, per_page: int}, links: array{next: string|null, prev: string|null}}',
     )]
     public function index(
         NotificationIndexRequest $request,

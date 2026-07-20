@@ -23,6 +23,5 @@ class DatabaseSeeder extends Seeder
         // $this->call(NotificationSeeder::class);
         // $this->call(MeetingSeeder::class);
         // $this->call(SubscriptionSeeder::class);
-
     }
 }

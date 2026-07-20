@@ -70,6 +70,23 @@ export const getPaginatedData = (response) => {
   };
 };
 
+export const getCursorPaginatedData = (response) => {
+  const payload = getResponsePayload(response);
+
+  return {
+    data: Array.isArray(payload.data) ? payload.data : [],
+    meta: {
+      next_cursor: payload.meta?.next_cursor ?? null,
+      prev_cursor: payload.meta?.prev_cursor ?? null,
+      per_page: payload.meta?.per_page ?? 25,
+    },
+    links: {
+      next: payload.links?.next ?? null,
+      prev: payload.links?.prev ?? null,
+    },
+  };
+};
+
 export const getResponseMessage = (response) => {
   return asNonEmptyString(getResponsePayload(response).message);
 };

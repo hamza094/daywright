@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Project;
 
+use App\Http\Requests\Api\V1\ApiQueryRequest;
 use Override;
 
-class ProjectActivityIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
+class ProjectActivityIndexRequest extends ApiQueryRequest
 {
     public function authorize(): bool
     {
@@ -22,10 +23,6 @@ class ProjectActivityIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRequ
             'filter' => ['sometimes', 'array:type'],
             'filter.type' => ['sometimes', 'in:specifics,tasks,members,mine'],
             ...$this->topLevelFilterAliasRules(['type']),
-            'tasks' => ['prohibited'],
-            'members' => ['prohibited'],
-            'mine' => ['prohibited'],
-            'specifics' => ['prohibited'],
             ...$this->unsupportedQueryParameterRules(),
             'page' => $this->pageRule(),
             'per_page' => $this->perPageRule(),
@@ -50,12 +47,17 @@ class ProjectActivityIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRequ
         return [
             'filter.array' => 'Only the supported filter keys may be provided.',
             ...$this->topLevelFilterAliasMessages(['type']),
-            'tasks.prohibited' => 'Use filter[type]=tasks instead of the top-level tasks parameter.',
-            'members.prohibited' => 'Use filter[type]=members instead of the top-level members parameter.',
-            'mine.prohibited' => 'Use filter[type]=mine instead of the top-level mine parameter.',
-            'specifics.prohibited' => 'Use filter[type]=specifics instead of the top-level specifics parameter.',
             ...$this->unsupportedQueryParameterMessages(),
         ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    #[Override]
+    protected function supportedTopLevelQueryParameters(): array
+    {
+        return ['filter', 'page', 'per_page'];
     }
 
     #[Override]

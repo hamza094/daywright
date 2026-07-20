@@ -6,6 +6,8 @@ namespace App\Http\Requests\Api\V1\User;
 
 use Override;
 
+use function Safe\preg_replace;
+
 class InvitationUserSearchRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
 {
     public function authorize(): bool
@@ -19,7 +21,7 @@ class InvitationUserSearchRequest extends \App\Http\Requests\Api\V1\ApiQueryRequ
     public function rules(): array
     {
         return [
-            'search' => ['required', 'string', 'min:1'],
+            'search' => ['bail', 'required', 'string', 'min:2', 'max:100'],
         ];
     }
 
@@ -32,13 +34,30 @@ class InvitationUserSearchRequest extends \App\Http\Requests\Api\V1\ApiQueryRequ
         return [
             'search.required' => 'Please provide a search term.',
             'search.string' => 'The search term must be a string.',
-            'search.min' => 'The search term must be at least 1 character.',
+            'search.min' => 'The search term must be at least 2 characters.',
+            'search.max' => 'The search term may not exceed 100 characters.',
         ];
     }
 
     public function searchTerm(): string
     {
         return (string) $this->validated('search');
+    }
+
+    #[Override]
+    protected function prepareForValidation(): void
+    {
+        $search = $this->input('search');
+
+        if (! is_string($search)) {
+            return;
+        }
+
+        $normalizedSearch = preg_replace('/\s+/u', ' ', trim($search));
+
+        $this->merge([
+            'search' => $normalizedSearch,
+        ]);
     }
 
     /**

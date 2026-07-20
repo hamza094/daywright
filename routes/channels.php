@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Broadcast;
     return (int) $user->id === (int) $id;
 });*/
 
-Broadcast::channel('App.Models.User.{id}', fn ($user, $id): bool => (int) $user->id === (int) $id);
+Broadcast::channel('App.Models.User.{uuid}', fn (User $user, string $uuid): bool => (string) $user->uuid === $uuid);
 
 Broadcast::channel('activities.project.{id}', function ($user, $id): bool {
     $project = Project::where('id', $id)

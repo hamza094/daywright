@@ -6,11 +6,12 @@ namespace App\Services\Project;
 
 use App\Models\Activity;
 use App\Models\Project;
+use App\Repository\ActivityRepository;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-class ProjectActivityListingService
+final readonly class ProjectActivityListingService
 {
-    public function __construct(private readonly ProjectActivityQueryFilter $projectActivityQueryFilter) {}
+    public function __construct(private ActivityRepository $activityRepository) {}
 
     /**
      * @return LengthAwarePaginator<int, Activity>
@@ -23,7 +24,7 @@ class ProjectActivityListingService
         int $page,
         string $path,
     ): LengthAwarePaginator {
-        $activitiesQuery = $this->projectActivityQueryFilter->filterActivities(
+        $activitiesQuery = $this->activityRepository->filterActivities(
             $project->activities()->getQuery(),
             $filterType,
             $actorId,
