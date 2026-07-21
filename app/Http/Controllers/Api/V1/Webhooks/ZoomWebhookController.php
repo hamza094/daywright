@@ -11,7 +11,6 @@ use App\Http\Requests\Api\V1\Zoom\MeetingStartedWebhookRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingUpdatedWebhookRequest;
 use App\Services\Webhooks\ZoomWebhookDispatcher;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ZoomWebhookController extends ApiController
 {
@@ -23,59 +22,29 @@ class ZoomWebhookController extends ApiController
 
     public function update(MeetingUpdatedWebhookRequest $request): JsonResponse
     {
-        $request->validated();
-
-        /** @var array<string, mixed> $object */
-        $object = $this->payloadObject($request);
-
-        $this->dispatcher->dispatchUpdate($object, $request->header('x-zm-request-id'));
+        $this->dispatcher->dispatchUpdate($request->toDto());
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
     public function delete(MeetingDeletedWebhookRequest $request): JsonResponse
     {
-        $request->validated();
-
-        /** @var array<string, mixed> $object */
-        $object = $this->payloadObject($request);
-
-        $this->dispatcher->dispatchDelete($object, $request->header('x-zm-request-id'));
+        $this->dispatcher->dispatchDelete($request->toDto());
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
     public function start(MeetingStartedWebhookRequest $request): JsonResponse
     {
-        $request->validated();
-
-        /** @var array<string, mixed> $object */
-        $object = $this->payloadObject($request);
-
-        $this->dispatcher->dispatchStart($object, $request->header('x-zm-request-id'));
+        $this->dispatcher->dispatchStart($request->toDto());
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
     }
 
     public function ended(MeetingEndedWebhookRequest $request): JsonResponse
     {
-        $request->validated();
-
-        /** @var array<string, mixed> $object */
-        $object = $this->payloadObject($request);
-
-        $this->dispatcher->dispatchEnded($object, $request->header('x-zm-request-id'));
+        $this->dispatcher->dispatchEnded($request->toDto());
 
         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function payloadObject(Request $request): array
-    {
-        $object = $request->input('payload.object');
-
-        return is_array($object) ? $object : [];
     }
 }
