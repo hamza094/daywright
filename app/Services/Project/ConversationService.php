@@ -36,10 +36,10 @@ class ConversationService
     /**
      * Stores a new conversation and dispatches events and notifications.
      */
-    public function storeConversation(Project $project, User $actor, CreateConversationData $payload, ?UploadedFile $file = null): ?Conversation
+    public function storeConversation(Project $project, User $actor, CreateConversationData $payload): ?Conversation
     {
         try {
-            $data = $this->prepareConversationData($payload, $project, $file);
+            $data = $this->prepareConversationData($payload, $project);
 
             $conversation = $this->loadForResponse(
                 $this->createConversation($project, $actor, $data)
@@ -106,12 +106,12 @@ class ConversationService
     /**
      * Prepares the data required to create a conversation.
      */
-    private function prepareConversationData(CreateConversationData $payload, Project $project, ?UploadedFile $file = null): CreateConversationData
+    private function prepareConversationData(CreateConversationData $payload, Project $project): CreateConversationData
     {
-        if ($file instanceof UploadedFile) {
+        if ($payload->file instanceof UploadedFile) {
             return $payload->withStoredFile($this->fileService->store(
                 $project->id,
-                $file,
+                $payload->file,
                 FileType::CONVERSATION
             ));
         }

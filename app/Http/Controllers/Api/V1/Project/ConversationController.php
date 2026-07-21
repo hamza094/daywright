@@ -45,7 +45,6 @@ class ConversationController extends ApiController
             $project,
             $this->authenticatedUser(),
             $request->conversationData(),
-            $request->file('file'),
         );
 
         if (! $conversation instanceof Conversation) {

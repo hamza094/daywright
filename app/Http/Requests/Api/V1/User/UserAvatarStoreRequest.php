@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\User;
 
+use App\DataTransferObjects\User\UserAvatarData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
@@ -14,6 +15,19 @@ class UserAvatarStoreRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function toDto(): UserAvatarData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        /** @var \Illuminate\Http\UploadedFile $avatar */
+        $avatar = $validated['avatar'];
+
+        return new UserAvatarData(
+            avatar: $avatar,
+        );
     }
 
     /**
