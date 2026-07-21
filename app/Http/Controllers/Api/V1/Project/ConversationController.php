@@ -44,7 +44,7 @@ class ConversationController extends ApiController
         $conversation = $this->conversationService->storeConversation(
             $project,
             $this->authenticatedUser(),
-            $request->conversationData(),
+            $request->toDto(),
         );
 
         if (! $conversation instanceof Conversation) {

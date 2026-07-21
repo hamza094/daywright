@@ -23,7 +23,7 @@ class TaskUpdateRequest extends FormRequest
         return true;
     }
 
-    public function taskUpdateData(): TaskUpdateData
+    public function toDto(): TaskUpdateData
     {
         /** @var array<string, mixed> $validated */
         $validated = $this->validated();

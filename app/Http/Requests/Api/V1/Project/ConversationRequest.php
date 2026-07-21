@@ -20,7 +20,7 @@ class ConversationRequest extends FormRequest
         return true;
     }
 
-    public function conversationData(): CreateConversationData
+    public function toDto(): CreateConversationData
     {
         /** @var array<string, mixed> $validated */
         $validated = $this->validated();

@@ -24,7 +24,7 @@ class TaskRequest extends FormRequest
         return true;
     }
 
-    public function taskCreateData(): TaskCreateData
+    public function toDto(): TaskCreateData
     {
         /** @var array<string, mixed> $validated */
         $validated = $this->validated();

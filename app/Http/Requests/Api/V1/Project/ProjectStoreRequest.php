@@ -19,7 +19,7 @@ class ProjectStoreRequest extends FormRequest
         return true;
     }
 
-    public function projectCreateData(): ProjectCreateData
+    public function toDto(): ProjectCreateData
     {
         /** @var array<string, mixed> $validated */
         $validated = $this->validated();
