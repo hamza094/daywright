@@ -23,9 +23,9 @@ final class ProjectInvitationController extends ApiController
      */
     public function store(Project $project, InvitationUsersRequest $request, InvitationService $invitationService): JsonResponse
     {
-        $validated = $request->validated();
+        $data = $request->toDto();
 
-        $user = $invitationService->sendInvitationByEmail($project, $validated['email']);
+        $user = $invitationService->sendInvitationByEmail($project, $data->email);
 
         $invitation = $user->inactiveMembers()
             ->with('user')

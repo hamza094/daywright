@@ -57,7 +57,7 @@ class UserTokenRequest extends FormRequest
         ];
     }
 
-    public function tokenCreateData(): TokenCreateData
+    public function toDto(): TokenCreateData
     {
         return TokenCreateData::fromArray($this->validated());
     }

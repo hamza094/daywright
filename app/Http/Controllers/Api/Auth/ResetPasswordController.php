@@ -40,14 +40,16 @@ class ResetPasswordController extends ApiController
      */
     public function sendResetLink(ForgotPasswordRequest $request): JsonResponse
     {
+        $data = $request->toDto();
+
         $status = Password::sendResetLink(
-            $request->only('email')
+            $data->toArray()
         );
 
         if ($status !== Password::RESET_LINK_SENT) {
             Log::warning('Password reset link request failed', [
                 'status' => $status,
-                'user_id' => User::whereEmail($request->input('email'))->select('uuid')->first()?->uuid,
+                'user_id' => User::whereEmail($data->email)->select('uuid')->first()?->uuid,
             ]);
         }
 

@@ -9,6 +9,7 @@ use App\Enums\OAuthProvider;
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
+use App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource;
 use App\Services\Auth\LoginUserService;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use GuzzleHttp\Exception\GuzzleException;
@@ -70,10 +71,12 @@ class OAuthController extends ApiController
                 event(new Registered($user));
             }
 
-            $result = $this->loginUserService->startLoginFlow($user->email, $request);
+            $result = $this->loginUserService->startLoginFlow($user->email, $request->ip());
 
             if ($result->twoFactor) {
-                return $this->loginUserService->buildTwoFactorRequiredResponse($request);
+                return response()->json([
+                    'data' => (new TwoFactorChallengeResource)->resolve($request),
+                ], Response::HTTP_OK);
             }
 
             $payload = $this->loginUserService->performSessionLogin($user, $request);

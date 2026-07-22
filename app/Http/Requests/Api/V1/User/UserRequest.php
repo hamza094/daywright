@@ -22,7 +22,7 @@ class UserRequest extends FormRequest
         return true;
     }
 
-    public function updateUserData(): UpdateUserData
+    public function toDto(): UpdateUserData
     {
         /** @var array<string, mixed> $validated */
         $validated = $this->validated();

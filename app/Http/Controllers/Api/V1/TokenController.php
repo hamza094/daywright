@@ -35,7 +35,7 @@ class TokenController extends ApiController
      */
     public function store(UserTokenRequest $request): JsonResponse
     {
-        $data = $request->tokenCreateData();
+        $data = $request->toDto();
 
         $token = $this->apiTokenService->createForUser($this->authenticatedUser(), $data->name, $data->expires_at);
 

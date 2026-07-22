@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use App\DataTransferObjects\Auth\LoginCredentialsData;
 use App\Models\User;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
@@ -19,6 +20,11 @@ class LoginUserRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function toDto(): LoginCredentialsData
+    {
+        return LoginCredentialsData::fromArray($this->validated());
     }
 
     /**
