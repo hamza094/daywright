@@ -134,7 +134,7 @@ class JobsTest extends TestCase
     {
         Queue::fake();
 
-        $job = new SendMeetingStartedNotification(1, []);
+        $job = new SendMeetingStartedNotification(1, \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([]));
 
         dispatch($job);
 
@@ -146,7 +146,7 @@ class JobsTest extends TestCase
     {
         Queue::fake();
 
-        $job = new SendMeetingEndedNotification(1, []);
+        $job = new SendMeetingEndedNotification(1, \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([]));
 
         dispatch($job);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\Models\Meeting;
 use App\Notifications\Zoom\MeetingEnded;
 
@@ -14,10 +15,7 @@ final class SendMeetingEndedNotification extends SendMeetingNotificationJob
         return 'meeting-ended-notification';
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    protected function createNotification(array $data): MeetingEnded
+    protected function createNotification(MeetingNotificationData $data): MeetingEnded
     {
         return new MeetingEnded($data);
     }

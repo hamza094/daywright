@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\Enums\MeetingState;
 use App\Jobs\SendMeetingEndedNotification;
 use App\Jobs\SendMeetingStartedNotification;
@@ -61,18 +62,19 @@ final class CheckUnsentMeetingNotifications extends Command
     {
         foreach ($meetings as $meeting) {
             try {
-                $notificationData = [
+                $notificationData = MeetingNotificationData::fromArray([
                     'project_name' => $meeting->project->name,
                     'project_slug' => $meeting->project->slug,
                     'meeting_topic' => $meeting->topic,
                     'meeting_timezone' => $meeting->timezone,
                     'meeting_join_url' => $meeting->join_url,
                     'start_time' => $meeting->start_time,
+                    'end_time' => null,
                     'notifier' => [
                         'name' => $meeting->project->user->name,
                         'email' => $meeting->project->user->email,
                     ],
-                ];
+                ]);
 
                 SendMeetingStartedNotification::dispatch($meeting->id, $notificationData);
 
@@ -98,18 +100,19 @@ final class CheckUnsentMeetingNotifications extends Command
     {
         foreach ($meetings as $meeting) {
             try {
-                $notificationData = [
+                $notificationData = MeetingNotificationData::fromArray([
                     'project_name' => $meeting->project->name,
                     'project_slug' => $meeting->project->slug,
                     'meeting_topic' => $meeting->topic,
                     'meeting_timezone' => $meeting->timezone,
+                    'meeting_join_url' => null,
                     'start_time' => $meeting->start_time,
                     'end_time' => null,
                     'notifier' => [
                         'name' => $meeting->project->user->name,
                         'email' => $meeting->project->user->email,
                     ],
-                ];
+                ]);
 
                 SendMeetingEndedNotification::dispatch($meeting->id, $notificationData);
 

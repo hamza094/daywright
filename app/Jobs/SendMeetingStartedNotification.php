@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\Models\Meeting;
 use App\Notifications\Zoom\MeetingStarted;
 
@@ -14,10 +15,7 @@ final class SendMeetingStartedNotification extends SendMeetingNotificationJob
         return 'meeting-started-notification';
     }
 
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    protected function createNotification(array $data): MeetingStarted
+    protected function createNotification(MeetingNotificationData $data): MeetingStarted
     {
         return new MeetingStarted($data);
     }
