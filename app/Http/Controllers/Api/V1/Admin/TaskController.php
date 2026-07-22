@@ -25,9 +25,9 @@ class TaskController extends ApiController
 
     public function bulkDelete(TaskBulkDeleteRequest $request, BulkDeleteTasksAction $bulkDeleteTasksAction): JsonResponse
     {
-        $taskIds = $request->validated('task_ids');
+        $data = $request->toDto();
 
-        $bulkDeleteTasksAction->execute($taskIds);
+        $bulkDeleteTasksAction->execute($data->taskIds);
 
         return $this->respondWithMessage('Tasks deleted successfully.');
     }

@@ -40,9 +40,9 @@ class ProjectController extends ApiController
         ProjectBulkDeleteRequest $request,
         BulkDeleteProjectsAction $bulkDeleteProjectsAction,
     ): JsonResponse {
-        $projectIds = $request->validated('project_ids');
+        $data = $request->toDto();
 
-        $bulkDeleteProjectsAction->execute($projectIds);
+        $bulkDeleteProjectsAction->execute($data->projectIds);
 
         return $this->respondWithMessage('Projects deleted successfully.');
     }

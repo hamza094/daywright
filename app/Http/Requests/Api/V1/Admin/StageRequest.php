@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\DataTransferObjects\Admin\AdminStageData;
 use App\Models\Stage;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -52,5 +53,10 @@ class StageRequest extends FormRequest
             'name.max' => 'The stage name must not exceed 255 characters.',
             'name.required' => 'The stage name is required.',
         ];
+    }
+
+    public function toDto(): AdminStageData
+    {
+        return AdminStageData::fromValidated($this->validated());
     }
 }

@@ -25,14 +25,16 @@ class StatusController extends ApiController
 
     public function store(TaskStatusRequest $request): JsonResponse
     {
-        $status = $this->statusService->create($request->validated());
+        $data = $request->toDto();
+        $status = $this->statusService->create($data->toArray());
 
         return $this->respondCreated(new TaskStatusResource($status));
     }
 
     public function update(TaskStatusRequest $request, Status $status): JsonResponse
     {
-        $status = $this->statusService->update($status, $request->validated());
+        $data = $request->toDto();
+        $status = $this->statusService->update($status, $data->toArray());
 
         return $this->respondUpdated(new TaskStatusResource($status));
     }
