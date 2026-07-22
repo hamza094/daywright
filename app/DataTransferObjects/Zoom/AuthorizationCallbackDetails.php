@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Zoom;
 
-final class AuthorizationCallbackDetails
+final readonly class AuthorizationCallbackDetails
 {
     public function __construct(
         public string $authorizationCode,

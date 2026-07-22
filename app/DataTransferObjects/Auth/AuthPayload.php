@@ -6,7 +6,7 @@ namespace App\DataTransferObjects\Auth;
 
 use App\Models\User;
 
-final class AuthPayload
+final readonly class AuthPayload
 {
     public function __construct(
         public User $user,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Zoom;
 
+use App\DataTransferObjects\Zoom\ZoomCallbackData;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class ZoomAuthorizationCallbackRequest extends FormRequest
@@ -14,6 +15,11 @@ final class ZoomAuthorizationCallbackRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function toDto(): ZoomCallbackData
+    {
+        return ZoomCallbackData::fromArray($this->validated());
     }
 
     /**

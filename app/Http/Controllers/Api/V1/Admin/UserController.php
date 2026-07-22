@@ -30,7 +30,9 @@ class UserController extends ApiController
 
     public function updateRole(UpdateUserRoleRequest $request, User $user): JsonResponse
     {
-        if ($request->boolean('is_admin')) {
+        $data = $request->toDto();
+
+        if ($data->isAdmin) {
             $this->adminAccessService->grantAdminAccess($user, $request->user());
 
             return $this->respondUpdated(new AdminUserResource($user->fresh([

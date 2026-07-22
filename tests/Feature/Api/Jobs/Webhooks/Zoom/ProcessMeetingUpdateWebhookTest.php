@@ -66,13 +66,12 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             'start_time' => Carbon::parse('2024-06-24 09:00:00', 'UTC'),
         ]);
 
-        $job = new UpdateMeetingWebhook(new MeetingUpdatedWebhookData(
-            meetingId: 813,
-            changes: [
-                'start_time' => '2024-06-24T13:30:00+02:00',
-            ],
-            requestId: null,
-        ));
+        $payload = [
+            'id' => 813,
+            'start_time' => '2024-06-24T13:30:00+02:00',
+        ];
+
+        $job = new UpdateMeetingWebhook(MeetingUpdatedWebhookData::fromPayloadObject($payload, null));
 
         $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
@@ -133,16 +132,14 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
             'project_id' => 1,
         ]);
 
-        $job = new UpdateMeetingWebhook(new MeetingUpdatedWebhookData(
-            meetingId: 813,
-            changes: [
-                'topic' => 'Updated topic',
-                'user_id' => 999,
-                'project_id' => 999,
-                'id' => 999,
-            ],
-            requestId: null,
-        ));
+        $payload = [
+            'id' => 813,
+            'topic' => 'Updated topic',
+            'user_id' => 999,
+            'project_id' => 999,
+        ];
+
+        $job = new UpdateMeetingWebhook(MeetingUpdatedWebhookData::fromPayloadObject($payload, null));
 
         $job->handle(app(HandleMeetingUpdatedWebhook::class));
 

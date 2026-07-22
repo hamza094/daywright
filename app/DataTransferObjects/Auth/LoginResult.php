@@ -6,7 +6,7 @@ namespace App\DataTransferObjects\Auth;
 
 use App\Models\User;
 
-final class LoginResult
+final readonly class LoginResult
 {
     public function __construct(
         public User $user,

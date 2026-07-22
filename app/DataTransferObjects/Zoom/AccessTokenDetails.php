@@ -6,7 +6,7 @@ namespace App\DataTransferObjects\Zoom;
 
 use DateTimeImmutable;
 
-final class AccessTokenDetails
+final readonly class AccessTokenDetails
 {
     public function __construct(
         public string $accessToken,

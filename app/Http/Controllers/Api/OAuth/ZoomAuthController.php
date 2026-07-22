@@ -36,10 +36,10 @@ final class ZoomAuthController extends ApiController
 
     public function callback(ZoomAuthorizationCallbackRequest $request): JsonResponse
     {
-        $error = trim((string) $request->string('error'));
+        $data = $request->toDto();
 
-        if ($error !== '') {
-            $state = trim((string) $request->string('state'));
+        if ($data->error !== null) {
+            $state = $data->state;
 
             if ($state !== '') {
                 $this->authorizationStateStore->forget($state);
@@ -47,13 +47,24 @@ final class ZoomAuthController extends ApiController
 
             abort(
                 Response::HTTP_BAD_REQUEST,
-                $error === 'access_denied'
+                $data->error === 'access_denied'
                     ? 'Zoom account connection denied.'
                     : 'Zoom authorization failed.',
             );
         }
 
-        $accessDetails = $this->zoomOAuth->authorize($this->callbackDetails($request));
+        $codeVerifier = $this->authorizationStateStore->consume(
+            state: $data->state,
+            user: $this->authenticatedUser(),
+        );
+
+        $callbackDetails = new AuthorizationCallbackDetails(
+            authorizationCode: $data->code ?? '',
+            state: $data->state,
+            codeVerifier: $codeVerifier,
+        );
+
+        $accessDetails = $this->zoomOAuth->authorize($callbackDetails);
 
         $this->oauthRepository->saveTokens(
             $this->authenticatedUser(),
@@ -66,22 +77,5 @@ final class ZoomAuthController extends ApiController
         );
 
         return $this->respondWithMessage('Zoom account connected successfully');
-    }
-
-    private function callbackDetails(ZoomAuthorizationCallbackRequest $request): AuthorizationCallbackDetails
-    {
-        $authorizationCode = (string) $request->string('code')->trim();
-        $state = (string) $request->string('state')->trim();
-
-        $codeVerifier = $this->authorizationStateStore->consume(
-            state: $state,
-            user: $this->authenticatedUser(),
-        );
-
-        return new AuthorizationCallbackDetails(
-            authorizationCode: $authorizationCode,
-            state: $state,
-            codeVerifier: $codeVerifier,
-        );
     }
 }
