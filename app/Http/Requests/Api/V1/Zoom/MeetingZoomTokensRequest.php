@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Zoom;
 
+use App\DataTransferObjects\Zoom\MeetingZoomTokenData;
 use Illuminate\Foundation\Http\FormRequest;
 
 class MeetingZoomTokensRequest extends FormRequest
@@ -26,5 +27,10 @@ class MeetingZoomTokensRequest extends FormRequest
         return [
             'action' => 'required|in:start,join',
         ];
+    }
+
+    public function toDto(): MeetingZoomTokenData
+    {
+        return MeetingZoomTokenData::fromValidated($this->validated());
     }
 }

@@ -12,8 +12,10 @@ use App\Actions\Task\ResetTaskNotificationAction;
 use App\Actions\Task\RestoreTaskAction;
 use App\Actions\Task\UnassignTaskMemberAction;
 use App\DataTransferObjects\Notification\NotificationActorData;
+use App\DataTransferObjects\Task\AssignTaskMembersData;
 use App\DataTransferObjects\Task\TaskCreateData;
 use App\DataTransferObjects\Task\TaskUpdateData;
+use App\DataTransferObjects\Task\UnassignTaskMemberData;
 use App\Enums\Subscription\PlanLimitType;
 use App\Models\Project;
 use App\Models\Task;
@@ -86,12 +88,9 @@ class TaskService
         return $task;
     }
 
-    /**
-     * @param  array<int, int|string>  $members
-     */
-    public function assignMembers(Task $task, array $members, Project $project, User $actor): Task
+    public function assignMembers(Task $task, AssignTaskMembersData $data, Project $project, User $actor): Task
     {
-        return $this->hydrateTaskResource($this->assignTaskMembersAction->execute($task, $project, $actor, $members));
+        return $this->hydrateTaskResource($this->assignTaskMembersAction->execute($task, $project, $actor, $data->members));
     }
 
     public function archiveTask(Task $task): void
@@ -104,9 +103,9 @@ class TaskService
         $this->restoreTaskAction->execute($task);
     }
 
-    public function unassignMember(Task $task, int $memberId): Task
+    public function unassignMember(Task $task, UnassignTaskMemberData $data): Task
     {
-        return $this->hydrateTaskResource($this->unassignTaskMemberAction->execute($task, $memberId));
+        return $this->hydrateTaskResource($this->unassignTaskMemberAction->execute($task, $data->member));
     }
 
     public function removeTask(Task $task): void

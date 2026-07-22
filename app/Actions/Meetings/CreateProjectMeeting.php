@@ -6,6 +6,7 @@ namespace App\Actions\Meetings;
 
 use App\Actions\Meetings\Concerns\MeetingLockOperations;
 use App\DataTransferObjects\Zoom\Meeting as ZoomMeeting;
+use App\DataTransferObjects\Zoom\MeetingStoreData;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Enums\Subscription\PlanLimitType;
 use App\Interfaces\Zoom;
@@ -29,32 +30,26 @@ final readonly class CreateProjectMeeting
         private int $transactionRetryAttempts = 5,
     ) {}
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    public function handle(Project $project, User $user, array $validated, Zoom $zoom): Meeting
+    public function handle(Project $project, User $user, MeetingStoreData $data, Zoom $zoom): Meeting
     {
         return $this->locks->block(
             key: $this->meetingCreationLockKey($user),
             conflictMessage: 'A meeting is already being created for this user. Please retry.',
-            callback: function () use ($project, $user, $validated, $zoom): Meeting {
+            callback: function () use ($project, $user, $data, $zoom): Meeting {
                 $lockedUser = $this->assertCanCreateMeeting($user);
-                $projectMeeting = $this->createPendingMeeting($project, $lockedUser, $validated);
-                $this->syncWithZoom($projectMeeting, $validated, $lockedUser, $zoom);
+                $projectMeeting = $this->createPendingMeeting($project, $lockedUser, $data);
+                $this->syncWithZoom($projectMeeting, $data, $lockedUser, $zoom);
 
                 return $projectMeeting->refresh();
             },
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    private function createPendingMeeting(Project $project, User $user, array $validated): Meeting
+    private function createPendingMeeting(Project $project, User $user, MeetingStoreData $data): Meeting
     {
         return DB::transaction(
             fn (): Meeting => $project->meetings()->create([
-                ...$validated,
+                ...$data->toArray(),
                 'user_id' => $user->id,
                 'sync_status' => MeetingSyncStatus::Pending,
             ]),
@@ -62,13 +57,10 @@ final readonly class CreateProjectMeeting
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    private function syncWithZoom(Meeting $meeting, array $validated, User $user, Zoom $zoom): void
+    private function syncWithZoom(Meeting $meeting, MeetingStoreData $data, User $user, Zoom $zoom): void
     {
         try {
-            $zoomMeeting = $zoom->createMeeting($validated, $user);
+            $zoomMeeting = $zoom->createMeeting($data->toArray(), $user);
             $this->markMeetingAsSynced($meeting, $zoomMeeting);
         } catch (Throwable $exception) {
             $this->markMeetingAsFailed($meeting, $exception);

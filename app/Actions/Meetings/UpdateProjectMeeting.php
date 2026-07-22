@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Meetings;
 
 use App\Actions\Meetings\Concerns\MeetingLockOperations;
+use App\DataTransferObjects\Zoom\MeetingUpdateData;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
@@ -24,22 +25,19 @@ final readonly class UpdateProjectMeeting
         private int $transactionRetryAttempts = 5,
     ) {}
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    public function handle(Meeting $meeting, User $user, array $validated, Zoom $zoom): Meeting
+    public function handle(Meeting $meeting, User $user, MeetingUpdateData $data, Zoom $zoom): Meeting
     {
         return $this->locks->block(
             key: $this->meetingLockKey($meeting),
             conflictMessage: 'This meeting is currently being updated. Please retry.',
-            callback: function () use ($meeting, $user, $validated, $zoom): Meeting {
+            callback: function () use ($meeting, $user, $data, $zoom): Meeting {
                 $currentMeeting = $this->findMeetingOrFail($meeting);
 
                 try {
                     $this->markMeetingAsUpdating($currentMeeting);
-                    $this->updateInZoom($currentMeeting, $validated, $user, $zoom);
+                    $this->updateInZoom($currentMeeting, $data, $user, $zoom);
 
-                    return $this->markMeetingAsUpdated($currentMeeting, $validated);
+                    return $this->markMeetingAsUpdated($currentMeeting, $data);
                 } catch (Throwable $exception) {
                     $this->markMeetingAsUpdateFailed($currentMeeting, $exception);
                     throw $exception;
@@ -58,20 +56,14 @@ final readonly class UpdateProjectMeeting
         }, attempts: $this->transactionRetryAttempts);
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    private function updateInZoom(Meeting $meeting, array $validated, User $user, Zoom $zoom): void
+    private function updateInZoom(Meeting $meeting, MeetingUpdateData $data, User $user, Zoom $zoom): void
     {
-        $zoom->updateMeeting($validated + ['meeting_id' => $meeting->meeting_id], $user);
+        $zoom->updateMeeting($data->toArray() + ['meeting_id' => $meeting->meeting_id], $user);
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    private function markMeetingAsUpdated(Meeting $meeting, array $validated): Meeting
+    private function markMeetingAsUpdated(Meeting $meeting, MeetingUpdateData $data): Meeting
     {
-        return DB::transaction(fn (): Meeting => $this->updateMeetingWithLock($meeting, $validated + [
+        return DB::transaction(fn (): Meeting => $this->updateMeetingWithLock($meeting, $data->toArray() + [
             'sync_status' => MeetingSyncStatus::Active,
             'sync_error' => null,
             'synced_at' => now(),

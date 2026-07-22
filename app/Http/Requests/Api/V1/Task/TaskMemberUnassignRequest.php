@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Task;
 
+use App\DataTransferObjects\Task\UnassignTaskMemberData;
 use App\Rules\TaskAssigneeMember;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
@@ -42,5 +43,10 @@ class TaskMemberUnassignRequest extends FormRequest
             'member.required' => 'Please provide a task member to unassign.',
             'member.exists' => 'The selected task member was not found.',
         ];
+    }
+
+    public function toDto(): UnassignTaskMemberData
+    {
+        return UnassignTaskMemberData::fromValidated($this->validated());
     }
 }

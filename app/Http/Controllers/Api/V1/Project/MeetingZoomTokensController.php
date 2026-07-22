@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
-use App\Enums\Meeting\MeetingTokenAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Zoom\MeetingZoomTokensRequest;
 use App\Models\Meeting;
@@ -23,15 +22,15 @@ class MeetingZoomTokensController extends ApiController
         MeetingTokenService $tokenService,
         MeetingPolicy $meetingPolicy
     ): JsonResponse {
-        $action = MeetingTokenAction::from($request->input('action'));
+        $data = $request->toDto();
         $currentUser = $this->authenticatedUser();
 
-        $response = $meetingPolicy->generateToken($currentUser, $project, $meeting, $action);
+        $response = $meetingPolicy->generateToken($currentUser, $project, $meeting, $data->action);
         if (! $response->allowed()) {
             abort(Response::HTTP_FORBIDDEN, $response->message());
         }
 
-        $tokens = $tokenService->generateTokens($project, $meeting, $currentUser, $action);
+        $tokens = $tokenService->generateTokens($project, $meeting, $currentUser, $data->action);
 
         return $this->respondWithData($tokens, Response::HTTP_OK);
     }

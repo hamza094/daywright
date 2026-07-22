@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Zoom;
 
+use App\DataTransferObjects\Zoom\MeetingStoreData;
 use App\Rules\Iso8601Timestamp;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
@@ -40,6 +41,11 @@ class MeetingStoreRequest extends FormRequest
             'password' => 'required|max:10|string',
             'join_before_host' => 'required|boolean',
         ];
+    }
+
+    public function toDto(): MeetingStoreData
+    {
+        return MeetingStoreData::fromValidated($this->validated());
     }
 
     #[Override]

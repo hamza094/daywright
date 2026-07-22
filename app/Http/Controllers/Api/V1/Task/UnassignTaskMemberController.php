@@ -21,8 +21,7 @@ final class UnassignTaskMemberController extends ApiController
      */
     public function __invoke(Project $project, Task $task, TaskMemberUnassignRequest $request, TaskService $service): JsonResponse
     {
-        $memberId = (int) $request->validated('member');
-        $task = $service->unassignMember($task, $memberId);
+        $task = $service->unassignMember($task, $request->toDto());
 
         return $this->respondUpdated(new TaskResource($task));
     }
