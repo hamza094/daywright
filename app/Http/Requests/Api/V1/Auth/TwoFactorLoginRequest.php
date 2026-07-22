@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use App\DataTransferObjects\Auth\TwoFactorLoginData;
 use App\Models\User;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Exception;
@@ -64,6 +65,11 @@ class TwoFactorLoginRequest extends FormRequest
             $code = $this->input('code');
             $this->validateTwoFactorSession($validator, $code);
         });
+    }
+
+    public function toDto(): TwoFactorLoginData
+    {
+        return TwoFactorLoginData::fromValidated($this->validated());
     }
 
     /**

@@ -84,8 +84,9 @@ class TwoFactorController extends ApiController
     public function confirmTwoFactor(ConfirmTwoFactorRequest $request): JsonResponse
     {
         $user = $request->user();
+        $data = $request->toDto();
 
-        if (! $user->confirmTwoFactorAuth($request->input('code'))) {
+        if (! $user->confirmTwoFactorAuth($data->code)) {
             throw ValidationException::withMessages(['code' => 'Invalid code provided.']);
         }
 
@@ -105,6 +106,7 @@ class TwoFactorController extends ApiController
     public function twoFactorLogin(TwoFactorLoginRequest $request): JsonResponse
     {
         $user = $request->user();
+        $data = $request->toDto();
 
         $this->loginUserService->dispatchTimezoneIfNeeded($user);
 

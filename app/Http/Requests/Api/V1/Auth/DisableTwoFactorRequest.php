@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use App\DataTransferObjects\Auth\TwoFactorDisableData;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -41,6 +42,11 @@ class DisableTwoFactorRequest extends FormRequest
         $validator->after(function ($validator): void {
             $this->validateTwoFactorExists($validator);
         });
+    }
+
+    public function toDto(): TwoFactorDisableData
+    {
+        return TwoFactorDisableData::fromValidated($this->validated());
     }
 
     /**

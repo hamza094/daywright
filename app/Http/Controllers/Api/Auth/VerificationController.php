@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\Auth;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\Auth\VerificationRequest;
 use App\Models\User;
 use App\Services\Auth\VerifyEmailService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\URL;
 
 class VerificationController extends ApiController
 {
@@ -26,13 +26,15 @@ class VerificationController extends ApiController
      *
      * Confirms the signed verification request and marks the targeted user's email as verified.
      */
-    public function verify(Request $request, User $user): JsonResponse
+    public function verify(VerificationRequest $request, User $user): JsonResponse
     {
+        $data = $request->toDto();
+
         $verified = $this->verifyEmailService->verify(
             user: $user,
             authenticatedUser: $this->authenticatedUser(),
-            hasValidSignature: URL::hasValidSignature($request),
-            hash: (string) $request->query('hash', ''),
+            hasValidSignature: $data->hasValidSignature,
+            hash: $data->hash,
         );
 
         return $this->respondWithData([

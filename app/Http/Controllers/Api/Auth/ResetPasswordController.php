@@ -63,8 +63,10 @@ class ResetPasswordController extends ApiController
      */
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
+        $data = $request->toDto();
+
         $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            $data->toArray(),
             function (User $user, string $password): void {
                 $user->forceFill([
                     'password' => Hash::make($password),
@@ -82,7 +84,7 @@ class ResetPasswordController extends ApiController
 
         Log::warning('Password reset attempt failed', [
             'status' => $status,
-            'user_id' => User::whereEmail($request->input('email'))->select('uuid')->first()?->uuid,
+            'user_id' => User::whereEmail($data->email)->select('uuid')->first()?->uuid,
         ]);
 
         throw new HttpException(HttpResponse::HTTP_BAD_REQUEST, 'Unable to reset password with the provided information.');

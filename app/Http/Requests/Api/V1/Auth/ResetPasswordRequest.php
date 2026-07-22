@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use App\DataTransferObjects\Auth\ResetPasswordData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -52,5 +53,10 @@ class ResetPasswordRequest extends FormRequest
          */
             // `password` rules already include `confirmed` via RegisterUserRequest::passwordRules()
         ];
+    }
+
+    public function toDto(): ResetPasswordData
+    {
+        return ResetPasswordData::fromValidated($this->validated());
     }
 }

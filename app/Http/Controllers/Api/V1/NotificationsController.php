@@ -71,9 +71,9 @@ class NotificationsController extends ApiController
         string $notification,
         UserNotificationService $userNotificationService,
     ): JsonResponse {
-        $status = $request->validated('status');
+        $data = $request->toDto();
 
-        $userNotificationService->updateStatus($this->authenticatedUser(), $notification, $status);
+        $userNotificationService->updateStatus($this->authenticatedUser(), $notification, $data->status);
 
         return $this->respondWithMessage('Notification status updated.');
     }

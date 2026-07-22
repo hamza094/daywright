@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use App\DataTransferObjects\Auth\TwoFactorConfirmData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -53,6 +54,11 @@ class ConfirmTwoFactorRequest extends FormRequest
         $validator->after(function ($validator): void {
             $this->validateTwoFactorSetup($validator);
         });
+    }
+
+    public function toDto(): TwoFactorConfirmData
+    {
+        return TwoFactorConfirmData::fromValidated($this->validated());
     }
 
     /**
