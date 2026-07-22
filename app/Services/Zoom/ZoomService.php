@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Zoom;
 
-use App\DataTransferObjects\Zoom\AccessTokenDetails;
+use App\DataTransferObjects\OAuth\OAuthTokens;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
@@ -33,7 +33,7 @@ final readonly class ZoomService implements Zoom
     #[Override]
     public function authorize(
         AuthorizationCallbackDetails $callbackDetails
-    ): AccessTokenDetails {
+    ): OAuthTokens {
         return $this->oauthService->authorize($callbackDetails);
     }
 

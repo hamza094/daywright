@@ -42,7 +42,7 @@ class ProjectController extends ApiController
     ): JsonResponse {
         $data = $request->toDto();
 
-        $bulkDeleteProjectsAction->execute($data->projectIds);
+        $bulkDeleteProjectsAction->execute($data->ids);
 
         return $this->respondWithMessage('Projects deleted successfully.');
     }

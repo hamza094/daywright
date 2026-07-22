@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
-use App\DataTransferObjects\Admin\ProjectBulkDeleteData;
+use App\DataTransferObjects\Admin\BulkDeleteData;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -43,8 +43,8 @@ class ProjectBulkDeleteRequest extends FormRequest
         ];
     }
 
-    public function toDto(): ProjectBulkDeleteData
+    public function toDto(): BulkDeleteData
     {
-        return ProjectBulkDeleteData::fromValidated($this->validated());
+        return BulkDeleteData::fromIds($this->validated()['project_ids']);
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Interfaces;
 
-use App\DataTransferObjects\Zoom\AccessTokenDetails;
+use App\DataTransferObjects\OAuth\OAuthTokens;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
@@ -16,7 +16,7 @@ interface Zoom
 
     public function authorize(
         AuthorizationCallbackDetails $callbackDetails
-    ): AccessTokenDetails;
+    ): OAuthTokens;
 
     /**
      * @param  array<string, mixed>  $validated

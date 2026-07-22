@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
-use App\DataTransferObjects\Admin\TaskBulkDeleteData;
+use App\DataTransferObjects\Admin\BulkDeleteData;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -43,8 +43,8 @@ class TaskBulkDeleteRequest extends FormRequest
         ];
     }
 
-    public function toDto(): TaskBulkDeleteData
+    public function toDto(): BulkDeleteData
     {
-        return TaskBulkDeleteData::fromValidated($this->validated());
+        return BulkDeleteData::fromIds($this->validated()['task_ids']);
     }
 }

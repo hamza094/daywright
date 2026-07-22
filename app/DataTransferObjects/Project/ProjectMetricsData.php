@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Data;
+namespace App\DataTransferObjects\Project;
 
-final readonly class ProjectMetricsDto
+final readonly class ProjectMetricsData
 {
     /**
      * Data transfer object for project metrics.
