@@ -175,7 +175,7 @@ Actions are single-responsibility classes that encapsulate specific business log
 - ✅ Default public entrypoint: `execute()`
 - ✅ Inject dependencies via constructor
 - ✅ Keep actions focused on a single responsibility
-- ✅ Accept explicit domain inputs (models, scalars, arrays, DTOs)
+- ✅ Accept explicit domain inputs (models, scalars, and DTOs for complex data); avoid untyped arrays
 - ✅ Return domain results (model, bool, array, primitive, value object)
 - ✅ Use other actions as dependencies for composition
 - ✅ Create an action when the step is a named domain operation, reused in more than one flow, or isolates an integration / side effect
@@ -204,7 +204,7 @@ Services orchestrate one application use case or read workflow, coordinating bet
 - ✅ Own one use case boundary or one read/listing/composition workflow boundary
 - ✅ Wrap multi-step operations in `DB::transaction()`
 - ✅ Use PHPDoc for array parameter types: `@param array<string, mixed>`
-- ✅ Accept models, scalars, arrays, or DTOs; pass the acting user explicitly when needed
+- ✅ Accept models, scalars, or strongly typed DTOs for complex payloads; avoid untyped arrays. Pass the acting user explicitly when needed
 - ✅ Coordinate actions, repositories, transactions, notifications, domain events, and external integrations
 - ✅ Keep cohesive orchestration in the service; do not extract a new action for one-off glue code that is only used inside that service
 - ✅ Extract an action only when the step is clearly named in the domain, independently testable, reused, or integration-heavy
@@ -258,10 +258,10 @@ DTOs are immutable value objects for transferring data between layers with type 
 
 ### Guidelines
 
-- ✅ Use `final` class modifier
-- ✅ Provide default values for optional fields
-- ✅ Include `toArray()` method for serialization
-- ✅ Use nullable types with `?` syntax
+- ✅ MUST use `final readonly class` to ensure absolute immutability
+- ✅ Define static constructors like `fromValidated(array $validated): self` and `fromArray(array $payload): self`
+- ✅ Provide default values for optional fields and use nullable types with `?` syntax
+- ✅ Include `toArray()` method for serialization when passing data to external integrations or jobs
 - ❌ Do not add behavior/methods beyond data transformation
 
 ---
@@ -291,8 +291,8 @@ Controller (base)
 - ✅ Use method injection for Request and Service dependencies
 - ✅ Prefer resource controllers for canonical CRUD and invokable controllers for one-off commands or queries
 - ✅ Use `$this->authorize()` for policy checks
-- ✅ Use `$request->validated()` or `$request->safe()` for clean data
-- ✅ Pass validated arrays or explicit request accessors downstream instead of the whole request
+- ✅ Use `$request->toDto()` to transform incoming data into strict typed DTOs
+- ✅ Pass strongly typed DTOs downstream instead of `$request->validated()` arrays or the whole request
 - ✅ Resolve the authenticated user in the controller and pass it explicitly to services or actions when needed
 - ✅ Call one main collaborator per endpoint. In most cases that collaborator is a service; call an action directly only for tiny isolated operations
 - ✅ Add docblocks with `@operationId` and `@tags` for API documentation
@@ -327,6 +327,7 @@ Form Requests handle validation and authorization for incoming HTTP requests.
 
 ### Guidelines
 
+- ✅ MUST implement a `toDto()` method to transform validated data into a strict DTO (e.g., `return ProjectData::fromValidated($this->validated());`)
 - ✅ Include `@example` annotations for API documentation (Scramble/OpenAPI)
 - ✅ Use `Rule::unique()` with closures for complex uniqueness checks
 - ✅ Override `messages()` for user-friendly error messages

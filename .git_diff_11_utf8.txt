@@ -1,0 +1,4401 @@
+﻿diff --git a/app/Actions/Meetings/CreateProjectMeeting.php b/app/Actions/Meetings/CreateProjectMeeting.php
+index d995b1fb..4daef875 100644
+--- a/app/Actions/Meetings/CreateProjectMeeting.php
++++ b/app/Actions/Meetings/CreateProjectMeeting.php
+@@ -6,6 +6,7 @@ namespace App\Actions\Meetings;
+ 
+ use App\Actions\Meetings\Concerns\MeetingLockOperations;
+ use App\DataTransferObjects\Zoom\Meeting as ZoomMeeting;
++use App\DataTransferObjects\Zoom\MeetingStoreData;
+ use App\Enums\Meeting\MeetingSyncStatus;
+ use App\Enums\Subscription\PlanLimitType;
+ use App\Interfaces\Zoom;
+@@ -29,32 +30,26 @@ final readonly class CreateProjectMeeting
+         private int $transactionRetryAttempts = 5,
+     ) {}
+ 
+-    /**
+-     * @param  array<string, mixed>  $validated
+-     */
+-    public function handle(Project $project, User $user, array $validated, Zoom $zoom): Meeting
++    public function handle(Project $project, User $user, MeetingStoreData $data, Zoom $zoom): Meeting
+     {
+         return $this->locks->block(
+             key: $this->meetingCreationLockKey($user),
+             conflictMessage: 'A meeting is already being created for this user. Please retry.',
+-            callback: function () use ($project, $user, $validated, $zoom): Meeting {
++            callback: function () use ($project, $user, $data, $zoom): Meeting {
+                 $lockedUser = $this->assertCanCreateMeeting($user);
+-                $projectMeeting = $this->createPendingMeeting($project, $lockedUser, $validated);
+-                $this->syncWithZoom($projectMeeting, $validated, $lockedUser, $zoom);
++                $projectMeeting = $this->createPendingMeeting($project, $lockedUser, $data);
++                $this->syncWithZoom($projectMeeting, $data, $lockedUser, $zoom);
+ 
+                 return $projectMeeting->refresh();
+             },
+         );
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $validated
+-     */
+-    private function createPendingMeeting(Project $project, User $user, array $validated): Meeting
++    private function createPendingMeeting(Project $project, User $user, MeetingStoreData $data): Meeting
+     {
+         return DB::transaction(
+             fn (): Meeting => $project->meetings()->create([
+-                ...$validated,
++                ...$data->toArray(),
+                 'user_id' => $user->id,
+                 'sync_status' => MeetingSyncStatus::Pending,
+             ]),
+@@ -62,13 +57,10 @@ final readonly class CreateProjectMeeting
+         );
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $validated
+-     */
+-    private function syncWithZoom(Meeting $meeting, array $validated, User $user, Zoom $zoom): void
++    private function syncWithZoom(Meeting $meeting, MeetingStoreData $data, User $user, Zoom $zoom): void
+     {
+         try {
+-            $zoomMeeting = $zoom->createMeeting($validated, $user);
++            $zoomMeeting = $zoom->createMeeting($data->toArray(), $user);
+             $this->markMeetingAsSynced($meeting, $zoomMeeting);
+         } catch (Throwable $exception) {
+             $this->markMeetingAsFailed($meeting, $exception);
+diff --git a/app/Actions/Meetings/UpdateProjectMeeting.php b/app/Actions/Meetings/UpdateProjectMeeting.php
+index 6bede0de..62d21e73 100644
+--- a/app/Actions/Meetings/UpdateProjectMeeting.php
++++ b/app/Actions/Meetings/UpdateProjectMeeting.php
+@@ -5,6 +5,7 @@ declare(strict_types=1);
+ namespace App\Actions\Meetings;
+ 
+ use App\Actions\Meetings\Concerns\MeetingLockOperations;
++use App\DataTransferObjects\Zoom\MeetingUpdateData;
+ use App\Enums\Meeting\MeetingSyncStatus;
+ use App\Interfaces\Zoom;
+ use App\Models\Meeting;
+@@ -24,22 +25,19 @@ final readonly class UpdateProjectMeeting
+         private int $transactionRetryAttempts = 5,
+     ) {}
+ 
+-    /**
+-     * @param  array<string, mixed>  $validated
+-     */
+-    public function handle(Meeting $meeting, User $user, array $validated, Zoom $zoom): Meeting
++    public function handle(Meeting $meeting, User $user, MeetingUpdateData $data, Zoom $zoom): Meeting
+     {
+         return $this->locks->block(
+             key: $this->meetingLockKey($meeting),
+             conflictMessage: 'This meeting is currently being updated. Please retry.',
+-            callback: function () use ($meeting, $user, $validated, $zoom): Meeting {
++            callback: function () use ($meeting, $user, $data, $zoom): Meeting {
+                 $currentMeeting = $this->findMeetingOrFail($meeting);
+ 
+                 try {
+                     $this->markMeetingAsUpdating($currentMeeting);
+-                    $this->updateInZoom($currentMeeting, $validated, $user, $zoom);
++                    $this->updateInZoom($currentMeeting, $data, $user, $zoom);
+ 
+-                    return $this->markMeetingAsUpdated($currentMeeting, $validated);
++                    return $this->markMeetingAsUpdated($currentMeeting, $data);
+                 } catch (Throwable $exception) {
+                     $this->markMeetingAsUpdateFailed($currentMeeting, $exception);
+                     throw $exception;
+@@ -58,20 +56,14 @@ final readonly class UpdateProjectMeeting
+         }, attempts: $this->transactionRetryAttempts);
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $validated
+-     */
+-    private function updateInZoom(Meeting $meeting, array $validated, User $user, Zoom $zoom): void
++    private function updateInZoom(Meeting $meeting, MeetingUpdateData $data, User $user, Zoom $zoom): void
+     {
+-        $zoom->updateMeeting($validated + ['meeting_id' => $meeting->meeting_id], $user);
++        $zoom->updateMeeting($data->toArray() + ['meeting_id' => $meeting->meeting_id], $user);
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $validated
+-     */
+-    private function markMeetingAsUpdated(Meeting $meeting, array $validated): Meeting
++    private function markMeetingAsUpdated(Meeting $meeting, MeetingUpdateData $data): Meeting
+     {
+-        return DB::transaction(fn (): Meeting => $this->updateMeetingWithLock($meeting, $validated + [
++        return DB::transaction(fn (): Meeting => $this->updateMeetingWithLock($meeting, $data->toArray() + [
+             'sync_status' => MeetingSyncStatus::Active,
+             'sync_error' => null,
+             'synced_at' => now(),
+diff --git a/app/Actions/Webhooks/Zoom/HandleMeetingEndedWebhook.php b/app/Actions/Webhooks/Zoom/HandleMeetingEndedWebhook.php
+index fe7beb30..0340c2e6 100644
+--- a/app/Actions/Webhooks/Zoom/HandleMeetingEndedWebhook.php
++++ b/app/Actions/Webhooks/Zoom/HandleMeetingEndedWebhook.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Actions\Webhooks\Zoom;
+ 
++use App\DataTransferObjects\Meeting\MeetingNotificationData;
+ use App\DataTransferObjects\Notification\NotificationActorData;
+ use App\DataTransferObjects\Zoom\MeetingEndedWebhookData;
+ use App\Enums\MeetingState;
+@@ -61,15 +62,16 @@ final readonly class HandleMeetingEndedWebhook
+ 
+     private function dispatchNotificationJob(Meeting $meeting, ?string $startTime, ?string $endTime): void
+     {
+-        $notificationData = [
++        $notificationData = MeetingNotificationData::fromArray([
+             'project_name' => $meeting->project->name,
+             'project_slug' => $meeting->project->slug,
+             'meeting_topic' => $meeting->topic,
+             'meeting_timezone' => $meeting->timezone,
++            'meeting_join_url' => null,
+             'start_time' => $startTime,
+             'end_time' => $endTime,
+             'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
+-        ];
++        ]);
+ 
+         SendMeetingEndedNotification::dispatch($meeting->id, $notificationData);
+     }
+diff --git a/app/Actions/Webhooks/Zoom/HandleMeetingStartedWebhook.php b/app/Actions/Webhooks/Zoom/HandleMeetingStartedWebhook.php
+index eaaf51e9..96fcf61c 100644
+--- a/app/Actions/Webhooks/Zoom/HandleMeetingStartedWebhook.php
++++ b/app/Actions/Webhooks/Zoom/HandleMeetingStartedWebhook.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Actions\Webhooks\Zoom;
+ 
++use App\DataTransferObjects\Meeting\MeetingNotificationData;
+ use App\DataTransferObjects\Notification\NotificationActorData;
+ use App\DataTransferObjects\Zoom\MeetingStartedWebhookData;
+ use App\Enums\MeetingState;
+@@ -62,15 +63,16 @@ final readonly class HandleMeetingStartedWebhook
+ 
+     private function dispatchNotificationJob(Meeting $meeting, ?string $startTime): void
+     {
+-        $notificationData = [
++        $notificationData = MeetingNotificationData::fromArray([
+             'project_name' => $meeting->project->name,
+             'project_slug' => $meeting->project->slug,
+             'meeting_topic' => $meeting->topic,
+             'meeting_timezone' => $meeting->timezone,
+             'meeting_join_url' => $meeting->join_url,
+             'start_time' => $startTime,
++            'end_time' => null,
+             'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
+-        ];
++        ]);
+ 
+         SendMeetingStartedNotification::dispatch($meeting->id, $notificationData);
+     }
+diff --git a/app/Console/Commands/CheckUnsentMeetingNotifications.php b/app/Console/Commands/CheckUnsentMeetingNotifications.php
+index 9bfc8304..c38deb38 100644
+--- a/app/Console/Commands/CheckUnsentMeetingNotifications.php
++++ b/app/Console/Commands/CheckUnsentMeetingNotifications.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Console\Commands;
+ 
++use App\DataTransferObjects\Meeting\MeetingNotificationData;
+ use App\Enums\MeetingState;
+ use App\Jobs\SendMeetingEndedNotification;
+ use App\Jobs\SendMeetingStartedNotification;
+@@ -61,18 +62,19 @@ final class CheckUnsentMeetingNotifications extends Command
+     {
+         foreach ($meetings as $meeting) {
+             try {
+-                $notificationData = [
++                $notificationData = MeetingNotificationData::fromArray([
+                     'project_name' => $meeting->project->name,
+                     'project_slug' => $meeting->project->slug,
+                     'meeting_topic' => $meeting->topic,
+                     'meeting_timezone' => $meeting->timezone,
+                     'meeting_join_url' => $meeting->join_url,
+                     'start_time' => $meeting->start_time,
++                    'end_time' => null,
+                     'notifier' => [
+                         'name' => $meeting->project->user->name,
+                         'email' => $meeting->project->user->email,
+                     ],
+-                ];
++                ]);
+ 
+                 SendMeetingStartedNotification::dispatch($meeting->id, $notificationData);
+ 
+@@ -98,18 +100,19 @@ final class CheckUnsentMeetingNotifications extends Command
+     {
+         foreach ($meetings as $meeting) {
+             try {
+-                $notificationData = [
++                $notificationData = MeetingNotificationData::fromArray([
+                     'project_name' => $meeting->project->name,
+                     'project_slug' => $meeting->project->slug,
+                     'meeting_topic' => $meeting->topic,
+                     'meeting_timezone' => $meeting->timezone,
++                    'meeting_join_url' => null,
+                     'start_time' => $meeting->start_time,
+                     'end_time' => null,
+                     'notifier' => [
+                         'name' => $meeting->project->user->name,
+                         'email' => $meeting->project->user->email,
+                     ],
+-                ];
++                ]);
+ 
+                 SendMeetingEndedNotification::dispatch($meeting->id, $notificationData);
+ 
+diff --git a/app/DataTransferObjects/Admin/AdminStageData.php b/app/DataTransferObjects/Admin/AdminStageData.php
+new file mode 100644
+index 00000000..76199f20
+--- /dev/null
++++ b/app/DataTransferObjects/Admin/AdminStageData.php
+@@ -0,0 +1,34 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Admin;
++
++final readonly class AdminStageData
++{
++    public function __construct(
++        public string $name,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            name: $validated['name'],
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'name' => $this->name,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Admin/BulkDeleteData.php b/app/DataTransferObjects/Admin/BulkDeleteData.php
+new file mode 100644
+index 00000000..0ac97c7e
+--- /dev/null
++++ b/app/DataTransferObjects/Admin/BulkDeleteData.php
+@@ -0,0 +1,25 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Admin;
++
++final readonly class BulkDeleteData
++{
++    /**
++     * @param  array<int>  $ids
++     */
++    public function __construct(
++        public array $ids,
++    ) {}
++
++    /**
++     * @param  array<int>  $ids
++     */
++    public static function fromIds(array $ids): self
++    {
++        return new self(
++            ids: array_map('intval', $ids),
++        );
++    }
++}
+diff --git a/app/DataTransferObjects/Admin/TaskStatusData.php b/app/DataTransferObjects/Admin/TaskStatusData.php
+new file mode 100644
+index 00000000..a5513109
+--- /dev/null
++++ b/app/DataTransferObjects/Admin/TaskStatusData.php
+@@ -0,0 +1,37 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Admin;
++
++final readonly class TaskStatusData
++{
++    public function __construct(
++        public ?string $label,
++        public ?string $color,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            label: $validated['label'] ?? null,
++            color: $validated['color'] ?? null,
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return array_filter([
++            'label' => $this->label,
++            'color' => $this->color,
++        ], fn ($value) => $value !== null);
++    }
++}
+diff --git a/app/DataTransferObjects/Admin/UpdateUserRoleData.php b/app/DataTransferObjects/Admin/UpdateUserRoleData.php
+new file mode 100644
+index 00000000..f28d8a85
+--- /dev/null
++++ b/app/DataTransferObjects/Admin/UpdateUserRoleData.php
+@@ -0,0 +1,41 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Admin;
++
++final readonly class UpdateUserRoleData
++{
++    public function __construct(
++        public bool $isAdmin,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $payload
++     */
++    public static function fromArray(array $payload): self
++    {
++        $isAdmin = $payload['is_admin'] ?? false;
++
++        // Normalize boolean value (handles string "true"/"false")
++        if (is_string($isAdmin)) {
++            $isAdmin = filter_var($isAdmin, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
++        }
++
++        return new self(
++            isAdmin: (bool) $isAdmin,
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'is_admin' => $this->isAdmin,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Auth/AuthPayload.php b/app/DataTransferObjects/Auth/AuthPayload.php
+index 3fc71960..59c6e3f4 100644
+--- a/app/DataTransferObjects/Auth/AuthPayload.php
++++ b/app/DataTransferObjects/Auth/AuthPayload.php
+@@ -6,7 +6,7 @@ namespace App\DataTransferObjects\Auth;
+ 
+ use App\Models\User;
+ 
+-final class AuthPayload
++final readonly class AuthPayload
+ {
+     public function __construct(
+         public User $user,
+diff --git a/app/DataTransferObjects/Auth/ForgotPasswordData.php b/app/DataTransferObjects/Auth/ForgotPasswordData.php
+new file mode 100644
+index 00000000..a3edd493
+--- /dev/null
++++ b/app/DataTransferObjects/Auth/ForgotPasswordData.php
+@@ -0,0 +1,34 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Auth;
++
++final readonly class ForgotPasswordData
++{
++    public function __construct(
++        public string $email,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $payload
++     */
++    public static function fromArray(array $payload): self
++    {
++        return new self(
++            email: (string) ($payload['email'] ?? ''),
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'email' => $this->email,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Auth/LoginCredentialsData.php b/app/DataTransferObjects/Auth/LoginCredentialsData.php
+new file mode 100644
+index 00000000..2d1d0eb4
+--- /dev/null
++++ b/app/DataTransferObjects/Auth/LoginCredentialsData.php
+@@ -0,0 +1,37 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Auth;
++
++final readonly class LoginCredentialsData
++{
++    public function __construct(
++        public string $email,
++        public string $password,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $payload
++     */
++    public static function fromArray(array $payload): self
++    {
++        return new self(
++            email: (string) ($payload['email'] ?? ''),
++            password: (string) ($payload['password'] ?? ''),
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'email' => $this->email,
++            'password' => $this->password,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Auth/LoginResult.php b/app/DataTransferObjects/Auth/LoginResult.php
+index 47f24059..ee764f77 100644
+--- a/app/DataTransferObjects/Auth/LoginResult.php
++++ b/app/DataTransferObjects/Auth/LoginResult.php
+@@ -6,7 +6,7 @@ namespace App\DataTransferObjects\Auth;
+ 
+ use App\Models\User;
+ 
+-final class LoginResult
++final readonly class LoginResult
+ {
+     public function __construct(
+         public User $user,
+diff --git a/app/DataTransferObjects/Auth/ResetPasswordData.php b/app/DataTransferObjects/Auth/ResetPasswordData.php
+new file mode 100644
+index 00000000..7a1a7c66
+--- /dev/null
++++ b/app/DataTransferObjects/Auth/ResetPasswordData.php
+@@ -0,0 +1,41 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Auth;
++
++final readonly class ResetPasswordData
++{
++    public function __construct(
++        public string $token,
++        public string $email,
++        public string $password,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            token: $validated['token'],
++            email: $validated['email'],
++            password: $validated['password'],
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'token' => $this->token,
++            'email' => $this->email,
++            'password' => $this->password,
++            'password_confirmation' => $this->password,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Auth/TwoFactorConfirmData.php b/app/DataTransferObjects/Auth/TwoFactorConfirmData.php
+new file mode 100644
+index 00000000..8b370b52
+--- /dev/null
++++ b/app/DataTransferObjects/Auth/TwoFactorConfirmData.php
+@@ -0,0 +1,34 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Auth;
++
++final readonly class TwoFactorConfirmData
++{
++    public function __construct(
++        public string $code,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            code: $validated['code'],
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'code' => $this->code,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Auth/TwoFactorDisableData.php b/app/DataTransferObjects/Auth/TwoFactorDisableData.php
+new file mode 100644
+index 00000000..87af2605
+--- /dev/null
++++ b/app/DataTransferObjects/Auth/TwoFactorDisableData.php
+@@ -0,0 +1,28 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Auth;
++
++final readonly class TwoFactorDisableData
++{
++    public function __construct() {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self;
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [];
++    }
++}
+diff --git a/app/DataTransferObjects/Auth/TwoFactorLoginData.php b/app/DataTransferObjects/Auth/TwoFactorLoginData.php
+new file mode 100644
+index 00000000..c5104110
+--- /dev/null
++++ b/app/DataTransferObjects/Auth/TwoFactorLoginData.php
+@@ -0,0 +1,34 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Auth;
++
++final readonly class TwoFactorLoginData
++{
++    public function __construct(
++        public string $code,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            code: $validated['code'],
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'code' => $this->code,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Auth/TwoFactorPrepareData.php b/app/DataTransferObjects/Auth/TwoFactorPrepareData.php
+new file mode 100644
+index 00000000..e06c2aa1
+--- /dev/null
++++ b/app/DataTransferObjects/Auth/TwoFactorPrepareData.php
+@@ -0,0 +1,34 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Auth;
++
++final readonly class TwoFactorPrepareData
++{
++    public function __construct(
++        public string $password,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            password: $validated['password'],
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'password' => $this->password,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Auth/VerificationData.php b/app/DataTransferObjects/Auth/VerificationData.php
+new file mode 100644
+index 00000000..4a3d55f8
+--- /dev/null
++++ b/app/DataTransferObjects/Auth/VerificationData.php
+@@ -0,0 +1,37 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Auth;
++
++final readonly class VerificationData
++{
++    public function __construct(
++        public string $hash,
++        public bool $hasValidSignature,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            hash: $validated['hash'],
++            hasValidSignature: $validated['hasValidSignature'],
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'hash' => $this->hash,
++            'hasValidSignature' => $this->hasValidSignature,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Meeting/MeetingNotificationData.php b/app/DataTransferObjects/Meeting/MeetingNotificationData.php
+new file mode 100644
+index 00000000..5d280dfc
+--- /dev/null
++++ b/app/DataTransferObjects/Meeting/MeetingNotificationData.php
+@@ -0,0 +1,58 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Meeting;
++
++final readonly class MeetingNotificationData
++{
++    /**
++     * @param  array<string, mixed>  $notifier
++     */
++    public function __construct(
++        public string $projectName,
++        public string $projectSlug,
++        public string $meetingTopic,
++        public string $meetingTimezone,
++        public ?string $meetingJoinUrl,
++        public string $startTime,
++        public ?string $endTime,
++        public array $notifier,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $payload
++     */
++    public static function fromArray(array $payload): self
++    {
++        return new self(
++            projectName: (string) ($payload['project_name'] ?? ''),
++            projectSlug: (string) ($payload['project_slug'] ?? ''),
++            meetingTopic: (string) ($payload['meeting_topic'] ?? ''),
++            meetingTimezone: (string) ($payload['meeting_timezone'] ?? ''),
++            meetingJoinUrl: isset($payload['meeting_join_url']) ? (string) $payload['meeting_join_url'] : null,
++            startTime: (string) ($payload['start_time'] ?? ''),
++            endTime: isset($payload['end_time']) ? (string) $payload['end_time'] : null,
++            notifier: (array) ($payload['notifier'] ?? []),
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the notification.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'project_name' => $this->projectName,
++            'project_slug' => $this->projectSlug,
++            'meeting_topic' => $this->meetingTopic,
++            'meeting_timezone' => $this->meetingTimezone,
++            'meeting_join_url' => $this->meetingJoinUrl,
++            'start_time' => $this->startTime,
++            'end_time' => $this->endTime,
++            'notifier' => $this->notifier,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Notification/NotificationStatusUpdateData.php b/app/DataTransferObjects/Notification/NotificationStatusUpdateData.php
+new file mode 100644
+index 00000000..5a22c4a3
+--- /dev/null
++++ b/app/DataTransferObjects/Notification/NotificationStatusUpdateData.php
+@@ -0,0 +1,34 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Notification;
++
++final readonly class NotificationStatusUpdateData
++{
++    public function __construct(
++        public string $status,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            status: $validated['status'],
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'status' => $this->status,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/OAuth/OAuthTokens.php b/app/DataTransferObjects/OAuth/OAuthTokens.php
+index 2d373632..745bea41 100644
+--- a/app/DataTransferObjects/OAuth/OAuthTokens.php
++++ b/app/DataTransferObjects/OAuth/OAuthTokens.php
+@@ -6,7 +6,7 @@ namespace App\DataTransferObjects\OAuth;
+ 
+ use DateTimeImmutable;
+ 
+-final class OAuthTokens
++final readonly class OAuthTokens
+ {
+     public function __construct(
+         public string $accessToken,
+diff --git a/app/DataTransferObjects/Paddle/UserSubscriptionData.php b/app/DataTransferObjects/Paddle/UserSubscriptionData.php
+index 04366986..18101991 100644
+--- a/app/DataTransferObjects/Paddle/UserSubscriptionData.php
++++ b/app/DataTransferObjects/Paddle/UserSubscriptionData.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\DataTransferObjects\Paddle;
+ 
+-final class UserSubscriptionData
++final readonly class UserSubscriptionData
+ {
+     public function __construct(
+         public int $vendorID,
+diff --git a/app/DataTransferObjects/Project/CreateConversationData.php b/app/DataTransferObjects/Project/CreateConversationData.php
+index 77b3ea52..2ec5637e 100644
+--- a/app/DataTransferObjects/Project/CreateConversationData.php
++++ b/app/DataTransferObjects/Project/CreateConversationData.php
+@@ -4,13 +4,14 @@ declare(strict_types=1);
+ 
+ namespace App\DataTransferObjects\Project;
+ 
++use Illuminate\Http\UploadedFile;
+ use InvalidArgumentException;
+ 
+ final readonly class CreateConversationData
+ {
+     public function __construct(
+         public ?string $message,
+-        public ?string $file,
++        public UploadedFile|string|null $file,
+     ) {}
+ 
+     /**
+@@ -22,7 +23,7 @@ final readonly class CreateConversationData
+         $file = $payload['file'] ?? null;
+ 
+         $normalizedMessage = is_string($message) && $message !== '' ? $message : null;
+-        $normalizedFile = is_string($file) && $file !== '' ? $file : null;
++        $normalizedFile = ($file instanceof UploadedFile || (is_string($file) && $file !== '')) ? $file : null;
+ 
+         if ($normalizedMessage === null && $normalizedFile === null) {
+             throw new InvalidArgumentException('A conversation must have a message or a file.');
+diff --git a/app/DataTransferObjects/Project/InvitationData.php b/app/DataTransferObjects/Project/InvitationData.php
+new file mode 100644
+index 00000000..4d7d5b13
+--- /dev/null
++++ b/app/DataTransferObjects/Project/InvitationData.php
+@@ -0,0 +1,34 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Project;
++
++final readonly class InvitationData
++{
++    public function __construct(
++        public string $email,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $payload
++     */
++    public static function fromArray(array $payload): self
++    {
++        return new self(
++            email: (string) ($payload['email'] ?? ''),
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'email' => $this->email,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Project/ProjectInsightsQueryData.php b/app/DataTransferObjects/Project/ProjectInsightsQueryData.php
+new file mode 100644
+index 00000000..1dc378c2
+--- /dev/null
++++ b/app/DataTransferObjects/Project/ProjectInsightsQueryData.php
+@@ -0,0 +1,49 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Project;
++
++final readonly class ProjectInsightsQueryData
++{
++    private const array ALLOWED_SECTIONS = [
++        'health',
++        'task-health',
++        'collaboration',
++        'risk',
++        'stage',
++    ];
++
++    /**
++     * @param  array<int, string>  $sections
++     */
++    public function __construct(
++        public array $sections,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $payload
++     */
++    public static function fromArray(array $payload): self
++    {
++        $sections = $payload['sections'] ?? [];
++
++        if (! is_array($sections) || $sections === []) {
++            return new self(self::ALLOWED_SECTIONS);
++        }
++
++        return new self($sections);
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'sections' => $this->sections,
++        ];
++    }
++}
+diff --git a/app/Data/ProjectMetricsDto.php b/app/DataTransferObjects/Project/ProjectMetricsData.php
+similarity index 92%
+rename from app/Data/ProjectMetricsDto.php
+rename to app/DataTransferObjects/Project/ProjectMetricsData.php
+index a825d591..86e4a569 100644
+--- a/app/Data/ProjectMetricsDto.php
++++ b/app/DataTransferObjects/Project/ProjectMetricsData.php
+@@ -2,9 +2,9 @@
+ 
+ declare(strict_types=1);
+ 
+-namespace App\Data;
++namespace App\DataTransferObjects\Project;
+ 
+-final readonly class ProjectMetricsDto
++final readonly class ProjectMetricsData
+ {
+     /**
+      * Data transfer object for project metrics.
+diff --git a/app/DataTransferObjects/Subscription/SubscriptionPlanData.php b/app/DataTransferObjects/Subscription/SubscriptionPlanData.php
+new file mode 100644
+index 00000000..a7bb11a4
+--- /dev/null
++++ b/app/DataTransferObjects/Subscription/SubscriptionPlanData.php
+@@ -0,0 +1,34 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Subscription;
++
++final readonly class SubscriptionPlanData
++{
++    public function __construct(
++        public string $plan,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $payload
++     */
++    public static function fromArray(array $payload): self
++    {
++        return new self(
++            plan: trim((string) ($payload['plan'] ?? '')),
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'plan' => $this->plan,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Task/AssignTaskMembersData.php b/app/DataTransferObjects/Task/AssignTaskMembersData.php
+new file mode 100644
+index 00000000..ab6ba14c
+--- /dev/null
++++ b/app/DataTransferObjects/Task/AssignTaskMembersData.php
+@@ -0,0 +1,37 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Task;
++
++final readonly class AssignTaskMembersData
++{
++    /**
++     * @param  array<int, int>  $members
++     */
++    public function __construct(
++        public array $members,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            members: array_map('intval', $validated['members']),
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'members' => $this->members,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Task/UnassignTaskMemberData.php b/app/DataTransferObjects/Task/UnassignTaskMemberData.php
+new file mode 100644
+index 00000000..e289e781
+--- /dev/null
++++ b/app/DataTransferObjects/Task/UnassignTaskMemberData.php
+@@ -0,0 +1,34 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Task;
++
++final readonly class UnassignTaskMemberData
++{
++    public function __construct(
++        public int $member,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            member: (int) $validated['member'],
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'member' => $this->member,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/User/UserAvatarData.php b/app/DataTransferObjects/User/UserAvatarData.php
+new file mode 100644
+index 00000000..55775056
+--- /dev/null
++++ b/app/DataTransferObjects/User/UserAvatarData.php
+@@ -0,0 +1,14 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\User;
++
++use Illuminate\Http\UploadedFile;
++
++final readonly class UserAvatarData
++{
++    public function __construct(
++        public UploadedFile $avatar,
++    ) {}
++}
+diff --git a/app/DataTransferObjects/Zoom/AccessTokenDetails.php b/app/DataTransferObjects/Zoom/AccessTokenDetails.php
+deleted file mode 100644
+index 8fd24410..00000000
+--- a/app/DataTransferObjects/Zoom/AccessTokenDetails.php
++++ /dev/null
+@@ -1,16 +0,0 @@
+-<?php
+-
+-declare(strict_types=1);
+-
+-namespace App\DataTransferObjects\Zoom;
+-
+-use DateTimeImmutable;
+-
+-final class AccessTokenDetails
+-{
+-    public function __construct(
+-        public string $accessToken,
+-        public string $refreshToken,
+-        public DateTimeImmutable $expiresAt,
+-    ) {}
+-}
+diff --git a/app/DataTransferObjects/Zoom/AuthorizationCallbackDetails.php b/app/DataTransferObjects/Zoom/AuthorizationCallbackDetails.php
+index 2af21925..a573ae43 100644
+--- a/app/DataTransferObjects/Zoom/AuthorizationCallbackDetails.php
++++ b/app/DataTransferObjects/Zoom/AuthorizationCallbackDetails.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\DataTransferObjects\Zoom;
+ 
+-final class AuthorizationCallbackDetails
++final readonly class AuthorizationCallbackDetails
+ {
+     public function __construct(
+         public string $authorizationCode,
+diff --git a/app/DataTransferObjects/Zoom/AuthorizationRedirectDetails.php b/app/DataTransferObjects/Zoom/AuthorizationRedirectDetails.php
+index 1176339b..692e017b 100644
+--- a/app/DataTransferObjects/Zoom/AuthorizationRedirectDetails.php
++++ b/app/DataTransferObjects/Zoom/AuthorizationRedirectDetails.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\DataTransferObjects\Zoom;
+ 
+-final class AuthorizationRedirectDetails
++final readonly class AuthorizationRedirectDetails
+ {
+     public function __construct(
+         public string $authorizationUrl,
+diff --git a/app/DataTransferObjects/Zoom/MeetingStoreData.php b/app/DataTransferObjects/Zoom/MeetingStoreData.php
+new file mode 100644
+index 00000000..19fb7a94
+--- /dev/null
++++ b/app/DataTransferObjects/Zoom/MeetingStoreData.php
+@@ -0,0 +1,52 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Zoom;
++
++final readonly class MeetingStoreData
++{
++    public function __construct(
++        public string $topic,
++        public string $agenda,
++        public int $duration,
++        public string $startTime,
++        public string $timezone,
++        public string $password,
++        public bool $joinBeforeHost,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            topic: $validated['topic'],
++            agenda: $validated['agenda'],
++            duration: (int) $validated['duration'],
++            startTime: $validated['start_time'],
++            timezone: $validated['timezone'],
++            password: $validated['password'],
++            joinBeforeHost: (bool) $validated['join_before_host'],
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'topic' => $this->topic,
++            'agenda' => $this->agenda,
++            'duration' => $this->duration,
++            'start_time' => $this->startTime,
++            'timezone' => $this->timezone,
++            'password' => $this->password,
++            'join_before_host' => $this->joinBeforeHost,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Zoom/MeetingUpdateData.php b/app/DataTransferObjects/Zoom/MeetingUpdateData.php
+new file mode 100644
+index 00000000..ea8b4b24
+--- /dev/null
++++ b/app/DataTransferObjects/Zoom/MeetingUpdateData.php
+@@ -0,0 +1,52 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Zoom;
++
++final readonly class MeetingUpdateData
++{
++    public function __construct(
++        public ?string $topic = null,
++        public ?string $agenda = null,
++        public ?int $duration = null,
++        public ?string $startTime = null,
++        public ?string $timezone = null,
++        public ?string $password = null,
++        public ?bool $joinBeforeHost = null,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            topic: $validated['topic'] ?? null,
++            agenda: $validated['agenda'] ?? null,
++            duration: isset($validated['duration']) ? (int) $validated['duration'] : null,
++            startTime: $validated['start_time'] ?? null,
++            timezone: $validated['timezone'] ?? null,
++            password: $validated['password'] ?? null,
++            joinBeforeHost: isset($validated['join_before_host']) ? (bool) $validated['join_before_host'] : null,
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return array_filter([
++            'topic' => $this->topic,
++            'agenda' => $this->agenda,
++            'duration' => $this->duration,
++            'start_time' => $this->startTime,
++            'timezone' => $this->timezone,
++            'password' => $this->password,
++            'join_before_host' => $this->joinBeforeHost,
++        ], fn ($value) => $value !== null);
++    }
++}
+diff --git a/app/DataTransferObjects/Zoom/MeetingUpdatedWebhookData.php b/app/DataTransferObjects/Zoom/MeetingUpdatedWebhookData.php
+index 47485493..725fc47e 100644
+--- a/app/DataTransferObjects/Zoom/MeetingUpdatedWebhookData.php
++++ b/app/DataTransferObjects/Zoom/MeetingUpdatedWebhookData.php
+@@ -4,22 +4,35 @@ declare(strict_types=1);
+ 
+ namespace App\DataTransferObjects\Zoom;
+ 
++use Carbon\Carbon;
+ use InvalidArgumentException;
++use Throwable;
+ 
+-final class MeetingUpdatedWebhookData
++final readonly class MeetingUpdatedWebhookData
+ {
+     /**
+-     * @var array<string, mixed>
++     * @var list<string>
+      */
+-    public array $changes;
++    private const array ALLOWED_FIELDS = [
++        'topic',
++        'duration',
++        'password',
++        'start_time',
++        'timezone',
++        'uuid',
++        'join_url',
++        'start_url',
++        'agenda',
++    ];
+ 
+     /**
+      * @param  array<string, mixed>  $changes
+      */
+-    public function __construct(public int|string $meetingId, array $changes, public ?string $requestId)
+-    {
+-        $this->changes = MeetingWebhookUpdateData::normalizeChanges($changes);
+-    }
++    public function __construct(
++        public int|string $meetingId,
++        public array $changes,
++        public ?string $requestId,
++    ) {}
+ 
+     /**
+      * @param  array<string, mixed>  $payload
+@@ -31,10 +44,93 @@ final class MeetingUpdatedWebhookData
+             throw new InvalidArgumentException('Zoom webhook payload is missing a valid meeting id.');
+         }
+ 
++        $normalizedChanges = self::normalizeChanges($payload);
++
+         return new self(
+             meetingId: $meetingId,
+-            changes: $payload,
++            changes: $normalizedChanges,
+             requestId: $requestId,
+         );
+     }
++
++    /**
++     * @param  array<string, mixed>  $changes
++     * @return array<string, mixed>
++     */
++    private static function normalizeChanges(array $changes): array
++    {
++        $normalized = [];
++
++        foreach (self::ALLOWED_FIELDS as $field) {
++            if (! array_key_exists($field, $changes)) {
++                continue;
++            }
++
++            self::addNormalizedField($normalized, $field, $changes[$field]);
++        }
++
++        // Handle nested settings.join_before_host
++        if (isset($changes['settings']['join_before_host'])) {
++            $booleanValue = filter_var($changes['settings']['join_before_host'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
++
++            if ($booleanValue !== null) {
++                $normalized['join_before_host'] = $booleanValue;
++            }
++        }
++
++        return $normalized;
++    }
++
++    /**
++     * @param  array<string, mixed>  $normalized
++     */
++    private static function addNormalizedField(array &$normalized, string $field, mixed $value): void
++    {
++        switch ($field) {
++            case 'topic':
++            case 'password':
++            case 'join_url':
++            case 'start_url':
++            case 'timezone':
++            case 'uuid':
++            case 'agenda':
++                if (is_string($value)) {
++                    $normalized[$field] = $value;
++                }
++
++                break;
++
++            case 'duration':
++                if (is_numeric($value)) {
++                    $normalized[$field] = (int) $value;
++                }
++
++                break;
++
++            case 'start_time':
++                $normalizedStartTime = self::normalizeStartTime($value);
++
++                if ($normalizedStartTime !== null) {
++                    $normalized[$field] = $normalizedStartTime;
++                }
++
++                break;
++
++            default:
++                break;
++        }
++    }
++
++    private static function normalizeStartTime(mixed $value): ?string
++    {
++        if (! is_string($value) || $value === '') {
++            return null;
++        }
++
++        try {
++            return Carbon::parse($value)->utc()->toDateTimeString();
++        } catch (Throwable) {
++            return null;
++        }
++    }
+ }
+diff --git a/app/DataTransferObjects/Zoom/MeetingWebhookUpdateData.php b/app/DataTransferObjects/Zoom/MeetingWebhookUpdateData.php
+deleted file mode 100644
+index 38cc940e..00000000
+--- a/app/DataTransferObjects/Zoom/MeetingWebhookUpdateData.php
++++ /dev/null
+@@ -1,126 +0,0 @@
+-<?php
+-
+-declare(strict_types=1);
+-
+-namespace App\DataTransferObjects\Zoom;
+-
+-use Carbon\Carbon;
+-use Throwable;
+-
+-final readonly class MeetingWebhookUpdateData
+-{
+-    /**
+-     * @var list<string>
+-     */
+-    private const array ALLOWED_FIELDS = [
+-        'topic',
+-        'duration',
+-        'password',
+-        'start_time',
+-        'timezone',
+-        'uuid',
+-        'join_url',
+-        'start_url',
+-        'agenda',
+-    ];
+-
+-    /**
+-     * @param  array<string, mixed>  $changes
+-     */
+-    public function __construct(
+-        public int|string $meetingId,
+-        public array $changes,
+-    ) {}
+-
+-    /**
+-     * @param  array<string, mixed>  $payload
+-     */
+-    public static function fromPayloadObject(array $payload): self
+-    {
+-        return new self(
+-            meetingId: $payload['id'] ?? 0,
+-            changes: self::normalizeChanges($payload),
+-        );
+-    }
+-
+-    /**
+-     * @param  array<string, mixed>  $changes
+-     * @return array<string, mixed>
+-     */
+-    public static function normalizeChanges(array $changes): array
+-    {
+-        $normalized = [];
+-
+-        foreach (self::ALLOWED_FIELDS as $field) {
+-            if (! array_key_exists($field, $changes)) {
+-                continue;
+-            }
+-
+-            self::addNormalizedField($normalized, $field, $changes[$field]);
+-        }
+-
+-        // Handle nested settings.join_before_host
+-        if (isset($changes['settings']['join_before_host'])) {
+-            $booleanValue = filter_var($changes['settings']['join_before_host'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+-
+-            if ($booleanValue !== null) {
+-                $normalized['join_before_host'] = $booleanValue;
+-            }
+-        }
+-
+-        return $normalized;
+-    }
+-
+-    /**
+-     * @param  array<string, mixed>  $normalized
+-     */
+-    private static function addNormalizedField(array &$normalized, string $field, mixed $value): void
+-    {
+-        switch ($field) {
+-            case 'topic':
+-            case 'password':
+-            case 'join_url':
+-            case 'start_url':
+-            case 'timezone':
+-            case 'uuid':
+-            case 'agenda':
+-                if (is_string($value)) {
+-                    $normalized[$field] = $value;
+-                }
+-
+-                break;
+-
+-            case 'duration':
+-                if (is_numeric($value)) {
+-                    $normalized[$field] = (int) $value;
+-                }
+-
+-                break;
+-
+-            case 'start_time':
+-                $normalizedStartTime = self::normalizeStartTime($value);
+-
+-                if ($normalizedStartTime !== null) {
+-                    $normalized[$field] = $normalizedStartTime;
+-                }
+-
+-                break;
+-
+-            default:
+-                break;
+-        }
+-    }
+-
+-    private static function normalizeStartTime(mixed $value): ?string
+-    {
+-        if (! is_string($value) || $value === '') {
+-            return null;
+-        }
+-
+-        try {
+-            return Carbon::parse($value)->utc()->toDateTimeString();
+-        } catch (Throwable) {
+-            return null;
+-        }
+-    }
+-}
+diff --git a/app/DataTransferObjects/Zoom/MeetingZoomTokenData.php b/app/DataTransferObjects/Zoom/MeetingZoomTokenData.php
+new file mode 100644
+index 00000000..2d2ea752
+--- /dev/null
++++ b/app/DataTransferObjects/Zoom/MeetingZoomTokenData.php
+@@ -0,0 +1,36 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Zoom;
++
++use App\Enums\Meeting\MeetingTokenAction;
++
++final readonly class MeetingZoomTokenData
++{
++    public function __construct(
++        public MeetingTokenAction $action,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $validated
++     */
++    public static function fromValidated(array $validated): self
++    {
++        return new self(
++            action: MeetingTokenAction::from($validated['action']),
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API / Database.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'action' => $this->action->value,
++        ];
++    }
++}
+diff --git a/app/DataTransferObjects/Zoom/ZoomCallbackData.php b/app/DataTransferObjects/Zoom/ZoomCallbackData.php
+new file mode 100644
+index 00000000..85fe8554
+--- /dev/null
++++ b/app/DataTransferObjects/Zoom/ZoomCallbackData.php
+@@ -0,0 +1,40 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\DataTransferObjects\Zoom;
++
++final readonly class ZoomCallbackData
++{
++    public function __construct(
++        public ?string $code,
++        public string $state,
++        public ?string $error,
++    ) {}
++
++    /**
++     * @param  array<string, mixed>  $payload
++     */
++    public static function fromArray(array $payload): self
++    {
++        return new self(
++            code: isset($payload['code']) ? (string) $payload['code'] : null,
++            state: (string) ($payload['state'] ?? ''),
++            error: isset($payload['error']) ? (string) $payload['error'] : null,
++        );
++    }
++
++    /**
++     * Convert the DTO to the exact array shape expected by the API.
++     *
++     * @return array<string, mixed>
++     */
++    public function toArray(): array
++    {
++        return [
++            'code' => $this->code,
++            'state' => $this->state,
++            'error' => $this->error,
++        ];
++    }
++}
+diff --git a/app/Http/Controllers/Api/Auth/LoginController.php b/app/Http/Controllers/Api/Auth/LoginController.php
+index 0788e1a5..dd93352e 100644
+--- a/app/Http/Controllers/Api/Auth/LoginController.php
++++ b/app/Http/Controllers/Api/Auth/LoginController.php
+@@ -26,7 +26,10 @@ class LoginController extends ApiController
+      */
+     public function login(LoginUserRequest $request): JsonResponse
+     {
+-        $result = $this->loginUserService->startLoginFlow($request->email, $request);
++        $credentials = $request->toDto();
++        $ip = $request->ip();
++
++        $result = $this->loginUserService->startLoginFlow($credentials->email, $ip);
+ 
+         $user = $result->user;
+ 
+diff --git a/app/Http/Controllers/Api/Auth/OAuthController.php b/app/Http/Controllers/Api/Auth/OAuthController.php
+index 23b0e748..bf3deb41 100644
+--- a/app/Http/Controllers/Api/Auth/OAuthController.php
++++ b/app/Http/Controllers/Api/Auth/OAuthController.php
+@@ -9,6 +9,7 @@ use App\Enums\OAuthProvider;
+ use App\Exceptions\Integrations\ExternalServiceUnavailableException;
+ use App\Http\Controllers\Api\ApiController;
+ use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
++use App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource;
+ use App\Services\Auth\LoginUserService;
+ use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
+ use GuzzleHttp\Exception\GuzzleException;
+@@ -70,10 +71,12 @@ class OAuthController extends ApiController
+                 event(new Registered($user));
+             }
+ 
+-            $result = $this->loginUserService->startLoginFlow($user->email, $request);
++            $result = $this->loginUserService->startLoginFlow($user->email, $request->ip());
+ 
+             if ($result->twoFactor) {
+-                return $this->loginUserService->buildTwoFactorRequiredResponse($request);
++                return response()->json([
++                    'data' => (new TwoFactorChallengeResource)->resolve($request),
++                ], Response::HTTP_OK);
+             }
+ 
+             $payload = $this->loginUserService->performSessionLogin($user, $request);
+diff --git a/app/Http/Controllers/Api/Auth/RegisterController.php b/app/Http/Controllers/Api/Auth/RegisterController.php
+index e3e4bf6c..819086c4 100644
+--- a/app/Http/Controllers/Api/Auth/RegisterController.php
++++ b/app/Http/Controllers/Api/Auth/RegisterController.php
+@@ -38,7 +38,7 @@ class RegisterController extends ApiController
+     public function register(RegisterUserRequest $request, RegisterUserService $registerUserService): JsonResponse
+     {
+         try {
+-            $user = $registerUserService->register($request->registerUserData());
++            $user = $registerUserService->register($request->toDto());
+ 
+             return $this->respondCreated(new AuthenticatedUserResource($user));
+         } catch (TransportExceptionInterface $e) {
+diff --git a/app/Http/Controllers/Api/Auth/ResetPasswordController.php b/app/Http/Controllers/Api/Auth/ResetPasswordController.php
+index 57a80883..7c42541b 100644
+--- a/app/Http/Controllers/Api/Auth/ResetPasswordController.php
++++ b/app/Http/Controllers/Api/Auth/ResetPasswordController.php
+@@ -40,14 +40,16 @@ class ResetPasswordController extends ApiController
+      */
+     public function sendResetLink(ForgotPasswordRequest $request): JsonResponse
+     {
++        $data = $request->toDto();
++
+         $status = Password::sendResetLink(
+-            $request->only('email')
++            $data->toArray()
+         );
+ 
+         if ($status !== Password::RESET_LINK_SENT) {
+             Log::warning('Password reset link request failed', [
+                 'status' => $status,
+-                'user_id' => User::whereEmail($request->input('email'))->select('uuid')->first()?->uuid,
++                'user_id' => User::whereEmail($data->email)->select('uuid')->first()?->uuid,
+             ]);
+         }
+ 
+@@ -63,8 +65,10 @@ class ResetPasswordController extends ApiController
+      */
+     public function resetPassword(ResetPasswordRequest $request): JsonResponse
+     {
++        $data = $request->toDto();
++
+         $status = Password::reset(
+-            $request->only('email', 'password', 'password_confirmation', 'token'),
++            $data->toArray(),
+             function (User $user, string $password): void {
+                 $user->forceFill([
+                     'password' => Hash::make($password),
+@@ -82,7 +86,7 @@ class ResetPasswordController extends ApiController
+ 
+         Log::warning('Password reset attempt failed', [
+             'status' => $status,
+-            'user_id' => User::whereEmail($request->input('email'))->select('uuid')->first()?->uuid,
++            'user_id' => User::whereEmail($data->email)->select('uuid')->first()?->uuid,
+         ]);
+ 
+         throw new HttpException(HttpResponse::HTTP_BAD_REQUEST, 'Unable to reset password with the provided information.');
+diff --git a/app/Http/Controllers/Api/Auth/SpaAuthController.php b/app/Http/Controllers/Api/Auth/SpaAuthController.php
+index 9814161d..33cb7ce0 100644
+--- a/app/Http/Controllers/Api/Auth/SpaAuthController.php
++++ b/app/Http/Controllers/Api/Auth/SpaAuthController.php
+@@ -7,11 +7,13 @@ namespace App\Http\Controllers\Api\Auth;
+ use App\Http\Controllers\Api\ApiController;
+ use App\Http\Requests\Api\V1\Auth\LoginUserRequest;
+ use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
++use App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource;
+ use App\Services\Auth\LoginUserService;
+ use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
+ use Illuminate\Http\JsonResponse;
+ use Illuminate\Http\Request;
+ use Illuminate\Support\Facades\Auth;
++use Symfony\Component\HttpFoundation\Response;
+ 
+ class SpaAuthController extends ApiController
+ {
+@@ -32,12 +34,17 @@ class SpaAuthController extends ApiController
+     )]
+     public function loginSpa(LoginUserRequest $request): JsonResponse
+     {
+-        $result = $this->loginUserService->startLoginFlow($request->email, $request);
++        $credentials = $request->toDto();
++        $ip = $request->ip();
++
++        $result = $this->loginUserService->startLoginFlow($credentials->email, $ip);
+ 
+         $user = $result->user;
+ 
+-        if (($response = $this->loginUserService->twoFactorStateResponse($result, $request)) instanceof JsonResponse) {
+-            return $response;
++        if ($this->loginUserService->twoFactorStateResponse($result)) {
++            return response()->json([
++                'data' => (new TwoFactorChallengeResource)->resolve($request),
++            ], Response::HTTP_OK);
+         }
+ 
+         $payload = $this->loginUserService->performSessionLogin($user, $request);
+diff --git a/app/Http/Controllers/Api/Auth/TwoFactorController.php b/app/Http/Controllers/Api/Auth/TwoFactorController.php
+index e19959fd..33975254 100644
+--- a/app/Http/Controllers/Api/Auth/TwoFactorController.php
++++ b/app/Http/Controllers/Api/Auth/TwoFactorController.php
+@@ -84,8 +84,9 @@ class TwoFactorController extends ApiController
+     public function confirmTwoFactor(ConfirmTwoFactorRequest $request): JsonResponse
+     {
+         $user = $request->user();
++        $data = $request->toDto();
+ 
+-        if (! $user->confirmTwoFactorAuth($request->input('code'))) {
++        if (! $user->confirmTwoFactorAuth($data->code)) {
+             throw ValidationException::withMessages(['code' => 'Invalid code provided.']);
+         }
+ 
+@@ -105,6 +106,7 @@ class TwoFactorController extends ApiController
+     public function twoFactorLogin(TwoFactorLoginRequest $request): JsonResponse
+     {
+         $user = $request->user();
++        $data = $request->toDto();
+ 
+         $this->loginUserService->dispatchTimezoneIfNeeded($user);
+ 
+diff --git a/app/Http/Controllers/Api/Auth/VerificationController.php b/app/Http/Controllers/Api/Auth/VerificationController.php
+index 1d8a1eac..b1720a3b 100644
+--- a/app/Http/Controllers/Api/Auth/VerificationController.php
++++ b/app/Http/Controllers/Api/Auth/VerificationController.php
+@@ -5,11 +5,11 @@ declare(strict_types=1);
+ namespace App\Http\Controllers\Api\Auth;
+ 
+ use App\Http\Controllers\Api\ApiController;
++use App\Http\Requests\Api\V1\Auth\VerificationRequest;
+ use App\Models\User;
+ use App\Services\Auth\VerifyEmailService;
+ use Illuminate\Http\JsonResponse;
+ use Illuminate\Http\Request;
+-use Illuminate\Support\Facades\URL;
+ 
+ class VerificationController extends ApiController
+ {
+@@ -26,13 +26,15 @@ class VerificationController extends ApiController
+      *
+      * Confirms the signed verification request and marks the targeted user's email as verified.
+      */
+-    public function verify(Request $request, User $user): JsonResponse
++    public function verify(VerificationRequest $request, User $user): JsonResponse
+     {
++        $data = $request->toDto();
++
+         $verified = $this->verifyEmailService->verify(
+             user: $user,
+             authenticatedUser: $this->authenticatedUser(),
+-            hasValidSignature: URL::hasValidSignature($request),
+-            hash: (string) $request->query('hash', ''),
++            hasValidSignature: $data->hasValidSignature,
++            hash: $data->hash,
+         );
+ 
+         return $this->respondWithData([
+diff --git a/app/Http/Controllers/Api/OAuth/ZoomAuthController.php b/app/Http/Controllers/Api/OAuth/ZoomAuthController.php
+index 558a7ec6..613fccde 100644
+--- a/app/Http/Controllers/Api/OAuth/ZoomAuthController.php
++++ b/app/Http/Controllers/Api/OAuth/ZoomAuthController.php
+@@ -36,10 +36,10 @@ final class ZoomAuthController extends ApiController
+ 
+     public function callback(ZoomAuthorizationCallbackRequest $request): JsonResponse
+     {
+-        $error = trim((string) $request->string('error'));
++        $data = $request->toDto();
+ 
+-        if ($error !== '') {
+-            $state = trim((string) $request->string('state'));
++        if ($data->error !== null) {
++            $state = $data->state;
+ 
+             if ($state !== '') {
+                 $this->authorizationStateStore->forget($state);
+@@ -47,13 +47,24 @@ final class ZoomAuthController extends ApiController
+ 
+             abort(
+                 Response::HTTP_BAD_REQUEST,
+-                $error === 'access_denied'
++                $data->error === 'access_denied'
+                     ? 'Zoom account connection denied.'
+                     : 'Zoom authorization failed.',
+             );
+         }
+ 
+-        $accessDetails = $this->zoomOAuth->authorize($this->callbackDetails($request));
++        $codeVerifier = $this->authorizationStateStore->consume(
++            state: $data->state,
++            user: $this->authenticatedUser(),
++        );
++
++        $callbackDetails = new AuthorizationCallbackDetails(
++            authorizationCode: $data->code ?? '',
++            state: $data->state,
++            codeVerifier: $codeVerifier,
++        );
++
++        $accessDetails = $this->zoomOAuth->authorize($callbackDetails);
+ 
+         $this->oauthRepository->saveTokens(
+             $this->authenticatedUser(),
+@@ -67,21 +78,4 @@ final class ZoomAuthController extends ApiController
+ 
+         return $this->respondWithMessage('Zoom account connected successfully');
+     }
+-
+-    private function callbackDetails(ZoomAuthorizationCallbackRequest $request): AuthorizationCallbackDetails
+-    {
+-        $authorizationCode = (string) $request->string('code')->trim();
+-        $state = (string) $request->string('state')->trim();
+-
+-        $codeVerifier = $this->authorizationStateStore->consume(
+-            state: $state,
+-            user: $this->authenticatedUser(),
+-        );
+-
+-        return new AuthorizationCallbackDetails(
+-            authorizationCode: $authorizationCode,
+-            state: $state,
+-            codeVerifier: $codeVerifier,
+-        );
+-    }
+ }
+diff --git a/app/Http/Controllers/Api/V1/Admin/ProjectController.php b/app/Http/Controllers/Api/V1/Admin/ProjectController.php
+index 498bbcbe..3c3f9bf3 100644
+--- a/app/Http/Controllers/Api/V1/Admin/ProjectController.php
++++ b/app/Http/Controllers/Api/V1/Admin/ProjectController.php
+@@ -40,9 +40,9 @@ class ProjectController extends ApiController
+         ProjectBulkDeleteRequest $request,
+         BulkDeleteProjectsAction $bulkDeleteProjectsAction,
+     ): JsonResponse {
+-        $projectIds = $request->validated('project_ids');
++        $data = $request->toDto();
+ 
+-        $bulkDeleteProjectsAction->execute($projectIds);
++        $bulkDeleteProjectsAction->execute($data->ids);
+ 
+         return $this->respondWithMessage('Projects deleted successfully.');
+     }
+diff --git a/app/Http/Controllers/Api/V1/Admin/StageController.php b/app/Http/Controllers/Api/V1/Admin/StageController.php
+index cb8aa8c4..181c4546 100644
+--- a/app/Http/Controllers/Api/V1/Admin/StageController.php
++++ b/app/Http/Controllers/Api/V1/Admin/StageController.php
+@@ -25,14 +25,16 @@ class StageController extends ApiController
+ 
+     public function store(StageRequest $request): JsonResponse
+     {
+-        $stage = $this->stageService->create($request->validated());
++        $data = $request->toDto();
++        $stage = $this->stageService->create($data->toArray());
+ 
+         return $this->respondCreated(new StageResource($stage));
+     }
+ 
+     public function update(StageRequest $request, Stage $stage): JsonResponse
+     {
+-        $stage = $this->stageService->update($stage, $request->validated());
++        $data = $request->toDto();
++        $stage = $this->stageService->update($stage, $data->toArray());
+ 
+         return $this->respondUpdated(new StageResource($stage));
+     }
+diff --git a/app/Http/Controllers/Api/V1/Admin/StatusController.php b/app/Http/Controllers/Api/V1/Admin/StatusController.php
+index 5cbd5101..d010e42a 100644
+--- a/app/Http/Controllers/Api/V1/Admin/StatusController.php
++++ b/app/Http/Controllers/Api/V1/Admin/StatusController.php
+@@ -25,14 +25,16 @@ class StatusController extends ApiController
+ 
+     public function store(TaskStatusRequest $request): JsonResponse
+     {
+-        $status = $this->statusService->create($request->validated());
++        $data = $request->toDto();
++        $status = $this->statusService->create($data->toArray());
+ 
+         return $this->respondCreated(new TaskStatusResource($status));
+     }
+ 
+     public function update(TaskStatusRequest $request, Status $status): JsonResponse
+     {
+-        $status = $this->statusService->update($status, $request->validated());
++        $data = $request->toDto();
++        $status = $this->statusService->update($status, $data->toArray());
+ 
+         return $this->respondUpdated(new TaskStatusResource($status));
+     }
+diff --git a/app/Http/Controllers/Api/V1/Admin/TaskController.php b/app/Http/Controllers/Api/V1/Admin/TaskController.php
+index 761cc68c..2988cadb 100644
+--- a/app/Http/Controllers/Api/V1/Admin/TaskController.php
++++ b/app/Http/Controllers/Api/V1/Admin/TaskController.php
+@@ -25,9 +25,9 @@ class TaskController extends ApiController
+ 
+     public function bulkDelete(TaskBulkDeleteRequest $request, BulkDeleteTasksAction $bulkDeleteTasksAction): JsonResponse
+     {
+-        $taskIds = $request->validated('task_ids');
++        $data = $request->toDto();
+ 
+-        $bulkDeleteTasksAction->execute($taskIds);
++        $bulkDeleteTasksAction->execute($data->ids);
+ 
+         return $this->respondWithMessage('Tasks deleted successfully.');
+     }
+diff --git a/app/Http/Controllers/Api/V1/Admin/UserController.php b/app/Http/Controllers/Api/V1/Admin/UserController.php
+index 5030567c..58850919 100644
+--- a/app/Http/Controllers/Api/V1/Admin/UserController.php
++++ b/app/Http/Controllers/Api/V1/Admin/UserController.php
+@@ -30,7 +30,9 @@ class UserController extends ApiController
+ 
+     public function updateRole(UpdateUserRoleRequest $request, User $user): JsonResponse
+     {
+-        if ($request->boolean('is_admin')) {
++        $data = $request->toDto();
++
++        if ($data->isAdmin) {
+             $this->adminAccessService->grantAdminAccess($user, $request->user());
+ 
+             return $this->respondUpdated(new AdminUserResource($user->fresh([
+diff --git a/app/Http/Controllers/Api/V1/NotificationsController.php b/app/Http/Controllers/Api/V1/NotificationsController.php
+index fd24b49a..c3bbcc4b 100644
+--- a/app/Http/Controllers/Api/V1/NotificationsController.php
++++ b/app/Http/Controllers/Api/V1/NotificationsController.php
+@@ -71,9 +71,9 @@ class NotificationsController extends ApiController
+         string $notification,
+         UserNotificationService $userNotificationService,
+     ): JsonResponse {
+-        $status = $request->validated('status');
++        $data = $request->toDto();
+ 
+-        $userNotificationService->updateStatus($this->authenticatedUser(), $notification, $status);
++        $userNotificationService->updateStatus($this->authenticatedUser(), $notification, $data->status);
+ 
+         return $this->respondWithMessage('Notification status updated.');
+     }
+diff --git a/app/Http/Controllers/Api/V1/Project/ConversationController.php b/app/Http/Controllers/Api/V1/Project/ConversationController.php
+index 6b3c09d4..6a2cc037 100644
+--- a/app/Http/Controllers/Api/V1/Project/ConversationController.php
++++ b/app/Http/Controllers/Api/V1/Project/ConversationController.php
+@@ -44,8 +44,7 @@ class ConversationController extends ApiController
+         $conversation = $this->conversationService->storeConversation(
+             $project,
+             $this->authenticatedUser(),
+-            $request->conversationData(),
+-            $request->file('file'),
++            $request->toDto(),
+         );
+ 
+         if (! $conversation instanceof Conversation) {
+diff --git a/app/Http/Controllers/Api/V1/Project/MeetingZoomTokensController.php b/app/Http/Controllers/Api/V1/Project/MeetingZoomTokensController.php
+index 4558911f..32865c91 100644
+--- a/app/Http/Controllers/Api/V1/Project/MeetingZoomTokensController.php
++++ b/app/Http/Controllers/Api/V1/Project/MeetingZoomTokensController.php
+@@ -4,7 +4,6 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Controllers\Api\V1\Project;
+ 
+-use App\Enums\Meeting\MeetingTokenAction;
+ use App\Http\Controllers\Api\ApiController;
+ use App\Http\Requests\Api\V1\Zoom\MeetingZoomTokensRequest;
+ use App\Models\Meeting;
+@@ -23,15 +22,15 @@ class MeetingZoomTokensController extends ApiController
+         MeetingTokenService $tokenService,
+         MeetingPolicy $meetingPolicy
+     ): JsonResponse {
+-        $action = MeetingTokenAction::from($request->input('action'));
++        $data = $request->toDto();
+         $currentUser = $this->authenticatedUser();
+ 
+-        $response = $meetingPolicy->generateToken($currentUser, $project, $meeting, $action);
++        $response = $meetingPolicy->generateToken($currentUser, $project, $meeting, $data->action);
+         if (! $response->allowed()) {
+             abort(Response::HTTP_FORBIDDEN, $response->message());
+         }
+ 
+-        $tokens = $tokenService->generateTokens($project, $meeting, $currentUser, $action);
++        $tokens = $tokenService->generateTokens($project, $meeting, $currentUser, $data->action);
+ 
+         return $this->respondWithData($tokens, Response::HTTP_OK);
+     }
+diff --git a/app/Http/Controllers/Api/V1/Project/MeetingsController.php b/app/Http/Controllers/Api/V1/Project/MeetingsController.php
+index 710abd55..478abfb4 100644
+--- a/app/Http/Controllers/Api/V1/Project/MeetingsController.php
++++ b/app/Http/Controllers/Api/V1/Project/MeetingsController.php
+@@ -41,7 +41,7 @@ class MeetingsController extends ApiController
+         $projectMeeting = $meetingService->createMeetingForProject(
+             $project,
+             $this->authenticatedUser(),
+-            $request->validated(),
++            $request->toDto(),
+             $zoom,
+         );
+ 
+@@ -53,7 +53,7 @@ class MeetingsController extends ApiController
+         $meeting = $meetingService->updateProjectMeeting(
+             $meeting,
+             $this->authenticatedUser(),
+-            $request->validated(),
++            $request->toDto(),
+             $zoom,
+         );
+ 
+diff --git a/app/Http/Controllers/Api/V1/Project/ProjectController.php b/app/Http/Controllers/Api/V1/Project/ProjectController.php
+index 39f305b5..06286153 100644
+--- a/app/Http/Controllers/Api/V1/Project/ProjectController.php
++++ b/app/Http/Controllers/Api/V1/Project/ProjectController.php
+@@ -50,7 +50,7 @@ class ProjectController extends ApiController
+      */
+     public function store(ProjectStoreRequest $request): JsonResponse
+     {
+-        $project = $this->projectService->createProject($this->authenticatedUser(), $request->projectCreateData());
++        $project = $this->projectService->createProject($this->authenticatedUser(), $request->toDto());
+ 
+         return $this->respondCreated(
+             new ProjectResource($project, $this->projectService->projectLimits($project, $request->user()))
+@@ -84,7 +84,7 @@ class ProjectController extends ApiController
+     {
+         $this->authorize('access', $project);
+ 
+-        $data = $request->projectUpdateData();
++        $data = $request->toDto();
+ 
+         if ($data->isEmpty()) {
+             abort(Response::HTTP_BAD_REQUEST, "You haven't changed anything.");
+diff --git a/app/Http/Controllers/Api/V1/Project/ProjectInsightsController.php b/app/Http/Controllers/Api/V1/Project/ProjectInsightsController.php
+index a9203850..eee15532 100644
+--- a/app/Http/Controllers/Api/V1/Project/ProjectInsightsController.php
++++ b/app/Http/Controllers/Api/V1/Project/ProjectInsightsController.php
+@@ -29,7 +29,8 @@ class ProjectInsightsController extends ApiController
+      */
+     public function index(ProjectInsightsRequest $request, Project $project): ProjectInsightsResource
+     {
+-        $sections = $request->getSections();
++        $data = $request->toDto();
++        $sections = $data->sections;
+ 
+         $insights = $this->insightService->getInsights($project, $sections);
+ 
+diff --git a/app/Http/Controllers/Api/V1/Project/ProjectInvitationController.php b/app/Http/Controllers/Api/V1/Project/ProjectInvitationController.php
+index f92fc779..e0783f4d 100644
+--- a/app/Http/Controllers/Api/V1/Project/ProjectInvitationController.php
++++ b/app/Http/Controllers/Api/V1/Project/ProjectInvitationController.php
+@@ -23,9 +23,9 @@ final class ProjectInvitationController extends ApiController
+      */
+     public function store(Project $project, InvitationUsersRequest $request, InvitationService $invitationService): JsonResponse
+     {
+-        $validated = $request->validated();
++        $data = $request->toDto();
+ 
+-        $user = $invitationService->sendInvitationByEmail($project, $validated['email']);
++        $user = $invitationService->sendInvitationByEmail($project, $data->email);
+ 
+         $invitation = $user->inactiveMembers()
+             ->with('user')
+diff --git a/app/Http/Controllers/Api/V1/Project/ProjectMessageController.php b/app/Http/Controllers/Api/V1/Project/ProjectMessageController.php
+index f52d1b32..2ea1d505 100644
+--- a/app/Http/Controllers/Api/V1/Project/ProjectMessageController.php
++++ b/app/Http/Controllers/Api/V1/Project/ProjectMessageController.php
+@@ -15,7 +15,7 @@ final class ProjectMessageController extends ApiController
+ {
+     public function store(Project $project, MessageRequest $request, MessageService $messageService): JsonResponse
+     {
+-        return $this->respondWithMessage($messageService->send($project, $request->messageData()));
++        return $this->respondWithMessage($messageService->send($project, $request->toDto()));
+     }
+ 
+     public function destroy(Project $project, Message $message, MessageService $messageService): JsonResponse
+diff --git a/app/Http/Controllers/Api/V1/SubscriptionController.php b/app/Http/Controllers/Api/V1/SubscriptionController.php
+index 6e57c773..3deaf7e7 100644
+--- a/app/Http/Controllers/Api/V1/SubscriptionController.php
++++ b/app/Http/Controllers/Api/V1/SubscriptionController.php
+@@ -32,7 +32,8 @@ class SubscriptionController extends ApiController
+     )]
+     public function store(Paddle $paddle, SubscriptionRequest $request): JsonResponse
+     {
+-        $payLink = $paddle->subscribe($this->authenticatedUser(), (string) $request->string('plan')->trim());
++        $data = $request->toDto();
++        $payLink = $paddle->subscribe($this->authenticatedUser(), $data->plan);
+ 
+         return $this->respondWithData([
+             'paylink' => $payLink,
+@@ -70,7 +71,8 @@ class SubscriptionController extends ApiController
+     public function update(Paddle $paddle, SubscriptionRequest $request): JsonResponse
+     {
+         $user = $this->authenticatedUser();
+-        $paddle->swap($user, (string) $request->string('plan')->trim());
++        $data = $request->toDto();
++        $paddle->swap($user, $data->plan);
+ 
+         return $this->respondWithData(
+             $this->subscriptionViewService->createFor($user),
+@@ -90,7 +92,8 @@ class SubscriptionController extends ApiController
+     public function destroy(Paddle $paddle, SubscriptionRequest $request): JsonResponse
+     {
+         $user = $this->authenticatedUser();
+-        $paddle->cancel($user, (string) $request->string('plan')->trim());
++        $data = $request->toDto();
++        $paddle->cancel($user, $data->plan);
+ 
+         return $this->respondWithData(
+             $this->subscriptionViewService->createFor($user),
+diff --git a/app/Http/Controllers/Api/V1/Task/AssignTaskMembersController.php b/app/Http/Controllers/Api/V1/Task/AssignTaskMembersController.php
+index a81003a8..519d09b4 100644
+--- a/app/Http/Controllers/Api/V1/Task/AssignTaskMembersController.php
++++ b/app/Http/Controllers/Api/V1/Task/AssignTaskMembersController.php
+@@ -21,8 +21,7 @@ final class AssignTaskMembersController extends ApiController
+      */
+     public function __invoke(Project $project, Task $task, TaskMembersRequest $request, TaskService $service): JsonResponse
+     {
+-        $members = $request->validated('members');
+-        $task = $service->assignMembers($task, $members, $project, $this->authenticatedUser());
++        $task = $service->assignMembers($task, $request->toDto(), $project, $this->authenticatedUser());
+ 
+         return $this->respondUpdated(new TaskResource($task));
+     }
+diff --git a/app/Http/Controllers/Api/V1/Task/TaskController.php b/app/Http/Controllers/Api/V1/Task/TaskController.php
+index 1eaadea4..13fa4057 100644
+--- a/app/Http/Controllers/Api/V1/Task/TaskController.php
++++ b/app/Http/Controllers/Api/V1/Task/TaskController.php
+@@ -47,7 +47,7 @@ class TaskController extends ApiController
+      */
+     public function store(Project $project, TaskRequest $request, TaskService $taskService): JsonResponse
+     {
+-        $task = $taskService->createTask($project, $this->authenticatedUser(), $request->taskCreateData());
++        $task = $taskService->createTask($project, $this->authenticatedUser(), $request->toDto());
+ 
+         return $this->respondCreated(new TaskResource($task));
+ 
+@@ -74,7 +74,7 @@ class TaskController extends ApiController
+     {
+         $this->authorize('manage', $task);
+ 
+-        $task = $taskService->updateTask($task, $request->taskUpdateData());
++        $task = $taskService->updateTask($task, $request->toDto());
+ 
+         return $this->respondUpdated(new TaskResource($task));
+     }
+diff --git a/app/Http/Controllers/Api/V1/Task/UnassignTaskMemberController.php b/app/Http/Controllers/Api/V1/Task/UnassignTaskMemberController.php
+index 56819296..29388bbb 100644
+--- a/app/Http/Controllers/Api/V1/Task/UnassignTaskMemberController.php
++++ b/app/Http/Controllers/Api/V1/Task/UnassignTaskMemberController.php
+@@ -21,8 +21,7 @@ final class UnassignTaskMemberController extends ApiController
+      */
+     public function __invoke(Project $project, Task $task, TaskMemberUnassignRequest $request, TaskService $service): JsonResponse
+     {
+-        $memberId = (int) $request->validated('member');
+-        $task = $service->unassignMember($task, $memberId);
++        $task = $service->unassignMember($task, $request->toDto());
+ 
+         return $this->respondUpdated(new TaskResource($task));
+     }
+diff --git a/app/Http/Controllers/Api/V1/TokenController.php b/app/Http/Controllers/Api/V1/TokenController.php
+index 2f73aa6d..aaf38a0b 100644
+--- a/app/Http/Controllers/Api/V1/TokenController.php
++++ b/app/Http/Controllers/Api/V1/TokenController.php
+@@ -35,7 +35,7 @@ class TokenController extends ApiController
+      */
+     public function store(UserTokenRequest $request): JsonResponse
+     {
+-        $data = $request->tokenCreateData();
++        $data = $request->toDto();
+ 
+         $token = $this->apiTokenService->createForUser($this->authenticatedUser(), $data->name, $data->expires_at);
+ 
+diff --git a/app/Http/Controllers/Api/V1/User/AvatarController.php b/app/Http/Controllers/Api/V1/User/AvatarController.php
+index a4e996c5..f74a41b0 100644
+--- a/app/Http/Controllers/Api/V1/User/AvatarController.php
++++ b/app/Http/Controllers/Api/V1/User/AvatarController.php
+@@ -28,7 +28,7 @@ class AvatarController extends ApiController
+     {
+         $this->authorize('owner', $user);
+ 
+-        $service->update($user, $request->file('avatar'));
++        $service->update($user, $request->toDto()->avatar);
+ 
+         return $this->respondWithData([
+             'avatar' => (string) $user->avatar_path,
+diff --git a/app/Http/Controllers/Api/V1/User/UserController.php b/app/Http/Controllers/Api/V1/User/UserController.php
+index 710e6c02..aa64006b 100644
+--- a/app/Http/Controllers/Api/V1/User/UserController.php
++++ b/app/Http/Controllers/Api/V1/User/UserController.php
+@@ -50,7 +50,7 @@ class UserController extends ApiController
+     {
+         $this->authorize('owner', $user);
+ 
+-        $updatedUser = $this->userService->updateUser($user, $request->updateUserData());
++        $updatedUser = $this->userService->updateUser($user, $request->toDto());
+ 
+         return $this->respondUpdated(new UserProfileResource($updatedUser));
+     }
+diff --git a/app/Http/Controllers/Api/V1/Webhooks/ZoomWebhookController.php b/app/Http/Controllers/Api/V1/Webhooks/ZoomWebhookController.php
+index 466ad025..9cca360a 100644
+--- a/app/Http/Controllers/Api/V1/Webhooks/ZoomWebhookController.php
++++ b/app/Http/Controllers/Api/V1/Webhooks/ZoomWebhookController.php
+@@ -11,7 +11,6 @@ use App\Http\Requests\Api\V1\Zoom\MeetingStartedWebhookRequest;
+ use App\Http\Requests\Api\V1\Zoom\MeetingUpdatedWebhookRequest;
+ use App\Services\Webhooks\ZoomWebhookDispatcher;
+ use Illuminate\Http\JsonResponse;
+-use Illuminate\Http\Request;
+ 
+ class ZoomWebhookController extends ApiController
+ {
+@@ -23,59 +22,29 @@ class ZoomWebhookController extends ApiController
+ 
+     public function update(MeetingUpdatedWebhookRequest $request): JsonResponse
+     {
+-        $request->validated();
+-
+-        /** @var array<string, mixed> $object */
+-        $object = $this->payloadObject($request);
+-
+-        $this->dispatcher->dispatchUpdate($object, $request->header('x-zm-request-id'));
++        $this->dispatcher->dispatchUpdate($request->toDto());
+ 
+         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
+     }
+ 
+     public function delete(MeetingDeletedWebhookRequest $request): JsonResponse
+     {
+-        $request->validated();
+-
+-        /** @var array<string, mixed> $object */
+-        $object = $this->payloadObject($request);
+-
+-        $this->dispatcher->dispatchDelete($object, $request->header('x-zm-request-id'));
++        $this->dispatcher->dispatchDelete($request->toDto());
+ 
+         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
+     }
+ 
+     public function start(MeetingStartedWebhookRequest $request): JsonResponse
+     {
+-        $request->validated();
+-
+-        /** @var array<string, mixed> $object */
+-        $object = $this->payloadObject($request);
+-
+-        $this->dispatcher->dispatchStart($object, $request->header('x-zm-request-id'));
++        $this->dispatcher->dispatchStart($request->toDto());
+ 
+         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
+     }
+ 
+     public function ended(MeetingEndedWebhookRequest $request): JsonResponse
+     {
+-        $request->validated();
+-
+-        /** @var array<string, mixed> $object */
+-        $object = $this->payloadObject($request);
+-
+-        $this->dispatcher->dispatchEnded($object, $request->header('x-zm-request-id'));
++        $this->dispatcher->dispatchEnded($request->toDto());
+ 
+         return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
+     }
+-
+-    /**
+-     * @return array<string, mixed>
+-     */
+-    private function payloadObject(Request $request): array
+-    {
+-        $object = $request->input('payload.object');
+-
+-        return is_array($object) ? $object : [];
+-    }
+ }
+diff --git a/app/Http/Requests/Api/V1/Admin/ProjectBulkDeleteRequest.php b/app/Http/Requests/Api/V1/Admin/ProjectBulkDeleteRequest.php
+index e1aa6137..423db346 100644
+--- a/app/Http/Requests/Api/V1/Admin/ProjectBulkDeleteRequest.php
++++ b/app/Http/Requests/Api/V1/Admin/ProjectBulkDeleteRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Admin;
+ 
++use App\DataTransferObjects\Admin\BulkDeleteData;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Override;
+ 
+@@ -41,4 +42,9 @@ class ProjectBulkDeleteRequest extends FormRequest
+             'project_ids.*.exists' => 'One or more selected projects do not exist.',
+         ];
+     }
++
++    public function toDto(): BulkDeleteData
++    {
++        return BulkDeleteData::fromIds($this->validated()['project_ids']);
++    }
+ }
+diff --git a/app/Http/Requests/Api/V1/Admin/StageRequest.php b/app/Http/Requests/Api/V1/Admin/StageRequest.php
+index f56a3e1f..59965620 100644
+--- a/app/Http/Requests/Api/V1/Admin/StageRequest.php
++++ b/app/Http/Requests/Api/V1/Admin/StageRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Admin;
+ 
++use App\DataTransferObjects\Admin\AdminStageData;
+ use App\Models\Stage;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Illuminate\Validation\Rule;
+@@ -53,4 +54,9 @@ class StageRequest extends FormRequest
+             'name.required' => 'The stage name is required.',
+         ];
+     }
++
++    public function toDto(): AdminStageData
++    {
++        return AdminStageData::fromValidated($this->validated());
++    }
+ }
+diff --git a/app/Http/Requests/Api/V1/Admin/TaskBulkDeleteRequest.php b/app/Http/Requests/Api/V1/Admin/TaskBulkDeleteRequest.php
+index d48c70b1..089b8a52 100644
+--- a/app/Http/Requests/Api/V1/Admin/TaskBulkDeleteRequest.php
++++ b/app/Http/Requests/Api/V1/Admin/TaskBulkDeleteRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Admin;
+ 
++use App\DataTransferObjects\Admin\BulkDeleteData;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Override;
+ 
+@@ -41,4 +42,9 @@ class TaskBulkDeleteRequest extends FormRequest
+             'task_ids.*.exists' => 'One or more selected tasks do not exist.',
+         ];
+     }
++
++    public function toDto(): BulkDeleteData
++    {
++        return BulkDeleteData::fromIds($this->validated()['task_ids']);
++    }
+ }
+diff --git a/app/Http/Requests/Api/V1/Admin/TaskStatusRequest.php b/app/Http/Requests/Api/V1/Admin/TaskStatusRequest.php
+index dde450e5..c6e1ba62 100644
+--- a/app/Http/Requests/Api/V1/Admin/TaskStatusRequest.php
++++ b/app/Http/Requests/Api/V1/Admin/TaskStatusRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Admin;
+ 
++use App\DataTransferObjects\Admin\TaskStatusData;
+ use App\Models\TaskStatus;
+ use Closure;
+ use Illuminate\Foundation\Http\FormRequest;
+@@ -45,4 +46,9 @@ class TaskStatusRequest extends FormRequest
+             },
+         ];
+     }
++
++    public function toDto(): TaskStatusData
++    {
++        return TaskStatusData::fromValidated($this->validated());
++    }
+ }
+diff --git a/app/Http/Requests/Api/V1/Admin/UpdateUserRoleRequest.php b/app/Http/Requests/Api/V1/Admin/UpdateUserRoleRequest.php
+index a2f3ae7f..83fe0c9f 100644
+--- a/app/Http/Requests/Api/V1/Admin/UpdateUserRoleRequest.php
++++ b/app/Http/Requests/Api/V1/Admin/UpdateUserRoleRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Admin;
+ 
++use App\DataTransferObjects\Admin\UpdateUserRoleData;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Override;
+ 
+@@ -14,6 +15,11 @@ class UpdateUserRoleRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): UpdateUserRoleData
++    {
++        return UpdateUserRoleData::fromArray($this->validated());
++    }
++
+     /**
+      * @return array<string, mixed>
+      */
+diff --git a/app/Http/Requests/Api/V1/Auth/ConfirmTwoFactorRequest.php b/app/Http/Requests/Api/V1/Auth/ConfirmTwoFactorRequest.php
+index 952fd64f..1f1daa07 100644
+--- a/app/Http/Requests/Api/V1/Auth/ConfirmTwoFactorRequest.php
++++ b/app/Http/Requests/Api/V1/Auth/ConfirmTwoFactorRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Auth;
+ 
++use App\DataTransferObjects\Auth\TwoFactorConfirmData;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Foundation\Http\FormRequest;
+ 
+@@ -55,6 +56,11 @@ class ConfirmTwoFactorRequest extends FormRequest
+         });
+     }
+ 
++    public function toDto(): TwoFactorConfirmData
++    {
++        return TwoFactorConfirmData::fromValidated($this->validated());
++    }
++
+     /**
+      * Validate 2FA setup status and code
+      *
+diff --git a/app/Http/Requests/Api/V1/Auth/DisableTwoFactorRequest.php b/app/Http/Requests/Api/V1/Auth/DisableTwoFactorRequest.php
+index 06379628..ce5b4175 100644
+--- a/app/Http/Requests/Api/V1/Auth/DisableTwoFactorRequest.php
++++ b/app/Http/Requests/Api/V1/Auth/DisableTwoFactorRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Auth;
+ 
++use App\DataTransferObjects\Auth\TwoFactorDisableData;
+ use Illuminate\Foundation\Http\FormRequest;
+ 
+ /**
+@@ -43,6 +44,11 @@ class DisableTwoFactorRequest extends FormRequest
+         });
+     }
+ 
++    public function toDto(): TwoFactorDisableData
++    {
++        return TwoFactorDisableData::fromValidated($this->validated());
++    }
++
+     /**
+      * Validate that 2FA is enabled before disabling
+      *
+diff --git a/app/Http/Requests/Api/V1/Auth/ForgotPasswordRequest.php b/app/Http/Requests/Api/V1/Auth/ForgotPasswordRequest.php
+index d045994a..edeb0905 100644
+--- a/app/Http/Requests/Api/V1/Auth/ForgotPasswordRequest.php
++++ b/app/Http/Requests/Api/V1/Auth/ForgotPasswordRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Auth;
+ 
++use App\DataTransferObjects\Auth\ForgotPasswordData;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Foundation\Http\FormRequest;
+ 
+@@ -18,6 +19,11 @@ class ForgotPasswordRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): ForgotPasswordData
++    {
++        return ForgotPasswordData::fromArray($this->validated());
++    }
++
+     /**
+      * Get the validation rules that apply to the request.
+      *
+diff --git a/app/Http/Requests/Api/V1/Auth/LoginUserRequest.php b/app/Http/Requests/Api/V1/Auth/LoginUserRequest.php
+index 375b755b..22b1e607 100644
+--- a/app/Http/Requests/Api/V1/Auth/LoginUserRequest.php
++++ b/app/Http/Requests/Api/V1/Auth/LoginUserRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Auth;
+ 
++use App\DataTransferObjects\Auth\LoginCredentialsData;
+ use App\Models\User;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Contracts\Validation\Validator as ValidatorContract;
+@@ -21,6 +22,11 @@ class LoginUserRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): LoginCredentialsData
++    {
++        return LoginCredentialsData::fromArray($this->validated());
++    }
++
+     /**
+      * @return array<string, mixed>
+      */
+diff --git a/app/Http/Requests/Api/V1/Auth/PrepareTwoFactorRequest.php b/app/Http/Requests/Api/V1/Auth/PrepareTwoFactorRequest.php
+index 17ac76a7..97c4b43f 100644
+--- a/app/Http/Requests/Api/V1/Auth/PrepareTwoFactorRequest.php
++++ b/app/Http/Requests/Api/V1/Auth/PrepareTwoFactorRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Auth;
+ 
++use App\DataTransferObjects\Auth\TwoFactorPrepareData;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Foundation\Http\FormRequest;
+ 
+@@ -55,6 +56,11 @@ class PrepareTwoFactorRequest extends FormRequest
+         });
+     }
+ 
++    public function toDto(): TwoFactorPrepareData
++    {
++        return TwoFactorPrepareData::fromValidated($this->validated());
++    }
++
+     /**
+      * Validate that 2FA is not already enabled
+      *
+diff --git a/app/Http/Requests/Api/V1/Auth/RegisterUserRequest.php b/app/Http/Requests/Api/V1/Auth/RegisterUserRequest.php
+index f5de7767..2784b512 100644
+--- a/app/Http/Requests/Api/V1/Auth/RegisterUserRequest.php
++++ b/app/Http/Requests/Api/V1/Auth/RegisterUserRequest.php
+@@ -36,7 +36,7 @@ class RegisterUserRequest extends FormRequest
+         return true;
+     }
+ 
+-    public function registerUserData(): RegisterUserData
++    public function toDto(): RegisterUserData
+     {
+         /** @var array<string, mixed> $validated */
+         $validated = $this->validated();
+diff --git a/app/Http/Requests/Api/V1/Auth/ResetPasswordRequest.php b/app/Http/Requests/Api/V1/Auth/ResetPasswordRequest.php
+index a5107cfa..a4cdc29b 100644
+--- a/app/Http/Requests/Api/V1/Auth/ResetPasswordRequest.php
++++ b/app/Http/Requests/Api/V1/Auth/ResetPasswordRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Auth;
+ 
++use App\DataTransferObjects\Auth\ResetPasswordData;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Foundation\Http\FormRequest;
+ 
+@@ -53,4 +54,9 @@ class ResetPasswordRequest extends FormRequest
+             // `password` rules already include `confirmed` via RegisterUserRequest::passwordRules()
+         ];
+     }
++
++    public function toDto(): ResetPasswordData
++    {
++        return ResetPasswordData::fromValidated($this->validated());
++    }
+ }
+diff --git a/app/Http/Requests/Api/V1/Auth/TwoFactorLoginRequest.php b/app/Http/Requests/Api/V1/Auth/TwoFactorLoginRequest.php
+index 2bad7b64..18668de5 100644
+--- a/app/Http/Requests/Api/V1/Auth/TwoFactorLoginRequest.php
++++ b/app/Http/Requests/Api/V1/Auth/TwoFactorLoginRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Auth;
+ 
++use App\DataTransferObjects\Auth\TwoFactorLoginData;
+ use App\Models\User;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Exception;
+@@ -66,6 +67,11 @@ class TwoFactorLoginRequest extends FormRequest
+         });
+     }
+ 
++    public function toDto(): TwoFactorLoginData
++    {
++        return TwoFactorLoginData::fromValidated($this->validated());
++    }
++
+     /**
+      * Validate 2FA session and code
+      */
+diff --git a/app/Http/Requests/Api/V1/Auth/VerificationRequest.php b/app/Http/Requests/Api/V1/Auth/VerificationRequest.php
+new file mode 100644
+index 00000000..169161cc
+--- /dev/null
++++ b/app/Http/Requests/Api/V1/Auth/VerificationRequest.php
+@@ -0,0 +1,32 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Http\Requests\Api\V1\Auth;
++
++use App\DataTransferObjects\Auth\VerificationData;
++use Dedoc\Scramble\Attributes\SchemaName;
++use Illuminate\Foundation\Http\FormRequest;
++use Illuminate\Support\Facades\URL;
++
++#[SchemaName('VerificationRequestData')]
++class VerificationRequest extends FormRequest
++{
++    public function authorize(): bool
++    {
++        return true;
++    }
++
++    public function rules(): array
++    {
++        return [];
++    }
++
++    public function toDto(): VerificationData
++    {
++        return new VerificationData(
++            hash: (string) $this->query('hash', ''),
++            hasValidSignature: URL::hasValidSignature($this),
++        );
++    }
++}
+diff --git a/app/Http/Requests/Api/V1/Notifications/NotificationStatusUpdateRequest.php b/app/Http/Requests/Api/V1/Notifications/NotificationStatusUpdateRequest.php
+index 36230511..93433690 100644
+--- a/app/Http/Requests/Api/V1/Notifications/NotificationStatusUpdateRequest.php
++++ b/app/Http/Requests/Api/V1/Notifications/NotificationStatusUpdateRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Notifications;
+ 
++use App\DataTransferObjects\Notification\NotificationStatusUpdateData;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Override;
+@@ -42,4 +43,9 @@ class NotificationStatusUpdateRequest extends FormRequest
+             'status.in' => 'The notification status must be read or unread.',
+         ];
+     }
++
++    public function toDto(): NotificationStatusUpdateData
++    {
++        return NotificationStatusUpdateData::fromValidated($this->validated());
++    }
+ }
+diff --git a/app/Http/Requests/Api/V1/Project/ConversationRequest.php b/app/Http/Requests/Api/V1/Project/ConversationRequest.php
+index ac160c0f..2e344b89 100644
+--- a/app/Http/Requests/Api/V1/Project/ConversationRequest.php
++++ b/app/Http/Requests/Api/V1/Project/ConversationRequest.php
+@@ -20,7 +20,7 @@ class ConversationRequest extends FormRequest
+         return true;
+     }
+ 
+-    public function conversationData(): CreateConversationData
++    public function toDto(): CreateConversationData
+     {
+         /** @var array<string, mixed> $validated */
+         $validated = $this->validated();
+diff --git a/app/Http/Requests/Api/V1/Project/InvitationUsersRequest.php b/app/Http/Requests/Api/V1/Project/InvitationUsersRequest.php
+index d32e9ea0..76e06d65 100644
+--- a/app/Http/Requests/Api/V1/Project/InvitationUsersRequest.php
++++ b/app/Http/Requests/Api/V1/Project/InvitationUsersRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Project;
+ 
++use App\DataTransferObjects\Project\InvitationData;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Illuminate\Validation\Validator;
+ 
+@@ -17,6 +18,11 @@ class InvitationUsersRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): InvitationData
++    {
++        return InvitationData::fromArray($this->validated());
++    }
++
+     /**
+      * @return array<string, mixed>
+      */
+diff --git a/app/Http/Requests/Api/V1/Project/MessageRequest.php b/app/Http/Requests/Api/V1/Project/MessageRequest.php
+index 2b472509..9907ecf1 100644
+--- a/app/Http/Requests/Api/V1/Project/MessageRequest.php
++++ b/app/Http/Requests/Api/V1/Project/MessageRequest.php
+@@ -44,7 +44,7 @@ class MessageRequest extends FormRequest
+     /**
+      * Convert the request into a ProjectMessageData DTO.
+      */
+-    public function messageData(): ProjectMessageData
++    public function toDto(): ProjectMessageData
+     {
+         return ProjectMessageData::fromArray($this->validated());
+     }
+diff --git a/app/Http/Requests/Api/V1/Project/ProjectInsightsRequest.php b/app/Http/Requests/Api/V1/Project/ProjectInsightsRequest.php
+index 84717f3f..0b0d7b15 100644
+--- a/app/Http/Requests/Api/V1/Project/ProjectInsightsRequest.php
++++ b/app/Http/Requests/Api/V1/Project/ProjectInsightsRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Project;
+ 
++use App\DataTransferObjects\Project\ProjectInsightsQueryData;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Illuminate\Validation\Rule;
+ use Override;
+@@ -23,6 +24,11 @@ class ProjectInsightsRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): ProjectInsightsQueryData
++    {
++        return ProjectInsightsQueryData::fromArray($this->validated());
++    }
++
+     /**
+      * @return array<string, mixed>
+      */
+diff --git a/app/Http/Requests/Api/V1/Project/ProjectStoreRequest.php b/app/Http/Requests/Api/V1/Project/ProjectStoreRequest.php
+index d954ec31..6183aab9 100644
+--- a/app/Http/Requests/Api/V1/Project/ProjectStoreRequest.php
++++ b/app/Http/Requests/Api/V1/Project/ProjectStoreRequest.php
+@@ -19,7 +19,7 @@ class ProjectStoreRequest extends FormRequest
+         return true;
+     }
+ 
+-    public function projectCreateData(): ProjectCreateData
++    public function toDto(): ProjectCreateData
+     {
+         /** @var array<string, mixed> $validated */
+         $validated = $this->validated();
+diff --git a/app/Http/Requests/Api/V1/Project/ProjectUpdateRequest.php b/app/Http/Requests/Api/V1/Project/ProjectUpdateRequest.php
+index 51911ba4..d86e385a 100644
+--- a/app/Http/Requests/Api/V1/Project/ProjectUpdateRequest.php
++++ b/app/Http/Requests/Api/V1/Project/ProjectUpdateRequest.php
+@@ -21,7 +21,7 @@ class ProjectUpdateRequest extends FormRequest
+         return true;
+     }
+ 
+-    public function projectUpdateData(): ProjectUpdateData
++    public function toDto(): ProjectUpdateData
+     {
+         /** @var array<string, mixed> $validated */
+         $validated = $this->validated();
+diff --git a/app/Http/Requests/Api/V1/SubscriptionRequest.php b/app/Http/Requests/Api/V1/SubscriptionRequest.php
+index d593a034..5d3d755f 100644
+--- a/app/Http/Requests/Api/V1/SubscriptionRequest.php
++++ b/app/Http/Requests/Api/V1/SubscriptionRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1;
+ 
++use App\DataTransferObjects\Subscription\SubscriptionPlanData;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Override;
+@@ -19,6 +20,11 @@ class SubscriptionRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): SubscriptionPlanData
++    {
++        return SubscriptionPlanData::fromArray($this->validated());
++    }
++
+     /**
+      * Get the validation rules that apply to the request.
+      *
+diff --git a/app/Http/Requests/Api/V1/Task/TaskMemberUnassignRequest.php b/app/Http/Requests/Api/V1/Task/TaskMemberUnassignRequest.php
+index dceeddc2..10f14661 100644
+--- a/app/Http/Requests/Api/V1/Task/TaskMemberUnassignRequest.php
++++ b/app/Http/Requests/Api/V1/Task/TaskMemberUnassignRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Task;
+ 
++use App\DataTransferObjects\Task\UnassignTaskMemberData;
+ use App\Rules\TaskAssigneeMember;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Foundation\Http\FormRequest;
+@@ -43,4 +44,9 @@ class TaskMemberUnassignRequest extends FormRequest
+             'member.exists' => 'The selected task member was not found.',
+         ];
+     }
++
++    public function toDto(): UnassignTaskMemberData
++    {
++        return UnassignTaskMemberData::fromValidated($this->validated());
++    }
+ }
+diff --git a/app/Http/Requests/Api/V1/Task/TaskMembersRequest.php b/app/Http/Requests/Api/V1/Task/TaskMembersRequest.php
+index 284c1bc1..7d9cca84 100644
+--- a/app/Http/Requests/Api/V1/Task/TaskMembersRequest.php
++++ b/app/Http/Requests/Api/V1/Task/TaskMembersRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Task;
+ 
++use App\DataTransferObjects\Task\AssignTaskMembersData;
+ use App\Rules\ActiveProjectMember;
+ use Closure;
+ use Dedoc\Scramble\Attributes\SchemaName;
+@@ -48,6 +49,11 @@ class TaskMembersRequest extends FormRequest
+         ];
+     }
+ 
++    public function toDto(): AssignTaskMembersData
++    {
++        return AssignTaskMembersData::fromValidated($this->validated());
++    }
++
+     protected function membersValidation(): Closure
+     {
+         return function (string $attribute, $value, Closure $fail): void {
+diff --git a/app/Http/Requests/Api/V1/Task/TaskRequest.php b/app/Http/Requests/Api/V1/Task/TaskRequest.php
+index e98440e3..7a28b177 100644
+--- a/app/Http/Requests/Api/V1/Task/TaskRequest.php
++++ b/app/Http/Requests/Api/V1/Task/TaskRequest.php
+@@ -24,7 +24,7 @@ class TaskRequest extends FormRequest
+         return true;
+     }
+ 
+-    public function taskCreateData(): TaskCreateData
++    public function toDto(): TaskCreateData
+     {
+         /** @var array<string, mixed> $validated */
+         $validated = $this->validated();
+diff --git a/app/Http/Requests/Api/V1/Task/TaskUpdateRequest.php b/app/Http/Requests/Api/V1/Task/TaskUpdateRequest.php
+index e43925c8..d400a537 100644
+--- a/app/Http/Requests/Api/V1/Task/TaskUpdateRequest.php
++++ b/app/Http/Requests/Api/V1/Task/TaskUpdateRequest.php
+@@ -23,7 +23,7 @@ class TaskUpdateRequest extends FormRequest
+         return true;
+     }
+ 
+-    public function taskUpdateData(): TaskUpdateData
++    public function toDto(): TaskUpdateData
+     {
+         /** @var array<string, mixed> $validated */
+         $validated = $this->validated();
+diff --git a/app/Http/Requests/Api/V1/User/UserAvatarStoreRequest.php b/app/Http/Requests/Api/V1/User/UserAvatarStoreRequest.php
+index 13bf8612..1d6fc30f 100644
+--- a/app/Http/Requests/Api/V1/User/UserAvatarStoreRequest.php
++++ b/app/Http/Requests/Api/V1/User/UserAvatarStoreRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\User;
+ 
++use App\DataTransferObjects\User\UserAvatarData;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Override;
+@@ -16,6 +17,19 @@ class UserAvatarStoreRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): UserAvatarData
++    {
++        /** @var array<string, mixed> $validated */
++        $validated = $this->validated();
++
++        /** @var \Illuminate\Http\UploadedFile $avatar */
++        $avatar = $validated['avatar'];
++
++        return new UserAvatarData(
++            avatar: $avatar,
++        );
++    }
++
+     /**
+      * @return array<string, mixed>
+      */
+diff --git a/app/Http/Requests/Api/V1/User/UserRequest.php b/app/Http/Requests/Api/V1/User/UserRequest.php
+index 26dd05db..f17ab005 100644
+--- a/app/Http/Requests/Api/V1/User/UserRequest.php
++++ b/app/Http/Requests/Api/V1/User/UserRequest.php
+@@ -22,7 +22,7 @@ class UserRequest extends FormRequest
+         return true;
+     }
+ 
+-    public function updateUserData(): UpdateUserData
++    public function toDto(): UpdateUserData
+     {
+         /** @var array<string, mixed> $validated */
+         $validated = $this->validated();
+diff --git a/app/Http/Requests/Api/V1/User/UserTokenRequest.php b/app/Http/Requests/Api/V1/User/UserTokenRequest.php
+index 3292edf1..5c8c0c26 100644
+--- a/app/Http/Requests/Api/V1/User/UserTokenRequest.php
++++ b/app/Http/Requests/Api/V1/User/UserTokenRequest.php
+@@ -57,7 +57,7 @@ class UserTokenRequest extends FormRequest
+         ];
+     }
+ 
+-    public function tokenCreateData(): TokenCreateData
++    public function toDto(): TokenCreateData
+     {
+         return TokenCreateData::fromArray($this->validated());
+     }
+diff --git a/app/Http/Requests/Api/V1/Zoom/MeetingDeletedWebhookRequest.php b/app/Http/Requests/Api/V1/Zoom/MeetingDeletedWebhookRequest.php
+index 1c1646f5..a7ce197f 100644
+--- a/app/Http/Requests/Api/V1/Zoom/MeetingDeletedWebhookRequest.php
++++ b/app/Http/Requests/Api/V1/Zoom/MeetingDeletedWebhookRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Zoom;
+ 
++use App\DataTransferObjects\Zoom\MeetingDeletedWebhookData;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Illuminate\Validation\Rule;
+ 
+@@ -17,6 +18,20 @@ class MeetingDeletedWebhookRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): MeetingDeletedWebhookData
++    {
++        /** @var array<string, mixed> $validated */
++        $validated = $this->validated();
++
++        /** @var array<string, mixed> $payloadObject */
++        $payloadObject = $validated['payload']['object'] ?? [];
++
++        return MeetingDeletedWebhookData::fromPayloadObject(
++            $payloadObject,
++            $this->header('x-zm-request-id')
++        );
++    }
++
+     /**
+      * Get the validation rules that apply to the request.
+      *
+diff --git a/app/Http/Requests/Api/V1/Zoom/MeetingEndedWebhookRequest.php b/app/Http/Requests/Api/V1/Zoom/MeetingEndedWebhookRequest.php
+index 121289cb..a3010d31 100644
+--- a/app/Http/Requests/Api/V1/Zoom/MeetingEndedWebhookRequest.php
++++ b/app/Http/Requests/Api/V1/Zoom/MeetingEndedWebhookRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Zoom;
+ 
++use App\DataTransferObjects\Zoom\MeetingEndedWebhookData;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Illuminate\Validation\Rule;
+ 
+@@ -17,6 +18,20 @@ class MeetingEndedWebhookRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): MeetingEndedWebhookData
++    {
++        /** @var array<string, mixed> $validated */
++        $validated = $this->validated();
++
++        /** @var array<string, mixed> $payloadObject */
++        $payloadObject = $validated['payload']['object'] ?? [];
++
++        return MeetingEndedWebhookData::fromPayloadObject(
++            $payloadObject,
++            $this->header('x-zm-request-id')
++        );
++    }
++
+     /**
+      * Get the validation rules that apply to the request.
+      *
+diff --git a/app/Http/Requests/Api/V1/Zoom/MeetingStartedWebhookRequest.php b/app/Http/Requests/Api/V1/Zoom/MeetingStartedWebhookRequest.php
+index 57550d64..ff23b7c0 100644
+--- a/app/Http/Requests/Api/V1/Zoom/MeetingStartedWebhookRequest.php
++++ b/app/Http/Requests/Api/V1/Zoom/MeetingStartedWebhookRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Zoom;
+ 
++use App\DataTransferObjects\Zoom\MeetingStartedWebhookData;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Illuminate\Validation\Rule;
+ 
+@@ -17,6 +18,20 @@ class MeetingStartedWebhookRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): MeetingStartedWebhookData
++    {
++        /** @var array<string, mixed> $validated */
++        $validated = $this->validated();
++
++        /** @var array<string, mixed> $payloadObject */
++        $payloadObject = $validated['payload']['object'] ?? [];
++
++        return MeetingStartedWebhookData::fromPayloadObject(
++            $payloadObject,
++            $this->header('x-zm-request-id')
++        );
++    }
++
+     /**
+      * Get the validation rules that apply to the request.
+      *
+diff --git a/app/Http/Requests/Api/V1/Zoom/MeetingStoreRequest.php b/app/Http/Requests/Api/V1/Zoom/MeetingStoreRequest.php
+index 16ce6cbe..4d43a954 100644
+--- a/app/Http/Requests/Api/V1/Zoom/MeetingStoreRequest.php
++++ b/app/Http/Requests/Api/V1/Zoom/MeetingStoreRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Zoom;
+ 
++use App\DataTransferObjects\Zoom\MeetingStoreData;
+ use App\Rules\Iso8601Timestamp;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Override;
+@@ -42,6 +43,11 @@ class MeetingStoreRequest extends FormRequest
+         ];
+     }
+ 
++    public function toDto(): MeetingStoreData
++    {
++        return MeetingStoreData::fromValidated($this->validated());
++    }
++
+     #[Override]
+     protected function prepareForValidation(): void
+     {
+diff --git a/app/Http/Requests/Api/V1/Zoom/MeetingUpdateRequest.php b/app/Http/Requests/Api/V1/Zoom/MeetingUpdateRequest.php
+index 6f49699c..14a94a9f 100644
+--- a/app/Http/Requests/Api/V1/Zoom/MeetingUpdateRequest.php
++++ b/app/Http/Requests/Api/V1/Zoom/MeetingUpdateRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Zoom;
+ 
++use App\DataTransferObjects\Zoom\MeetingUpdateData;
+ use App\Rules\Iso8601Timestamp;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Override;
+@@ -43,6 +44,11 @@ class MeetingUpdateRequest extends FormRequest
+         ];
+     }
+ 
++    public function toDto(): MeetingUpdateData
++    {
++        return MeetingUpdateData::fromValidated($this->validated());
++    }
++
+     #[Override]
+     protected function prepareForValidation(): void
+     {
+diff --git a/app/Http/Requests/Api/V1/Zoom/MeetingUpdatedWebhookRequest.php b/app/Http/Requests/Api/V1/Zoom/MeetingUpdatedWebhookRequest.php
+index 4f6d825d..95a6d3b2 100644
+--- a/app/Http/Requests/Api/V1/Zoom/MeetingUpdatedWebhookRequest.php
++++ b/app/Http/Requests/Api/V1/Zoom/MeetingUpdatedWebhookRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Zoom;
+ 
++use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Illuminate\Validation\Rule;
+ 
+@@ -17,6 +18,20 @@ class MeetingUpdatedWebhookRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): MeetingUpdatedWebhookData
++    {
++        /** @var array<string, mixed> $validated */
++        $validated = $this->validated();
++
++        /** @var array<string, mixed> $payloadObject */
++        $payloadObject = $validated['payload']['object'] ?? [];
++
++        return MeetingUpdatedWebhookData::fromPayloadObject(
++            $payloadObject,
++            $this->header('x-zm-request-id')
++        );
++    }
++
+     /**
+      * Get the validation rules that apply to the request.
+      *
+diff --git a/app/Http/Requests/Api/V1/Zoom/MeetingZoomTokensRequest.php b/app/Http/Requests/Api/V1/Zoom/MeetingZoomTokensRequest.php
+index 65f2d785..e0292aa4 100644
+--- a/app/Http/Requests/Api/V1/Zoom/MeetingZoomTokensRequest.php
++++ b/app/Http/Requests/Api/V1/Zoom/MeetingZoomTokensRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Zoom;
+ 
++use App\DataTransferObjects\Zoom\MeetingZoomTokenData;
+ use Illuminate\Foundation\Http\FormRequest;
+ 
+ class MeetingZoomTokensRequest extends FormRequest
+@@ -27,4 +28,9 @@ class MeetingZoomTokensRequest extends FormRequest
+             'action' => 'required|in:start,join',
+         ];
+     }
++
++    public function toDto(): MeetingZoomTokenData
++    {
++        return MeetingZoomTokenData::fromValidated($this->validated());
++    }
+ }
+diff --git a/app/Http/Requests/Api/V1/Zoom/ZoomAuthorizationCallbackRequest.php b/app/Http/Requests/Api/V1/Zoom/ZoomAuthorizationCallbackRequest.php
+index 3aa83ea6..f14070b6 100644
+--- a/app/Http/Requests/Api/V1/Zoom/ZoomAuthorizationCallbackRequest.php
++++ b/app/Http/Requests/Api/V1/Zoom/ZoomAuthorizationCallbackRequest.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Http\Requests\Api\V1\Zoom;
+ 
++use App\DataTransferObjects\Zoom\ZoomCallbackData;
+ use Illuminate\Foundation\Http\FormRequest;
+ 
+ final class ZoomAuthorizationCallbackRequest extends FormRequest
+@@ -16,6 +17,11 @@ final class ZoomAuthorizationCallbackRequest extends FormRequest
+         return true;
+     }
+ 
++    public function toDto(): ZoomCallbackData
++    {
++        return ZoomCallbackData::fromArray($this->validated());
++    }
++
+     /**
+      * @return array<string, mixed>
+      */
+diff --git a/app/Interfaces/Zoom.php b/app/Interfaces/Zoom.php
+index a37093bc..fa80ab31 100644
+--- a/app/Interfaces/Zoom.php
++++ b/app/Interfaces/Zoom.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Interfaces;
+ 
+-use App\DataTransferObjects\Zoom\AccessTokenDetails;
++use App\DataTransferObjects\OAuth\OAuthTokens;
+ use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
+ use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
+ use App\DataTransferObjects\Zoom\Meeting;
+@@ -16,7 +16,7 @@ interface Zoom
+ 
+     public function authorize(
+         AuthorizationCallbackDetails $callbackDetails
+-    ): AccessTokenDetails;
++    ): OAuthTokens;
+ 
+     /**
+      * @param  array<string, mixed>  $validated
+diff --git a/app/Jobs/SendMeetingEndedNotification.php b/app/Jobs/SendMeetingEndedNotification.php
+index a31bc0c5..b0c1593a 100644
+--- a/app/Jobs/SendMeetingEndedNotification.php
++++ b/app/Jobs/SendMeetingEndedNotification.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Jobs;
+ 
++use App\DataTransferObjects\Meeting\MeetingNotificationData;
+ use App\Models\Meeting;
+ use App\Notifications\Zoom\MeetingEnded;
+ 
+@@ -14,10 +15,7 @@ final class SendMeetingEndedNotification extends SendMeetingNotificationJob
+         return 'meeting-ended-notification';
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $data
+-     */
+-    protected function createNotification(array $data): MeetingEnded
++    protected function createNotification(MeetingNotificationData $data): MeetingEnded
+     {
+         return new MeetingEnded($data);
+     }
+diff --git a/app/Jobs/SendMeetingNotificationJob.php b/app/Jobs/SendMeetingNotificationJob.php
+index 7864d7b4..aaf63f5c 100644
+--- a/app/Jobs/SendMeetingNotificationJob.php
++++ b/app/Jobs/SendMeetingNotificationJob.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Jobs;
+ 
++use App\DataTransferObjects\Meeting\MeetingNotificationData;
+ use App\Models\Meeting;
+ use Illuminate\Bus\Queueable;
+ use Illuminate\Contracts\Queue\ShouldBeUnique;
+@@ -31,12 +32,9 @@ abstract class SendMeetingNotificationJob implements ShouldBeUnique, ShouldQueue
+ 
+     public int $uniqueFor = 300;
+ 
+-    /**
+-     * @param  array<string, mixed>  $notificationData
+-     */
+     public function __construct(
+         public readonly int $meetingId,
+-        public readonly array $notificationData,
++        public readonly MeetingNotificationData $notificationData,
+     ) {
+         $this->onQueue('default');
+     }
+@@ -48,10 +46,8 @@ abstract class SendMeetingNotificationJob implements ShouldBeUnique, ShouldQueue
+ 
+     /**
+      * Create the notification instance.
+-     *
+-     * @param  array<string, mixed>  $data
+      */
+-    abstract protected function createNotification(array $data): NotificationClass;
++    abstract protected function createNotification(MeetingNotificationData $data): NotificationClass;
+ 
+     /**
+      * Check if the notification has already been sent.
+diff --git a/app/Jobs/SendMeetingStartedNotification.php b/app/Jobs/SendMeetingStartedNotification.php
+index bdbcc8ad..03d4dccb 100644
+--- a/app/Jobs/SendMeetingStartedNotification.php
++++ b/app/Jobs/SendMeetingStartedNotification.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Jobs;
+ 
++use App\DataTransferObjects\Meeting\MeetingNotificationData;
+ use App\Models\Meeting;
+ use App\Notifications\Zoom\MeetingStarted;
+ 
+@@ -14,10 +15,7 @@ final class SendMeetingStartedNotification extends SendMeetingNotificationJob
+         return 'meeting-started-notification';
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $data
+-     */
+-    protected function createNotification(array $data): MeetingStarted
++    protected function createNotification(MeetingNotificationData $data): MeetingStarted
+     {
+         return new MeetingStarted($data);
+     }
+diff --git a/app/Jobs/Webhooks/Zoom/DeleteMeetingWebhook.php b/app/Jobs/Webhooks/Zoom/DeleteMeetingWebhook.php
+index af016c5b..e49f2fbb 100644
+--- a/app/Jobs/Webhooks/Zoom/DeleteMeetingWebhook.php
++++ b/app/Jobs/Webhooks/Zoom/DeleteMeetingWebhook.php
+@@ -10,12 +10,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
+ 
+ class DeleteMeetingWebhook extends ZoomMeetingWebhookJob implements ShouldQueue
+ {
+-    public function __construct(public MeetingDeletedWebhookData $data)
++    public function __construct(MeetingDeletedWebhookData $data)
+     {
+-        parent::__construct(
+-            meetingId: (int) $this->data->meetingId,
+-            requestId: $this->data->requestId,
+-        );
++        parent::__construct($data);
+     }
+ 
+     /**
+diff --git a/app/Jobs/Webhooks/Zoom/MeetingEndedWebhook.php b/app/Jobs/Webhooks/Zoom/MeetingEndedWebhook.php
+index 4c13bf07..6cdea1d4 100644
+--- a/app/Jobs/Webhooks/Zoom/MeetingEndedWebhook.php
++++ b/app/Jobs/Webhooks/Zoom/MeetingEndedWebhook.php
+@@ -10,12 +10,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
+ 
+ class MeetingEndedWebhook extends ZoomMeetingWebhookJob implements ShouldQueue
+ {
+-    public function __construct(public MeetingEndedWebhookData $data)
++    public function __construct(MeetingEndedWebhookData $data)
+     {
+-        parent::__construct(
+-            meetingId: (int) $this->data->meetingId,
+-            requestId: $this->data->requestId,
+-        );
++        parent::__construct($data);
+     }
+ 
+     /**
+diff --git a/app/Jobs/Webhooks/Zoom/StartMeetingWebhook.php b/app/Jobs/Webhooks/Zoom/StartMeetingWebhook.php
+index 773f6619..c6a3bb9e 100644
+--- a/app/Jobs/Webhooks/Zoom/StartMeetingWebhook.php
++++ b/app/Jobs/Webhooks/Zoom/StartMeetingWebhook.php
+@@ -10,12 +10,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
+ 
+ class StartMeetingWebhook extends ZoomMeetingWebhookJob implements ShouldQueue
+ {
+-    public function __construct(public MeetingStartedWebhookData $data)
++    public function __construct(MeetingStartedWebhookData $data)
+     {
+-        parent::__construct(
+-            meetingId: (int) $this->data->meetingId,
+-            requestId: $this->data->requestId,
+-        );
++        parent::__construct($data);
+     }
+ 
+     /**
+diff --git a/app/Jobs/Webhooks/Zoom/UpdateMeetingWebhook.php b/app/Jobs/Webhooks/Zoom/UpdateMeetingWebhook.php
+index a7c896ee..b61b81e3 100644
+--- a/app/Jobs/Webhooks/Zoom/UpdateMeetingWebhook.php
++++ b/app/Jobs/Webhooks/Zoom/UpdateMeetingWebhook.php
+@@ -10,12 +10,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
+ 
+ class UpdateMeetingWebhook extends ZoomMeetingWebhookJob implements ShouldQueue
+ {
+-    public function __construct(public MeetingUpdatedWebhookData $data)
++    public function __construct(MeetingUpdatedWebhookData $data)
+     {
+-        parent::__construct(
+-            meetingId: (int) $this->data->meetingId,
+-            requestId: $this->data->requestId,
+-        );
++        parent::__construct($data);
+     }
+ 
+     /**
+diff --git a/app/Jobs/Webhooks/Zoom/ZoomMeetingWebhookJob.php b/app/Jobs/Webhooks/Zoom/ZoomMeetingWebhookJob.php
+index 2c24cc46..a0b3c3ff 100644
+--- a/app/Jobs/Webhooks/Zoom/ZoomMeetingWebhookJob.php
++++ b/app/Jobs/Webhooks/Zoom/ZoomMeetingWebhookJob.php
+@@ -25,26 +25,31 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
+ 
+     public bool $failOnTimeout = true;
+ 
+-    /**
+-     * @param  array<string, mixed>  $payload
+-     */
+     public function __construct(
+-        public readonly int $meetingId,
+-        public readonly ?string $requestId = null,
+-        public readonly array $payload = [],
++        public readonly object $data,
+     ) {
+         $this->onQueue('webhooks');
+     }
+ 
+     abstract protected function operation(): string;
+ 
++    public function getMeetingId(): int
++    {
++        return (int) $this->data->meetingId;
++    }
++
++    public function getRequestId(): ?string
++    {
++        return $this->data->requestId ?? null;
++    }
++
+     /**
+      * @return array<int, object>
+      */
+     public function middleware(): array
+     {
+         return [
+-            (new WithoutOverlapping(key: "zoom-meeting:{$this->meetingId}", releaseAfter: 5))
++            (new WithoutOverlapping(key: "zoom-meeting:{$this->getMeetingId()}", releaseAfter: 5))
+                 ->shared()
+                 ->expireAfter(120),
+         ];
+@@ -60,7 +65,7 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
+ 
+     public function failed(Throwable $exception): void
+     {
+-        $meeting = Meeting::query()->where('meeting_id', $this->meetingId)->first();
++        $meeting = Meeting::query()->where('meeting_id', $this->getMeetingId())->first();
+ 
+         $userUuid = null;
+ 
+@@ -70,8 +75,8 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
+ 
+         app(ZoomWebhookLogger::class)->logWebhookFailed(
+             operation: $this->operation(),
+-            meetingId: $this->meetingId,
+-            requestId: $this->requestId,
++            meetingId: $this->getMeetingId(),
++            requestId: $this->getRequestId(),
+             exception: $exception,
+             userIdentifier: $userUuid,
+         );
+diff --git a/app/Notifications/Zoom/MeetingEnded.php b/app/Notifications/Zoom/MeetingEnded.php
+index c4057149..3316f6e9 100644
+--- a/app/Notifications/Zoom/MeetingEnded.php
++++ b/app/Notifications/Zoom/MeetingEnded.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Notifications\Zoom;
+ 
++use App\DataTransferObjects\Meeting\MeetingNotificationData;
+ use App\Notifications\NotificationLink;
+ use Carbon\Carbon;
+ use Illuminate\Bus\Queueable;
+@@ -19,10 +20,8 @@ class MeetingEnded extends Notification implements ShouldBroadcast, ShouldQueue
+ 
+     /**
+      * Create a new notification instance.
+-     *
+-     * @param  array<string, mixed>  $data
+      */
+-    public function __construct(protected array $data) {}
++    public function __construct(protected MeetingNotificationData $data) {}
+ 
+     /**
+      * Get the notification's delivery channels.
+@@ -40,23 +39,23 @@ class MeetingEnded extends Notification implements ShouldBroadcast, ShouldQueue
+     public function toMail(mixed $notifiable): MailMessage
+     {
+         return (new MailMessage)
+-            ->subject('Meeting Ended: '.$this->data['meeting_topic'])
++            ->subject('Meeting Ended: '.$this->data->meetingTopic)
+             ->markdown('mail.meeting.ended', [
+-                'projectName' => $this->data['project_name'],
++                'projectName' => $this->data->projectName,
+                 'projectLink' => $this->projectUrl(),
+-                'meetingTopic' => $this->data['meeting_topic'],
+-                'userName' => $this->data['notifier']['name'],
++                'meetingTopic' => $this->data->meetingTopic,
++                'userName' => $this->data->notifier['name'],
+                 'startTime' => $this->formattedStartTime(),
+                 'endTime' => $this->formattedEndTime(),
+-                'timezone' => $this->data['meeting_timezone'],
++                'timezone' => $this->data->meetingTimezone,
+             ]);
+     }
+ 
+     public function toBroadcast(mixed $notifiable): BroadcastMessage
+     {
+         return new BroadcastMessage([
+-            'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' ended at '.$this->formattedEndTime().' '.$this->data['meeting_timezone'],
+-            'notifier' => $this->data['notifier'],
++            'message' => 'Project '.$this->data->projectName.' Meeting '.$this->data->meetingTopic.' ended at '.$this->formattedEndTime().' '.$this->data->meetingTimezone,
++            'notifier' => $this->data->notifier,
+             'link' => $this->projectPath(),
+         ]);
+     }
+@@ -69,40 +68,38 @@ class MeetingEnded extends Notification implements ShouldBroadcast, ShouldQueue
+     public function toArray(mixed $notifiable): array
+     {
+         return [
+-            'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' ended at '.$this->formattedEndTime().' '.$this->data['meeting_timezone'],
+-            'notifier' => $this->data['notifier'],
++            'message' => 'Project '.$this->data->projectName.' Meeting '.$this->data->meetingTopic.' ended at '.$this->formattedEndTime().' '.$this->data->meetingTimezone,
++            'notifier' => $this->data->notifier,
+             'link' => $this->projectPath(),
+         ];
+     }
+ 
+     private function projectPath(): string
+     {
+-        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: false);
++        return NotificationLink::project(projectSlug: $this->data->projectSlug, absolute: false);
+     }
+ 
+     private function projectUrl(): string
+     {
+-        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: true);
++        return NotificationLink::project(projectSlug: $this->data->projectSlug, absolute: true);
+     }
+ 
+     private function formattedStartTime(): string
+     {
+-        return $this->data['start_time']
+-            ? Carbon::parse($this->data['start_time'])->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
++        return $this->data->startTime
++            ? Carbon::parse($this->data->startTime)->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
+             : '';
+     }
+ 
+     private function formattedEndTime(): string
+     {
+-        return $this->data['end_time']
+-            ? Carbon::parse($this->data['end_time'])->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
++        return $this->data->endTime
++            ? Carbon::parse($this->data->endTime)->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
+             : '';
+     }
+ 
+     private function meetingTimezone(): string
+     {
+-        $timezone = $this->data['meeting_timezone'] ?? null;
+-
+-        return is_string($timezone) && $timezone !== '' ? $timezone : 'UTC';
++        return $this->data->meetingTimezone !== '' ? $this->data->meetingTimezone : 'UTC';
+     }
+ }
+diff --git a/app/Notifications/Zoom/MeetingStarted.php b/app/Notifications/Zoom/MeetingStarted.php
+index a2d0f10a..95b91653 100644
+--- a/app/Notifications/Zoom/MeetingStarted.php
++++ b/app/Notifications/Zoom/MeetingStarted.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Notifications\Zoom;
+ 
++use App\DataTransferObjects\Meeting\MeetingNotificationData;
+ use App\Notifications\NotificationLink;
+ use Carbon\Carbon;
+ use Illuminate\Bus\Queueable;
+@@ -19,10 +20,8 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
+ 
+     /**
+      * Create a new notification instance.
+-     *
+-     * @param  array<string, mixed>  $data
+      */
+-    public function __construct(protected array $data) {}
++    public function __construct(protected MeetingNotificationData $data) {}
+ 
+     /**
+      * Get the notification's delivery channels.
+@@ -42,15 +41,15 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
+         $formattedStartTime = $this->formattedStartTime();
+ 
+         return (new MailMessage)
+-            ->subject('Meeting Started: '.$this->data['meeting_topic'])
++            ->subject('Meeting Started: '.$this->data->meetingTopic)
+             ->markdown('mail.meeting.started', [
+-                'projectName' => $this->data['project_name'],
++                'projectName' => $this->data->projectName,
+                 'projectLink' => $this->projectUrl(),
+-                'meetingTopic' => $this->data['meeting_topic'],
+-                'userName' => $this->data['notifier']['name'],
+-                'joinUrl' => $this->data['meeting_join_url'],
++                'meetingTopic' => $this->data->meetingTopic,
++                'userName' => $this->data->notifier['name'],
++                'joinUrl' => $this->data->meetingJoinUrl,
+                 'startTime' => $formattedStartTime,
+-                'timezone' => $this->data['meeting_timezone'],
++                'timezone' => $this->data->meetingTimezone,
+             ]);
+     }
+ 
+@@ -59,8 +58,8 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
+         $formattedStartTime = $this->formattedStartTime();
+ 
+         return new BroadcastMessage([
+-            'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' started at '.$formattedStartTime.' '.$this->data['meeting_timezone'],
+-            'notifier' => $this->data['notifier'],
++            'message' => 'Project '.$this->data->projectName.' Meeting '.$this->data->meetingTopic.' started at '.$formattedStartTime.' '.$this->data->meetingTimezone,
++            'notifier' => $this->data->notifier,
+             'link' => $this->projectPath(),
+         ]);
+     }
+@@ -75,20 +74,20 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
+         $formattedStartTime = $this->formattedStartTime();
+ 
+         return [
+-            'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' started at '.$formattedStartTime.' '.$this->data['meeting_timezone'],
+-            'notifier' => $this->data['notifier'],
++            'message' => 'Project '.$this->data->projectName.' Meeting '.$this->data->meetingTopic.' started at '.$formattedStartTime.' '.$this->data->meetingTimezone,
++            'notifier' => $this->data->notifier,
+             'link' => $this->projectPath(),
+         ];
+     }
+ 
+     private function projectPath(): string
+     {
+-        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: false);
++        return NotificationLink::project(projectSlug: $this->data->projectSlug, absolute: false);
+     }
+ 
+     private function projectUrl(): string
+     {
+-        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: true);
++        return NotificationLink::project(projectSlug: $this->data->projectSlug, absolute: true);
+     }
+ 
+     /**
+@@ -96,15 +95,13 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
+      */
+     private function formattedStartTime(): string
+     {
+-        return $this->data['start_time']
+-            ? Carbon::parse($this->data['start_time'])->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
++        return $this->data->startTime
++            ? Carbon::parse($this->data->startTime)->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
+             : 'an unknown time';
+     }
+ 
+     private function meetingTimezone(): string
+     {
+-        $timezone = $this->data['meeting_timezone'] ?? null;
+-
+-        return is_string($timezone) && $timezone !== '' ? $timezone : 'UTC';
++        return $this->data->meetingTimezone !== '' ? $this->data->meetingTimezone : 'UTC';
+     }
+ }
+diff --git a/app/Services/Auth/LoginUserService.php b/app/Services/Auth/LoginUserService.php
+index 13559669..ea19c5a0 100644
+--- a/app/Services/Auth/LoginUserService.php
++++ b/app/Services/Auth/LoginUserService.php
+@@ -7,14 +7,11 @@ namespace App\Services\Auth;
+ use App\DataTransferObjects\Auth\AuthPayload;
+ use App\DataTransferObjects\Auth\LoginResult;
+ use App\Events\UserLogin;
+-use App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource;
+ use App\Models\User;
+ use App\Services\TwoFactor\TwoFactorStateManager;
+-use Illuminate\Http\JsonResponse;
+ use Illuminate\Http\Request;
+ use Illuminate\Support\Facades\Auth;
+ use Illuminate\Validation\ValidationException;
+-use Symfony\Component\HttpFoundation\Response;
+ 
+ class LoginUserService
+ {
+@@ -23,7 +20,7 @@ class LoginUserService
+     /**
+      * Start the login flow shared by different controllers.
+      */
+-    public function startLoginFlow(string $email, ?Request $request = null): LoginResult
++    public function startLoginFlow(string $email, ?string $ip = null): LoginResult
+     {
+         $user = User::where('email', $email)->first();
+ 
+@@ -33,7 +30,7 @@ class LoginUserService
+ 
+         $twoFactor = $this->initializeTwoFactorState($user);
+ 
+-        $clientPublicIp = $this->detectPublicRequestIp($request);
++        $clientPublicIp = $this->validatePublicIp($ip);
+ 
+         $this->dispatchTimezoneIfNeeded($user, $clientPublicIp);
+ 
+@@ -73,15 +70,11 @@ class LoginUserService
+     }
+ 
+     /**
+-     * Return the standardized two-factor response when required.
++     * Return whether two-factor authentication is required for the login result.
+      */
+-    public function twoFactorStateResponse(LoginResult $result, ?Request $request = null): ?JsonResponse
++    public function twoFactorStateResponse(LoginResult $result): bool
+     {
+-        if ($result->twoFactor) {
+-            return $this->buildTwoFactorRequiredResponse($request);
+-        }
+-
+-        return null;
++        return $result->twoFactor;
+     }
+ 
+     /**
+@@ -129,24 +122,10 @@ class LoginUserService
+     }
+ 
+     /**
+-     * Standardized 2FA required response used across controllers.
++     * Return the public IP or null when the IP is private/invalid.
+      */
+-    public function buildTwoFactorRequiredResponse(?Request $request = null): JsonResponse
++    private function validatePublicIp(?string $ip = null): ?string
+     {
+-        $r = $request ?? request();
+-
+-        return response()->json([
+-            'data' => (new TwoFactorChallengeResource)->resolve($r),
+-        ], Response::HTTP_OK);
+-    }
+-
+-    /**
+-     * Return the request's public IP or null when the IP is private/invalid.
+-     */
+-    private function detectPublicRequestIp(?Request $request = null): ?string
+-    {
+-        $ip = $request?->ip() ?? null;
+-
+         if (! $ip) {
+             return null;
+         }
+diff --git a/app/Services/Project/ConversationService.php b/app/Services/Project/ConversationService.php
+index 861a5b6e..8e801afe 100644
+--- a/app/Services/Project/ConversationService.php
++++ b/app/Services/Project/ConversationService.php
+@@ -36,10 +36,10 @@ class ConversationService
+     /**
+      * Stores a new conversation and dispatches events and notifications.
+      */
+-    public function storeConversation(Project $project, User $actor, CreateConversationData $payload, ?UploadedFile $file = null): ?Conversation
++    public function storeConversation(Project $project, User $actor, CreateConversationData $payload): ?Conversation
+     {
+         try {
+-            $data = $this->prepareConversationData($payload, $project, $file);
++            $data = $this->prepareConversationData($payload, $project);
+ 
+             $conversation = $this->loadForResponse(
+                 $this->createConversation($project, $actor, $data)
+@@ -106,12 +106,12 @@ class ConversationService
+     /**
+      * Prepares the data required to create a conversation.
+      */
+-    private function prepareConversationData(CreateConversationData $payload, Project $project, ?UploadedFile $file = null): CreateConversationData
++    private function prepareConversationData(CreateConversationData $payload, Project $project): CreateConversationData
+     {
+-        if ($file instanceof UploadedFile) {
++        if ($payload->file instanceof UploadedFile) {
+             return $payload->withStoredFile($this->fileService->store(
+                 $project->id,
+-                $file,
++                $payload->file,
+                 FileType::CONVERSATION
+             ));
+         }
+diff --git a/app/Services/Project/MeetingService.php b/app/Services/Project/MeetingService.php
+index 3842e3bd..d40d275a 100644
+--- a/app/Services/Project/MeetingService.php
++++ b/app/Services/Project/MeetingService.php
+@@ -7,6 +7,8 @@ namespace App\Services\Project;
+ use App\Actions\Meetings\CreateProjectMeeting;
+ use App\Actions\Meetings\DeleteProjectMeeting;
+ use App\Actions\Meetings\UpdateProjectMeeting;
++use App\DataTransferObjects\Zoom\MeetingStoreData;
++use App\DataTransferObjects\Zoom\MeetingUpdateData;
+ use App\Enums\Meeting\MeetingSyncStatus;
+ use App\Interfaces\Zoom;
+ use App\Models\Meeting;
+@@ -38,23 +40,17 @@ class MeetingService
+         return $meetingsQuery->paginate($perPage, ['*'], 'page', $page);
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $validated
+-     */
+-    public function createMeetingForProject(Project $project, User $user, array $validated, Zoom $zoom): Meeting
++    public function createMeetingForProject(Project $project, User $user, MeetingStoreData $data, Zoom $zoom): Meeting
+     {
+         return $this->loadForResponse(
+-            $this->createProjectMeeting->handle($project, $user, $validated, $zoom)
++            $this->createProjectMeeting->handle($project, $user, $data, $zoom)
+         );
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $validated
+-     */
+-    public function updateProjectMeeting(Meeting $meeting, User $user, array $validated, Zoom $zoom): Meeting
++    public function updateProjectMeeting(Meeting $meeting, User $user, MeetingUpdateData $data, Zoom $zoom): Meeting
+     {
+         return $this->loadForResponse(
+-            $this->updateProjectMeeting->handle($meeting, $user, $validated, $zoom)
++            $this->updateProjectMeeting->handle($meeting, $user, $data, $zoom)
+         );
+     }
+ 
+diff --git a/app/Services/Project/ProjectInsightsService.php b/app/Services/Project/ProjectInsightsService.php
+index 2a1de382..f57c520e 100644
+--- a/app/Services/Project/ProjectInsightsService.php
++++ b/app/Services/Project/ProjectInsightsService.php
+@@ -9,7 +9,7 @@ use App\Actions\ProjectMetrics\StageProgressMetricAction;
+ use App\Actions\ProjectMetrics\TaskHealthMetricAction;
+ use App\Actions\ProjectMetrics\TeamCollaborationMetricAction;
+ use App\Actions\ProjectMetrics\UpcomingRiskMetricAction;
+-use App\Data\ProjectMetricsDto;
++use App\DataTransferObjects\Project\ProjectMetricsData;
+ use App\Models\Project;
+ use App\Services\Insights\HealthInsightBuilder;
+ use App\Services\Insights\RiskInsightBuilder;
+@@ -58,7 +58,7 @@ final class ProjectInsightsService
+     /**
+      * @param  array<string>  $sections
+      */
+-    private function getProjectMetrics(Project $project, array $sections): ProjectMetricsDto
++    private function getProjectMetrics(Project $project, array $sections): ProjectMetricsData
+     {
+         $this->preloader->preload($project, $sections);
+ 
+@@ -75,24 +75,24 @@ final class ProjectInsightsService
+             ->values()
+             ->all();
+ 
+-        return new ProjectMetricsDto(...$results);
++        return new ProjectMetricsData(...$results);
+     }
+ 
+     private function setupBuilders(): void
+     {
+         $this->insightBuilders = [
+-            'health' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->healthBuilder->build($m->health),
++            'health' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->healthBuilder->build($m->health),
+ 
+-            'task-health' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->taskHealthBuilder->build(
++            'task-health' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->taskHealthBuilder->build(
+                 $m->taskHealth,
+                 $project instanceof Project ? ['summary' => $this->taskHealthAction->summary($project)] : []
+             ),
+-            'collaboration' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->collaborationBuilder->build(
++            'collaboration' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->collaborationBuilder->build(
+                 $m->collaborationScore,
+                 ['details' => $this->getCollaborationDetails($project)]
+             ),
+-            'risk' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->riskBuilder->build($m->upcomingRisk),
+-            'stage' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->stageBuilder->build($m->stageProgress),
++            'risk' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->riskBuilder->build($m->upcomingRisk),
++            'stage' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->stageBuilder->build($m->stageProgress),
+         ];
+     }
+ 
+@@ -100,7 +100,7 @@ final class ProjectInsightsService
+      * @param  array<string>  $sections
+      * @return array<string,mixed>
+      */
+-    private function buildInsights(ProjectMetricsDto $metrics, array $sections, ?Project $project = null): array
++    private function buildInsights(ProjectMetricsData $metrics, array $sections, ?Project $project = null): array
+     {
+         return collect($this->insightBuilders)
+             ->filter(fn ($builder, string $section): bool => $this->shouldIncludeInsight($section, $sections))
+@@ -126,7 +126,7 @@ final class ProjectInsightsService
+         return in_array('all', $sections, true) || in_array($section, $sections, true);
+     }
+ 
+-    private function hasData(ProjectMetricsDto $metrics, string $section): bool
++    private function hasData(ProjectMetricsData $metrics, string $section): bool
+     {
+         return match ($section) {
+             'health' => $metrics->health !== null,
+diff --git a/app/Services/Task/TaskService.php b/app/Services/Task/TaskService.php
+index fbcc1d2c..a28d39ed 100644
+--- a/app/Services/Task/TaskService.php
++++ b/app/Services/Task/TaskService.php
+@@ -12,8 +12,10 @@ use App\Actions\Task\ResetTaskNotificationAction;
+ use App\Actions\Task\RestoreTaskAction;
+ use App\Actions\Task\UnassignTaskMemberAction;
+ use App\DataTransferObjects\Notification\NotificationActorData;
++use App\DataTransferObjects\Task\AssignTaskMembersData;
+ use App\DataTransferObjects\Task\TaskCreateData;
+ use App\DataTransferObjects\Task\TaskUpdateData;
++use App\DataTransferObjects\Task\UnassignTaskMemberData;
+ use App\Enums\Subscription\PlanLimitType;
+ use App\Models\Project;
+ use App\Models\Task;
+@@ -86,12 +88,9 @@ class TaskService
+         return $task;
+     }
+ 
+-    /**
+-     * @param  array<int, int|string>  $members
+-     */
+-    public function assignMembers(Task $task, array $members, Project $project, User $actor): Task
++    public function assignMembers(Task $task, AssignTaskMembersData $data, Project $project, User $actor): Task
+     {
+-        return $this->hydrateTaskResource($this->assignTaskMembersAction->execute($task, $project, $actor, $members));
++        return $this->hydrateTaskResource($this->assignTaskMembersAction->execute($task, $project, $actor, $data->members));
+     }
+ 
+     public function archiveTask(Task $task): void
+@@ -104,9 +103,9 @@ class TaskService
+         $this->restoreTaskAction->execute($task);
+     }
+ 
+-    public function unassignMember(Task $task, int $memberId): Task
++    public function unassignMember(Task $task, UnassignTaskMemberData $data): Task
+     {
+-        return $this->hydrateTaskResource($this->unassignTaskMemberAction->execute($task, $memberId));
++        return $this->hydrateTaskResource($this->unassignTaskMemberAction->execute($task, $data->member));
+     }
+ 
+     public function removeTask(Task $task): void
+diff --git a/app/Services/Webhooks/ZoomWebhookDispatcher.php b/app/Services/Webhooks/ZoomWebhookDispatcher.php
+index 901b154e..ac58126d 100644
+--- a/app/Services/Webhooks/ZoomWebhookDispatcher.php
++++ b/app/Services/Webhooks/ZoomWebhookDispatcher.php
+@@ -15,43 +15,23 @@ use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
+ 
+ final class ZoomWebhookDispatcher
+ {
+-    /**
+-     * @param  array<string, mixed>  $object
+-     */
+-    public function dispatchUpdate(array $object, ?string $requestId): void
++    public function dispatchUpdate(MeetingUpdatedWebhookData $data): void
+     {
+-        $data = MeetingUpdatedWebhookData::fromPayloadObject($object, $requestId);
+-
+         UpdateMeetingWebhook::dispatch($data);
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $object
+-     */
+-    public function dispatchDelete(array $object, ?string $requestId): void
++    public function dispatchDelete(MeetingDeletedWebhookData $data): void
+     {
+-        $data = MeetingDeletedWebhookData::fromPayloadObject($object, $requestId);
+-
+         DeleteMeetingWebhook::dispatch($data);
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $object
+-     */
+-    public function dispatchStart(array $object, ?string $requestId): void
++    public function dispatchStart(MeetingStartedWebhookData $data): void
+     {
+-        $data = MeetingStartedWebhookData::fromPayloadObject($object, $requestId);
+-
+         StartMeetingWebhook::dispatch($data);
+     }
+ 
+-    /**
+-     * @param  array<string, mixed>  $object
+-     */
+-    public function dispatchEnded(array $object, ?string $requestId): void
++    public function dispatchEnded(MeetingEndedWebhookData $data): void
+     {
+-        $data = MeetingEndedWebhookData::fromPayloadObject($object, $requestId);
+-
+         MeetingEndedWebhook::dispatch($data);
+     }
+ }
+diff --git a/app/Services/Zoom/ZoomOAuthService.php b/app/Services/Zoom/ZoomOAuthService.php
+index 3fb2dcbf..40f35de6 100644
+--- a/app/Services/Zoom/ZoomOAuthService.php
++++ b/app/Services/Zoom/ZoomOAuthService.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Services\Zoom;
+ 
+-use App\DataTransferObjects\Zoom\AccessTokenDetails;
++use App\DataTransferObjects\OAuth\OAuthTokens;
+ use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
+ use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
+ use App\Http\Integrations\Zoom\Requests\GetAccessTokenRequest;
+@@ -39,8 +39,8 @@ class ZoomOAuthService
+ 
+     public function authorize(
+         AuthorizationCallbackDetails $callbackDetails
+-    ): AccessTokenDetails {
+-        /** @var AccessTokenDetails $tokenDetails */
++    ): OAuthTokens {
++        /** @var OAuthTokens $tokenDetails */
+         $tokenDetails = $this->connectors->connector()->getAccessToken(
+             code: $callbackDetails->authorizationCode,
+             state: $callbackDetails->state,
+@@ -51,7 +51,7 @@ class ZoomOAuthService
+         // Note: Server-side state validation is authoritative via ZoomAuthorizationStateStore::consume()
+         // The expectedState parameter above is required by Saloon but both values are identical.
+ 
+-        return new AccessTokenDetails(
++        return new OAuthTokens(
+             accessToken: $tokenDetails->accessToken,
+             refreshToken: $tokenDetails->refreshToken,
+             expiresAt: $tokenDetails->expiresAt,
+diff --git a/app/Services/Zoom/ZoomService.php b/app/Services/Zoom/ZoomService.php
+index 8c1d5c8a..5b70d621 100644
+--- a/app/Services/Zoom/ZoomService.php
++++ b/app/Services/Zoom/ZoomService.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Services\Zoom;
+ 
+-use App\DataTransferObjects\Zoom\AccessTokenDetails;
++use App\DataTransferObjects\OAuth\OAuthTokens;
+ use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
+ use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
+ use App\DataTransferObjects\Zoom\Meeting;
+@@ -33,7 +33,7 @@ final readonly class ZoomService implements Zoom
+     #[Override]
+     public function authorize(
+         AuthorizationCallbackDetails $callbackDetails
+-    ): AccessTokenDetails {
++    ): OAuthTokens {
+         return $this->oauthService->authorize($callbackDetails);
+     }
+ 
+diff --git a/app/Services/Zoom/ZoomServiceFake.php b/app/Services/Zoom/ZoomServiceFake.php
+index 5c08154c..bfa0744a 100644
+--- a/app/Services/Zoom/ZoomServiceFake.php
++++ b/app/Services/Zoom/ZoomServiceFake.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\Services\Zoom;
+ 
+-use App\DataTransferObjects\Zoom\AccessTokenDetails;
++use App\DataTransferObjects\OAuth\OAuthTokens;
+ use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
+ use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
+ use App\DataTransferObjects\Zoom\Meeting;
+@@ -55,12 +55,12 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
+     #[Override]
+     public function authorize(
+         AuthorizationCallbackDetails $callbackDetails
+-    ): AccessTokenDetails {
++    ): OAuthTokens {
+         if ($this->failureException instanceof ZoomException) {
+             throw $this->failureException;
+         }
+ 
+-        return new AccessTokenDetails(
++        return new OAuthTokens(
+             accessToken: 'access-token-here',
+             refreshToken: 'refresh-token-here',
+             expiresAt: now()->addWeek()->toDateTimeImmutable(),
+diff --git a/tests/Feature/Api/Jobs/Webhooks/Zoom/ProcessMeetingUpdateWebhookTest.php b/tests/Feature/Api/Jobs/Webhooks/Zoom/ProcessMeetingUpdateWebhookTest.php
+index d213f5aa..5c007878 100644
+--- a/tests/Feature/Api/Jobs/Webhooks/Zoom/ProcessMeetingUpdateWebhookTest.php
++++ b/tests/Feature/Api/Jobs/Webhooks/Zoom/ProcessMeetingUpdateWebhookTest.php
+@@ -66,13 +66,12 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
+             'start_time' => Carbon::parse('2024-06-24 09:00:00', 'UTC'),
+         ]);
+ 
+-        $job = new UpdateMeetingWebhook(new MeetingUpdatedWebhookData(
+-            meetingId: 813,
+-            changes: [
+-                'start_time' => '2024-06-24T13:30:00+02:00',
+-            ],
+-            requestId: null,
+-        ));
++        $payload = [
++            'id' => 813,
++            'start_time' => '2024-06-24T13:30:00+02:00',
++        ];
++
++        $job = new UpdateMeetingWebhook(MeetingUpdatedWebhookData::fromPayloadObject($payload, null));
+ 
+         $job->handle(app(HandleMeetingUpdatedWebhook::class));
+ 
+@@ -133,16 +132,14 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
+             'project_id' => 1,
+         ]);
+ 
+-        $job = new UpdateMeetingWebhook(new MeetingUpdatedWebhookData(
+-            meetingId: 813,
+-            changes: [
+-                'topic' => 'Updated topic',
+-                'user_id' => 999,
+-                'project_id' => 999,
+-                'id' => 999,
+-            ],
+-            requestId: null,
+-        ));
++        $payload = [
++            'id' => 813,
++            'topic' => 'Updated topic',
++            'user_id' => 999,
++            'project_id' => 999,
++        ];
++
++        $job = new UpdateMeetingWebhook(MeetingUpdatedWebhookData::fromPayloadObject($payload, null));
+ 
+         $job->handle(app(HandleMeetingUpdatedWebhook::class));
+ 
+diff --git a/tests/Feature/Api/Middleware/Idempotency/IdempotencyContractTest.php b/tests/Feature/Api/Middleware/Idempotency/IdempotencyContractTest.php
+index c614d861..2239a6ff 100644
+--- a/tests/Feature/Api/Middleware/Idempotency/IdempotencyContractTest.php
++++ b/tests/Feature/Api/Middleware/Idempotency/IdempotencyContractTest.php
+@@ -411,7 +411,7 @@ final class IdempotencyContractTest extends TestCase
+             'uuid' => $object['uuid'],
+         ];
+ 
+-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meetingId === $meetingId && $job->data->changes === $updateData);
++        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === $meetingId);
+         Queue::assertPushed(UpdateMeetingWebhook::class, 1);
+     }
+ 
+diff --git a/tests/Feature/Api/V1/JobsTest.php b/tests/Feature/Api/V1/JobsTest.php
+index 4bf5d220..0bbfb76e 100644
+--- a/tests/Feature/Api/V1/JobsTest.php
++++ b/tests/Feature/Api/V1/JobsTest.php
+@@ -134,7 +134,7 @@ class JobsTest extends TestCase
+     {
+         Queue::fake();
+ 
+-        $job = new SendMeetingStartedNotification(1, []);
++        $job = new SendMeetingStartedNotification(1, \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([]));
+ 
+         dispatch($job);
+ 
+@@ -146,7 +146,7 @@ class JobsTest extends TestCase
+     {
+         Queue::fake();
+ 
+-        $job = new SendMeetingEndedNotification(1, []);
++        $job = new SendMeetingEndedNotification(1, \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([]));
+ 
+         dispatch($job);
+ 
+diff --git a/tests/Feature/Api/Webhooks/Zoom/ZoomWebhookTest.php b/tests/Feature/Api/Webhooks/Zoom/ZoomWebhookTest.php
+index c9a82cab..d7482063 100644
+--- a/tests/Feature/Api/Webhooks/Zoom/ZoomWebhookTest.php
++++ b/tests/Feature/Api/Webhooks/Zoom/ZoomWebhookTest.php
+@@ -72,8 +72,7 @@ class ZoomWebhookTest extends TestCase
+             ->assertOk()
+             ->assertExactJson(['message' => 'Webhook accepted.']);
+ 
+-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meetingId === (int) $meetingId
+-            && $job->data->changes === $updateData
++        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === (int) $meetingId
+             && $job->data->requestId === $requestId);
+     }
+ 
+@@ -96,7 +95,7 @@ class ZoomWebhookTest extends TestCase
+             ->assertOk()
+             ->assertExactJson(['message' => 'Webhook accepted.']);
+ 
+-        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->meetingId === $meetingId
++        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === $meetingId
+             && $job->data->requestId === 'zoom-delete-813');
+     }
+ 
+@@ -120,8 +119,7 @@ class ZoomWebhookTest extends TestCase
+             ->assertOk()
+             ->assertExactJson(['message' => 'Webhook accepted.']);
+ 
+-        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => (int) $job->meetingId === (int) $meetingId
+-            && $job->data->startTime === $startTime
++        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === (int) $meetingId
+             && $job->data->requestId === 'zoom-start-813');
+     }
+ 
+@@ -146,9 +144,7 @@ class ZoomWebhookTest extends TestCase
+             ->assertOk()
+             ->assertExactJson(['message' => 'Webhook accepted.']);
+ 
+-        Queue::assertPushed(MeetingEndedWebhook::class, fn ($job): bool => (int) $job->meetingId === (int) $meetingId
+-            && $job->data->startTime === $startTime
+-            && $job->data->endTime === $endTime
++        Queue::assertPushed(MeetingEndedWebhook::class, fn ($job): bool => $job->getMeetingId() === (int) $meetingId
+             && $job->data->requestId === 'zoom-ended-813');
+ 
+     }
+diff --git a/tests/Feature/Jobs/SendMeetingEndedNotificationTest.php b/tests/Feature/Jobs/SendMeetingEndedNotificationTest.php
+index dad2c694..624ca05a 100644
+--- a/tests/Feature/Jobs/SendMeetingEndedNotificationTest.php
++++ b/tests/Feature/Jobs/SendMeetingEndedNotificationTest.php
+@@ -34,7 +34,7 @@ class SendMeetingEndedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingEndedNotification(
+             meetingId: $meeting->id,
+-            notificationData: [
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+                 'meeting_topic' => 'Test',
+                 'project_name' => 'Project',
+                 'notifier' => ['name' => 'Test User'],
+@@ -43,7 +43,7 @@ class SendMeetingEndedNotificationTest extends TestCase
+                 'end_time' => '2024-06-24T12:00:00Z',
+                 'meeting_timezone' => 'UTC',
+                 'project_slug' => 'test-project',
+-            ]
++            ])
+         );
+ 
+         $job->handle();
+@@ -67,7 +67,7 @@ class SendMeetingEndedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingEndedNotification(
+             meetingId: $meeting->id,
+-            notificationData: [
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+                 'meeting_topic' => 'Test',
+                 'project_name' => 'Project',
+                 'notifier' => ['name' => 'Test User'],
+@@ -76,7 +76,7 @@ class SendMeetingEndedNotificationTest extends TestCase
+                 'end_time' => '2024-06-24T12:00:00Z',
+                 'meeting_timezone' => 'UTC',
+                 'project_slug' => 'test-project',
+-            ]
++            ])
+         );
+ 
+         $job->handle();
+@@ -101,7 +101,7 @@ class SendMeetingEndedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingEndedNotification(
+             meetingId: $meeting->id,
+-            notificationData: [
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+                 'meeting_topic' => 'Test',
+                 'project_name' => 'Project',
+                 'notifier' => ['name' => 'Test User'],
+@@ -110,7 +110,7 @@ class SendMeetingEndedNotificationTest extends TestCase
+                 'end_time' => '2024-06-24T12:00:00Z',
+                 'meeting_timezone' => 'UTC',
+                 'project_slug' => 'test-project',
+-            ]
++            ])
+         );
+ 
+         $job->handle();
+@@ -135,7 +135,7 @@ class SendMeetingEndedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingEndedNotification(
+             meetingId: $meeting->id,
+-            notificationData: [
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+                 'meeting_topic' => 'Test',
+                 'project_name' => 'Project',
+                 'notifier' => ['name' => 'Test User'],
+@@ -144,7 +144,7 @@ class SendMeetingEndedNotificationTest extends TestCase
+                 'end_time' => '2024-06-24T12:00:00Z',
+                 'meeting_timezone' => 'UTC',
+                 'project_slug' => 'test-project',
+-            ]
++            ])
+         );
+ 
+         $exceptionThrown = false;
+@@ -177,7 +177,7 @@ class SendMeetingEndedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingEndedNotification(
+             meetingId: 999,
+-            notificationData: []
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([])
+         );
+ 
+         $job->failed(new RuntimeException('Test failure'));
+diff --git a/tests/Feature/Jobs/SendMeetingStartedNotificationTest.php b/tests/Feature/Jobs/SendMeetingStartedNotificationTest.php
+index b9e6f91b..ea2e5b44 100644
+--- a/tests/Feature/Jobs/SendMeetingStartedNotificationTest.php
++++ b/tests/Feature/Jobs/SendMeetingStartedNotificationTest.php
+@@ -34,7 +34,7 @@ class SendMeetingStartedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingStartedNotification(
+             meetingId: $meeting->id,
+-            notificationData: [
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+                 'meeting_topic' => 'Test',
+                 'project_name' => 'Project',
+                 'notifier' => ['name' => 'Test User'],
+@@ -42,7 +42,8 @@ class SendMeetingStartedNotificationTest extends TestCase
+                 'start_time' => '2024-06-24T11:00:00Z',
+                 'meeting_timezone' => 'UTC',
+                 'project_slug' => 'test-project',
+-            ]
++                'end_time' => null,
++            ])
+         );
+ 
+         $job->handle();
+@@ -66,7 +67,7 @@ class SendMeetingStartedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingStartedNotification(
+             meetingId: $meeting->id,
+-            notificationData: [
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+                 'meeting_topic' => 'Test',
+                 'project_name' => 'Project',
+                 'notifier' => ['name' => 'Test User'],
+@@ -74,7 +75,8 @@ class SendMeetingStartedNotificationTest extends TestCase
+                 'start_time' => '2024-06-24T11:00:00Z',
+                 'meeting_timezone' => 'UTC',
+                 'project_slug' => 'test-project',
+-            ]
++                'end_time' => null,
++            ])
+         );
+ 
+         $job->handle();
+@@ -99,7 +101,7 @@ class SendMeetingStartedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingStartedNotification(
+             meetingId: $meeting->id,
+-            notificationData: [
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+                 'meeting_topic' => 'Test',
+                 'project_name' => 'Project',
+                 'notifier' => ['name' => 'Test User'],
+@@ -107,7 +109,8 @@ class SendMeetingStartedNotificationTest extends TestCase
+                 'start_time' => '2024-06-24T11:00:00Z',
+                 'meeting_timezone' => 'UTC',
+                 'project_slug' => 'test-project',
+-            ]
++                'end_time' => null,
++            ])
+         );
+ 
+         $job->handle();
+@@ -132,7 +135,7 @@ class SendMeetingStartedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingStartedNotification(
+             meetingId: $meeting->id,
+-            notificationData: [
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+                 'meeting_topic' => 'Test',
+                 'project_name' => 'Project',
+                 'notifier' => ['name' => 'Test User'],
+@@ -140,7 +143,8 @@ class SendMeetingStartedNotificationTest extends TestCase
+                 'start_time' => '2024-06-24T11:00:00Z',
+                 'meeting_timezone' => 'UTC',
+                 'project_slug' => 'test-project',
+-            ]
++                'end_time' => null,
++            ])
+         );
+ 
+         $exceptionThrown = false;
+@@ -173,7 +177,7 @@ class SendMeetingStartedNotificationTest extends TestCase
+ 
+         $job = new SendMeetingStartedNotification(
+             meetingId: 999,
+-            notificationData: []
++            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([])
+         );
+ 
+         $job->failed(new RuntimeException('Test failure'));
