@@ -47,10 +47,6 @@ class ConversationController extends ApiController
             $request->toDto(),
         );
 
-        if (! $conversation instanceof Conversation) {
-            abort(500, 'Failed to create conversation.');
-        }
-
         return $this->respondCreated(new ConversationResource($conversation));
     }
 

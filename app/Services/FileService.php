@@ -112,7 +112,10 @@ class FileService
         try {
             $path = $disk->putFileAs($folderName, $file, $fileName, $visibility);
         } catch (Exception $e) {
-            throw ValidationException::withMessages(['File upload failed: '.$e->getMessage()]);
+            report($e);
+            throw ValidationException::withMessages([
+                'file' => ['File upload failed. Please try again.'],
+            ]);
         }
 
         if ($fileType === FileType::AVATAR) {

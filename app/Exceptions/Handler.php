@@ -15,6 +15,7 @@ use Aws\S3\Exception\S3Exception;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -51,6 +52,7 @@ class Handler extends ExceptionHandler
         ModelNotFoundException::class,
         NotFoundHttpException::class,
         MethodNotAllowedHttpException::class,
+        DashboardServiceException::class,
     ];
 
     /**
@@ -85,6 +87,16 @@ class Handler extends ExceptionHandler
      * Register the exception handling callbacks for the application.
      */
     #[Override]
+    public function shouldReport(Throwable $e): bool
+    {
+        if ($e instanceof HttpException && $e->getStatusCode() < Response::HTTP_INTERNAL_SERVER_ERROR) {
+            return false;
+        }
+
+        return parent::shouldReport($e);
+    }
+
+    #[Override]
     public function register(): void
     {
         $this->renderable(fn (ApiException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
@@ -93,6 +105,12 @@ class Handler extends ExceptionHandler
             $e->errorCode(),
             $e->errors(),
             $e->meta($request),
+        ));
+
+        $this->renderable(fn (ModelNotFoundException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+            'Resource not found.',
+            Response::HTTP_NOT_FOUND,
+            'not_found',
         ));
 
         $this->renderable(fn (NotFoundHttpException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
@@ -160,6 +178,12 @@ class Handler extends ExceptionHandler
             meta: [
                 'provider' => 's3',
             ],
+        ));
+
+        $this->renderable(fn (QueryException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+            'A database error occurred. Please try again.',
+            Response::HTTP_INTERNAL_SERVER_ERROR,
+            'database_error',
         ));
 
         $this->renderable(fn (Throwable $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(

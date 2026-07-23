@@ -36,6 +36,11 @@ final class ApiErrorFormatter
             return $default;
         }
 
+        // Defense-in-depth: reject messages containing common internal leak patterns
+        if (self::looksLikeInternalMessage($message)) {
+            return $default;
+        }
+
         return $message;
     }
 
@@ -69,5 +74,27 @@ final class ApiErrorFormatter
             Response::HTTP_SERVICE_UNAVAILABLE => 'service_unavailable',
             default => 'internal_server_error',
         };
+    }
+
+    private static function looksLikeInternalMessage(string $message): bool
+    {
+        $patterns = [
+            '/\bSQLSTATE\b/i',
+            '/\bSELECT\b.*\bFROM\b/i',
+            '/\bINSERT\b.*\bINTO\b/i',
+            '/\bstack\s*trace\b/i',
+            '/\b[A-Z]:\\\\/',                // Windows paths
+            '/\/(?:var|home|app|vendor)\//', // Unix paths
+            '/\.php:\d+/',                   // PHP file references
+            '/cURL error \d+/i',            // HTTP client internals
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $message) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

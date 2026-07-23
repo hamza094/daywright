@@ -191,6 +191,6 @@ class DashboardTest extends TestCase
         $this->getJson($this->apiV1AdminRoute('dashboard.data'))
             ->assertStatus(500)
             ->assertJsonPath('message', 'Failed to load dashboard data.')
-            ->assertJsonPath('code', 'internal_server_error');
+            ->assertJsonPath('code', 'dashboard_service_error');
     }
 }

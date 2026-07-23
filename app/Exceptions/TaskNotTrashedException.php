@@ -12,7 +12,7 @@ final class TaskNotTrashedException extends ApiException implements ShouldntRepo
 {
     public function __construct()
     {
-        parent::__construct('Task must be trashed to perform this action');
+        parent::__construct($this->defaultMessage());
     }
 
     public function status(): int

@@ -36,28 +36,19 @@ class ConversationService
     /**
      * Stores a new conversation and dispatches events and notifications.
      */
-    public function storeConversation(Project $project, User $actor, CreateConversationData $payload): ?Conversation
+    public function storeConversation(Project $project, User $actor, CreateConversationData $payload): Conversation
     {
-        try {
-            $data = $this->prepareConversationData($payload, $project);
+        $data = $this->prepareConversationData($payload, $project);
 
-            $conversation = $this->loadForResponse(
-                $this->createConversation($project, $actor, $data)
-            );
+        $conversation = $this->loadForResponse(
+            $this->createConversation($project, $actor, $data)
+        );
 
-            NewMessage::dispatch($conversation, $project->slug);
+        NewMessage::dispatch($conversation, $project->slug);
 
-            $this->userMentioned($conversation, $project, $actor);
+        $this->userMentioned($conversation, $project, $actor);
 
-            return $conversation;
-        } catch (Exception $e) {
-            Log::error('Error storing conversation', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            throw $e;
-        }
+        return $conversation;
     }
 
     public function userMentioned(Conversation $conversation, Project $project, User $actor): void
