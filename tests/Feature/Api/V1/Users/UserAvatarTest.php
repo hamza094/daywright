@@ -92,7 +92,7 @@ class UserAvatarTest extends TestCase
 
         $response
             ->assertJson([
-                'message' => 'User does not have an avatar',
+                'message' => 'Resource not found.',
             ])->assertStatus(404);
     }
 

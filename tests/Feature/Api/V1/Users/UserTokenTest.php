@@ -169,6 +169,6 @@ class UserTokenTest extends TestCase
             ->deleteJson($this->apiV1Route('api-tokens.destroy', ['token' => 999999]));
 
         $response->assertNotFound()
-            ->assertJsonPath('message', 'Token not found.');
+            ->assertJsonPath('message', 'Resource not found.');
     }
 }

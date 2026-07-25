@@ -40,7 +40,7 @@ trait HandlesApiExceptions
         ));
 
         $this->renderable(fn (NotFoundHttpException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            ApiErrorFormatter::publicMessage($e->getMessage(), 'Resource not found.'),
+            'Resource not found.',
             Response::HTTP_NOT_FOUND,
             'not_found',
         ));
@@ -62,6 +62,22 @@ trait HandlesApiExceptions
             Response::HTTP_METHOD_NOT_ALLOWED,
             'method_not_allowed',
         ));
+
+        $this->renderable(function (ThrottleRequestsException $e, Request $request): \Illuminate\Http\JsonResponse {
+            $headers = $e->getHeaders();
+            $retryAfter = (int) ($headers['Retry-After'] ?? $headers['retry-after'] ?? 0);
+
+            $response = ApiErrorFormatter::response(
+                'Too many requests. Please try again later.',
+                Response::HTTP_TOO_MANY_REQUESTS,
+                'rate_limited',
+                meta: array_filter([
+                    'retry_after_seconds' => $retryAfter,
+                ], fn (int $val): bool => $val > 0),
+            );
+
+            return $response->withHeaders($headers);
+        });
 
         $this->renderable(function (HttpException $e): \Illuminate\Http\JsonResponse {
             $status = $e->getStatusCode();
@@ -105,22 +121,6 @@ trait HandlesApiExceptions
                 'provider' => 's3',
             ],
         ));
-
-        $this->renderable(function (ThrottleRequestsException $e, Request $request): \Illuminate\Http\JsonResponse {
-            $headers = $e->getHeaders();
-            $retryAfter = (int) ($headers['Retry-After'] ?? $headers['retry-after'] ?? 0);
-
-            $response = ApiErrorFormatter::response(
-                'Too many requests. Please try again later.',
-                Response::HTTP_TOO_MANY_REQUESTS,
-                'rate_limited',
-                meta: array_filter([
-                    'retry_after_seconds' => $retryAfter,
-                ], fn (int $val): bool => $val > 0),
-            );
-
-            return $response->withHeaders($headers);
-        });
 
         $this->renderable(fn (QueryException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'A database error occurred. Please try again.',
