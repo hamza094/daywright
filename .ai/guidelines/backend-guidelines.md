@@ -24,8 +24,9 @@
 16. [Validation Rules](#16-validation-rules)
 17. [Notifications](#17-notifications)
 18. [Interfaces](#18-interfaces)
-19. [Testing](#19-testing)
-20. [API Response Standards](#20-api-response-standards)
+19. [Exceptions & Error Handling](#19-exceptions--error-handling)
+20. [Testing](#20-testing)
+21. [API Response Standards](#21-api-response-standards)
 
 ---
 
@@ -576,7 +577,32 @@ Interfaces define contracts for services and integrations.
 
 ---
 
-## 19. Testing
+## 19. Exceptions & Error Handling
+
+### Purpose
+
+Provide a unified, secure, and developer-friendly approach to throwing and rendering API errors.
+
+### Location
+
+- Base Handler: `app/Exceptions/Handler.php`
+- Exception Registration: `app/Exceptions/Traits/HandlesApiExceptions.php`
+- Formatting Logic: `app/Exceptions/Support/ApiErrorFormatter.php`
+- Custom Exceptions: `app/Exceptions/` or `app/Exceptions/{Integration}/`
+
+### Guidelines
+
+- ✅ Extend `App\Exceptions\ApiException` for custom business logic exceptions. It enforces `status()`, `errorCode()`, and `publicMessage()`.
+- ✅ Render all API exceptions using `ApiErrorFormatter::response()` to guarantee a strict JSON shape (`message`, `code`, `errors`, `meta`).
+- ✅ Register new exception renderables inside `HandlesApiExceptions` trait.
+- ✅ **Registration Order Matters:** Specific child exceptions (e.g., `ThrottleRequestsException`) MUST be registered before their generic parents (e.g., `HttpException`).
+- ✅ Prevent Sensitive Data Leaks: Raw `Exception` or `Throwable` messages must NOT be exposed to the user in production. `ApiErrorFormatter::publicMessage()` acts as a defense-in-depth gatekeeper against SQL leaks and stack traces.
+- ✅ Log 5xx system errors and unexpected issues; do NOT log 4xx client errors (like Validation, 404s, or Authentication errors) to prevent noise in the log stream.
+- ❌ Do not return raw HTTP responses manually when an exception can communicate the failure more cleanly.
+
+---
+
+## 20. Testing
 
 ### Directory Structure
 
@@ -676,7 +702,7 @@ abstract class TestCase extends BaseTestCase
 
 ---
 
-## 20. API Response Standards
+## 21. API Response Standards
 
 ### Success Response Structure
 
@@ -711,33 +737,35 @@ return $this->respondNoContent();
 
 ### Error Response Structure
 
-```php
+All API errors return a strict JSON payload defined by `ApiErrorFormatter`.
+
+```json
 // Validation Error (422)
 {
-    "message": "The given data was invalid.",
+    "message": "Validation failed.",
+    "code": "validation_error",
     "errors": {
         "field_name": ["Error message here."]
+    },
+    "meta": {}
+}
+
+// Rate Limited (429) - Note: also returns Retry-After HTTP Headers
+{
+    "message": "Too many requests. Please try again later.",
+    "code": "rate_limited",
+    "errors": {},
+    "meta": {
+        "retry_after_seconds": 47
     }
 }
 
-// Not Found (404)
+// Server Error (500) - Masks sensitive leak data
 {
-    "message": "Resource not found."
-}
-
-// Unauthorized (401)
-{
-    "message": "Unauthenticated."
-}
-
-// Forbidden (403)
-{
-    "message": "This action is unauthorized."
-}
-
-// Server Error (500)
-{
-    "message": "An unexpected error occurred."
+    "message": "An unexpected server error occurred.",
+    "code": "internal_server_error",
+    "errors": {},
+    "meta": {}
 }
 ```
 
