@@ -29,7 +29,7 @@ class PaddleEventListener
                 // Log or trigger something if needed
                 Log::info('Handled annual payment success');
             } catch (Throwable $e) {
-                report($e, ['context' => 'Error handling annual payment webhook']);
+                report($e);
             }
         }
     }
