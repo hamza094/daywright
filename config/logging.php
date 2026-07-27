@@ -61,6 +61,14 @@ return [
             'days' => 7,
         ],
 
+        'daily_json' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/laravel.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
