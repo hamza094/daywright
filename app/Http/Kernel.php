@@ -19,6 +19,7 @@ class Kernel extends HttpKernel
     protected $middleware = [
         \Illuminate\Foundation\Http\Middleware\InvokeDeferredCallbacks::class,
         Middleware\TrustProxies::class,
+        Middleware\AttachRequestId::class,
         \Illuminate\Http\Middleware\HandleCors::class,
         Middleware\CheckForMaintenanceMode::class,
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
