@@ -7,6 +7,8 @@ namespace App\Console\Commands;
 use App\Actions\Project\ForceDeleteAbandonedProjectAction;
 use App\Models\Project;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class RemoveAbondonProjects extends Command
 {
@@ -33,7 +35,14 @@ class RemoveAbondonProjects extends Command
             ->pastAbandonedLimit()
             ->chunkById(100, function ($projects) use ($forceDeleteAbandonedProjectAction): void {
                 $projects->each(function (Project $project) use ($forceDeleteAbandonedProjectAction): void {
-                    $forceDeleteAbandonedProjectAction->execute($project);
+                    try {
+                        $forceDeleteAbandonedProjectAction->execute($project);
+                    } catch (Throwable $e) {
+                        Log::error('RemoveAbondonProjects command: failed to delete project', [
+                            'project_id' => $project->id,
+                            'exception' => $e,
+                        ]);
+                    }
                 });
             });
     }

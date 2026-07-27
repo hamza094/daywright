@@ -71,6 +71,11 @@ class CancelZoomMeetingsJob implements ShouldQueue
         $user = User::query()->find($this->userId);
 
         if (! $user) {
+            Log::warning('CancelZoomMeetingsJob failed: User not found', [
+                'meeting_id' => $this->meetingId,
+                'user_id' => $this->userId,
+            ]);
+
             return;
         }
 
@@ -97,7 +102,7 @@ class CancelZoomMeetingsJob implements ShouldQueue
         Log::channel(self::LOG_CHANNEL)->error('CancelZoomMeetingsJob failed permanently.', [
             'meeting_id' => $this->meetingId,
             'user_id' => $this->userId,
-            'error' => $exception->getMessage(),
+            'exception' => $exception,
         ]);
     }
 }

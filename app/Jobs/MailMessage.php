@@ -70,6 +70,15 @@ final class MailMessage implements ShouldQueue
         }
 
         if (! $project || ! $message || ! $user) {
+            Log::warning('MailMessage job failed: Required models not found', [
+                'message_id' => $this->messageId,
+                'project_id' => $this->projectId,
+                'user_id' => $this->userId,
+                'project_exists' => $project !== null,
+                'message_exists' => $message !== null,
+                'user_exists' => $user !== null,
+            ]);
+
             return;
         }
 
@@ -83,8 +92,7 @@ final class MailMessage implements ShouldQueue
             'message_id' => $this->messageId,
             'project_id' => $this->projectId,
             'user_uuid' => $this->userUuid,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
+            'exception' => $exception,
         ]);
     }
 }

@@ -17,6 +17,7 @@ use App\Services\Project\MeetingOperationLock;
 use App\Services\Project\MeetingSyncErrorFormatter;
 use App\Services\Subscription\PlanLimitService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final readonly class CreateProjectMeeting
@@ -63,6 +64,11 @@ final readonly class CreateProjectMeeting
             $zoomMeeting = $zoom->createMeeting($data->toArray(), $user);
             $this->markMeetingAsSynced($meeting, $zoomMeeting);
         } catch (Throwable $exception) {
+            Log::error('Zoom API meeting creation failed, marking local state as Failed', [
+                'meeting_id' => $meeting->id,
+                'user_id' => $user->id,
+                'exception' => $exception,
+            ]);
             $this->markMeetingAsFailed($meeting, $exception);
             throw $exception;
         }

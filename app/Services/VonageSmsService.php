@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
 class VonageSmsService
 {
     private readonly \Vonage\Client $client;
@@ -31,20 +34,31 @@ class VonageSmsService
 
         $body = $message->message."\n project link:\n".config('app.url').'/project/'.$project->slug;
 
-        $response = $this->client->sms()->send(
-            new \Vonage\SMS\Message\SMS(
-                $recipient,
-                config('services.vonage.from'),
-                $body
-            )
-        );
+        try {
+            $response = $this->client->sms()->send(
+                new \Vonage\SMS\Message\SMS(
+                    $recipient,
+                    config('services.vonage.from'),
+                    $body
+                )
+            );
 
-        $msg = $response->current();
+            $msg = $response->current();
 
-        if ($msg->getStatus() === 0) {
-            return "The message was sent successfully\n";
+            if ($msg->getStatus() === 0) {
+                return "The message was sent successfully\n";
+            }
+
+            return 'The message failed with status: '.$msg->getStatus()."\n";
+        } catch (Throwable $e) {
+            Log::error('Vonage SMS API failed', [
+                'project_id' => $project->id,
+                'message_id' => $message->id,
+                'recipient' => $recipient,
+                'vonage_status' => $msg->getStatus() ?? null,
+                'exception' => $e,
+            ]);
+            throw $e;
         }
-
-        return 'The message failed with status: '.$msg->getStatus()."\n";
     }
 }

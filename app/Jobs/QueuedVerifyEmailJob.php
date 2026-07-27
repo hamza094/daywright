@@ -49,6 +49,10 @@ class QueuedVerifyEmailJob implements ShouldQueue
     {
         $user = User::find($this->userId);
         if (! $user) {
+            Log::error('QueuedVerifyEmailJob failed: User deleted before job processed', [
+                'user_id' => $this->userId,
+            ]);
+
             return;
         }
         $user->notify(new VerifyEmail);
@@ -60,8 +64,7 @@ class QueuedVerifyEmailJob implements ShouldQueue
         Log::error('QueuedVerifyEmailJob failed', [
             'user_uuid' => $user?->uuid,
             'user_id' => $this->userId,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
+            'exception' => $exception,
         ]);
     }
 }

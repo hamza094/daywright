@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Project\MeetingOperationLock;
 use App\Services\Project\MeetingSyncErrorFormatter;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final readonly class DeleteProjectMeeting
@@ -61,6 +62,14 @@ final readonly class DeleteProjectMeeting
             $zoom->deleteMeeting($meeting->meeting_id, $user);
         } catch (NotFoundException) {
             // Treat 404 as success for delete - meeting already doesn't exist in Zoom
+        } catch (Throwable $exception) {
+            Log::error('Zoom API meeting deletion failed', [
+                'meeting_id' => $meeting->id,
+                'zoom_meeting_id' => $meeting->meeting_id,
+                'user_id' => $user->id,
+                'exception' => $exception,
+            ]);
+            throw $exception;
         }
     }
 

@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Project\MeetingOperationLock;
 use App\Services\Project\MeetingSyncErrorFormatter;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final readonly class UpdateProjectMeeting
@@ -58,7 +59,17 @@ final readonly class UpdateProjectMeeting
 
     private function updateInZoom(Meeting $meeting, MeetingUpdateData $data, User $user, Zoom $zoom): void
     {
-        $zoom->updateMeeting($data->toArray() + ['meeting_id' => $meeting->meeting_id], $user);
+        try {
+            $zoom->updateMeeting($data->toArray() + ['meeting_id' => $meeting->meeting_id], $user);
+        } catch (Throwable $exception) {
+            Log::error('Zoom API meeting update failed', [
+                'meeting_id' => $meeting->id,
+                'zoom_meeting_id' => $meeting->meeting_id,
+                'user_id' => $user->id,
+                'exception' => $exception,
+            ]);
+            throw $exception;
+        }
     }
 
     private function markMeetingAsUpdated(Meeting $meeting, MeetingUpdateData $data): Meeting

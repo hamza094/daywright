@@ -7,6 +7,8 @@ namespace App\Console\Commands;
 use App\Models\Message;
 use App\Services\Project\MessageService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ScheduledMessages extends Command
 {
@@ -40,7 +42,15 @@ class ScheduledMessages extends Command
                         continue;
                     }
 
-                    $service->sendNow($project, $message);
+                    try {
+                        $service->sendNow($project, $message);
+                    } catch (Throwable $e) {
+                        Log::error('ScheduledMessages command: failed to send message', [
+                            'message_id' => $message->id,
+                            'project_id' => $project->id,
+                            'exception' => $e,
+                        ]);
+                    }
                 }
             });
     }
