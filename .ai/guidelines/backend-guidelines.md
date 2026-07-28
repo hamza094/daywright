@@ -25,8 +25,9 @@
 17. [Notifications](#17-notifications)
 18. [Interfaces](#18-interfaces)
 19. [Exceptions & Error Handling](#19-exceptions--error-handling)
-20. [Testing](#20-testing)
-21. [API Response Standards](#21-api-response-standards)
+20. [Logging & Operational Debuggability](#20-logging--operational-debuggability)
+21. [Testing](#21-testing)
+22. [API Response Standards](#22-api-response-standards)
 
 ---
 
@@ -602,7 +603,30 @@ Provide a unified, secure, and developer-friendly approach to throwing and rende
 
 ---
 
-## 20. Testing
+## 20. Logging & Operational Debuggability
+
+### Purpose
+
+Ensure the application is 100% "2 AM Debuggable". When production breaks, system logs must provide the exact context needed to diagnose without reproducing locally.
+
+### Location
+
+- Global logging config: `config/logging.php`
+- Context/Redaction logic: `app/Logging/`
+
+### Guidelines
+
+- ✅ **Preserve Stack Traces**: Always pass the full `$exception` object to Monolog (e.g., `Log::error('msg', ['exception' => $e])`), NEVER serialize it as strings via `$e->getMessage()` or `$e->getTraceAsString()`.
+- ✅ **Wrap External Boundaries**: All third-party API SDK calls (e.g., Vonage, Paddle) must be wrapped in `try/catch`. Log the failure with context before re-throwing. Do not let SDK exceptions bubble up silently.
+- ✅ **Protect Loops in Commands**: When processing chunks in Console Commands, wrap the inner loop logic in a `try/catch`. A single corrupt row must never crash the entire cron job silently. Log the error and `continue`.
+- ✅ **Log Silent Early Returns**: In queue jobs, if a required model is missing (e.g., deleted before job runs), log a warning/error before `return;`. Do not fail silently. (Exception: pure idempotency checks).
+- ✅ **Redact Sensitive Data**: Use `ScrubSensitiveData` taps to prevent passwords and PII from leaking into logs. **Warning:** Do not log raw SQL bindings (e.g. `$query->bindings`), as they are indexed arrays and bypass key-based scrubbers.
+- ✅ **Use JSON Formatting**: Always use `JsonFormatter` in production log channels (e.g., `daily`) to ensure structured, queryable logs.
+- ❌ **No Happy Path Noise**: Do not log successful CRUD state changes or audit trails in the system operational logs. Keep system logs focused strictly on errors, failures, and system state anomalies.
+
+---
+
+## 21. Testing
 
 ### Directory Structure
 
@@ -702,7 +726,7 @@ abstract class TestCase extends BaseTestCase
 
 ---
 
-## 21. API Response Standards
+## 22. API Response Standards
 
 ### Success Response Structure
 

@@ -90,6 +90,7 @@ class AppServiceProvider extends ServiceProvider
             $payload = $event->job->payload();
 
             Log::channel('queue_critical')->error('Critical queue job failed permanently', [
+                'job' => $event->job->resolveName(),
                 'connection' => $event->connectionName,
                 'queue' => $event->job->getQueue(),
                 'uuid' => $event->job->uuid(),
@@ -106,7 +107,7 @@ class AppServiceProvider extends ServiceProvider
             if ($query->time > 500) {
                 Log::warning('Slow DB Query detected', [
                     'sql' => $query->sql,
-                    'bindings' => $query->bindings,
+                    'bindings' => '******** (redacted for security)',
                     'time_ms' => $query->time,
                 ]);
             }
