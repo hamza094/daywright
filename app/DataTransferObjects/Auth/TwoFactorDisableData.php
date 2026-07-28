@@ -6,12 +6,7 @@ namespace App\DataTransferObjects\Auth;
 
 final readonly class TwoFactorDisableData
 {
-    public function __construct() {}
-
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    public static function fromValidated(array $validated): self
+    public static function fromValidated(): self
     {
         return new self;
     }

@@ -46,7 +46,7 @@ class DisableTwoFactorRequest extends FormRequest
 
     public function toDto(): TwoFactorDisableData
     {
-        return TwoFactorDisableData::fromValidated($this->validated());
+        return TwoFactorDisableData::fromValidated();
     }
 
     /**

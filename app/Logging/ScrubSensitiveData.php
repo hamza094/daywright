@@ -8,9 +8,10 @@ use Monolog\LogRecord;
 
 class ScrubSensitiveData
 {
+    /** @var array<string> */
     private array $sensitiveKeys = ['password', 'token', 'cc_number', 'password_confirmation'];
 
-    public function __invoke($logger)
+    public function __invoke(object $logger): void
     {
         foreach ($logger->getHandlers() as $handler) {
             $handler->pushProcessor(function (LogRecord|array $record) {
@@ -27,12 +28,16 @@ class ScrubSensitiveData
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
     private function scrub(array $data): array
     {
         foreach ($data as $key => &$value) {
             if (is_array($value)) {
                 $value = $this->scrub($value);
-            } elseif (is_string($key) && in_array(mb_strtolower($key), $this->sensitiveKeys, true)) {
+            } elseif (in_array(mb_strtolower((string) $key), $this->sensitiveKeys, true)) {
                 $value = '********';
             }
         }

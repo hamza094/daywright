@@ -40,7 +40,7 @@ class HandlerRenderingTest extends TestCase
     #[Override]
     protected function tearDown(): void
     {
-        app()->detectEnvironment(fn () => 'testing');
+        app()->detectEnvironment(fn (): string => 'testing');
         parent::tearDown();
     }
 
@@ -172,7 +172,7 @@ class HandlerRenderingTest extends TestCase
         $this->app->instance('request', $request);
 
         // Set app to production to trigger the catch-all
-        app()->detectEnvironment(fn () => 'production');
+        app()->detectEnvironment(fn (): string => 'production');
 
         $response = $handler->render($request, $exception);
 

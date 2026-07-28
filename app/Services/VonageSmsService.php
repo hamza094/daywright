@@ -34,6 +34,8 @@ class VonageSmsService
 
         $body = $message->message."\n project link:\n".config('app.url').'/project/'.$project->slug;
 
+        $msg = null;
+
         try {
             $response = $this->client->sms()->send(
                 new \Vonage\SMS\Message\SMS(
@@ -55,7 +57,7 @@ class VonageSmsService
                 'project_id' => $project->id,
                 'message_id' => $message->id,
                 'recipient' => $recipient,
-                'vonage_status' => $msg->getStatus() ?? null,
+                'vonage_status' => $msg?->getStatus(),
                 'exception' => $e,
             ]);
             throw $e;

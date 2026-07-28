@@ -19,7 +19,7 @@ final readonly class AssignTaskMembersData
     public static function fromValidated(array $validated): self
     {
         return new self(
-            members: array_map('intval', $validated['members']),
+            members: array_map(intval(...), $validated['members']),
         );
     }
 

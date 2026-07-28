@@ -47,6 +47,6 @@ final readonly class MeetingUpdateData
             'timezone' => $this->timezone,
             'password' => $this->password,
             'join_before_host' => $this->joinBeforeHost,
-        ], fn ($value) => $value !== null);
+        ], fn (int|string|bool|null $value): bool => $value !== null);
     }
 }

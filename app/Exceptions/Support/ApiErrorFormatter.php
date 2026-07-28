@@ -7,6 +7,8 @@ namespace App\Exceptions\Support;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
+use function Safe\preg_match;
+
 final class ApiErrorFormatter
 {
     /**

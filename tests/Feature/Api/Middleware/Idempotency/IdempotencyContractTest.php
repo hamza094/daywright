@@ -406,10 +406,6 @@ final class IdempotencyContractTest extends TestCase
 
         $object = $payload['payload']['object'];
         $meetingId = $object['id'];
-        $updateData = [
-            'topic' => $object['topic'],
-            'uuid' => $object['uuid'],
-        ];
 
         Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === $meetingId);
         Queue::assertPushed(UpdateMeetingWebhook::class, 1);

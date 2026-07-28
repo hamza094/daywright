@@ -102,7 +102,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('zoom-api', fn () => Limit::perMinute(60));
 
         // 1. Slow DB Queries (> 500ms)
-        DB::listen(function (QueryExecuted $query) {
+        DB::listen(function (QueryExecuted $query): void {
             if ($query->time > 500) {
                 Log::warning('Slow DB Query detected', [
                     'sql' => $query->sql,
@@ -113,7 +113,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // 2. Outbound HTTP Failures
-        Event::listen(function (ConnectionFailed $event) {
+        Event::listen(function (ConnectionFailed $event): void {
             Log::error('Outbound HTTP request failed', [
                 'url' => $event->request->url(),
                 'method' => $event->request->method(),
@@ -122,12 +122,12 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // 3. Auth Context (User ID)
-        Event::listen(function (\Illuminate\Auth\Events\Authenticated $event) {
+        Event::listen(function (\Illuminate\Auth\Events\Authenticated $event): void {
             Context::add('user_id', $event->user->getAuthIdentifier());
         });
 
         // 4. Background Queue Context
-        Event::listen(function (JobProcessing $event) {
+        Event::listen(function (JobProcessing $event): void {
             Context::add('job_id', $event->job->getJobId());
             Context::add('job_name', $event->job->resolveName());
         });

@@ -106,7 +106,7 @@ class TwoFactorController extends ApiController
     public function twoFactorLogin(TwoFactorLoginRequest $request): JsonResponse
     {
         $user = $request->user();
-        $data = $request->toDto();
+        $request->toDto();
 
         $this->loginUserService->dispatchTimezoneIfNeeded($user);
 

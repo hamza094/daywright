@@ -20,7 +20,7 @@ use App\Services\Insights\TeamCollaborationInsightBuilder;
 final class ProjectInsightsService
 {
     /**
-     * @var array<string, callable(ProjectMetricsDto, ?Project): mixed>
+     * @var array<string, callable(ProjectMetricsData, ?Project): mixed>
      */
     private array $insightBuilders;
 

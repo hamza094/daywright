@@ -61,10 +61,6 @@ class ZoomWebhookTest extends TestCase
 
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
-        $updateData = [
-            'topic' => $object['topic'],
-            'uuid' => $object['uuid'],
-        ];
 
         $requestId = 'zoom-update-'.Str::uuid();
 
@@ -113,7 +109,6 @@ class ZoomWebhookTest extends TestCase
 
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
-        $startTime = $object['start_time'] ?? null;
 
         $this->postJson(route('api.v1.webhooks.meetings.start'), $postBody, ZoomWebhookSigner::signPayload($postBody, 'zoom-start-813'))
             ->assertOk()
@@ -137,8 +132,6 @@ class ZoomWebhookTest extends TestCase
 
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
-        $startTime = $object['start_time'] ?? null;
-        $endTime = $object['end_time'] ?? null;
 
         $this->postJson(route('api.v1.webhooks.meetings.ended'), $postBody, ZoomWebhookSigner::signPayload($postBody, 'zoom-ended-813'))
             ->assertOk()

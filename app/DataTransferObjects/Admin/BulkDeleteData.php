@@ -19,7 +19,7 @@ final readonly class BulkDeleteData
     public static function fromIds(array $ids): self
     {
         return new self(
-            ids: array_map('intval', $ids),
+            ids: array_map(intval(...), $ids),
         );
     }
 }

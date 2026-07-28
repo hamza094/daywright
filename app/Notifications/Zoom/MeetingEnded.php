@@ -86,7 +86,7 @@ class MeetingEnded extends Notification implements ShouldBroadcast, ShouldQueue
 
     private function formattedStartTime(): string
     {
-        return $this->data->startTime
+        return $this->data->startTime !== '' && $this->data->startTime !== '0'
             ? Carbon::parse($this->data->startTime)->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
             : '';
     }

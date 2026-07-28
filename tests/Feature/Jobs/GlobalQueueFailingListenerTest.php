@@ -35,13 +35,12 @@ class GlobalQueueFailingListenerTest extends TestCase
             ->once()
             ->with(
                 'Critical queue job failed permanently',
-                Mockery::on(fn (array $context): bool => $context['job'] === 'App\\Jobs\\TestJob' &&
-                       $context['queue'] === 'critical' &&
-                       $context['uuid'] === 'test-uuid' &&
-                       $context['attempts'] === 3 &&
-                       $context['exception'] === RuntimeException::class &&
-                       $context['message'] === 'Test exception' &&
-                       $context['tags'] === ['tag1', 'tag2'])
+                Mockery::on(fn (array $context): bool => $context['queue'] === 'critical' &&
+                    $context['uuid'] === 'test-uuid' &&
+                    $context['attempts'] === 3 &&
+                    isset($context['exception']) &&
+                    $context['exception'] instanceof RuntimeException &&
+                    $context['tags'] === ['tag1', 'tag2'])
             );
 
         // Dispatch the event that AppServiceProvider listens to

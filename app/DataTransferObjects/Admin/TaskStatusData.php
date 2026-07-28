@@ -32,6 +32,6 @@ final readonly class TaskStatusData
         return array_filter([
             'label' => $this->label,
             'color' => $this->color,
-        ], fn ($value) => $value !== null);
+        ], fn (?string $value): bool => $value !== null);
     }
 }

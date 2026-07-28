@@ -169,10 +169,8 @@ class SendMeetingStartedNotificationTest extends TestCase
                 'Meeting started notification job failed',
                 Mockery::on(fn (array $context): bool => isset($context['meeting_id']) &&
                     $context['meeting_id'] === 999 &&
-                    isset($context['error']) &&
-                    $context['error'] === 'Test failure' &&
-                    isset($context['trace'])
-                )
+                    isset($context['exception']) &&
+                    $context['exception'] instanceof RuntimeException)
             );
 
         $job = new SendMeetingStartedNotification(

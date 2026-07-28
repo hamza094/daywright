@@ -109,7 +109,7 @@ class PaddleTest extends TestCase
     #[Test]
     public function returns_500_with_message_when_paddle_api_throws(): void
     {
-        app()->detectEnvironment(fn () => 'production');
+        app()->detectEnvironment(fn (): string => 'production');
 
         $this->mock(PaddleApi::class, function (MockInterface $mock): void {
             $mock->shouldReceive('subscriptionUsersList')
@@ -123,6 +123,6 @@ class PaddleTest extends TestCase
             ->assertJsonPath('message', 'An unexpected server error occurred.')
             ->assertJsonPath('code', 'internal_server_error');
 
-        app()->detectEnvironment(fn () => 'testing');
+        app()->detectEnvironment(fn (): string => 'testing');
     }
 }
