@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Admin;
 
+use App\Models\AuditLog;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Admin\AdminAccessService;
@@ -69,6 +70,36 @@ class UsersTest extends TestCase
             'is_admin' => true,
             'admin_granted_by' => $actor->id,
         ]);
+    }
+
+    #[Test]
+    public function granting_admin_access_creates_audit_log(): void
+    {
+        $actor = $this->createAdminUser();
+        $this->enableTwoFactorForUser($actor);
+
+        $target = $this->createUser();
+
+        Sanctum::actingAs($actor);
+
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
+            'is_admin' => true,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_type' => 'api_token',
+            'actor_id' => $actor->id,
+            'event' => 'security.role_updated',
+            'auditable_type' => User::class,
+            'auditable_id' => $target->id,
+        ]);
+
+        $log = AuditLog::where('event', 'security.role_updated')->first();
+
+        $this->assertNotNull($log);
+        $this->assertFalse($log->old_values['is_admin']);
+        $this->assertTrue($log->new_values['is_admin']);
+        $this->assertNotNull($log->created_at);
     }
 
     #[Test]
@@ -141,6 +172,37 @@ class UsersTest extends TestCase
         $target->refresh();
         $this->assertNotNull($target->admin_granted_at);
         $this->assertNotNull($target->admin_revoked_at);
+    }
+
+    #[Test]
+    public function revoking_admin_access_creates_audit_log(): void
+    {
+        $actor = $this->createAdminUser();
+        $this->enableTwoFactorForUser($actor);
+
+        $target = $this->createUser();
+        (new AdminAccessService)->grantAdminAccess($target, $actor);
+
+        Sanctum::actingAs($actor);
+
+        $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
+            'is_admin' => false,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_type' => 'api_token',
+            'actor_id' => $actor->id,
+            'event' => 'security.role_updated',
+            'auditable_type' => User::class,
+            'auditable_id' => $target->id,
+        ]);
+
+        $log = AuditLog::where('event', 'security.role_updated')->latest()->first();
+
+        $this->assertNotNull($log);
+        $this->assertTrue($log->old_values['is_admin']);
+        $this->assertFalse($log->new_values['is_admin']);
+        $this->assertNotNull($log->created_at);
     }
 
     #[Test]

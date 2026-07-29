@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Users;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -77,6 +78,37 @@ class UserTokenTest extends TestCase
     }
 
     #[Test]
+    public function creating_api_token_creates_audit_log(): void
+    {
+        $user = User::first();
+
+        Sanctum::actingAs(
+            $user,
+            ['*'],
+        );
+
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
+            'name' => 'Audit Test Token',
+        ]);
+        $response->assertCreated();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_type' => 'api_token',
+            'actor_id' => $user->id,
+            'event' => 'security.api_token_created',
+            'auditable_type' => User::class,
+            'auditable_id' => $user->id,
+        ]);
+
+        $log = AuditLog::where('event', 'security.api_token_created')->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame('Audit Test Token', $log->new_values['token_name']);
+        $this->assertNotNull($log->new_values['token_id']);
+        $this->assertNotNull($log->created_at);
+    }
+
+    #[Test]
     public function user_can_create_a_token_with_iso_expiration(): void
     {
         $user = User::first();
@@ -138,6 +170,37 @@ class UserTokenTest extends TestCase
         $this->assertDatabaseMissing('personal_access_tokens', [
             'id' => $tokenId,
         ]);
+    }
+
+    #[Test]
+    public function revoking_api_token_creates_audit_log(): void
+    {
+        $user = User::first();
+
+        Sanctum::actingAs(
+            $user,
+        );
+
+        $token = $user->createToken('Revoke Test Token', ['*']);
+        $tokenId = $token->accessToken->id;
+
+        $response = $this->deleteJson($this->apiV1Route('api-tokens.destroy', ['token' => $tokenId]));
+        $response->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_type' => 'api_token',
+            'actor_id' => $user->id,
+            'event' => 'security.api_token_revoked',
+            'auditable_type' => User::class,
+            'auditable_id' => $user->id,
+        ]);
+
+        $log = AuditLog::where('event', 'security.api_token_revoked')->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame('Revoke Test Token', $log->old_values['token_name']);
+        $this->assertSame($tokenId, $log->old_values['token_id']);
+        $this->assertNotNull($log->created_at);
     }
 
     #[Test]

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Auth;
 
+use App\Actions\Auth\DisableTwoFactorAction;
+use App\Actions\Auth\EnableTwoFactorAction;
 use App\Enums\TwoFactorStatus;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Auth\ConfirmTwoFactorRequest;
@@ -14,7 +16,6 @@ use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Two-Factor Authentication Controller
@@ -23,7 +24,11 @@ use Illuminate\Validation\ValidationException;
  */
 class TwoFactorController extends ApiController
 {
-    public function __construct(protected LoginUserService $loginUserService) {}
+    public function __construct(
+        protected LoginUserService $loginUserService,
+        private readonly EnableTwoFactorAction $enableTwoFactorAction,
+        private readonly DisableTwoFactorAction $disableTwoFactorAction
+    ) {}
 
     /**
      * Get the current 2FA status for the authenticated user
@@ -86,9 +91,7 @@ class TwoFactorController extends ApiController
         $user = $request->user();
         $data = $request->toDto();
 
-        if (! $user->confirmTwoFactorAuth($data->code)) {
-            throw ValidationException::withMessages(['code' => 'Invalid code provided.']);
-        }
+        $this->enableTwoFactorAction->execute($user, $data->code);
 
         return $this->respondWithData([
             'recovery_codes' => $user->getRecoveryCodes(),
@@ -137,7 +140,9 @@ class TwoFactorController extends ApiController
      */
     public function disableTwoFactorAuth(DisableTwoFactorRequest $request): JsonResponse
     {
-        $request->user()->disableTwoFactorAuth();
+        $user = $request->user();
+
+        $this->disableTwoFactorAction->execute($user);
 
         return $this->respondWithData([
             'two_factor_state' => TwoFactorStatus::DISABLED->value,

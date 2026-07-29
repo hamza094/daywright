@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Admin;
 
+use App\Models\AuditLog;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -280,6 +281,31 @@ class TasksTest extends TestCase
                 'subject_id' => $id,
             ]);
         }
+    }
+
+    #[Test]
+    public function bulk_delete_tasks_creates_audit_log(): void
+    {
+        /** @var \Illuminate\Support\Collection<int, Task> $tasks */
+        $tasks = Task::factory()->count(2)->create();
+        $ids = $tasks->pluck('id')->toArray();
+
+        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => $ids])
+            ->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_type' => 'api_token',
+            'actor_id' => $this->admin->id,
+            'event' => 'destruction.bulk_tasks_deleted',
+        ]);
+
+        $log = AuditLog::where('event', 'destruction.bulk_tasks_deleted')->first();
+
+        $this->assertNotNull($log);
+        $this->assertCount(2, $log->old_values['task_ids']);
+        $this->assertSame(2, $log->old_values['count']);
+        $this->assertTrue($log->metadata['bulk_operation']);
+        $this->assertNotNull($log->created_at);
     }
 
     #[Test]
