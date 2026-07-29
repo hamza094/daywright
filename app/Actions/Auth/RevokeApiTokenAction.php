@@ -20,7 +20,7 @@ final readonly class RevokeApiTokenAction
     {
         $token = $user->tokens()->where('id', $tokenId)->first();
 
-        DB::transaction(function () use ($user, $tokenId, $token) {
+        DB::transaction(function () use ($user, $tokenId, $token): void {
             $this->apiTokenService->deleteForUser($user, $tokenId);
 
             if ($token) {

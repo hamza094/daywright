@@ -19,7 +19,7 @@ final readonly class EnableTwoFactorAction
     {
         $oldState = ['two_factor_enabled' => $user->hasTwoFactorEnabled()];
 
-        return DB::transaction(function () use ($user, $code, $oldState) {
+        return DB::transaction(function () use ($user, $code, $oldState): User {
             if (! $user->confirmTwoFactorAuth($code)) {
                 throw ValidationException::withMessages(['code' => 'Invalid code provided.']);
             }

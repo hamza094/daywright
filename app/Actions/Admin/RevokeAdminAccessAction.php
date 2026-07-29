@@ -20,7 +20,7 @@ final readonly class RevokeAdminAccessAction
     {
         $oldState = ['is_admin' => $targetUser->isAdmin()];
 
-        return DB::transaction(function () use ($targetUser, $revokedBy, $oldState) {
+        return DB::transaction(function () use ($targetUser, $revokedBy, $oldState): User {
             $this->adminAccessService->revokeAdminAccess($targetUser, $revokedBy);
 
             $targetUser->refresh();

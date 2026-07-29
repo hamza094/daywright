@@ -18,7 +18,7 @@ final readonly class DisableTwoFactorAction
     {
         $oldState = ['two_factor_enabled' => $user->hasTwoFactorEnabled()];
 
-        return DB::transaction(function () use ($user, $oldState) {
+        return DB::transaction(function () use ($user, $oldState): User {
             $user->disableTwoFactorAuth();
 
             $user->refresh();

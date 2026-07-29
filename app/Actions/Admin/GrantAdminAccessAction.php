@@ -20,7 +20,7 @@ final readonly class GrantAdminAccessAction
     {
         $oldState = ['is_admin' => $targetUser->isAdmin()];
 
-        return DB::transaction(function () use ($targetUser, $performedBy, $oldState) {
+        return DB::transaction(function () use ($targetUser, $performedBy, $oldState): User {
             $this->adminAccessService->grantAdminAccess($targetUser, $performedBy);
 
             $targetUser->refresh();

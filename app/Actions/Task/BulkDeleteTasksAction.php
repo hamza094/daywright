@@ -30,32 +30,32 @@ final readonly class BulkDeleteTasksAction
 
         $deletedTaskIds = [];
 
-        Task::withTrashed()
-            ->whereIn('id', $taskIds)
-            ->select('id')
-            ->chunkById(self::CHUNK_SIZE, function (Collection $tasks) use (&$deletedTaskIds): void {
-                $chunkTaskIds = $tasks->modelKeys();
+        DB::transaction(function () use ($taskIds, &$deletedTaskIds): void {
+            Task::withTrashed()
+                ->whereIn('id', $taskIds)
+                ->select('id')
+                ->chunkById(self::CHUNK_SIZE, function (Collection $tasks) use (&$deletedTaskIds): void {
+                    $chunkTaskIds = $tasks->modelKeys();
 
-                DB::transaction(function () use ($chunkTaskIds, &$deletedTaskIds): void {
                     $this->deleteTaskAssignees($chunkTaskIds);
                     $this->deleteTaskActivities($chunkTaskIds);
                     $this->forceDeleteTasks($chunkTaskIds);
                     $deletedTaskIds = array_merge($deletedTaskIds, $chunkTaskIds);
-                });
-            }, column: 'id');
+                }, column: 'id');
 
-        $this->auditLogService->log(
-            event: 'destruction.bulk_tasks_deleted',
-            auditable: null,
-            oldValues: [
-                'task_ids' => $deletedTaskIds,
-                'count' => count($deletedTaskIds),
-            ],
-            newValues: null,
-            metadata: [
-                'bulk_operation' => true,
-            ]
-        );
+            $this->auditLogService->log(
+                event: 'destruction.bulk_tasks_deleted',
+                auditable: null,
+                oldValues: [
+                    'task_ids' => $deletedTaskIds,
+                    'count' => count($deletedTaskIds),
+                ],
+                newValues: null,
+                metadata: [
+                    'bulk_operation' => true,
+                ]
+            );
+        });
     }
 
     /**

@@ -7,6 +7,7 @@ namespace App\Traits;
 use App\Services\Audit\AuditLogService;
 use Illuminate\Database\Eloquent\Model;
 
+// @phpstan-ignore trait.unused
 trait Auditable
 {
     public static function bootAuditable(): void
@@ -31,8 +32,7 @@ trait Auditable
             app(AuditLogService::class)->log(
                 event: method_exists($model, 'isForceDeleting') && $model->isForceDeleting() ? 'model.force_deleted' : 'model.deleted',
                 auditable: $model,
-                oldValues: $model->toArray(),
-                newValues: null
+                oldValues: $model->toArray()
             );
         });
     }

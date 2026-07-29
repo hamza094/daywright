@@ -105,7 +105,7 @@ class InvitationTest extends TestCase
             'actor_type' => 'api_token',
             'actor_id' => $invitedUser->id,
             'event' => 'security.project_member_added',
-            'auditable_type' => get_class($this->project),
+            'auditable_type' => $this->project::class,
             'auditable_id' => $this->project->id,
         ]);
 
@@ -242,7 +242,7 @@ class InvitationTest extends TestCase
             'actor_type' => 'api_token',
             'actor_id' => $this->project->user->id,
             'event' => 'security.project_member_removed',
-            'auditable_type' => get_class($this->project),
+            'auditable_type' => $this->project::class,
             'auditable_id' => $this->project->id,
         ]);
 

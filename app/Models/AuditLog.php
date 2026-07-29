@@ -24,7 +24,7 @@ class AuditLog extends Model
     /**
      * Get the auditable entity.
      *
-     * @return MorphTo<Model, AuditLog>
+     * @return MorphTo<Model, $this>
      */
     public function auditable(): MorphTo
     {
@@ -34,7 +34,7 @@ class AuditLog extends Model
     /**
      * Get the actor (user) who performed the action.
      *
-     * @return BelongsTo<User, AuditLog>
+     * @return BelongsTo<User, $this>
      */
     public function actor(): BelongsTo
     {

@@ -20,7 +20,7 @@ final readonly class CreateApiTokenAction
 
     public function execute(User $user, string $name, ?CarbonInterface $expiresAt): NewAccessToken
     {
-        return DB::transaction(function () use ($user, $name, $expiresAt) {
+        return DB::transaction(function () use ($user, $name, $expiresAt): NewAccessToken {
             $token = $this->apiTokenService->createForUser($user, $name, $expiresAt);
 
             $this->auditLogService->log(

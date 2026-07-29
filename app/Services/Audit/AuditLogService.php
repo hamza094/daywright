@@ -12,6 +12,11 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 final readonly class AuditLogService
 {
+    /**
+     * @param  array<string, mixed>|null  $oldValues
+     * @param  array<string, mixed>|null  $newValues
+     * @param  array<string, mixed>  $metadata
+     */
     public function log(
         string $event,
         ?Model $auditable = null,
@@ -31,7 +36,7 @@ final readonly class AuditLogService
             'actor_id' => $context['actor_id'],
             'key_id' => $context['key_id'],
             'event' => $event,
-            'auditable_type' => $auditable ? get_class($auditable) : null,
+            'auditable_type' => $auditable instanceof Model ? $auditable::class : null,
             'auditable_id' => $auditable?->getKey(),
             'old_values' => $oldValues,
             'new_values' => $newValues,
@@ -49,7 +54,7 @@ final readonly class AuditLogService
             /** @var PersonalAccessToken|null $token */
             $token = $user->currentAccessToken();
 
-            if ($token) {
+            if ($token instanceof PersonalAccessToken) {
                 return [
                     'actor_type' => 'api_token',
                     'actor_id' => $user->getAuthIdentifier(),
