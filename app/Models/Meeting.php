@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\Meeting\MeetingSyncStatus;
+use App\Traits\HasStateMachine;
 use App\Traits\RecordActivity;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Meeting extends Model
 {
-    use HasFactory, RecordActivity;
+    use HasFactory, HasStateMachine, RecordActivity;
 
     protected $guarded = [];
 
@@ -81,5 +82,45 @@ class Meeting extends Model
     public function scopeSynced(Builder $query): Builder
     {
         return $query->where('sync_status', MeetingSyncStatus::Active);
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    protected function validTransitions(): array
+    {
+        return [
+            MeetingSyncStatus::Pending->value => [
+                MeetingSyncStatus::Active->value,
+                MeetingSyncStatus::Failed->value,
+            ],
+            MeetingSyncStatus::Active->value => [
+                MeetingSyncStatus::Updating->value,
+                MeetingSyncStatus::Deleting->value,
+                MeetingSyncStatus::Failed->value,
+            ],
+            MeetingSyncStatus::Updating->value => [
+                MeetingSyncStatus::Active->value,
+                MeetingSyncStatus::UpdateFailed->value,
+            ],
+            MeetingSyncStatus::UpdateFailed->value => [
+                MeetingSyncStatus::Updating->value,
+                MeetingSyncStatus::Active->value,
+                MeetingSyncStatus::Deleting->value,
+            ],
+            MeetingSyncStatus::Deleting->value => [
+                MeetingSyncStatus::Deleted->value,
+                MeetingSyncStatus::DeleteFailed->value,
+            ],
+            MeetingSyncStatus::DeleteFailed->value => [
+                MeetingSyncStatus::Deleting->value,
+                MeetingSyncStatus::Active->value,
+            ],
+            MeetingSyncStatus::Failed->value => [
+                MeetingSyncStatus::Active->value,
+                MeetingSyncStatus::Pending->value,
+            ],
+            MeetingSyncStatus::Deleted->value => [],
+        ];
     }
 }

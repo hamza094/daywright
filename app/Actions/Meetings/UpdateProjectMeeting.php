@@ -50,10 +50,9 @@ final readonly class UpdateProjectMeeting
     private function markMeetingAsUpdating(Meeting $meeting): void
     {
         DB::transaction(function () use ($meeting): void {
-            $this->updateMeetingWithLock($meeting, [
-                'sync_status' => MeetingSyncStatus::Updating,
-                'sync_error' => null,
-            ]);
+            $lockedMeeting = $this->lockMeeting($meeting);
+            $lockedMeeting->transitionTo(MeetingSyncStatus::Updating, 'sync_status');
+            $lockedMeeting->update(['sync_error' => null]);
         }, attempts: $this->transactionRetryAttempts);
     }
 
@@ -74,18 +73,24 @@ final readonly class UpdateProjectMeeting
 
     private function markMeetingAsUpdated(Meeting $meeting, MeetingUpdateData $data): Meeting
     {
-        return DB::transaction(fn (): Meeting => $this->updateMeetingWithLock($meeting, $data->toArray() + [
-            'sync_status' => MeetingSyncStatus::Active,
-            'sync_error' => null,
-            'synced_at' => now(),
-        ]), attempts: $this->transactionRetryAttempts);
+        return DB::transaction(function () use ($meeting, $data): Meeting {
+            $lockedMeeting = $this->lockMeeting($meeting);
+            $lockedMeeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
+            $lockedMeeting->update($data->toArray() + [
+                'sync_error' => null,
+                'synced_at' => now(),
+            ]);
+
+            return $lockedMeeting;
+        }, attempts: $this->transactionRetryAttempts);
     }
 
     private function markMeetingAsUpdateFailed(Meeting $meeting, Throwable $exception): void
     {
         DB::transaction(function () use ($meeting, $exception): void {
-            $this->updateMeetingWithLock($meeting, [
-                'sync_status' => MeetingSyncStatus::UpdateFailed,
+            $lockedMeeting = $this->lockMeeting($meeting);
+            $lockedMeeting->transitionTo(MeetingSyncStatus::UpdateFailed, 'sync_status');
+            $lockedMeeting->update([
                 'sync_error' => $this->errorFormatter->format($exception),
                 'sync_attempts' => DB::raw('sync_attempts + 1'),
             ]);

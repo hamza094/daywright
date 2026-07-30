@@ -27,15 +27,4 @@ trait MeetingLockOperations
             ->whereKey($meeting->getKey())
             ->firstOrFail();
     }
-
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    private function updateMeetingWithLock(Meeting $meeting, array $attributes): Meeting
-    {
-        $lockedMeeting = $this->lockMeeting($meeting);
-        $lockedMeeting->update($attributes);
-
-        return $lockedMeeting;
-    }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exceptions\Traits;
 
 use App\Exceptions\ApiException;
+use App\Exceptions\InvalidStateTransitionException;
 use App\Exceptions\Support\ApiErrorFormatter;
 use Aws\S3\Exception\S3Exception;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -25,6 +26,14 @@ trait HandlesApiExceptions
 {
     protected function registerApiExceptionHandlers(): void
     {
+        $this->renderable(fn (InvalidStateTransitionException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+            $e->publicMessage(),
+            $e->status(),
+            $e->errorCode(),
+            $e->errors(),
+            $e->meta($request),
+        ));
+
         $this->renderable(fn (ApiException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             $e->publicMessage(),
             $e->status(),

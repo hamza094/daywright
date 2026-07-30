@@ -77,12 +77,13 @@ final readonly class CreateProjectMeeting
     private function markMeetingAsSynced(Meeting $meeting, ZoomMeeting $zoomMeeting): void
     {
         DB::transaction(function () use ($meeting, $zoomMeeting): void {
-            $this->updateMeetingWithLock($meeting, [
+            $lockedMeeting = $this->lockMeeting($meeting);
+            $lockedMeeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
+            $lockedMeeting->update([
                 'meeting_id' => $zoomMeeting->meeting_id,
                 'start_url' => $zoomMeeting->start_url,
                 'join_url' => $zoomMeeting->join_url,
                 'status' => $zoomMeeting->status,
-                'sync_status' => MeetingSyncStatus::Active,
                 'sync_error' => null,
                 'synced_at' => now(),
             ]);
@@ -92,8 +93,9 @@ final readonly class CreateProjectMeeting
     private function markMeetingAsFailed(Meeting $meeting, Throwable $exception): void
     {
         DB::transaction(function () use ($meeting, $exception): void {
-            $this->updateMeetingWithLock($meeting, [
-                'sync_status' => MeetingSyncStatus::Failed,
+            $lockedMeeting = $this->lockMeeting($meeting);
+            $lockedMeeting->transitionTo(MeetingSyncStatus::Failed, 'sync_status');
+            $lockedMeeting->update([
                 'sync_error' => $this->errorFormatter->format($exception),
                 'sync_attempts' => DB::raw('sync_attempts + 1'),
             ]);

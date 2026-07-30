@@ -49,10 +49,9 @@ final readonly class DeleteProjectMeeting
     private function markMeetingAsDeleting(Meeting $meeting): void
     {
         DB::transaction(function () use ($meeting): void {
-            $this->updateMeetingWithLock($meeting, [
-                'sync_status' => MeetingSyncStatus::Deleting,
-                'sync_error' => null,
-            ]);
+            $lockedMeeting = $this->lockMeeting($meeting);
+            $lockedMeeting->transitionTo(MeetingSyncStatus::Deleting, 'sync_status');
+            $lockedMeeting->update(['sync_error' => null]);
         }, attempts: $this->transactionRetryAttempts);
     }
 
@@ -76,8 +75,9 @@ final readonly class DeleteProjectMeeting
     private function markMeetingAsDeleted(Meeting $meeting): void
     {
         DB::transaction(function () use ($meeting): void {
-            $this->updateMeetingWithLock($meeting, [
-                'sync_status' => MeetingSyncStatus::Deleted,
+            $lockedMeeting = $this->lockMeeting($meeting);
+            $lockedMeeting->transitionTo(MeetingSyncStatus::Deleted, 'sync_status');
+            $lockedMeeting->update([
                 'sync_error' => null,
                 'synced_at' => now(),
             ]);
@@ -87,8 +87,9 @@ final readonly class DeleteProjectMeeting
     private function markMeetingAsDeleteFailed(Meeting $meeting, Throwable $exception): void
     {
         DB::transaction(function () use ($meeting, $exception): void {
-            $this->updateMeetingWithLock($meeting, [
-                'sync_status' => MeetingSyncStatus::DeleteFailed,
+            $lockedMeeting = $this->lockMeeting($meeting);
+            $lockedMeeting->transitionTo(MeetingSyncStatus::DeleteFailed, 'sync_status');
+            $lockedMeeting->update([
                 'sync_error' => $this->errorFormatter->format($exception),
                 'sync_attempts' => DB::raw('sync_attempts + 1'),
             ]);
