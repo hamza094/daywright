@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\V1\Projects;
 
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
-use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskSystemStatus;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,7 +27,7 @@ final class ProjectLimitsFeatureTest extends TestCase
         $memberLimit = $this->freePlanLimit(PlanLimitType::MembersPerProject);
 
         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
         Task::factory()->for($this->user, 'owner')->for($this->project)->completed()->create();
 

@@ -6,7 +6,7 @@ namespace Tests\Unit\Services\Subscription;
 
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
-use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskSystemStatus;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -78,7 +78,7 @@ class SubscriptionUsageServiceTest extends TestCase
     private function createProjectUsageFixtures(User $user, Project $project): void
     {
         Task::factory()->count(3)->for($user, 'owner')->for($project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
         Task::factory()->for($user, 'owner')->for($project)->completed()->create();
 

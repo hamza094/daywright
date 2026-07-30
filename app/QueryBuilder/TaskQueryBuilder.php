@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\QueryBuilder;
 
-use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskSystemStatus;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -35,7 +35,7 @@ class TaskQueryBuilder extends Builder
      */
     public function completed(): self
     {
-        return $this->where('status_id', TaskStatusEnum::COMPLETED);
+        return $this->where('status_id', TaskSystemStatus::Completed->value);
     }
 
     /**
@@ -43,7 +43,7 @@ class TaskQueryBuilder extends Builder
      */
     public function remaining(): self
     {
-        return $this->where('status_id', '!=', TaskStatusEnum::COMPLETED)
+        return $this->where('status_id', '!=', TaskSystemStatus::Completed->value)
             ->where(function ($q): void {
                 $q->whereNull('due_at')
                     ->orWhere('due_at', '>=', now());
@@ -57,7 +57,7 @@ class TaskQueryBuilder extends Builder
     {
         return $this->whereNotNull('due_at')
             ->where('due_at', '<', now())
-            ->where('status_id', '!=', TaskStatusEnum::COMPLETED);
+            ->where('status_id', '!=', TaskSystemStatus::Completed->value);
     }
 
     /**
@@ -68,7 +68,7 @@ class TaskQueryBuilder extends Builder
         return $this->whereNotNull('due_at')
             ->where('due_at', '>', now())
             ->where('due_at', '<=', now()->addHours($hours))
-            ->where('status_id', '!=', TaskStatusEnum::COMPLETED);
+            ->where('status_id', '!=', TaskSystemStatus::Completed->value);
     }
 
     public function active(): self

@@ -94,7 +94,7 @@ class MeetingStateMachineTest extends TestCase
         ]);
 
         $this->expectException(InvalidStateTransitionException::class);
-        $this->expectExceptionMessage("Cannot transition from {$from->value} to {$to->value}");
+        $this->expectExceptionMessage("Cannot transition from {$from->name} to {$to->name}");
 
         $meeting->transitionTo($to, 'sync_status');
     }
@@ -128,8 +128,8 @@ class MeetingStateMachineTest extends TestCase
         } catch (InvalidStateTransitionException $e) {
             $meta = $e->meta(request());
             $this->assertEquals(Meeting::class, $meta['model']);
-            $this->assertEquals('deleted', $meta['current_state']);
-            $this->assertEquals('active', $meta['attempted_state']);
+            $this->assertEquals('Deleted', $meta['current_state']);
+            $this->assertEquals('Active', $meta['attempted_state']);
         }
     }
 }

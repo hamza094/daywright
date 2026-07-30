@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\V1\Subscriptions;
 
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
-use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskSystemStatus;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
@@ -358,7 +358,7 @@ class PlanLimitServiceFeatureTest extends TestCase
     private function createActiveTasks(int $count): void
     {
         Task::factory()->count($count)->for($this->user, 'owner')->for($this->project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
     }
 

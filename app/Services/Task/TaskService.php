@@ -17,6 +17,7 @@ use App\DataTransferObjects\Task\TaskCreateData;
 use App\DataTransferObjects\Task\TaskUpdateData;
 use App\DataTransferObjects\Task\UnassignTaskMemberData;
 use App\Enums\Subscription\PlanLimitType;
+use App\Enums\TaskSystemStatus;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -24,6 +25,7 @@ use App\Notifications\ProjectTask;
 use App\QueryBuilder\TaskQueryBuilder;
 use App\Services\Subscription\PlanLimitService;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TaskService
@@ -76,16 +78,29 @@ class TaskService
             ]);
         }
 
-        $payload = $this->resetTaskNotificationAction->execute($task, $data);
+        return DB::transaction(function () use ($task, $data): Task {
+            $payload = $this->resetTaskNotificationAction->execute($task, $data);
 
-        $task->update($payload->toArray());
-        $task->loadMissing('project:id,slug');
+            // Handle status transition separately using state machine
+            if ($data->hasStatusUpdate() && $data->statusId() !== null) {
+                $newStatus = TaskSystemStatus::from($data->statusId());
+                $task->transitionTo($newStatus, 'status_id');
+            }
 
-        if ($data->hasStatusUpdate()) {
-            $task->load('status');
-        }
+            // Update other attributes (excluding status_id)
+            $nonStatusAttributes = $payload->attributesWithoutStatus();
+            if (! empty($nonStatusAttributes)) {
+                $task->update($nonStatusAttributes);
+            }
 
-        return $task;
+            $task->loadMissing('project:id,slug');
+
+            if ($data->hasStatusUpdate()) {
+                $task->load('status');
+            }
+
+            return $task;
+        });
     }
 
     public function assignMembers(Task $task, AssignTaskMembersData $data, Project $project, User $actor): Task

@@ -6,7 +6,7 @@ namespace Tests\Unit\Services\Subscription;
 
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
-use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskSystemStatus;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Models\Meeting;
 use App\Models\Project;
@@ -131,7 +131,7 @@ class PlanLimitServiceTest extends TestCase
         $taskLimit = $this->freePlanLimit(PlanLimitType::TasksPerProject);
 
         Task::factory()->count($taskLimit + 1)->for($user, 'owner')->for($project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
 
         $this->assertPlanException(
@@ -268,7 +268,7 @@ class PlanLimitServiceTest extends TestCase
             fn (Project $lockedProject): Task => $lockedProject->tasks()->create([
                 'title' => 'Locked Task',
                 'user_id' => $user->id,
-                'status_id' => TaskStatusEnum::PENDING,
+                'status_id' => TaskSystemStatus::Pending->value,
             ])
         );
 
@@ -398,7 +398,7 @@ class PlanLimitServiceTest extends TestCase
     {
         Project::factory()->count($this->freePlanLimit(PlanLimitType::Projects) + 1)->for($user)->create();
         Task::factory()->count($this->freePlanLimit(PlanLimitType::TasksPerProject) + 1)->for($user, 'owner')->for($project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
         $project->members()->attach(User::factory()->count($this->freePlanLimit(PlanLimitType::MembersPerProject) + 1)->create(), ['active' => true]);
         Meeting::factory()->count($this->freePlanLimit(PlanLimitType::CreatedMeetings) + 1)->for($user)->for($project)->create();
@@ -421,7 +421,7 @@ class PlanLimitServiceTest extends TestCase
         // Create (taskLimit - 2) active/pending tasks
         // Since completed tasks are now counted in total, we need fewer active tasks to stay below the limit
         Task::factory()->count($taskLimit - 2)->for($user, 'owner')->for($project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
 
         // Create one completed task (now counted in total)

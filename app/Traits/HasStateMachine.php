@@ -6,6 +6,7 @@ namespace App\Traits;
 
 use App\Exceptions\InvalidStateTransitionException;
 use BackedEnum;
+use Throwable;
 
 trait HasStateMachine
 {
@@ -30,13 +31,38 @@ trait HasStateMachine
         $allowed = $this->validTransitions()[$currentStateValue] ?? [];
 
         if (! in_array($newStatus->value, $allowed, strict: true)) {
+            // Use case names for user-friendly error messages
+            $currentStateName = $this->getStateName($currentStatus, $currentStateValue, $newStatus);
             throw new InvalidStateTransitionException(
                 model: $this,
-                currentState: is_string($currentStateValue) ? $currentStateValue : (string) $currentStateValue,
-                attemptedState: $newStatus->value,
+                currentState: $currentStateName,
+                attemptedState: $newStatus->name,
             );
         }
 
         $this->update([$statusColumn => $newStatus]);
+    }
+
+    /**
+     * Get the readable name for a state value
+     */
+    private function getStateName(mixed $currentStatus, string|int $currentStateValue, BackedEnum $newStatus): string
+    {
+        if ($currentStatus instanceof BackedEnum) {
+            return $currentStatus->name;
+        }
+
+        // Try to find the enum case from the value using the same enum type as newStatus
+        try {
+            $enumClass = $newStatus::class;
+            $enumCase = $enumClass::tryFrom($currentStateValue);
+            if ($enumCase !== null) {
+                return $enumCase->name;
+            }
+        } catch (Throwable) {
+            // Fallback to string value if enum lookup fails
+        }
+
+        return (string) $currentStateValue;
     }
 }

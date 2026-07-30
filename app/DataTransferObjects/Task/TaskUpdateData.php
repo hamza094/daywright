@@ -57,6 +57,21 @@ final readonly class TaskUpdateData
         return array_key_exists('status_id', $this->attributes);
     }
 
+    public function statusId(): ?int
+    {
+        $statusId = $this->attributes['status_id'] ?? null;
+
+        return is_int($statusId) ? $statusId : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function attributesWithoutStatus(): array
+    {
+        return Arr::except($this->attributes, ['status_id']);
+    }
+
     public function withNotificationReset(): self
     {
         return new self([

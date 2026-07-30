@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Projects;
 
-use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskSystemStatus;
 use App\Jobs\CancelZoomMeetingsJob;
 use App\Models\Meeting;
 use App\Models\Project;
@@ -143,7 +143,7 @@ class ProjectFeatureTest extends TestCase
     public function project_show_includes_project_scoped_limits_only(): void
     {
         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
         Task::factory()->for($this->user, 'owner')->for($this->project)->completed()->create();
 
@@ -165,7 +165,7 @@ class ProjectFeatureTest extends TestCase
         $member = User::factory()->create();
 
         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
         $this->project->members()->attach($member, ['active' => true]);
 
@@ -183,7 +183,7 @@ class ProjectFeatureTest extends TestCase
         $notes = 'My project first notes';
 
         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
         $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
 
