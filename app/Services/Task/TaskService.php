@@ -89,7 +89,7 @@ class TaskService
 
             // Update other attributes (excluding status_id)
             $nonStatusAttributes = $payload->attributesWithoutStatus();
-            if (! empty($nonStatusAttributes)) {
+            if ($nonStatusAttributes !== []) {
                 $task->update($nonStatusAttributes);
             }
 

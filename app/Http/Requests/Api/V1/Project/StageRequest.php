@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Project;
 
 use App\DataTransferObjects\Project\ProjectStageUpdateData;
-use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -36,13 +35,7 @@ class StageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'stage' => ['required', 'integer', 'exists:stages,id',
-                function (string $attribute, mixed $value, Closure $fail): void {
-                    if ((int) $value === (int) $this->project->stage_id) {
-                        $fail('The selected stage must be different from the current project stage.');
-                    }
-                },
-            ],
+            'stage' => ['required', 'integer', 'exists:stages,id'],
             'postponed_reason' => ['sometimes', 'required', 'string'],
         ];
     }

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ProjectHealthStatus;
+use App\Enums\ProjectStage;
 use App\Exceptions\ArchivedResourceException;
 use App\QueryBuilder\ProjectQueryBuilder;
+use App\Traits\HasStateMachine;
 use App\Traits\RecordActivity;
 use Carbon\Carbon;
 use Cviebrock\EloquentSluggable\Sluggable;
@@ -29,6 +31,7 @@ use Override;
 class Project extends Model
 {
     use HasFactory;
+    use HasStateMachine;
     use RecordActivity;
     use Sluggable;
     use SoftDeletes;
@@ -388,5 +391,54 @@ class Project extends Model
         static::forceDeleted(function ($project): void {
             $project->activities()->delete();
         });
+    }
+
+    /**
+     * Define the valid stage transitions for the project.
+     *
+     * @return array<string, list<int|string>>
+     */
+    protected function validTransitions(): array
+    {
+        /** @phpstan-ignore return.type */
+        return [
+            // Active states can move forward, backward (for revisions), or be Postponed
+            ProjectStage::Planning->value => [
+                ProjectStage::Design->value,
+                ProjectStage::Postponed->value,
+            ],
+            ProjectStage::Design->value => [
+                ProjectStage::Planning->value, // Iteration allowed!
+                ProjectStage::Development->value,
+                ProjectStage::Postponed->value,
+            ],
+            ProjectStage::Development->value => [
+                ProjectStage::Design->value, // Bug found/redesign needed
+                ProjectStage::Testing->value,
+                ProjectStage::Postponed->value,
+            ],
+            ProjectStage::Testing->value => [
+                ProjectStage::Development->value, // QA failed
+                ProjectStage::Delivery->value,
+                ProjectStage::Postponed->value,
+            ],
+            ProjectStage::Delivery->value => [
+                ProjectStage::Development->value,
+                ProjectStage::Completed->value,
+                ProjectStage::Postponed->value,
+            ],
+
+            // TERMINAL STATE: Strictly locked! Cannot be modified.
+            ProjectStage::Completed->value => [],
+
+            // Resuming from Postponed allows returning to any active stage
+            ProjectStage::Postponed->value => [
+                ProjectStage::Planning->value,
+                ProjectStage::Design->value,
+                ProjectStage::Development->value,
+                ProjectStage::Testing->value,
+                ProjectStage::Delivery->value,
+            ],
+        ];
     }
 }

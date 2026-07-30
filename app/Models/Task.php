@@ -131,10 +131,11 @@ class Task extends Model
     /**
      * Define the valid state transitions for the Task model.
      *
-     * @return array<string, list<int>>
+     * @return array<string, list<int|string>>
      */
     protected function validTransitions(): array
     {
+        /** @phpstan-ignore return.type */
         return [
             TaskSystemStatus::Pending->value => [
                 TaskSystemStatus::InProgress->value,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exceptions;
 
 use Illuminate\Database\Eloquent\Model;
+use Override;
 
 final class InvalidStateTransitionException extends ApiException
 {
@@ -27,6 +28,7 @@ final class InvalidStateTransitionException extends ApiException
         return 'invalid_state_transition';
     }
 
+    #[Override]
     public function publicMessage(): string
     {
         return "Invalid state transition from {$this->currentState} to {$this->attemptedState}";
@@ -35,10 +37,11 @@ final class InvalidStateTransitionException extends ApiException
     /**
      * @return array<string, mixed>
      */
+    #[Override]
     public function meta(\Illuminate\Http\Request $request): array
     {
         return [
-            'model' => get_class($this->model),
+            'model' => $this->model::class,
             'current_state' => $this->currentState,
             'attempted_state' => $this->attemptedState,
         ];

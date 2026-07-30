@@ -13,7 +13,7 @@ trait HasStateMachine
     /**
      * Define the valid state transitions for the model.
      *
-     * @return array<string, list<string>>
+     * @return array<string, list<int|string>>
      */
     abstract protected function validTransitions(): array;
 
