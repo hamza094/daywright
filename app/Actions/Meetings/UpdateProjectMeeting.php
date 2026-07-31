@@ -12,6 +12,7 @@ use App\Models\Meeting;
 use App\Models\User;
 use App\Services\Project\MeetingOperationLock;
 use App\Services\Project\MeetingSyncErrorFormatter;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -76,7 +77,7 @@ final readonly class UpdateProjectMeeting
         return DB::transaction(function () use ($meeting, $data): Meeting {
             $lockedMeeting = $this->lockMeeting($meeting);
             $lockedMeeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
-            $lockedMeeting->update($data->toArray() + [
+            $lockedMeeting->update(Arr::except($data->toArray(), ['sync_status']) + [
                 'sync_error' => null,
                 'synced_at' => now(),
             ]);

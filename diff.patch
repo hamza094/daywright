@@ -1,0 +1,1660 @@
+﻿diff --git a/app/Actions/Meetings/Concerns/MeetingLockOperations.php b/app/Actions/Meetings/Concerns/MeetingLockOperations.php
+index 6a7e9dae..39e5b6b1 100644
+--- a/app/Actions/Meetings/Concerns/MeetingLockOperations.php
++++ b/app/Actions/Meetings/Concerns/MeetingLockOperations.php
+@@ -27,15 +27,4 @@ trait MeetingLockOperations
+             ->whereKey($meeting->getKey())
+             ->firstOrFail();
+     }
+-
+-    /**
+-     * @param  array<string, mixed>  $attributes
+-     */
+-    private function updateMeetingWithLock(Meeting $meeting, array $attributes): Meeting
+-    {
+-        $lockedMeeting = $this->lockMeeting($meeting);
+-        $lockedMeeting->update($attributes);
+-
+-        return $lockedMeeting;
+-    }
+ }
+diff --git a/app/Actions/Meetings/CreateProjectMeeting.php b/app/Actions/Meetings/CreateProjectMeeting.php
+index b90ad7cc..0d537739 100644
+--- a/app/Actions/Meetings/CreateProjectMeeting.php
++++ b/app/Actions/Meetings/CreateProjectMeeting.php
+@@ -77,12 +77,13 @@ final readonly class CreateProjectMeeting
+     private function markMeetingAsSynced(Meeting $meeting, ZoomMeeting $zoomMeeting): void
+     {
+         DB::transaction(function () use ($meeting, $zoomMeeting): void {
+-            $this->updateMeetingWithLock($meeting, [
++            $lockedMeeting = $this->lockMeeting($meeting);
++            $lockedMeeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
++            $lockedMeeting->update([
+                 'meeting_id' => $zoomMeeting->meeting_id,
+                 'start_url' => $zoomMeeting->start_url,
+                 'join_url' => $zoomMeeting->join_url,
+                 'status' => $zoomMeeting->status,
+-                'sync_status' => MeetingSyncStatus::Active,
+                 'sync_error' => null,
+                 'synced_at' => now(),
+             ]);
+@@ -92,8 +93,9 @@ final readonly class CreateProjectMeeting
+     private function markMeetingAsFailed(Meeting $meeting, Throwable $exception): void
+     {
+         DB::transaction(function () use ($meeting, $exception): void {
+-            $this->updateMeetingWithLock($meeting, [
+-                'sync_status' => MeetingSyncStatus::Failed,
++            $lockedMeeting = $this->lockMeeting($meeting);
++            $lockedMeeting->transitionTo(MeetingSyncStatus::Failed, 'sync_status');
++            $lockedMeeting->update([
+                 'sync_error' => $this->errorFormatter->format($exception),
+                 'sync_attempts' => DB::raw('sync_attempts + 1'),
+             ]);
+diff --git a/app/Actions/Meetings/DeleteProjectMeeting.php b/app/Actions/Meetings/DeleteProjectMeeting.php
+index e51d2159..27c28fe6 100644
+--- a/app/Actions/Meetings/DeleteProjectMeeting.php
++++ b/app/Actions/Meetings/DeleteProjectMeeting.php
+@@ -49,10 +49,9 @@ final readonly class DeleteProjectMeeting
+     private function markMeetingAsDeleting(Meeting $meeting): void
+     {
+         DB::transaction(function () use ($meeting): void {
+-            $this->updateMeetingWithLock($meeting, [
+-                'sync_status' => MeetingSyncStatus::Deleting,
+-                'sync_error' => null,
+-            ]);
++            $lockedMeeting = $this->lockMeeting($meeting);
++            $lockedMeeting->transitionTo(MeetingSyncStatus::Deleting, 'sync_status');
++            $lockedMeeting->update(['sync_error' => null]);
+         }, attempts: $this->transactionRetryAttempts);
+     }
+ 
+@@ -76,8 +75,9 @@ final readonly class DeleteProjectMeeting
+     private function markMeetingAsDeleted(Meeting $meeting): void
+     {
+         DB::transaction(function () use ($meeting): void {
+-            $this->updateMeetingWithLock($meeting, [
+-                'sync_status' => MeetingSyncStatus::Deleted,
++            $lockedMeeting = $this->lockMeeting($meeting);
++            $lockedMeeting->transitionTo(MeetingSyncStatus::Deleted, 'sync_status');
++            $lockedMeeting->update([
+                 'sync_error' => null,
+                 'synced_at' => now(),
+             ]);
+@@ -87,8 +87,9 @@ final readonly class DeleteProjectMeeting
+     private function markMeetingAsDeleteFailed(Meeting $meeting, Throwable $exception): void
+     {
+         DB::transaction(function () use ($meeting, $exception): void {
+-            $this->updateMeetingWithLock($meeting, [
+-                'sync_status' => MeetingSyncStatus::DeleteFailed,
++            $lockedMeeting = $this->lockMeeting($meeting);
++            $lockedMeeting->transitionTo(MeetingSyncStatus::DeleteFailed, 'sync_status');
++            $lockedMeeting->update([
+                 'sync_error' => $this->errorFormatter->format($exception),
+                 'sync_attempts' => DB::raw('sync_attempts + 1'),
+             ]);
+diff --git a/app/Actions/Meetings/UpdateProjectMeeting.php b/app/Actions/Meetings/UpdateProjectMeeting.php
+index 905b72e2..39f9bd67 100644
+--- a/app/Actions/Meetings/UpdateProjectMeeting.php
++++ b/app/Actions/Meetings/UpdateProjectMeeting.php
+@@ -50,10 +50,9 @@ final readonly class UpdateProjectMeeting
+     private function markMeetingAsUpdating(Meeting $meeting): void
+     {
+         DB::transaction(function () use ($meeting): void {
+-            $this->updateMeetingWithLock($meeting, [
+-                'sync_status' => MeetingSyncStatus::Updating,
+-                'sync_error' => null,
+-            ]);
++            $lockedMeeting = $this->lockMeeting($meeting);
++            $lockedMeeting->transitionTo(MeetingSyncStatus::Updating, 'sync_status');
++            $lockedMeeting->update(['sync_error' => null]);
+         }, attempts: $this->transactionRetryAttempts);
+     }
+ 
+@@ -74,18 +73,24 @@ final readonly class UpdateProjectMeeting
+ 
+     private function markMeetingAsUpdated(Meeting $meeting, MeetingUpdateData $data): Meeting
+     {
+-        return DB::transaction(fn (): Meeting => $this->updateMeetingWithLock($meeting, $data->toArray() + [
+-            'sync_status' => MeetingSyncStatus::Active,
+-            'sync_error' => null,
+-            'synced_at' => now(),
+-        ]), attempts: $this->transactionRetryAttempts);
++        return DB::transaction(function () use ($meeting, $data): Meeting {
++            $lockedMeeting = $this->lockMeeting($meeting);
++            $lockedMeeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
++            $lockedMeeting->update($data->toArray() + [
++                'sync_error' => null,
++                'synced_at' => now(),
++            ]);
++
++            return $lockedMeeting;
++        }, attempts: $this->transactionRetryAttempts);
+     }
+ 
+     private function markMeetingAsUpdateFailed(Meeting $meeting, Throwable $exception): void
+     {
+         DB::transaction(function () use ($meeting, $exception): void {
+-            $this->updateMeetingWithLock($meeting, [
+-                'sync_status' => MeetingSyncStatus::UpdateFailed,
++            $lockedMeeting = $this->lockMeeting($meeting);
++            $lockedMeeting->transitionTo(MeetingSyncStatus::UpdateFailed, 'sync_status');
++            $lockedMeeting->update([
+                 'sync_error' => $this->errorFormatter->format($exception),
+                 'sync_attempts' => DB::raw('sync_attempts + 1'),
+             ]);
+diff --git a/app/DataTransferObjects/Project/ProjectStageUpdateData.php b/app/DataTransferObjects/Project/ProjectStageUpdateData.php
+index e567c8fd..ab0254d0 100644
+--- a/app/DataTransferObjects/Project/ProjectStageUpdateData.php
++++ b/app/DataTransferObjects/Project/ProjectStageUpdateData.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\DataTransferObjects\Project;
+ 
++use App\Enums\ProjectStage;
+ use InvalidArgumentException;
+ 
+ final readonly class ProjectStageUpdateData
+@@ -40,4 +41,9 @@ final readonly class ProjectStageUpdateData
+             'postponed_reason' => $this->postponedReason,
+         ];
+     }
++
++    public function stage(): ProjectStage
++    {
++        return ProjectStage::from($this->stageId);
++    }
+ }
+diff --git a/app/DataTransferObjects/Task/TaskUpdateData.php b/app/DataTransferObjects/Task/TaskUpdateData.php
+index c6878747..38e5a440 100644
+--- a/app/DataTransferObjects/Task/TaskUpdateData.php
++++ b/app/DataTransferObjects/Task/TaskUpdateData.php
+@@ -57,6 +57,21 @@ final readonly class TaskUpdateData
+         return array_key_exists('status_id', $this->attributes);
+     }
+ 
++    public function statusId(): ?int
++    {
++        $statusId = $this->attributes['status_id'] ?? null;
++
++        return is_int($statusId) ? $statusId : null;
++    }
++
++    /**
++     * @return array<string, mixed>
++     */
++    public function attributesWithoutStatus(): array
++    {
++        return Arr::except($this->attributes, ['status_id']);
++    }
++
+     public function withNotificationReset(): self
+     {
+         return new self([
+diff --git a/app/Enums/TaskStatus.php b/app/Enums/TaskStatus.php
+deleted file mode 100644
+index e1dcd187..00000000
+--- a/app/Enums/TaskStatus.php
++++ /dev/null
+@@ -1,45 +0,0 @@
+-<?php
+-
+-declare(strict_types=1);
+-
+-namespace App\Enums;
+-
+-class TaskStatus
+-{
+-    // Database status IDs - keep these in sync with your seed/data
+-    const PENDING = 1;
+-
+-    const IN_PROGRESS = 2;
+-
+-    const UNDER_REVIEW = 3;
+-
+-    const COMPLETED = 4;
+-
+-    const CANCELLED = 5;
+-
+-    /**0
+-     * All known status IDs
+-     */
+-    public static function all(): array
+-    {
+-        return [
+-            self::PENDING,
+-            self::IN_PROGRESS,
+-            self::UNDER_REVIEW,
+-            self::COMPLETED,
+-            self::CANCELLED,
+-        ];
+-    }
+-
+-    /**
+-     * Statuses considered active (not completed/cancelled)
+-     */
+-    public static function active(): array
+-    {
+-        return [
+-            self::PENDING,
+-            self::IN_PROGRESS,
+-            self::UNDER_REVIEW,
+-        ];
+-    }
+-}
+diff --git a/app/Enums/TaskSystemStatus.php b/app/Enums/TaskSystemStatus.php
+new file mode 100644
+index 00000000..93eac5b0
+--- /dev/null
++++ b/app/Enums/TaskSystemStatus.php
+@@ -0,0 +1,44 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Enums;
++
++enum TaskSystemStatus: int
++{
++    case Pending = 1;
++    case InProgress = 2;
++    case UnderReview = 3;
++    case Completed = 4;
++    case Cancelled = 5;
++
++    /**
++     * All known status IDs
++     *
++     * @return array<int>
++     */
++    public static function all(): array
++    {
++        return [
++            self::Pending->value,
++            self::InProgress->value,
++            self::UnderReview->value,
++            self::Completed->value,
++            self::Cancelled->value,
++        ];
++    }
++
++    /**
++     * Statuses considered active (not completed/cancelled)
++     *
++     * @return array<int>
++     */
++    public static function active(): array
++    {
++        return [
++            self::Pending->value,
++            self::InProgress->value,
++            self::UnderReview->value,
++        ];
++    }
++}
+diff --git a/app/Exceptions/InvalidStateTransitionException.php b/app/Exceptions/InvalidStateTransitionException.php
+new file mode 100644
+index 00000000..5b88f232
+--- /dev/null
++++ b/app/Exceptions/InvalidStateTransitionException.php
+@@ -0,0 +1,49 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Exceptions;
++
++use Illuminate\Database\Eloquent\Model;
++use Override;
++
++final class InvalidStateTransitionException extends ApiException
++{
++    public function __construct(
++        private readonly Model $model,
++        private readonly string $currentState,
++        private readonly string $attemptedState,
++        string $message = '',
++    ) {
++        parent::__construct($message ?: "Cannot transition from {$currentState} to {$attemptedState}");
++    }
++
++    public function status(): int
++    {
++        return 422;
++    }
++
++    public function errorCode(): string
++    {
++        return 'invalid_state_transition';
++    }
++
++    #[Override]
++    public function publicMessage(): string
++    {
++        return "Invalid state transition from {$this->currentState} to {$this->attemptedState}";
++    }
++
++    /**
++     * @return array<string, mixed>
++     */
++    #[Override]
++    public function meta(\Illuminate\Http\Request $request): array
++    {
++        return [
++            'model' => $this->model::class,
++            'current_state' => $this->currentState,
++            'attempted_state' => $this->attemptedState,
++        ];
++    }
++}
+diff --git a/app/Exceptions/Traits/HandlesApiExceptions.php b/app/Exceptions/Traits/HandlesApiExceptions.php
+index 31c77888..ffa90ddc 100644
+--- a/app/Exceptions/Traits/HandlesApiExceptions.php
++++ b/app/Exceptions/Traits/HandlesApiExceptions.php
+@@ -5,6 +5,7 @@ declare(strict_types=1);
+ namespace App\Exceptions\Traits;
+ 
+ use App\Exceptions\ApiException;
++use App\Exceptions\InvalidStateTransitionException;
+ use App\Exceptions\Support\ApiErrorFormatter;
+ use Aws\S3\Exception\S3Exception;
+ use Illuminate\Auth\Access\AuthorizationException;
+@@ -25,6 +26,14 @@ trait HandlesApiExceptions
+ {
+     protected function registerApiExceptionHandlers(): void
+     {
++        $this->renderable(fn (InvalidStateTransitionException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
++            $e->publicMessage(),
++            $e->status(),
++            $e->errorCode(),
++            $e->errors(),
++            $e->meta($request),
++        ));
++
+         $this->renderable(fn (ApiException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+             $e->publicMessage(),
+             $e->status(),
+diff --git a/app/Http/Requests/Api/V1/Project/StageRequest.php b/app/Http/Requests/Api/V1/Project/StageRequest.php
+index 0dbd3c87..15ef8ac7 100644
+--- a/app/Http/Requests/Api/V1/Project/StageRequest.php
++++ b/app/Http/Requests/Api/V1/Project/StageRequest.php
+@@ -5,7 +5,6 @@ declare(strict_types=1);
+ namespace App\Http\Requests\Api\V1\Project;
+ 
+ use App\DataTransferObjects\Project\ProjectStageUpdateData;
+-use Closure;
+ use Illuminate\Foundation\Http\FormRequest;
+ use Override;
+ 
+@@ -36,13 +35,7 @@ class StageRequest extends FormRequest
+     public function rules(): array
+     {
+         return [
+-            'stage' => ['required', 'integer', 'exists:stages,id',
+-                function (string $attribute, mixed $value, Closure $fail): void {
+-                    if ((int) $value === (int) $this->project->stage_id) {
+-                        $fail('The selected stage must be different from the current project stage.');
+-                    }
+-                },
+-            ],
++            'stage' => ['required', 'integer', 'exists:stages,id'],
+             'postponed_reason' => ['sometimes', 'required', 'string'],
+         ];
+     }
+diff --git a/app/Http/Requests/Api/V1/Task/TaskUpdateRequest.php b/app/Http/Requests/Api/V1/Task/TaskUpdateRequest.php
+index d400a537..6df1f990 100644
+--- a/app/Http/Requests/Api/V1/Task/TaskUpdateRequest.php
++++ b/app/Http/Requests/Api/V1/Task/TaskUpdateRequest.php
+@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\Task;
+ 
+ use App\DataTransferObjects\Task\TaskUpdateData;
+ use App\Enums\TaskDueNotifies;
++use App\Enums\TaskSystemStatus;
+ use App\Rules\Iso8601Timestamp;
+ use Dedoc\Scramble\Attributes\SchemaName;
+ use Illuminate\Foundation\Http\FormRequest;
+@@ -78,7 +79,12 @@ class TaskUpdateRequest extends FormRequest
+              *
+              * @example 1
+              */
+-            'status_id' => 'sometimes|required|integer|max:4',
++            'status_id' => [
++                'sometimes',
++                'required',
++                'integer',
++                Rule::in(TaskSystemStatus::all()),
++            ],
+             /**
+              * Notification strategy used for due-date reminders.
+              *
+diff --git a/app/Models/Meeting.php b/app/Models/Meeting.php
+index 36983f4a..13552552 100644
+--- a/app/Models/Meeting.php
++++ b/app/Models/Meeting.php
+@@ -5,6 +5,7 @@ declare(strict_types=1);
+ namespace App\Models;
+ 
+ use App\Enums\Meeting\MeetingSyncStatus;
++use App\Traits\HasStateMachine;
+ use App\Traits\RecordActivity;
+ use Carbon\Carbon;
+ use Illuminate\Database\Eloquent\Builder;
+@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Model;
+ 
+ class Meeting extends Model
+ {
+-    use HasFactory, RecordActivity;
++    use HasFactory, HasStateMachine, RecordActivity;
+ 
+     protected $guarded = [];
+ 
+@@ -82,4 +83,44 @@ class Meeting extends Model
+     {
+         return $query->where('sync_status', MeetingSyncStatus::Active);
+     }
++
++    /**
++     * @return array<string, list<string>>
++     */
++    protected function validTransitions(): array
++    {
++        return [
++            MeetingSyncStatus::Pending->value => [
++                MeetingSyncStatus::Active->value,
++                MeetingSyncStatus::Failed->value,
++            ],
++            MeetingSyncStatus::Active->value => [
++                MeetingSyncStatus::Updating->value,
++                MeetingSyncStatus::Deleting->value,
++                MeetingSyncStatus::Failed->value,
++            ],
++            MeetingSyncStatus::Updating->value => [
++                MeetingSyncStatus::Active->value,
++                MeetingSyncStatus::UpdateFailed->value,
++            ],
++            MeetingSyncStatus::UpdateFailed->value => [
++                MeetingSyncStatus::Updating->value,
++                MeetingSyncStatus::Active->value,
++                MeetingSyncStatus::Deleting->value,
++            ],
++            MeetingSyncStatus::Deleting->value => [
++                MeetingSyncStatus::Deleted->value,
++                MeetingSyncStatus::DeleteFailed->value,
++            ],
++            MeetingSyncStatus::DeleteFailed->value => [
++                MeetingSyncStatus::Deleting->value,
++                MeetingSyncStatus::Active->value,
++            ],
++            MeetingSyncStatus::Failed->value => [
++                MeetingSyncStatus::Active->value,
++                MeetingSyncStatus::Pending->value,
++            ],
++            MeetingSyncStatus::Deleted->value => [],
++        ];
++    }
+ }
+diff --git a/app/Models/Project.php b/app/Models/Project.php
+index 3519a2a7..09040839 100644
+--- a/app/Models/Project.php
++++ b/app/Models/Project.php
+@@ -5,8 +5,10 @@ declare(strict_types=1);
+ namespace App\Models;
+ 
+ use App\Enums\ProjectHealthStatus;
++use App\Enums\ProjectStage;
+ use App\Exceptions\ArchivedResourceException;
+ use App\QueryBuilder\ProjectQueryBuilder;
++use App\Traits\HasStateMachine;
+ use App\Traits\RecordActivity;
+ use Carbon\Carbon;
+ use Cviebrock\EloquentSluggable\Sluggable;
+@@ -29,6 +31,7 @@ use Override;
+ class Project extends Model
+ {
+     use HasFactory;
++    use HasStateMachine;
+     use RecordActivity;
+     use Sluggable;
+     use SoftDeletes;
+@@ -389,4 +392,53 @@ class Project extends Model
+             $project->activities()->delete();
+         });
+     }
++
++    /**
++     * Define the valid stage transitions for the project.
++     *
++     * @return array<string, list<int|string>>
++     */
++    protected function validTransitions(): array
++    {
++        /** @phpstan-ignore return.type */
++        return [
++            // Active states can move forward, backward (for revisions), or be Postponed
++            ProjectStage::Planning->value => [
++                ProjectStage::Design->value,
++                ProjectStage::Postponed->value,
++            ],
++            ProjectStage::Design->value => [
++                ProjectStage::Planning->value, // Iteration allowed!
++                ProjectStage::Development->value,
++                ProjectStage::Postponed->value,
++            ],
++            ProjectStage::Development->value => [
++                ProjectStage::Design->value, // Bug found/redesign needed
++                ProjectStage::Testing->value,
++                ProjectStage::Postponed->value,
++            ],
++            ProjectStage::Testing->value => [
++                ProjectStage::Development->value, // QA failed
++                ProjectStage::Delivery->value,
++                ProjectStage::Postponed->value,
++            ],
++            ProjectStage::Delivery->value => [
++                ProjectStage::Development->value,
++                ProjectStage::Completed->value,
++                ProjectStage::Postponed->value,
++            ],
++
++            // TERMINAL STATE: Strictly locked! Cannot be modified.
++            ProjectStage::Completed->value => [],
++
++            // Resuming from Postponed allows returning to any active stage
++            ProjectStage::Postponed->value => [
++                ProjectStage::Planning->value,
++                ProjectStage::Design->value,
++                ProjectStage::Development->value,
++                ProjectStage::Testing->value,
++                ProjectStage::Delivery->value,
++            ],
++        ];
++    }
+ }
+diff --git a/app/Models/Task.php b/app/Models/Task.php
+index 0a4ca0c2..414b79ae 100644
+--- a/app/Models/Task.php
++++ b/app/Models/Task.php
+@@ -4,7 +4,9 @@ declare(strict_types=1);
+ 
+ namespace App\Models;
+ 
++use App\Enums\TaskSystemStatus;
+ use App\QueryBuilder\TaskQueryBuilder;
++use App\Traits\HasStateMachine;
+ use App\Traits\RecordActivity;
+ use Illuminate\Database\Eloquent\Builder;
+ use Illuminate\Database\Eloquent\Factories\HasFactory;
+@@ -19,7 +21,7 @@ use Override;
+  */
+ class Task extends Model
+ {
+-    use HasFactory, RecordActivity, SoftDeletes;
++    use HasFactory, HasStateMachine, RecordActivity, SoftDeletes;
+ 
+     protected $guarded = [];
+ 
+@@ -116,7 +118,7 @@ class Task extends Model
+     {
+         static::creating(function ($task): void {
+             if (! $task->status_id) {
+-                $task->status_id = 1;
++                $task->status_id = TaskSystemStatus::Pending->value;
+             }
+         });
+ 
+@@ -125,4 +127,32 @@ class Task extends Model
+         });
+ 
+     }
++
++    /**
++     * Define the valid state transitions for the Task model.
++     *
++     * @return array<string, list<int|string>>
++     */
++    protected function validTransitions(): array
++    {
++        /** @phpstan-ignore return.type */
++        return [
++            TaskSystemStatus::Pending->value => [
++                TaskSystemStatus::InProgress->value,
++                TaskSystemStatus::Cancelled->value,
++            ],
++            TaskSystemStatus::InProgress->value => [
++                TaskSystemStatus::UnderReview->value,
++                TaskSystemStatus::Pending->value,
++                TaskSystemStatus::Cancelled->value,
++            ],
++            TaskSystemStatus::UnderReview->value => [
++                TaskSystemStatus::Completed->value,
++                TaskSystemStatus::InProgress->value,
++                TaskSystemStatus::Cancelled->value,
++            ],
++            TaskSystemStatus::Completed->value => [],
++            TaskSystemStatus::Cancelled->value => [],
++        ];
++    }
+ }
+diff --git a/app/QueryBuilder/TaskQueryBuilder.php b/app/QueryBuilder/TaskQueryBuilder.php
+index f4727574..d693d32a 100644
+--- a/app/QueryBuilder/TaskQueryBuilder.php
++++ b/app/QueryBuilder/TaskQueryBuilder.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace App\QueryBuilder;
+ 
+-use App\Enums\TaskStatus as TaskStatusEnum;
++use App\Enums\TaskSystemStatus;
+ use Closure;
+ use Illuminate\Database\Eloquent\Builder;
+ use Illuminate\Database\Query\Builder as QueryBuilder;
+@@ -35,7 +35,7 @@ class TaskQueryBuilder extends Builder
+      */
+     public function completed(): self
+     {
+-        return $this->where('status_id', TaskStatusEnum::COMPLETED);
++        return $this->where('status_id', TaskSystemStatus::Completed->value);
+     }
+ 
+     /**
+@@ -43,7 +43,7 @@ class TaskQueryBuilder extends Builder
+      */
+     public function remaining(): self
+     {
+-        return $this->where('status_id', '!=', TaskStatusEnum::COMPLETED)
++        return $this->where('status_id', '!=', TaskSystemStatus::Completed->value)
+             ->where(function ($q): void {
+                 $q->whereNull('due_at')
+                     ->orWhere('due_at', '>=', now());
+@@ -57,7 +57,7 @@ class TaskQueryBuilder extends Builder
+     {
+         return $this->whereNotNull('due_at')
+             ->where('due_at', '<', now())
+-            ->where('status_id', '!=', TaskStatusEnum::COMPLETED);
++            ->where('status_id', '!=', TaskSystemStatus::Completed->value);
+     }
+ 
+     /**
+@@ -68,7 +68,7 @@ class TaskQueryBuilder extends Builder
+         return $this->whereNotNull('due_at')
+             ->where('due_at', '>', now())
+             ->where('due_at', '<=', now()->addHours($hours))
+-            ->where('status_id', '!=', TaskStatusEnum::COMPLETED);
++            ->where('status_id', '!=', TaskSystemStatus::Completed->value);
+     }
+ 
+     public function active(): self
+diff --git a/app/Services/Project/ProjectService.php b/app/Services/Project/ProjectService.php
+index 6b0abb9a..bda50e97 100644
+--- a/app/Services/Project/ProjectService.php
++++ b/app/Services/Project/ProjectService.php
+@@ -107,18 +107,21 @@ class ProjectService
+ 
+     public function updateStageStatus(Project $project, ProjectStageUpdateData $data): Project
+     {
+-        DB::transaction(function () use ($project, $data): void {
+-            $project->stage()->associate($data->stageId);
++        return DB::transaction(function () use ($project, $data): Project {
++            // Handle stage transition using state machine
++            $newStage = $data->stage();
++            $project->transitionTo($newStage, 'stage_id');
+ 
++            // Update other stage-related fields
+             $project->update([
+                 'postponed_reason' => $this->getPostponedReason($project, $data),
+                 'stage_updated_at' => now(),
+             ]);
+-        });
+ 
+-        $project->load('stage');
++            $project->load('stage');
+ 
+-        return $project;
++            return $project;
++        });
+     }
+ 
+     public function sendNotification(Project $project, User $actor): void
+diff --git a/app/Services/Task/TaskService.php b/app/Services/Task/TaskService.php
+index a28d39ed..a0e0b482 100644
+--- a/app/Services/Task/TaskService.php
++++ b/app/Services/Task/TaskService.php
+@@ -17,6 +17,7 @@ use App\DataTransferObjects\Task\TaskCreateData;
+ use App\DataTransferObjects\Task\TaskUpdateData;
+ use App\DataTransferObjects\Task\UnassignTaskMemberData;
+ use App\Enums\Subscription\PlanLimitType;
++use App\Enums\TaskSystemStatus;
+ use App\Models\Project;
+ use App\Models\Task;
+ use App\Models\User;
+@@ -24,6 +25,7 @@ use App\Notifications\ProjectTask;
+ use App\QueryBuilder\TaskQueryBuilder;
+ use App\Services\Subscription\PlanLimitService;
+ use Illuminate\Pagination\LengthAwarePaginator;
++use Illuminate\Support\Facades\DB;
+ use Illuminate\Validation\ValidationException;
+ 
+ class TaskService
+@@ -76,16 +78,29 @@ class TaskService
+             ]);
+         }
+ 
+-        $payload = $this->resetTaskNotificationAction->execute($task, $data);
++        return DB::transaction(function () use ($task, $data): Task {
++            $payload = $this->resetTaskNotificationAction->execute($task, $data);
+ 
+-        $task->update($payload->toArray());
+-        $task->loadMissing('project:id,slug');
++            // Handle status transition separately using state machine
++            if ($data->hasStatusUpdate() && $data->statusId() !== null) {
++                $newStatus = TaskSystemStatus::from($data->statusId());
++                $task->transitionTo($newStatus, 'status_id');
++            }
+ 
+-        if ($data->hasStatusUpdate()) {
+-            $task->load('status');
+-        }
++            // Update other attributes (excluding status_id)
++            $nonStatusAttributes = $payload->attributesWithoutStatus();
++            if ($nonStatusAttributes !== []) {
++                $task->update($nonStatusAttributes);
++            }
+ 
+-        return $task;
++            $task->loadMissing('project:id,slug');
++
++            if ($data->hasStatusUpdate()) {
++                $task->load('status');
++            }
++
++            return $task;
++        });
+     }
+ 
+     public function assignMembers(Task $task, AssignTaskMembersData $data, Project $project, User $actor): Task
+diff --git a/app/Traits/HasStateMachine.php b/app/Traits/HasStateMachine.php
+new file mode 100644
+index 00000000..c7848765
+--- /dev/null
++++ b/app/Traits/HasStateMachine.php
+@@ -0,0 +1,68 @@
++<?php
++
++declare(strict_types=1);
++
++namespace App\Traits;
++
++use App\Exceptions\InvalidStateTransitionException;
++use BackedEnum;
++use Throwable;
++
++trait HasStateMachine
++{
++    /**
++     * Define the valid state transitions for the model.
++     *
++     * @return array<string, list<int|string>>
++     */
++    abstract protected function validTransitions(): array;
++
++    /**
++     * Transition the model to a new state with validation.
++     *
++     *
++     * @throws InvalidStateTransitionException
++     */
++    public function transitionTo(BackedEnum $newStatus, string $statusColumn = 'status'): void
++    {
++        $currentStatus = $this->getAttribute($statusColumn);
++        $currentStateValue = $currentStatus instanceof BackedEnum ? $currentStatus->value : $currentStatus;
++
++        $allowed = $this->validTransitions()[$currentStateValue] ?? [];
++
++        if (! in_array($newStatus->value, $allowed, strict: true)) {
++            // Use case names for user-friendly error messages
++            $currentStateName = $this->getStateName($currentStatus, $currentStateValue, $newStatus);
++            throw new InvalidStateTransitionException(
++                model: $this,
++                currentState: $currentStateName,
++                attemptedState: $newStatus->name,
++            );
++        }
++
++        $this->update([$statusColumn => $newStatus]);
++    }
++
++    /**
++     * Get the readable name for a state value
++     */
++    private function getStateName(mixed $currentStatus, string|int $currentStateValue, BackedEnum $newStatus): string
++    {
++        if ($currentStatus instanceof BackedEnum) {
++            return $currentStatus->name;
++        }
++
++        // Try to find the enum case from the value using the same enum type as newStatus
++        try {
++            $enumClass = $newStatus::class;
++            $enumCase = $enumClass::tryFrom($currentStateValue);
++            if ($enumCase !== null) {
++                return $enumCase->name;
++            }
++        } catch (Throwable) {
++            // Fallback to string value if enum lookup fails
++        }
++
++        return (string) $currentStateValue;
++    }
++}
+diff --git a/database/factories/TaskFactory.php b/database/factories/TaskFactory.php
+index 6d8a5426..96b40441 100644
+--- a/database/factories/TaskFactory.php
++++ b/database/factories/TaskFactory.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace Database\Factories;
+ 
+-use App\Enums\TaskStatus as TaskStatusEnum;
++use App\Enums\TaskSystemStatus;
+ use App\Models\Project;
+ use App\Models\Task;
+ use App\Models\User;
+@@ -32,7 +32,7 @@ class TaskFactory extends Factory
+             'user_id' => User::factory(),
+             'project_id' => Project::factory(),
+             'description' => $this->faker->text($maxNbChars = 250),
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ];
+     }
+ 
+@@ -66,7 +66,7 @@ class TaskFactory extends Factory
+     {
+         return $this->state(function (array $attributes) {
+             return [
+-                'status_id' => TaskStatusEnum::COMPLETED,
++                'status_id' => TaskSystemStatus::Completed->value,
+                 'due_at' => Carbon::now()->addDays($this->faker->numberBetween(1, 5)),
+             ];
+         });
+@@ -76,7 +76,7 @@ class TaskFactory extends Factory
+     {
+         return $this->state(function (array $attributes) {
+             return [
+-                'status_id' => TaskStatusEnum::IN_PROGRESS,
++                'status_id' => TaskSystemStatus::InProgress->value,
+                 'due_at' => Carbon::now()->addDays($this->faker->numberBetween(5, 30)),
+             ];
+         });
+diff --git a/tests/Feature/Api/V1/Dashboard/UserTasksDataTest.php b/tests/Feature/Api/V1/Dashboard/UserTasksDataTest.php
+index c8345095..cd1e10d5 100644
+--- a/tests/Feature/Api/V1/Dashboard/UserTasksDataTest.php
++++ b/tests/Feature/Api/V1/Dashboard/UserTasksDataTest.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace Tests\Feature\Api\V1\Dashboard;
+ 
+-use App\Enums\TaskStatus as TaskStatusEnum;
++use App\Enums\TaskSystemStatus;
+ use App\Models\Project;
+ use App\Models\Task;
+ use App\Models\TaskStatus;
+@@ -56,11 +56,11 @@ class UserTasksDataTest extends TestCase
+ 
+         // Seed canonical TaskStatus rows needed by these tests
+         TaskStatus::query()->firstOrCreate(
+-            ['id' => TaskStatusEnum::IN_PROGRESS],
++            ['id' => TaskSystemStatus::InProgress->value],
+             ['label' => 'In Progress', 'color' => '#0000FF', 'user_id' => $this->user->id]
+         );
+         TaskStatus::query()->firstOrCreate(
+-            ['id' => TaskStatusEnum::COMPLETED],
++            ['id' => TaskSystemStatus::Completed->value],
+             ['label' => 'Completed', 'color' => '#00FF00', 'user_id' => $this->user->id]
+         );
+     }
+@@ -176,14 +176,14 @@ class UserTasksDataTest extends TestCase
+         Task::factory([
+             'user_id' => $this->user->id,
+             'project_id' => $this->project->id,
+-            'status_id' => TaskStatusEnum::COMPLETED,
++            'status_id' => TaskSystemStatus::Completed->value,
+         ])->count(2)->create();
+ 
+         // Create non-completed task
+         Task::factory([
+             'user_id' => $this->user->id,
+             'project_id' => $this->project->id,
+-            'status_id' => TaskStatusEnum::IN_PROGRESS,
++            'status_id' => TaskSystemStatus::InProgress->value,
+         ])->create();
+ 
+         $response = $this->withoutExceptionHandling()->getJson($this->dashboardTasksUrl([
+@@ -219,7 +219,7 @@ class UserTasksDataTest extends TestCase
+             'user_id' => $this->user->id,
+             'project_id' => $this->project->id,
+             'due_at' => Carbon::yesterday(),
+-            'status_id' => TaskStatusEnum::IN_PROGRESS,
++            'status_id' => TaskSystemStatus::InProgress->value,
+         ])->count(2)->create();
+ 
+         // Create non-overdue task
+@@ -227,7 +227,7 @@ class UserTasksDataTest extends TestCase
+             'user_id' => $this->user->id,
+             'project_id' => $this->project->id,
+             'due_at' => Carbon::tomorrow(),
+-            'status_id' => TaskStatusEnum::IN_PROGRESS,
++            'status_id' => TaskSystemStatus::InProgress->value,
+         ])->create();
+ 
+         $response = $this->getJson($this->dashboardTasksUrl([
+@@ -262,14 +262,14 @@ class UserTasksDataTest extends TestCase
+         Task::factory([
+             'user_id' => $this->user->id,
+             'project_id' => $this->project->id,
+-            'status_id' => TaskStatusEnum::IN_PROGRESS,
++            'status_id' => TaskSystemStatus::InProgress->value,
+         ])->count(2)->create();
+ 
+         // Create completed task
+         Task::factory([
+             'user_id' => $this->user->id,
+             'project_id' => $this->project->id,
+-            'status_id' => TaskStatusEnum::COMPLETED,
++            'status_id' => TaskSystemStatus::Completed->value,
+         ])->create();
+ 
+         $response = $this->getJson($this->dashboardTasksUrl([
+@@ -372,7 +372,7 @@ class UserTasksDataTest extends TestCase
+             'user_id' => $this->user->id,
+             'project_id' => $this->project->id,
+             'due_at' => Carbon::yesterday(),
+-            'status_id' => TaskStatusEnum::IN_PROGRESS,
++            'status_id' => TaskSystemStatus::InProgress->value,
+         ])->create();
+ 
+         // Create overdue task by another user (should not appear)
+@@ -380,14 +380,14 @@ class UserTasksDataTest extends TestCase
+         Task::factory([
+             'user_id' => $otherUser->id,
+             'due_at' => Carbon::yesterday(),
+-            'status_id' => TaskStatusEnum::IN_PROGRESS,
++            'status_id' => TaskSystemStatus::InProgress->value,
+         ])->create();
+ 
+         // Create overdue task assigned to authenticated user
+         $assignedTask = Task::factory([
+             'user_id' => $otherUser->id,
+             'due_at' => Carbon::yesterday(),
+-            'status_id' => TaskStatusEnum::IN_PROGRESS,
++            'status_id' => TaskSystemStatus::InProgress->value,
+         ])->create();
+         $assignedTask->assignee()->attach($this->user);
+ 
+diff --git a/tests/Feature/Api/V1/Projects/ProjectFeatureTest.php b/tests/Feature/Api/V1/Projects/ProjectFeatureTest.php
+index e95b15e3..dc0f0663 100644
+--- a/tests/Feature/Api/V1/Projects/ProjectFeatureTest.php
++++ b/tests/Feature/Api/V1/Projects/ProjectFeatureTest.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace Tests\Feature\Api\V1\Projects;
+ 
+-use App\Enums\TaskStatus as TaskStatusEnum;
++use App\Enums\TaskSystemStatus;
+ use App\Jobs\CancelZoomMeetingsJob;
+ use App\Models\Meeting;
+ use App\Models\Project;
+@@ -143,7 +143,7 @@ class ProjectFeatureTest extends TestCase
+     public function project_show_includes_project_scoped_limits_only(): void
+     {
+         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ]);
+         Task::factory()->for($this->user, 'owner')->for($this->project)->completed()->create();
+ 
+@@ -165,7 +165,7 @@ class ProjectFeatureTest extends TestCase
+         $member = User::factory()->create();
+ 
+         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ]);
+         $this->project->members()->attach($member, ['active' => true]);
+ 
+@@ -183,7 +183,7 @@ class ProjectFeatureTest extends TestCase
+         $notes = 'My project first notes';
+ 
+         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ]);
+         $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
+ 
+diff --git a/tests/Feature/Api/V1/Projects/ProjectLimitsFeatureTest.php b/tests/Feature/Api/V1/Projects/ProjectLimitsFeatureTest.php
+index 8a7646c0..369cfeb6 100644
+--- a/tests/Feature/Api/V1/Projects/ProjectLimitsFeatureTest.php
++++ b/tests/Feature/Api/V1/Projects/ProjectLimitsFeatureTest.php
+@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\V1\Projects;
+ 
+ use App\Enums\Subscription\PlanLimitType;
+ use App\Enums\Subscription\SubscriptionPlan;
+-use App\Enums\TaskStatus as TaskStatusEnum;
++use App\Enums\TaskSystemStatus;
+ use App\Models\Task;
+ use App\Models\User;
+ use Illuminate\Foundation\Testing\RefreshDatabase;
+@@ -27,7 +27,7 @@ final class ProjectLimitsFeatureTest extends TestCase
+         $memberLimit = $this->freePlanLimit(PlanLimitType::MembersPerProject);
+ 
+         Task::factory()->count(2)->for($this->user, 'owner')->for($this->project)->create([
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ]);
+         Task::factory()->for($this->user, 'owner')->for($this->project)->completed()->create();
+ 
+diff --git a/tests/Feature/Api/V1/StageTest.php b/tests/Feature/Api/V1/StageTest.php
+index 04150061..2d897f2c 100644
+--- a/tests/Feature/Api/V1/StageTest.php
++++ b/tests/Feature/Api/V1/StageTest.php
+@@ -37,6 +37,9 @@ class StageTest extends TestCase
+         Stage::factory()->create();
+         Stage::factory()->design()->create();
+         Stage::factory()->develop()->create();
++        Stage::factory()->testing()->create();
++        Stage::factory()->deliver()->create();
++        Stage::factory()->completed()->create();
+         Stage::factory()->postponed()->create();
+ 
+         $this->project = Project::factory()->for($user)
+@@ -51,7 +54,7 @@ class StageTest extends TestCase
+         $this->getJson($this->apiV1Route('stages.index'))
+             ->assertOk();
+ 
+-        $this->assertEquals($stages->count(), 4);
++        $this->assertEquals($stages->count(), 7);
+     }
+ 
+     /** @test */
+@@ -83,13 +86,13 @@ class StageTest extends TestCase
+         $postponed_reason = 'Unable to reach';
+ 
+         $response = $this->withoutExceptionHandling()->patchJson($this->apiV1ProjectRoute('projects.stage.update', $this->project), [
+-            'stage' => 4,
++            'stage' => 7,
+             'postponed_reason' => $postponed_reason,
+         ]);
+ 
+         $this->project->refresh();
+ 
+-        $this->assertDatabaseHas('projects', ['id' => $this->project->id, 'postponed_reason' => $postponed_reason, 'stage_id' => 4]);
++        $this->assertDatabaseHas('projects', ['id' => $this->project->id, 'postponed_reason' => $postponed_reason, 'stage_id' => 7]);
+ 
+         $this->project->refresh();
+ 
+diff --git a/tests/Feature/Api/V1/Subscriptions/PlanLimitServiceFeatureTest.php b/tests/Feature/Api/V1/Subscriptions/PlanLimitServiceFeatureTest.php
+index dcb68215..b0351bc3 100644
+--- a/tests/Feature/Api/V1/Subscriptions/PlanLimitServiceFeatureTest.php
++++ b/tests/Feature/Api/V1/Subscriptions/PlanLimitServiceFeatureTest.php
+@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\V1\Subscriptions;
+ 
+ use App\Enums\Subscription\PlanLimitType;
+ use App\Enums\Subscription\SubscriptionPlan;
+-use App\Enums\TaskStatus as TaskStatusEnum;
++use App\Enums\TaskSystemStatus;
+ use App\Exceptions\Subscription\PlanLimitExceededException;
+ use App\Interfaces\Zoom;
+ use App\Models\Meeting;
+@@ -358,7 +358,7 @@ class PlanLimitServiceFeatureTest extends TestCase
+     private function createActiveTasks(int $count): void
+     {
+         Task::factory()->count($count)->for($this->user, 'owner')->for($this->project)->create([
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ]);
+     }
+ 
+diff --git a/tests/Helpers/FixtureHelpers.php b/tests/Helpers/FixtureHelpers.php
+index 701f5246..d978508d 100644
+--- a/tests/Helpers/FixtureHelpers.php
++++ b/tests/Helpers/FixtureHelpers.php
+@@ -4,7 +4,7 @@ declare(strict_types=1);
+ 
+ namespace Tests\Helpers;
+ 
+-use App\Enums\TaskStatus as TaskStatusEnum;
++use App\Enums\TaskSystemStatus;
+ use App\Models\Meeting;
+ use App\Models\Project;
+ use App\Models\TaskStatus;
+@@ -34,11 +34,11 @@ trait FixtureHelpers
+         $userId = $owner?->id;
+ 
+         $statuses = [
+-            TaskStatusEnum::PENDING => 'Pending',
+-            TaskStatusEnum::IN_PROGRESS => 'In Progress',
+-            TaskStatusEnum::UNDER_REVIEW => 'Under Review',
+-            TaskStatusEnum::COMPLETED => 'Completed',
+-            TaskStatusEnum::CANCELLED => 'Cancelled',
++            TaskSystemStatus::Pending->value => 'Pending',
++            TaskSystemStatus::InProgress->value => 'In Progress',
++            TaskSystemStatus::UnderReview->value => 'Under Review',
++            TaskSystemStatus::Completed->value => 'Completed',
++            TaskSystemStatus::Cancelled->value => 'Cancelled',
+         ];
+ 
+         foreach ($statuses as $id => $label) {
+diff --git a/tests/Unit/Models/MeetingStateMachineTest.php b/tests/Unit/Models/MeetingStateMachineTest.php
+new file mode 100644
+index 00000000..3703f78c
+--- /dev/null
++++ b/tests/Unit/Models/MeetingStateMachineTest.php
+@@ -0,0 +1,135 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Tests\Unit\Models;
++
++use App\Enums\Meeting\MeetingSyncStatus;
++use App\Exceptions\InvalidStateTransitionException;
++use App\Models\Meeting;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\Support\Meeting\MeetingTestHelper;
++use Tests\TestCase;
++use Tests\Traits\ProjectSetup;
++
++/**
++ * Unit tests for Meeting state machine validation.
++ *
++ * Tests the HasStateMachine trait implementation on the Meeting model,
++ * verifying that state transitions are properly validated according to the
++ * defined validTransitions() rules.
++ *
++ * Level: Unit testing
++ */
++class MeetingStateMachineTest extends TestCase
++{
++    use ProjectSetup, RefreshDatabase;
++
++    /**
++     * @return array<string, array{from: MeetingSyncStatus, to: MeetingSyncStatus}>
++     */
++    public static function validTransitionsProvider(): array
++    {
++        return [
++            'pending to active' => ['from' => MeetingSyncStatus::Pending, 'to' => MeetingSyncStatus::Active],
++            'pending to failed' => ['from' => MeetingSyncStatus::Pending, 'to' => MeetingSyncStatus::Failed],
++            'active to updating' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Updating],
++            'active to deleting' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Deleting],
++            'active to failed' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Failed],
++            'updating to active' => ['from' => MeetingSyncStatus::Updating, 'to' => MeetingSyncStatus::Active],
++            'updating to update_failed' => ['from' => MeetingSyncStatus::Updating, 'to' => MeetingSyncStatus::UpdateFailed],
++            'deleting to deleted' => ['from' => MeetingSyncStatus::Deleting, 'to' => MeetingSyncStatus::Deleted],
++            'deleting to delete_failed' => ['from' => MeetingSyncStatus::Deleting, 'to' => MeetingSyncStatus::DeleteFailed],
++            'failed to active' => ['from' => MeetingSyncStatus::Failed, 'to' => MeetingSyncStatus::Active],
++            'failed to pending' => ['from' => MeetingSyncStatus::Failed, 'to' => MeetingSyncStatus::Pending],
++            'update_failed to updating' => ['from' => MeetingSyncStatus::UpdateFailed, 'to' => MeetingSyncStatus::Updating],
++            'delete_failed to deleting' => ['from' => MeetingSyncStatus::DeleteFailed, 'to' => MeetingSyncStatus::Deleting],
++        ];
++    }
++
++    /**
++     * @return array<string, array{from: MeetingSyncStatus, to: MeetingSyncStatus}>
++     */
++    public static function invalidTransitionsProvider(): array
++    {
++        return [
++            'deleted to active' => ['from' => MeetingSyncStatus::Deleted, 'to' => MeetingSyncStatus::Active],
++            'deleted to updating' => ['from' => MeetingSyncStatus::Deleted, 'to' => MeetingSyncStatus::Updating],
++            'pending to deleting' => ['from' => MeetingSyncStatus::Pending, 'to' => MeetingSyncStatus::Deleting],
++            'active to pending' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Pending],
++            'updating to deleting' => ['from' => MeetingSyncStatus::Updating, 'to' => MeetingSyncStatus::Deleting],
++            'deleting to updating' => ['from' => MeetingSyncStatus::Deleting, 'to' => MeetingSyncStatus::Updating],
++            'same state' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Active],
++        ];
++    }
++
++    /**
++     * @test
++     *
++     * @dataProvider validTransitionsProvider
++     */
++    public function valid_transitions_succeed(MeetingSyncStatus $from, MeetingSyncStatus $to): void
++    {
++        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
++            'sync_status' => $from,
++        ]);
++
++        $meeting->transitionTo($to, 'sync_status');
++
++        $this->assertDatabaseHas('meetings', [
++            'id' => $meeting->id,
++            'sync_status' => $to->value,
++        ]);
++    }
++
++    /**
++     * @test
++     *
++     * @dataProvider invalidTransitionsProvider
++     */
++    public function invalid_transitions_throw_exception(MeetingSyncStatus $from, MeetingSyncStatus $to): void
++    {
++        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
++            'sync_status' => $from,
++        ]);
++
++        $this->expectException(InvalidStateTransitionException::class);
++        $this->expectExceptionMessage("Cannot transition from {$from->name} to {$to->name}");
++
++        $meeting->transitionTo($to, 'sync_status');
++    }
++
++    /** @test */
++    public function invalid_state_transition_exception_has_correct_status_code(): void
++    {
++        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
++            'sync_status' => MeetingSyncStatus::Deleted,
++        ]);
++
++        try {
++            $meeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
++            $this->fail('Expected InvalidStateTransitionException to be thrown');
++        } catch (InvalidStateTransitionException $e) {
++            $this->assertEquals(422, $e->status());
++            $this->assertEquals('invalid_state_transition', $e->errorCode());
++        }
++    }
++
++    /** @test */
++    public function invalid_state_transition_exception_includes_meta_information(): void
++    {
++        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
++            'sync_status' => MeetingSyncStatus::Deleted,
++        ]);
++
++        try {
++            $meeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
++            $this->fail('Expected InvalidStateTransitionException to be thrown');
++        } catch (InvalidStateTransitionException $e) {
++            $meta = $e->meta(request());
++            $this->assertEquals(Meeting::class, $meta['model']);
++            $this->assertEquals('Deleted', $meta['current_state']);
++            $this->assertEquals('Active', $meta['attempted_state']);
++        }
++    }
++}
+diff --git a/tests/Unit/Models/ProjectStateMachineTest.php b/tests/Unit/Models/ProjectStateMachineTest.php
+new file mode 100644
+index 00000000..5bf143e7
+--- /dev/null
++++ b/tests/Unit/Models/ProjectStateMachineTest.php
+@@ -0,0 +1,152 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Tests\Unit\Models;
++
++use App\Enums\ProjectStage;
++use App\Exceptions\InvalidStateTransitionException;
++use App\Models\Project;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\TestCase;
++use Tests\Traits\ProjectSetup;
++
++/**
++ * Unit tests for Project state machine validation.
++ *
++ * Tests the HasStateMachine trait implementation on the Project model,
++ * verifying that stage transitions are properly validated according to the
++ * defined validTransitions() rules.
++ *
++ * Level: Unit testing
++ */
++class ProjectStateMachineTest extends TestCase
++{
++    use ProjectSetup, RefreshDatabase;
++
++    /**
++     * @return array<string, array{from: ProjectStage, to: ProjectStage}>
++     */
++    public static function validTransitionsProvider(): array
++    {
++        return [
++            'planning to design' => ['from' => ProjectStage::Planning, 'to' => ProjectStage::Design],
++            'planning to postponed' => ['from' => ProjectStage::Planning, 'to' => ProjectStage::Postponed],
++            'design to planning' => ['from' => ProjectStage::Design, 'to' => ProjectStage::Planning],
++            'design to development' => ['from' => ProjectStage::Design, 'to' => ProjectStage::Development],
++            'design to postponed' => ['from' => ProjectStage::Design, 'to' => ProjectStage::Postponed],
++            'development to design' => ['from' => ProjectStage::Development, 'to' => ProjectStage::Design],
++            'development to testing' => ['from' => ProjectStage::Development, 'to' => ProjectStage::Testing],
++            'development to postponed' => ['from' => ProjectStage::Development, 'to' => ProjectStage::Postponed],
++            'testing to development' => ['from' => ProjectStage::Testing, 'to' => ProjectStage::Development],
++            'testing to delivery' => ['from' => ProjectStage::Testing, 'to' => ProjectStage::Delivery],
++            'testing to postponed' => ['from' => ProjectStage::Testing, 'to' => ProjectStage::Postponed],
++            'delivery to development' => ['from' => ProjectStage::Delivery, 'to' => ProjectStage::Development],
++            'delivery to completed' => ['from' => ProjectStage::Delivery, 'to' => ProjectStage::Completed],
++            'delivery to postponed' => ['from' => ProjectStage::Delivery, 'to' => ProjectStage::Postponed],
++            'postponed to planning' => ['from' => ProjectStage::Postponed, 'to' => ProjectStage::Planning],
++            'postponed to design' => ['from' => ProjectStage::Postponed, 'to' => ProjectStage::Design],
++            'postponed to development' => ['from' => ProjectStage::Postponed, 'to' => ProjectStage::Development],
++            'postponed to testing' => ['from' => ProjectStage::Postponed, 'to' => ProjectStage::Testing],
++            'postponed to delivery' => ['from' => ProjectStage::Postponed, 'to' => ProjectStage::Delivery],
++        ];
++    }
++
++    /**
++     * @return array<string, array{from: ProjectStage, to: ProjectStage}>
++     */
++    public static function invalidTransitionsProvider(): array
++    {
++        return [
++            'completed to planning' => ['from' => ProjectStage::Completed, 'to' => ProjectStage::Planning],
++            'completed to development' => ['from' => ProjectStage::Completed, 'to' => ProjectStage::Development],
++            'completed to testing' => ['from' => ProjectStage::Completed, 'to' => ProjectStage::Testing],
++            'completed to delivery' => ['from' => ProjectStage::Completed, 'to' => ProjectStage::Delivery],
++            'completed to postponed' => ['from' => ProjectStage::Completed, 'to' => ProjectStage::Postponed],
++            'planning to development' => ['from' => ProjectStage::Planning, 'to' => ProjectStage::Development],
++            'planning to testing' => ['from' => ProjectStage::Planning, 'to' => ProjectStage::Testing],
++            'planning to delivery' => ['from' => ProjectStage::Planning, 'to' => ProjectStage::Delivery],
++            'planning to completed' => ['from' => ProjectStage::Planning, 'to' => ProjectStage::Completed],
++            'design to testing' => ['from' => ProjectStage::Design, 'to' => ProjectStage::Testing],
++            'design to delivery' => ['from' => ProjectStage::Design, 'to' => ProjectStage::Delivery],
++            'design to completed' => ['from' => ProjectStage::Design, 'to' => ProjectStage::Completed],
++            'development to delivery' => ['from' => ProjectStage::Development, 'to' => ProjectStage::Delivery],
++            'development to completed' => ['from' => ProjectStage::Development, 'to' => ProjectStage::Completed],
++            'testing to completed' => ['from' => ProjectStage::Testing, 'to' => ProjectStage::Completed],
++            'delivery to planning' => ['from' => ProjectStage::Delivery, 'to' => ProjectStage::Planning],
++            'delivery to design' => ['from' => ProjectStage::Delivery, 'to' => ProjectStage::Design],
++            'delivery to testing' => ['from' => ProjectStage::Delivery, 'to' => ProjectStage::Testing],
++            'same state' => ['from' => ProjectStage::Planning, 'to' => ProjectStage::Planning],
++        ];
++    }
++
++    /**
++     * @test
++     *
++     * @dataProvider validTransitionsProvider
++     */
++    public function valid_transitions_succeed(ProjectStage $from, ProjectStage $to): void
++    {
++        $project = Project::factory()->for($this->user)->create([
++            'stage_id' => $from->value,
++        ]);
++
++        $project->transitionTo($to, 'stage_id');
++
++        $this->assertDatabaseHas('projects', [
++            'id' => $project->id,
++            'stage_id' => $to->value,
++        ]);
++    }
++
++    /**
++     * @test
++     *
++     * @dataProvider invalidTransitionsProvider
++     */
++    public function invalid_transitions_throw_exception(ProjectStage $from, ProjectStage $to): void
++    {
++        $project = Project::factory()->for($this->user)->create([
++            'stage_id' => $from->value,
++        ]);
++
++        $this->expectException(InvalidStateTransitionException::class);
++        $this->expectExceptionMessage("Cannot transition from {$from->name} to {$to->name}");
++
++        $project->transitionTo($to, 'stage_id');
++    }
++
++    /** @test */
++    public function invalid_state_transition_exception_has_correct_status_code(): void
++    {
++        $project = Project::factory()->for($this->user)->create([
++            'stage_id' => ProjectStage::Completed->value,
++        ]);
++
++        try {
++            $project->transitionTo(ProjectStage::Planning, 'stage_id');
++            $this->fail('Expected InvalidStateTransitionException to be thrown');
++        } catch (InvalidStateTransitionException $e) {
++            $this->assertEquals(422, $e->status());
++            $this->assertEquals('invalid_state_transition', $e->errorCode());
++        }
++    }
++
++    /** @test */
++    public function invalid_state_transition_exception_includes_meta_information(): void
++    {
++        $project = Project::factory()->for($this->user)->create([
++            'stage_id' => ProjectStage::Completed->value,
++        ]);
++
++        try {
++            $project->transitionTo(ProjectStage::Planning, 'stage_id');
++            $this->fail('Expected InvalidStateTransitionException to be thrown');
++        } catch (InvalidStateTransitionException $e) {
++            $meta = $e->meta(request());
++            $this->assertEquals(Project::class, $meta['model']);
++            $this->assertEquals('Completed', $meta['current_state']);
++            $this->assertEquals('Planning', $meta['attempted_state']);
++        }
++    }
++}
+diff --git a/tests/Unit/Models/TaskStateMachineTest.php b/tests/Unit/Models/TaskStateMachineTest.php
+new file mode 100644
+index 00000000..6346ec77
+--- /dev/null
++++ b/tests/Unit/Models/TaskStateMachineTest.php
+@@ -0,0 +1,139 @@
++<?php
++
++declare(strict_types=1);
++
++namespace Tests\Unit\Models;
++
++use App\Enums\TaskSystemStatus;
++use App\Exceptions\InvalidStateTransitionException;
++use App\Models\Task;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\TestCase;
++use Tests\Traits\ProjectSetup;
++
++/**
++ * Unit tests for Task state machine validation.
++ *
++ * Tests the HasStateMachine trait implementation on the Task model,
++ * verifying that state transitions are properly validated according to the
++ * defined validTransitions() rules.
++ *
++ * Level: Unit testing
++ */
++class TaskStateMachineTest extends TestCase
++{
++    use ProjectSetup, RefreshDatabase;
++
++    /**
++     * @return array<string, array{from: TaskSystemStatus, to: TaskSystemStatus}>
++     */
++    public static function validTransitionsProvider(): array
++    {
++        return [
++            'pending to in_progress' => ['from' => TaskSystemStatus::Pending, 'to' => TaskSystemStatus::InProgress],
++            'pending to cancelled' => ['from' => TaskSystemStatus::Pending, 'to' => TaskSystemStatus::Cancelled],
++            'in_progress to under_review' => ['from' => TaskSystemStatus::InProgress, 'to' => TaskSystemStatus::UnderReview],
++            'in_progress to pending' => ['from' => TaskSystemStatus::InProgress, 'to' => TaskSystemStatus::Pending],
++            'in_progress to cancelled' => ['from' => TaskSystemStatus::InProgress, 'to' => TaskSystemStatus::Cancelled],
++            'under_review to completed' => ['from' => TaskSystemStatus::UnderReview, 'to' => TaskSystemStatus::Completed],
++            'under_review to in_progress' => ['from' => TaskSystemStatus::UnderReview, 'to' => TaskSystemStatus::InProgress],
++            'under_review to cancelled' => ['from' => TaskSystemStatus::UnderReview, 'to' => TaskSystemStatus::Cancelled],
++        ];
++    }
++
++    /**
++     * @return array<string, array{from: TaskSystemStatus, to: TaskSystemStatus}>
++     */
++    public static function invalidTransitionsProvider(): array
++    {
++        return [
++            'completed to pending' => ['from' => TaskSystemStatus::Completed, 'to' => TaskSystemStatus::Pending],
++            'completed to in_progress' => ['from' => TaskSystemStatus::Completed, 'to' => TaskSystemStatus::InProgress],
++            'completed to under_review' => ['from' => TaskSystemStatus::Completed, 'to' => TaskSystemStatus::UnderReview],
++            'cancelled to pending' => ['from' => TaskSystemStatus::Cancelled, 'to' => TaskSystemStatus::Pending],
++            'cancelled to in_progress' => ['from' => TaskSystemStatus::Cancelled, 'to' => TaskSystemStatus::InProgress],
++            'cancelled to under_review' => ['from' => TaskSystemStatus::Cancelled, 'to' => TaskSystemStatus::UnderReview],
++            'pending to completed' => ['from' => TaskSystemStatus::Pending, 'to' => TaskSystemStatus::Completed],
++            'pending to under_review' => ['from' => TaskSystemStatus::Pending, 'to' => TaskSystemStatus::UnderReview],
++            'same state' => ['from' => TaskSystemStatus::Pending, 'to' => TaskSystemStatus::Pending],
++        ];
++    }
++
++    /**
++     * @test
++     *
++     * @dataProvider validTransitionsProvider
++     */
++    public function valid_transitions_succeed(TaskSystemStatus $from, TaskSystemStatus $to): void
++    {
++        $task = Task::factory()->create([
++            'project_id' => $this->project->id,
++            'user_id' => $this->user->id,
++            'status_id' => $from->value,
++        ]);
++
++        $task->transitionTo($to, 'status_id');
++
++        $this->assertDatabaseHas('tasks', [
++            'id' => $task->id,
++            'status_id' => $to->value,
++        ]);
++    }
++
++    /**
++     * @test
++     *
++     * @dataProvider invalidTransitionsProvider
++     */
++    public function invalid_transitions_throw_exception(TaskSystemStatus $from, TaskSystemStatus $to): void
++    {
++        $task = Task::factory()->create([
++            'project_id' => $this->project->id,
++            'user_id' => $this->user->id,
++            'status_id' => $from->value,
++        ]);
++
++        $this->expectException(InvalidStateTransitionException::class);
++        $this->expectExceptionMessage("Cannot transition from {$from->name} to {$to->name}");
++
++        $task->transitionTo($to, 'status_id');
++    }
++
++    /** @test */
++    public function invalid_state_transition_exception_has_correct_status_code(): void
++    {
++        $task = Task::factory()->create([
++            'project_id' => $this->project->id,
++            'user_id' => $this->user->id,
++            'status_id' => TaskSystemStatus::Completed->value,
++        ]);
++
++        try {
++            $task->transitionTo(TaskSystemStatus::Pending, 'status_id');
++            $this->fail('Expected InvalidStateTransitionException to be thrown');
++        } catch (InvalidStateTransitionException $e) {
++            $this->assertEquals(422, $e->status());
++            $this->assertEquals('invalid_state_transition', $e->errorCode());
++        }
++    }
++
++    /** @test */
++    public function invalid_state_transition_exception_includes_meta_information(): void
++    {
++        $task = Task::factory()->create([
++            'project_id' => $this->project->id,
++            'user_id' => $this->user->id,
++            'status_id' => TaskSystemStatus::Completed->value,
++        ]);
++
++        try {
++            $task->transitionTo(TaskSystemStatus::Pending, 'status_id');
++            $this->fail('Expected InvalidStateTransitionException to be thrown');
++        } catch (InvalidStateTransitionException $e) {
++            $meta = $e->meta(request());
++            $this->assertEquals(Task::class, $meta['model']);
++            $this->assertEquals('Completed', $meta['current_state']);
++            $this->assertEquals('Pending', $meta['attempted_state']);
++        }
++    }
++}
+diff --git a/tests/Unit/Services/Subscription/PlanLimitServiceTest.php b/tests/Unit/Services/Subscription/PlanLimitServiceTest.php
+index 299f0872..d697d84e 100644
+--- a/tests/Unit/Services/Subscription/PlanLimitServiceTest.php
++++ b/tests/Unit/Services/Subscription/PlanLimitServiceTest.php
+@@ -6,7 +6,7 @@ namespace Tests\Unit\Services\Subscription;
+ 
+ use App\Enums\Subscription\PlanLimitType;
+ use App\Enums\Subscription\SubscriptionPlan;
+-use App\Enums\TaskStatus as TaskStatusEnum;
++use App\Enums\TaskSystemStatus;
+ use App\Exceptions\Subscription\PlanLimitExceededException;
+ use App\Models\Meeting;
+ use App\Models\Project;
+@@ -131,7 +131,7 @@ class PlanLimitServiceTest extends TestCase
+         $taskLimit = $this->freePlanLimit(PlanLimitType::TasksPerProject);
+ 
+         Task::factory()->count($taskLimit + 1)->for($user, 'owner')->for($project)->create([
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ]);
+ 
+         $this->assertPlanException(
+@@ -268,7 +268,7 @@ class PlanLimitServiceTest extends TestCase
+             fn (Project $lockedProject): Task => $lockedProject->tasks()->create([
+                 'title' => 'Locked Task',
+                 'user_id' => $user->id,
+-                'status_id' => TaskStatusEnum::PENDING,
++                'status_id' => TaskSystemStatus::Pending->value,
+             ])
+         );
+ 
+@@ -398,7 +398,7 @@ class PlanLimitServiceTest extends TestCase
+     {
+         Project::factory()->count($this->freePlanLimit(PlanLimitType::Projects) + 1)->for($user)->create();
+         Task::factory()->count($this->freePlanLimit(PlanLimitType::TasksPerProject) + 1)->for($user, 'owner')->for($project)->create([
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ]);
+         $project->members()->attach(User::factory()->count($this->freePlanLimit(PlanLimitType::MembersPerProject) + 1)->create(), ['active' => true]);
+         Meeting::factory()->count($this->freePlanLimit(PlanLimitType::CreatedMeetings) + 1)->for($user)->for($project)->create();
+@@ -421,7 +421,7 @@ class PlanLimitServiceTest extends TestCase
+         // Create (taskLimit - 2) active/pending tasks
+         // Since completed tasks are now counted in total, we need fewer active tasks to stay below the limit
+         Task::factory()->count($taskLimit - 2)->for($user, 'owner')->for($project)->create([
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ]);
+ 
+         // Create one completed task (now counted in total)
+diff --git a/tests/Unit/Services/Subscription/SubscriptionUsageServiceTest.php b/tests/Unit/Services/Subscription/SubscriptionUsageServiceTest.php
+index 64806008..434b7e7e 100644
+--- a/tests/Unit/Services/Subscription/SubscriptionUsageServiceTest.php
++++ b/tests/Unit/Services/Subscription/SubscriptionUsageServiceTest.php
+@@ -6,7 +6,7 @@ namespace Tests\Unit\Services\Subscription;
+ 
+ use App\Enums\Subscription\PlanLimitType;
+ use App\Enums\Subscription\SubscriptionPlan;
+-use App\Enums\TaskStatus as TaskStatusEnum;
++use App\Enums\TaskSystemStatus;
+ use App\Models\Project;
+ use App\Models\Task;
+ use App\Models\User;
+@@ -78,7 +78,7 @@ class SubscriptionUsageServiceTest extends TestCase
+     private function createProjectUsageFixtures(User $user, Project $project): void
+     {
+         Task::factory()->count(3)->for($user, 'owner')->for($project)->create([
+-            'status_id' => TaskStatusEnum::PENDING,
++            'status_id' => TaskSystemStatus::Pending->value,
+         ]);
+         Task::factory()->for($user, 'owner')->for($project)->completed()->create();
+ 

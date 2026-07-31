@@ -46,10 +46,15 @@ trait HasStateMachine
     /**
      * Get the readable name for a state value
      */
-    private function getStateName(mixed $currentStatus, string|int $currentStateValue, BackedEnum $newStatus): string
+    private function getStateName(mixed $currentStatus, string|int|null $currentStateValue, BackedEnum $newStatus): string
     {
         if ($currentStatus instanceof BackedEnum) {
             return $currentStatus->name;
+        }
+
+        // Guard against null values to prevent TypeError in tryFrom()
+        if ($currentStateValue === null) {
+            return 'None';
         }
 
         // Try to find the enum case from the value using the same enum type as newStatus
