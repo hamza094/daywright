@@ -8,10 +8,10 @@ use WendellAdriel\Idempotency\Enums\IdempotencyScope;
 use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
 Route::apiResource('/meetings', MeetingsController::class)
-    ->middlewareFor(['index', 'show'], 'can:access,project')
-    ->middlewareFor(['store', 'update', 'destroy'], 'can:manage,project')
+    ->middlewareFor(['index', 'show'], ['can:access,project', 'tokenAbility:projects:read'])
+    ->middlewareFor(['store', 'update', 'destroy'], ['can:manage,project', 'tokenAbility:projects:write'])
     ->middlewareFor(['store', 'update'], Idempotent::using(scope: IdempotencyScope::User));
 
 Route::post('/meetings/{meeting}/zoom-tokens', MeetingZoomTokensController::class)
-    ->can('access,project')
+    ->middleware(['can:access,project', 'tokenAbility:projects:write'])
     ->name('meetings.zoom-tokens');

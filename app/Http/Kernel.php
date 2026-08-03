@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Http\Middleware\CheckTokenAbilities;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
+use Laravel\Sanctum\Http\Middleware\CheckAbilities;
+use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
 use Override;
 
 class Kernel extends HttpKernel
@@ -62,6 +65,9 @@ class Kernel extends HttpKernel
         'auth' => Middleware\Authenticate::class,
         'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
         'admin' => Middleware\EnsureUserIsAdmin::class,
+        'abilities' => CheckAbilities::class,
+        'ability' => CheckForAnyAbility::class,
+        'tokenAbility' => CheckTokenAbilities::class,
         'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
         'can' => \Illuminate\Auth\Middleware\Authorize::class,

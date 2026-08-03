@@ -10,7 +10,13 @@ Route::controller(TokenController::class)
     ->prefix('api-tokens')
     ->name('api-tokens.')
     ->group(function (): void {
-        Route::get('/', 'index')->name('index');
-        Route::post('/', 'store')->middleware(Idempotent::using(scope: IdempotencyScope::User))->name('store');
-        Route::delete('/{token}', 'destroy')->name('destroy');
+        Route::get('/', 'index')
+            ->middleware('tokenAbility:account:read')
+            ->name('index');
+        Route::post('/', 'store')
+            ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:account:write'])
+            ->name('store');
+        Route::delete('/{token}', 'destroy')
+            ->middleware('tokenAbility:account:write')
+            ->name('destroy');
     });

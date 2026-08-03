@@ -12,22 +12,48 @@ use App\Http\Controllers\Api\V1\Project\RestoreProjectController;
 use App\Http\Controllers\Api\V1\Project\UpdateProjectStageController;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 
-Route::get('/', [ProjectController::class, 'show'])->name('projects.show')->withTrashed();
-Route::get('/limits', ProjectLimitsController::class)->name('projects.limits')->withTrashed()->can('manage', 'project');
+Route::get('/', [ProjectController::class, 'show'])
+    ->name('projects.show')
+    ->middleware('tokenAbility:projects:read')
+    ->withTrashed();
 
-Route::get('/insights', [ProjectInsightsController::class, 'index'])->name('projects.insights');
+Route::get('/limits', ProjectLimitsController::class)
+    ->name('projects.limits')
+    ->middleware('tokenAbility:projects:write')
+    ->withTrashed()
+    ->can('manage', 'project');
 
-Route::delete('/force', ForceDeleteProjectController::class)->name('projects.force-delete')->withTrashed()->can('manage', 'project');
-Route::patch('/restore', RestoreProjectController::class)->name('projects.restore')->withTrashed()->can('manage', 'project');
+Route::get('/insights', [ProjectInsightsController::class, 'index'])
+    ->name('projects.insights')
+    ->middleware('tokenAbility:projects:read');
+
+Route::delete('/force', ForceDeleteProjectController::class)
+    ->name('projects.force-delete')
+    ->middleware('tokenAbility:projects:write')
+    ->withTrashed()
+    ->can('manage', 'project');
+
+Route::patch('/restore', RestoreProjectController::class)
+    ->name('projects.restore')
+    ->middleware('tokenAbility:projects:write')
+    ->withTrashed()
+    ->can('manage', 'project');
 
 Route::middleware(['can:access,project'])->group(function (): void {
 
-    Route::get('/activities', [ActivityController::class, 'index'])->name('projects.activities');
+    Route::get('/activities', [ActivityController::class, 'index'])
+        ->name('projects.activities')
+        ->middleware('tokenAbility:projects:read');
 
-    Route::get('export', ExportProjectController::class)->name('projects.export')->middleware([
-        'subscription',
-        EnsureFeaturesAreActive::using('project-export'),
-    ]);
+    Route::get('export', ExportProjectController::class)
+        ->name('projects.export')
+        ->middleware([
+            'tokenAbility:projects:read',
+            'subscription',
+            EnsureFeaturesAreActive::using('project-export'),
+        ]);
 
-    Route::patch('stage', UpdateProjectStageController::class)->name('projects.stage.update');
+    Route::patch('stage', UpdateProjectStageController::class)
+        ->name('projects.stage.update')
+        ->middleware('tokenAbility:projects:write');
 });
