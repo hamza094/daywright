@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Models\User;
+use App\Notifications\ApiKeyRevokedNotification;
 use App\Services\Audit\AuditLogService;
 use App\Services\Auth\ApiTokenService;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,8 @@ final readonly class RevokeApiTokenAction
                         'abilities' => $token->abilities,
                     ]
                 );
+
+                $user->notify(new ApiKeyRevokedNotification($token->name));
             }
         });
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\Models\User;
+use App\Notifications\ApiKeyCreatedNotification;
 use App\Services\Audit\AuditLogService;
 use App\Services\Auth\ApiTokenService;
 use Carbon\CarbonInterface;
@@ -39,6 +40,8 @@ final readonly class CreateApiTokenAction
                     'abilities' => $scopes,
                 ]
             );
+
+            $user->notify(new ApiKeyCreatedNotification($name));
 
             return $token;
         });
