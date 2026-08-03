@@ -19,6 +19,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Token Prefix
+    |--------------------------------------------------------------------------
+    |
+    | This value is prepended to all plain-text tokens returned by Sanctum.
+    | This allows for easier identification of leaked tokens in logs and
+    | enables secret scanning tools to detect Daywright API keys.
+    |
+    */
+
+    'token_prefix' => env('SANCTUM_TOKEN_PREFIX', 'dw_live_'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Expiration Minutes
     |--------------------------------------------------------------------------
     |
