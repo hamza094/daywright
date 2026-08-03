@@ -33,4 +33,45 @@ enum ApiScope: string
 
         return collect($scopes)->every(fn (string $scope) => in_array($scope, $valid, true));
     }
+
+    /**
+     * @return array<int, array{value: string, label: string, description: string}>
+     */
+    public static function toArray(): array
+    {
+        return array_map(
+            fn (self $scope) => [
+                'value' => $scope->value,
+                'label' => $scope->label(),
+                'description' => $scope->description(),
+            ],
+            self::cases()
+        );
+    }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::ProjectsRead => 'Projects - Read',
+            self::ProjectsWrite => 'Projects - Write',
+            self::TeamRead => 'Team - Read',
+            self::TeamWrite => 'Team - Write',
+            self::AccountRead => 'Account - Read',
+            self::AccountWrite => 'Account - Write',
+            self::WebhooksWrite => 'Webhooks - Write',
+        };
+    }
+
+    public function description(): string
+    {
+        return match ($this) {
+            self::ProjectsRead => 'View projects and related data',
+            self::ProjectsWrite => 'Create, update, delete projects',
+            self::TeamRead => 'View team members and invitations',
+            self::TeamWrite => 'Manage team members and invitations',
+            self::AccountRead => 'View account and subscription data',
+            self::AccountWrite => 'Manage account and subscription',
+            self::WebhooksWrite => 'Manage webhook integrations',
+        };
+    }
 }

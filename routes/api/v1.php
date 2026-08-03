@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\ApiScopeController;
 use App\Http\Controllers\Api\V1\Project\ProjectController;
 
 // Webhooks
 require __DIR__.'/v1/webhooks.php';
+
+// Public Routes
+Route::get('/scopes', [ApiScopeController::class, 'index'])->name('scopes.index');
 
 // Authenticated Routes
 Route::middleware(['auth:sanctum'])->group(function (): void {
