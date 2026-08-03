@@ -26,14 +26,17 @@ class ApiTokenService
         return $user->tokens;
     }
 
-    public function createForUser(User $user, string $name, ?CarbonInterface $expiresAt): NewAccessToken
+    /**
+     * @param  array<int, string>  $scopes
+     */
+    public function createForUser(User $user, string $name, array $scopes, ?CarbonInterface $expiresAt): NewAccessToken
     {
         return $this->planLimitService->executeWithinAccountLimit(
             PlanLimitType::ApiTokens,
             $user,
             fn (User $lockedUser): NewAccessToken => $lockedUser->createToken(
                 $name,
-                ['*'],
+                $scopes,
                 $expiresAt,
             )
         );

@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\User;
 
 use App\DataTransferObjects\Auth\TokenCreateData;
+use App\Enums\ApiScope;
 use App\Rules\Iso8601Timestamp;
 use Closure;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Override;
 
 #[SchemaName('ApiTokenStoreRequestData')]
@@ -34,6 +36,23 @@ class UserTokenRequest extends FormRequest
              * @example My API Token
              */
             'name' => 'required|string|max:255',
+
+            /**
+             * Array of API scopes for the token.
+             * Each scope must be a valid ApiScope enum value.
+             *
+             * @example ["projects:read", "team:write"]
+             */
+            'scopes' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+            'scopes.*' => [
+                'required',
+                'string',
+                Rule::in(ApiScope::values()),
+            ],
 
             /**
              * Optional ISO 8601 expiration timestamp with timezone offset.

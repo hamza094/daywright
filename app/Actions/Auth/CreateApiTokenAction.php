@@ -18,10 +18,13 @@ final readonly class CreateApiTokenAction
         private AuditLogService $auditLogService
     ) {}
 
-    public function execute(User $user, string $name, ?CarbonInterface $expiresAt): NewAccessToken
+    /**
+     * @param  array<int, string>  $scopes
+     */
+    public function execute(User $user, string $name, array $scopes, ?CarbonInterface $expiresAt): NewAccessToken
     {
-        return DB::transaction(function () use ($user, $name, $expiresAt): NewAccessToken {
-            $token = $this->apiTokenService->createForUser($user, $name, $expiresAt);
+        return DB::transaction(function () use ($user, $name, $scopes, $expiresAt): NewAccessToken {
+            $token = $this->apiTokenService->createForUser($user, $name, $scopes, $expiresAt);
 
             $this->auditLogService->log(
                 event: 'security.api_token_created',
@@ -33,7 +36,7 @@ final readonly class CreateApiTokenAction
                     'expires_at' => $expiresAt?->toIso8601String(),
                 ],
                 metadata: [
-                    'abilities' => ['*'],
+                    'abilities' => $scopes,
                 ]
             );
 

@@ -44,6 +44,7 @@ class TokenController extends ApiController
         $token = $this->createApiTokenAction->execute(
             $this->authenticatedUser(),
             $data->name,
+            $data->scopes,
             $data->expires_at
         );
 
