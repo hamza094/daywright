@@ -352,7 +352,10 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createApiToken(string $name): TestResponse
     {
-        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.api-tokens.store'), ['name' => $name]);
+        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.api-tokens.store'), [
+            'name' => $name,
+            'scopes' => ['account:read'],
+        ]);
     }
 
     private function createActiveTasks(int $count): void

@@ -31,7 +31,7 @@ enum ApiScope: string
     {
         $valid = self::values();
 
-        return collect($scopes)->every(fn (string $scope) => in_array($scope, $valid, true));
+        return collect($scopes)->every(fn (string $scope): bool => in_array($scope, $valid, true));
     }
 
     /**
@@ -40,7 +40,7 @@ enum ApiScope: string
     public static function toArray(): array
     {
         return array_map(
-            fn (self $scope) => [
+            fn (self $scope): array => [
                 'value' => $scope->value,
                 'label' => $scope->label(),
                 'description' => $scope->description(),

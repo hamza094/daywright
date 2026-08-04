@@ -45,10 +45,12 @@ final class IdempotencyContractTest extends TestCase
 
         $firstResponse = $this->withHeaders($headers)->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Phase Seven Token',
+            'scopes' => ['account:read'],
         ]);
 
         $mismatchResponse = $this->withHeaders($headers)->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Different Token Name',
+            'scopes' => ['account:read'],
         ]);
 
         $firstResponse->assertCreated();
@@ -61,7 +63,7 @@ final class IdempotencyContractTest extends TestCase
     #[Test]
     public function token_creation_returns_conflict_while_the_same_key_is_in_flight(): void
     {
-        $payload = ['name' => 'Locked Token'];
+        $payload = ['name' => 'Locked Token', 'scopes' => ['account:read']];
         $idempotencyKey = 'phase-seven-token-in-flight';
         $lock = $this->acquireUserScopedLock(
             method: 'POST',
@@ -86,7 +88,7 @@ final class IdempotencyContractTest extends TestCase
     public function token_creation_replays_without_creating_a_second_token(): void
     {
         $headers = $this->idempotencyHeaders('phase-six-token-store');
-        $payload = ['name' => 'Phase Six Token'];
+        $payload = ['name' => 'Phase Six Token', 'scopes' => ['account:read']];
 
         $firstResponse = $this->withHeaders($headers)
             ->postJson($this->apiV1Route('api-tokens.store'), $payload)

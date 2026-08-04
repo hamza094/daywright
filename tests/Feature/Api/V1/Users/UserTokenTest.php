@@ -62,6 +62,7 @@ class UserTokenTest extends TestCase
 
         $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'My API Token',
+            'scopes' => ['account:read'],
         ]);
         $response->assertCreated();
         $this->assertNotEmpty($response->json('data.token'));
@@ -89,6 +90,7 @@ class UserTokenTest extends TestCase
 
         $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Audit Test Token',
+            'scopes' => ['account:read'],
         ]);
         $response->assertCreated();
 
@@ -124,6 +126,7 @@ class UserTokenTest extends TestCase
         $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Expiring API Token',
             'expires_at' => $expiresAt,
+            'scopes' => ['account:read'],
         ]);
 
         $response->assertCreated()
