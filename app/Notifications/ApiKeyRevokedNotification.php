@@ -15,7 +15,9 @@ class ApiKeyRevokedNotification extends Notification implements ShouldQueue
 
     public function __construct(
         private readonly string $tokenName,
-    ) {}
+    ) {
+        $this->afterCommit = true;
+    }
 
     /** @return array<int, string> */
     public function via(object $notifiable): array

@@ -9,7 +9,7 @@ use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
 // Zoom Webhooks
 Route::controller(ZoomWebhookController::class)
-    ->middleware([VerifyZoomWebhook::class, Idempotent::using(scope: IdempotencyScope::Global), 'tokenAbility:webhooks:write'])
+    ->middleware([VerifyZoomWebhook::class, Idempotent::using(scope: IdempotencyScope::Global)])
     ->prefix('webhooks/zoom/meetings')
     ->as('webhooks.meetings.')
     ->group(function (): void {

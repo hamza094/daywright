@@ -6,6 +6,14 @@ namespace App\Enums;
 
 enum ApiScope: string
 {
+    /**
+     * API Token Scopes
+     *
+     * Terminology Note: This codebase uses "scopes" in the domain layer (request, DTO, actions)
+     * while Sanctum internally calls them "abilities". The TokenResource serializes them as
+     * "abilities" for API responses. This asymmetry is intentional - "scopes" is the user-facing
+     * concept, while "abilities" is Sanctum's internal terminology.
+     */
     case ProjectsRead = 'projects:read';
     case ProjectsWrite = 'projects:write';
     case TeamRead = 'team:read';
@@ -24,6 +32,10 @@ enum ApiScope: string
 
     /**
      * Validate that all provided scope strings are valid.
+     *
+     * Note: This method is currently unused in production code as validation
+     * is handled by Rule::in(ApiScope::values()) in UserTokenRequest.
+     * Kept for potential programmatic/service-layer validation use cases.
      *
      * @param  array<int, string>  $scopes
      */

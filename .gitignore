@@ -18,4 +18,3 @@ extra.txt
 phpstan.neon.tmp
 .vscode/settings.json
 storage/framework/laravel-excel/*
-local-docs/
