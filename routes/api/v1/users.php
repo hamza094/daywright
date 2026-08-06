@@ -19,20 +19,11 @@ Route::prefix('users/me')->name('users.me.')->group(function (): void {
         ->middleware('tokenAbility:team:read')
         ->name('invitations.index');
 
-    Route::controller(SubscriptionController::class)->prefix('subscription')->name('subscription.')->group(function (): void {
-        Route::get('/', 'show')
-            ->middleware('tokenAbility:account:read')
-            ->name('show');
-        Route::post('/', 'store')
-            ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:account:write'])
-            ->name('store');
-        Route::patch('/', 'update')
-            ->middleware(['subscription', Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:account:write'])
-            ->name('update');
-        Route::delete('/', 'destroy')
-            ->middleware(['subscription', Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:account:write'])
-            ->name('destroy');
-    });
+    Route::singleton('subscription', SubscriptionController::class)
+        ->creatable()
+        ->middlewareFor('show', 'tokenAbility:account:read')
+        ->middlewareFor('store', [Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:account:write'])
+        ->middlewareFor(['update', 'destroy'], ['subscription', Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:account:write']);
 });
 
 Route::apiResource('/users', UserController::class)

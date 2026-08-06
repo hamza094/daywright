@@ -29,14 +29,12 @@ Route::group(['prefix' => 'admin'], function (): void {
 
         Route::post('/backup/database', [DashboardController::class, 'backup'])->name('backup.database');
 
-        // Public (read) endpoints for stages/statuses — only throttle applied
+        // Public (read) endpoints for stages/statuses — inherit parent throttle:admin-api
         Route::apiResource('/stages', StageController::class)
-            ->only(['index', 'show'])
-            ->middleware(['throttle:admin-mutations']);
+            ->only(['index', 'show']);
 
         Route::apiResource('/statuses', StatusController::class)
-            ->only(['index', 'show'])
-            ->middleware(['throttle:admin-mutations']);
+            ->only(['index', 'show']);
 
         // Mutating admin routes that require 2FA and mutation throttling
         Route::middleware(['2fa.enabled', 'throttle:admin-mutations'])->group(function (): void {
