@@ -21,7 +21,10 @@ Route::middleware(['auth:sanctum'])->group(function (): void {
     require __DIR__.'/v1/oauth.php';
 
     // Global Project Routes
-    Route::apiResource('/projects', ProjectController::class)->except(['show']);
+    Route::apiResource('/projects', ProjectController::class)
+        ->middlewareFor('index', 'tokenAbility:projects:read')
+        ->middlewareFor(['store', 'update', 'destroy'], 'tokenAbility:projects:write')
+        ->except(['show']);
 
     // Nested Project Routes
     Route::scopeBindings()->group(function (): void {

@@ -19,7 +19,7 @@ Route::get('/', [ProjectController::class, 'show'])
 
 Route::get('/limits', ProjectLimitsController::class)
     ->name('projects.limits')
-    ->middleware('tokenAbility:projects:write')
+    ->middleware('tokenAbility:projects:read')
     ->withTrashed()
     ->can('manage', 'project');
 

@@ -46,4 +46,55 @@ class ScopeMiddlewareTest extends TestCase
 
         $this->assertNotEquals(403, $response->status());
     }
+
+    public function test_account_read_token_blocked_from_post_projects(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('Test Token', ['account:read']);
+
+        $response = $this->withToken($token->plainTextToken)
+            ->postJson('/api/v1/projects', [
+                'name' => 'Test Project',
+            ]);
+
+        $response->assertStatus(403);
+        $response->assertJson(['message' => 'Invalid ability provided.']);
+    }
+
+    public function test_read_only_token_blocked_from_write_operations(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('Test Token', ['projects:read']);
+
+        $response = $this->withToken($token->plainTextToken)
+            ->postJson('/api/v1/projects', [
+                'name' => 'Test Project',
+            ]);
+
+        $response->assertStatus(403);
+        $response->assertJson(['message' => 'Invalid ability provided.']);
+    }
+
+    public function test_dashboard_requires_projects_read_not_account_read(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('Test Token', ['account:read']);
+
+        $response = $this->withToken($token->plainTextToken)
+            ->getJson('/api/v1/dashboard/projects');
+
+        $response->assertStatus(403);
+        $response->assertJson(['message' => 'Invalid ability provided.']);
+    }
+
+    public function test_dashboard_allows_projects_read_scope(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('Test Token', ['projects:read']);
+
+        $response = $this->withToken($token->plainTextToken)
+            ->getJson('/api/v1/dashboard/projects');
+
+        $this->assertNotEquals(403, $response->status());
+    }
 }

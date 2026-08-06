@@ -32,7 +32,7 @@ class ApiKeyNotificationTest extends TestCase
         Notification::assertSentTo(
             $user,
             ApiKeyCreatedNotification::class,
-            fn ($notification) => $notification->toArray($user)['token_name'] === 'Production Key'
+            fn ($notification): bool => $notification->toArray($user)['token_name'] === 'Production Key'
         );
     }
 
@@ -50,7 +50,7 @@ class ApiKeyNotificationTest extends TestCase
         Notification::assertSentTo(
             $user,
             ApiKeyRevokedNotification::class,
-            fn ($notification) => $notification->toArray($user)['token_name'] === 'To Be Deleted'
+            fn ($notification): bool => $notification->toArray($user)['token_name'] === 'To Be Deleted'
         );
     }
 }
