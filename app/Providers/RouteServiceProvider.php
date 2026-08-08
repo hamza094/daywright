@@ -109,6 +109,50 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(20)->by(sprintf('admin-mutations|%s', $key));
         });
 
+        // ──────────────────────────────────────────────────────────
+        // LAYER 3: Sensitive Endpoint / Mutation Limits
+        // ──────────────────────────────────────────────────────────
+
+        // API Token CRUD — very tight (token creation is high-value)
+        RateLimiter::for('sensitive-token-mgmt', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by('sensitive|token-mgmt|'.$key);
+        });
+
+        // Destructive user operations (delete, force-delete)
+        RateLimiter::for('sensitive-destructive', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by('sensitive|destructive|'.$key);
+        });
+
+        // File upload (avatar) — expensive I/O
+        RateLimiter::for('sensitive-upload', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(10)->by('sensitive|upload|'.$key);
+        });
+
+        // Subscription mutations — hits external Paddle API
+        RateLimiter::for('sensitive-billing', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by('sensitive|billing|'.$key);
+        });
+
+        // Database backup — extremely expensive
+        RateLimiter::for('sensitive-backup', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perHour(3)->by('sensitive|backup|'.$key);
+        });
+
+        // Webhook ingress — global per-source cap
+        RateLimiter::for('webhook-ingress', function (Request $request) {
+            return Limit::perMinute(120)->by('webhook|'.$request->ip());
+        });
+
     }
 
     /**

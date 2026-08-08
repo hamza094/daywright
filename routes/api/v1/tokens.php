@@ -14,9 +14,9 @@ Route::controller(TokenController::class)
             ->middleware('tokenAbility:account:read')
             ->name('index');
         Route::post('/', 'store')
-            ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:account:write'])
+            ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-token-mgmt', 'tokenAbility:account:write'])
             ->name('store');
         Route::delete('/{token}', 'destroy')
-            ->middleware('tokenAbility:account:write')
+            ->middleware(['throttle:sensitive-token-mgmt', 'tokenAbility:account:write'])
             ->name('destroy');
     });

@@ -27,7 +27,9 @@ Route::group(['prefix' => 'admin'], function (): void {
 
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
 
-        Route::post('/backup/database', [DashboardController::class, 'backup'])->name('backup.database');
+        Route::post('/backup/database', [DashboardController::class, 'backup'])
+            ->middleware('throttle:sensitive-backup')
+            ->name('backup.database');
 
         // Public (read) endpoints for stages/statuses — inherit parent throttle:admin-api
         Route::apiResource('/stages', StageController::class)

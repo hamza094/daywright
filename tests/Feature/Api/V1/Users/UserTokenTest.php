@@ -237,4 +237,33 @@ class UserTokenTest extends TestCase
         $response->assertNotFound()
             ->assertJsonPath('message', 'Resource not found.');
     }
+
+    #[Test]
+    public function user_cannot_create_more_than_5_tokens(): void
+    {
+        $user = User::first();
+
+        Sanctum::actingAs(
+            $user,
+            ['*'],
+        );
+
+        // Create 5 tokens (the maximum allowed)
+        for ($i = 0; $i < 5; $i++) {
+            $user->createToken("Token {$i}", ['*']);
+        }
+
+        // Attempt to create a 6th token
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
+            'name' => 'Exceeding Token',
+            'scopes' => ['account:read'],
+        ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('code', 'max_tokens_exceeded')
+            ->assertJsonPath('message', 'You have reached the maximum limit of 5 API tokens. Please delete an existing token before creating a new one.');
+
+        // Verify only 5 tokens exist
+        $this->assertEquals(5, $user->tokens()->count());
+    }
 }

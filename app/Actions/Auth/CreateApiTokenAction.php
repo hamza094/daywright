@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Auth;
 
+use App\Exceptions\MaxTokensExceededException;
 use App\Models\User;
 use App\Notifications\ApiKeyCreatedNotification;
 use App\Services\Audit\AuditLogService;
@@ -24,6 +25,10 @@ final readonly class CreateApiTokenAction
      */
     public function execute(User $user, string $name, array $scopes, ?CarbonInterface $expiresAt): NewAccessToken
     {
+        if ($user->tokens()->count() >= 5) {
+            throw new MaxTokensExceededException;
+        }
+
         return DB::transaction(function () use ($user, $name, $scopes, $expiresAt): NewAccessToken {
             $token = $this->apiTokenService->createForUser($user, $name, $scopes, $expiresAt);
 

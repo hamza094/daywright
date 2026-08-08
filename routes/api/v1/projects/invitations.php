@@ -16,12 +16,12 @@ Route::post('invitations', [ProjectInvitationController::class, 'store'])
     ->can('manage', 'project');
 
 Route::post('invitations/accept', AcceptProjectInvitationController::class)
-    ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:team:write'])
+    ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'throttle:invite-actions', 'tokenAbility:team:write'])
     ->name('accept.invitation')
     ->can('canAcceptInvitation', 'project');
 
 Route::post('invitations/reject', RejectProjectInvitationController::class)
-    ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:team:write'])
+    ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'throttle:invite-actions', 'tokenAbility:team:write'])
     ->name('reject.invitation')
     ->can('canAcceptInvitation', 'project');
 

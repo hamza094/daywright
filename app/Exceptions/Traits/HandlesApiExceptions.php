@@ -6,6 +6,7 @@ namespace App\Exceptions\Traits;
 
 use App\Exceptions\ApiException;
 use App\Exceptions\InvalidStateTransitionException;
+use App\Exceptions\MaxTokensExceededException;
 use App\Exceptions\Support\ApiErrorFormatter;
 use Aws\S3\Exception\S3Exception;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -32,6 +33,12 @@ trait HandlesApiExceptions
             $e->errorCode(),
             $e->errors(),
             $e->meta($request),
+        ));
+
+        $this->renderable(fn (MaxTokensExceededException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+            $e->publicMessage(),
+            $e->status(),
+            $e->errorCode(),
         ));
 
         $this->renderable(fn (ApiException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(

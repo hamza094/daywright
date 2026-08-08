@@ -16,10 +16,7 @@ class VerificationController extends ApiController
     /**
      * Create a new controller instance.
      */
-    public function __construct(private readonly VerifyEmailService $verifyEmailService)
-    {
-        $this->middleware('throttle:6,1')->only('resend');
-    }
+    public function __construct(private readonly VerifyEmailService $verifyEmailService) {}
 
     /**
      * Mark the user's email address as verified.
