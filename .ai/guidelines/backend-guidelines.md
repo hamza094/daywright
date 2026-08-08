@@ -28,6 +28,7 @@
 20. [Logging & Operational Debuggability](#20-logging--operational-debuggability)
 21. [Testing](#21-testing)
 22. [API Response Standards](#22-api-response-standards)
+23. [API Security & Authorization](#23-api-security--authorization)
 
 ---
 
@@ -792,6 +793,30 @@ All API errors return a strict JSON payload defined by `ApiErrorFormatter`.
     "meta": {}
 }
 ```
+
+---
+
+## 23. API Security & Authorization
+
+### Purpose
+
+Define the architecture and strict rules for authenticating and authorizing users and API tokens via Laravel Sanctum to maintain a watertight zero-trust architecture.
+
+### Two-Tier Authentication Model
+
+- **SPA / Internal Clients**: Authenticate via stateful session cookies (`web` guard). Sanctum issues `TransientToken`s that implicitly pass all scope checks.
+- **Developer API Keys / Mobile**: Authenticate via `Bearer` tokens (`auth:sanctum`). These tokens carry explicit scopes.
+- **Admin Panel**: Admin routes MUST be strictly isolated to session-based users. They must explicitly reject API keys using the `BlockApiKeys` middleware to prevent unauthorized bulk actions.
+
+### Scope Enforcement (Principle of Least Privilege)
+
+DayWright uses a predefined, strict list of domain-specific scopes (e.g., `projects:read`, `team:write`). When routing, strictly adhere to the following rules:
+
+- ✅ **No Over-Privileging**: A `GET` (read-only) route MUST NOT demand a `:write` scope. If a user only needs to read data, their read-only token must work.
+- ✅ **No Domain Bleeding**: A route must only require the scope for the specific data domain it touches (e.g., a dashboard endpoint returning tasks must require `projects:read`, not `account:read`).
+- ✅ **Strict Mutation Protection**: Every `POST`, `PUT`, `PATCH`, and `DELETE` route MUST be guarded by a `:write` scope to prevent read-only tokens from mutating data.
+- ✅ **Use custom middleware**: Always use the custom `tokenAbility:` middleware for scope checks. It gracefully bypasses scope checks for SPA session requests while enforcing them strictly for API keys.
+- ✅ **API Resources**: Use `->middlewareFor()` when declaring `Route::apiResource()` to independently scope `index`/`show` (read) vs `store`/`update`/`destroy` (write).
 
 ---
 
