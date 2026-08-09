@@ -79,6 +79,14 @@ class RouteServiceProvider extends ServiceProvider
                 : Limit::none();
         });
 
+        // ──────────────────────────────────────────────────────────
+        // LAYER 2: Per-Token Ceiling (3rd-party API keys only)
+        // ──────────────────────────────────────────────────────────
+        // Sub-limit for individual Sanctum Personal Access Tokens.
+        // MUST be < Layer 1 to preserve headroom for the web dashboard.
+        // SPA/session requests (no token) skip this layer entirely via Limit::none().
+        RateLimiter::for('per-token', fn (Request $request) => $this->perTokenLimiter($request));
+
         RateLimiter::for('oauth2-socialite', function (Request $request) {
             $provider = mb_strtolower((string) $request->route('provider')) ?: 'generic';
 
@@ -235,5 +243,32 @@ class RouteServiceProvider extends ServiceProvider
         }
 
         Route::name($namePrefix)->group($filePath);
+    }
+
+    private function perTokenLimiter(Request $request): Limit
+    {
+        $token = $request->user()?->currentAccessToken();
+
+        if ($token && ! $token instanceof \Laravel\Sanctum\TransientToken) {
+            return Limit::perMinute(60)
+                ->by('token:'.$token->id)
+                ->response(fn (Request $request, array $headers) => $this->tokenRateLimitResponse($headers));
+        }
+
+        return Limit::none();
+    }
+
+    private function tokenRateLimitResponse(array $headers): JsonResponse
+    {
+        $retryAfter = (int) ($headers['Retry-After'] ?? $headers['retry-after'] ?? 0);
+
+        return \App\Exceptions\Support\ApiErrorFormatter::response(
+            'This specific API key has exceeded its rate limit (60/min).',
+            \Illuminate\Http\Response::HTTP_TOO_MANY_REQUESTS,
+            'token_rate_limited',
+            meta: array_filter([
+                'retry_after_seconds' => $retryAfter,
+            ], fn (int $val): bool => $val > 0)
+        )->withHeaders($headers);
     }
 }

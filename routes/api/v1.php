@@ -12,7 +12,7 @@ require __DIR__.'/v1/webhooks.php';
 Route::get('/scopes', [ApiScopeController::class, 'index'])->name('scopes.index');
 
 // Authenticated Routes
-Route::middleware(['auth:sanctum', 'throttle:user-ceiling'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'throttle:user-ceiling', 'throttle:per-token'])->group(function (): void {
     require __DIR__.'/v1/users.php';
     require __DIR__.'/v1/tokens.php';
     require __DIR__.'/v1/dashboard.php';
