@@ -60,7 +60,24 @@ class RouteServiceProvider extends ServiceProvider
 
     protected function configureRateLimiting(): void
     {
-        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
+        // ──────────────────────────────────────────────────────────
+        // LAYER 0: Global Safety Net (Runs in Kernel)
+        // We keep this at 300/min by IP. Since it runs before auth, it always keys by IP.
+        // If we kept this at 60/min, it would block authenticated users before they could reach their 200/min user ceiling.
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(300)->by('api-safetynet|'.$request->ip());
+        });
+
+        // ──────────────────────────────────────────────────────────
+        // LAYER 1: Strict User Ceiling (Runs after auth)
+        RateLimiter::for('user-ceiling', function (Request $request) {
+            $user = $request->user();
+
+            // If unauthenticated, skip (handled by the api safety net)
+            return $user
+                ? Limit::perMinute(200)->by('user-ceiling|'.$user->id)
+                : Limit::none();
+        });
 
         RateLimiter::for('oauth2-socialite', function (Request $request) {
             $provider = mb_strtolower((string) $request->route('provider')) ?: 'generic';

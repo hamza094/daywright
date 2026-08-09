@@ -16,7 +16,7 @@ Route::prefix('session')
 
         Route::post('logout', [SpaAuthController::class, 'logoutSpa'])
             ->name('logout')
-            ->middleware('auth:sanctum');
+            ->middleware(['auth:sanctum', 'throttle:user-ceiling']);
     });
 
 Route::prefix('auth')
@@ -37,7 +37,7 @@ Route::prefix('twofactor')
             ->name('login-confirm')
             ->middleware('throttle:two-factor');
 
-        Route::middleware('auth:sanctum')->group(function (): void {
+        Route::middleware(['auth:sanctum', 'throttle:user-ceiling'])->group(function (): void {
             Route::post('setup', [TwoFactorController::class, 'prepareTwoFactor'])
                 ->name('setup')
                 ->middleware('throttle:two-factor');
