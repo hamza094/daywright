@@ -800,7 +800,7 @@ All API errors return a strict JSON payload defined by `ApiErrorFormatter`.
 
 ### Purpose
 
-Define the architecture and strict rules for authenticating and authorizing users and API tokens via Laravel Sanctum to maintain a watertight zero-trust architecture.
+Define the architecture and strict rules for authenticating, authorizing, and rate-limiting users and API tokens via Laravel Sanctum to maintain a watertight zero-trust architecture.
 
 ### Two-Tier Authentication Model
 
@@ -815,8 +815,18 @@ DayWright uses a predefined, strict list of domain-specific scopes (e.g., `proje
 - ✅ **No Over-Privileging**: A `GET` (read-only) route MUST NOT demand a `:write` scope. If a user only needs to read data, their read-only token must work.
 - ✅ **No Domain Bleeding**: A route must only require the scope for the specific data domain it touches (e.g., a dashboard endpoint returning tasks must require `projects:read`, not `account:read`).
 - ✅ **Strict Mutation Protection**: Every `POST`, `PUT`, `PATCH`, and `DELETE` route MUST be guarded by a `:write` scope to prevent read-only tokens from mutating data.
+- ✅ **Prevent Privilege Escalation**: API keys (PATs) that create other API keys MUST only be allowed to grant a subset of their own scopes. Only SPA sessions (`TransientToken`) or tokens with wildcard `*` abilities can freely assign scopes.
 - ✅ **Use custom middleware**: Always use the custom `tokenAbility:` middleware for scope checks. It gracefully bypasses scope checks for SPA session requests while enforcing them strictly for API keys.
 - ✅ **API Resources**: Use `->middlewareFor()` when declaring `Route::apiResource()` to independently scope `index`/`show` (read) vs `store`/`update`/`destroy` (write).
+
+### 4-Layer Rate Limiting Architecture
+
+To protect against abuse and resource starvation, enforce Portkey-style multi-layered rate limits strictly:
+
+- ✅ **Layer 0 (Global Safety Net)**: Broad IP-based limits (e.g., `300/min`) for unauthenticated routes. Must run early in the middleware stack.
+- ✅ **Layer 1 (User Ceiling)**: Aggregate limits for a single authenticated user (e.g., `200/min`) across all their devices and tokens. Protects the global application from noisy neighbors.
+- ✅ **Layer 2 (Per-Token Ceiling)**: Sub-limits for individual API keys (e.g., `30/min`). **Crucial invariant:** `(Per-Token Limit × Max Tokens) < User Ceiling` MUST always hold true to guarantee web dashboard headroom for the user. SPA requests (`TransientToken`) bypass this layer.
+- ✅ **Layer 3 (Sensitive Mutations)**: Strict, isolated limits (e.g., `5/min` to `10/min`) on high-value endpoints like token creation/deletion, destructive actions (`DELETE` routes, force-deletes, member removals), and billing operations.
 
 ---
 
