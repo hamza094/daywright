@@ -20,7 +20,7 @@ Route::middleware([
         ->middleware('tokenAbility:projects:read')
         ->name('projects.messages.scheduled');
     Route::delete('messages/{message}', [ProjectMessageController::class, 'destroy'])
-        ->middleware('tokenAbility:projects:write')
+        ->middleware(['throttle:sensitive-destructive', 'tokenAbility:projects:write'])
         ->name('projects.messages.destroy');
 });
 
@@ -28,4 +28,5 @@ Route::middleware([
 Route::apiResource('/conversations', ConversationController::class)
     ->only(['store', 'destroy', 'index'])
     ->middlewareFor(['index'], 'tokenAbility:projects:read')
-    ->middlewareFor(['store', 'destroy'], ['tokenAbility:projects:write', 'subscription', Idempotent::using(scope: IdempotencyScope::User)]);
+    ->middlewareFor(['store'], ['tokenAbility:projects:write', 'subscription', Idempotent::using(scope: IdempotencyScope::User)])
+    ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'tokenAbility:projects:write', 'subscription', Idempotent::using(scope: IdempotencyScope::User)]);

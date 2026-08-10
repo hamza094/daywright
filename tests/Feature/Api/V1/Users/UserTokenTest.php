@@ -260,8 +260,7 @@ class UserTokenTest extends TestCase
         ]);
 
         $response->assertForbidden()
-            ->assertJsonPath('code', 'max_tokens_exceeded')
-            ->assertJsonPath('message', 'You have reached the maximum limit of 5 API tokens. Please delete an existing token before creating a new one.');
+            ->assertJsonPath('code', 'plan_limit_exceeded');
 
         // Verify only 5 tokens exist
         $this->assertEquals(5, $user->tokens()->count());

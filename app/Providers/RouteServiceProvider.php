@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -64,9 +65,7 @@ class RouteServiceProvider extends ServiceProvider
         // LAYER 0: Global Safety Net (Runs in Kernel)
         // We keep this at 300/min by IP. Since it runs before auth, it always keys by IP.
         // If we kept this at 60/min, it would block authenticated users before they could reach their 200/min user ceiling.
-        RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(300)->by('api-safetynet|'.$request->ip());
-        });
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(300)->by('api-safetynet|'.$request->ip()));
 
         // ──────────────────────────────────────────────────────────
         // LAYER 1: Strict User Ceiling (Runs after auth)
@@ -85,7 +84,7 @@ class RouteServiceProvider extends ServiceProvider
         // Sub-limit for individual Sanctum Personal Access Tokens.
         // MUST be < Layer 1 to preserve headroom for the web dashboard.
         // SPA/session requests (no token) skip this layer entirely via Limit::none().
-        RateLimiter::for('per-token', fn (Request $request) => $this->perTokenLimiter($request));
+        RateLimiter::for('per-token', fn (Request $request): Limit => $this->perTokenLimiter($request));
 
         RateLimiter::for('oauth2-socialite', function (Request $request) {
             $provider = mb_strtolower((string) $request->route('provider')) ?: 'generic';
@@ -174,9 +173,7 @@ class RouteServiceProvider extends ServiceProvider
         });
 
         // Webhook ingress — global per-source cap
-        RateLimiter::for('webhook-ingress', function (Request $request) {
-            return Limit::perMinute(120)->by('webhook|'.$request->ip());
-        });
+        RateLimiter::for('webhook-ingress', fn (Request $request) => Limit::perMinute(120)->by('webhook|'.$request->ip()));
 
     }
 
@@ -247,23 +244,31 @@ class RouteServiceProvider extends ServiceProvider
 
     private function perTokenLimiter(Request $request): Limit
     {
+        /** @var \Laravel\Sanctum\PersonalAccessToken|\Laravel\Sanctum\TransientToken|null $token */
         $token = $request->user()?->currentAccessToken();
 
-        if ($token && ! $token instanceof \Laravel\Sanctum\TransientToken) {
-            return Limit::perMinute(60)
-                ->by('token:'.$token->id)
-                ->response(fn (Request $request, array $headers) => $this->tokenRateLimitResponse($headers));
+        if ($token === null) {
+            return Limit::none();
         }
 
-        return Limit::none();
+        if ($token instanceof \Laravel\Sanctum\TransientToken) {
+            return Limit::none();
+        }
+
+        return Limit::perMinute(30)
+            ->by('token:'.$token->id)
+            ->response(fn (Request $request, array $headers): JsonResponse => $this->tokenRateLimitResponse($headers));
     }
 
+    /**
+     * @param  array<string, string|int>  $headers
+     */
     private function tokenRateLimitResponse(array $headers): JsonResponse
     {
         $retryAfter = (int) ($headers['Retry-After'] ?? $headers['retry-after'] ?? 0);
 
         return \App\Exceptions\Support\ApiErrorFormatter::response(
-            'This specific API key has exceeded its rate limit (60/min).',
+            'This specific API key has exceeded its rate limit (30/min).',
             \Illuminate\Http\Response::HTTP_TOO_MANY_REQUESTS,
             'token_rate_limited',
             meta: array_filter([

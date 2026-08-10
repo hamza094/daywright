@@ -23,7 +23,8 @@ Route::middleware(['auth:sanctum', 'throttle:user-ceiling', 'throttle:per-token'
     // Global Project Routes
     Route::apiResource('/projects', ProjectController::class)
         ->middlewareFor('index', 'tokenAbility:projects:read')
-        ->middlewareFor(['store', 'update', 'destroy'], 'tokenAbility:projects:write')
+        ->middlewareFor(['store', 'update'], 'tokenAbility:projects:write')
+        ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'tokenAbility:projects:write'])
         ->except(['show']);
 
     // Nested Project Routes

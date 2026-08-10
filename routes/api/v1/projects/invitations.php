@@ -31,12 +31,12 @@ Route::get('users/search', InvitationUserSearchController::class)
     ->can('manage', 'project');
 
 Route::delete('invitations/{user}', [ProjectInvitationController::class, 'destroy'])
-    ->middleware('tokenAbility:team:write')
+    ->middleware(['throttle:sensitive-destructive', 'tokenAbility:team:write'])
     ->withoutScopedBindings()
     ->name('projects.cancel-invitation');
 
 Route::delete('members/{user}', ProjectMemberController::class)
-    ->middleware('tokenAbility:team:write')
+    ->middleware(['throttle:sensitive-destructive', 'tokenAbility:team:write'])
     ->name('projects.members.destroy')
     ->withoutScopedBindings()
     ->can('manage', 'project');

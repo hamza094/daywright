@@ -29,7 +29,7 @@ Route::get('/insights', [ProjectInsightsController::class, 'index'])
 
 Route::delete('/force', ForceDeleteProjectController::class)
     ->name('projects.force-delete')
-    ->middleware('tokenAbility:projects:write')
+    ->middleware(['throttle:sensitive-destructive', 'tokenAbility:projects:write'])
     ->withTrashed()
     ->can('manage', 'project');
 
