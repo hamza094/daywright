@@ -251,11 +251,20 @@ class PlanLimitServiceFeatureTest extends TestCase
     #[Test]
     public function free_user_is_blocked_from_creating_a_second_api_token(): void
     {
+        // Create a fresh user with session auth for token routes (avoiding Sanctum conflicts)
+        $sessionUser = User::factory()->create();
+        $this->actingAs($sessionUser);
+
         $apiTokenLimit = $this->freePlanLimit(PlanLimitType::ApiTokens);
 
-        $this->createApiTokens($this->user, $apiTokenLimit);
+        $this->createApiTokens($sessionUser, $apiTokenLimit);
 
-        $response = $this->createApiToken('Blocked Token');
+        $response = $this->actingAs($sessionUser)
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.api-tokens.store'), [
+                'name' => 'Blocked Token',
+                'scopes' => ['account:read'],
+            ]);
 
         $this->assertPlanLimitExceeded(
             response: $response,
@@ -352,10 +361,12 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createApiToken(string $name): TestResponse
     {
-        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.api-tokens.store'), [
-            'name' => $name,
-            'scopes' => ['account:read'],
-        ]);
+        return $this->actingAs($this->user)
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.api-tokens.store'), [
+                'name' => $name,
+                'scopes' => ['account:read'],
+            ]);
     }
 
     private function createActiveTasks(int $count): void

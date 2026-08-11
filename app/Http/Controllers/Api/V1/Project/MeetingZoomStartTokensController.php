@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Project;
 
 use App\Http\Controllers\Api\ApiController;
-use App\Http\Requests\Api\V1\Zoom\MeetingZoomTokensRequest;
 use App\Models\Meeting;
 use App\Models\Project;
 use App\Policies\MeetingPolicy;
@@ -13,24 +12,27 @@ use App\Services\Zoom\MeetingTokenService;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
-class MeetingZoomTokensController extends ApiController
+/**
+ * @operationId generateMeetingStartTokens
+ *
+ * @tags Meetings
+ */
+class MeetingZoomStartTokensController extends ApiController
 {
     public function __invoke(
         Project $project,
         Meeting $meeting,
-        MeetingZoomTokensRequest $request,
         MeetingTokenService $tokenService,
         MeetingPolicy $meetingPolicy
     ): JsonResponse {
-        $data = $request->toDto();
         $currentUser = $this->authenticatedUser();
 
-        $response = $meetingPolicy->generateToken($currentUser, $project, $meeting, $data->action);
+        $response = $meetingPolicy->generateToken($currentUser, $project, $meeting, \App\Enums\Meeting\MeetingTokenAction::Start);
         if (! $response->allowed()) {
             abort(Response::HTTP_FORBIDDEN, $response->message());
         }
 
-        $tokens = $tokenService->generateTokens($project, $meeting, $currentUser, $data->action);
+        $tokens = $tokenService->generateTokens($project, $meeting, $currentUser, \App\Enums\Meeting\MeetingTokenAction::Start);
 
         return $this->respondWithData($tokens, Response::HTTP_OK);
     }

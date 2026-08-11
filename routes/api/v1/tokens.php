@@ -9,14 +9,14 @@ use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 Route::controller(TokenController::class)
     ->prefix('api-tokens')
     ->name('api-tokens.')
+    ->middleware(['auth', 'session.auth'])
     ->group(function (): void {
         Route::get('/', 'index')
-            ->middleware('tokenAbility:account:read')
             ->name('index');
         Route::post('/', 'store')
-            ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-token-mgmt', 'tokenAbility:account:write'])
+            ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-token-mgmt'])
             ->name('store');
         Route::delete('/{token}', 'destroy')
-            ->middleware(['throttle:sensitive-token-mgmt', 'tokenAbility:account:write'])
+            ->middleware(['throttle:sensitive-token-mgmt'])
             ->name('destroy');
     });

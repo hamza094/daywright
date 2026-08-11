@@ -81,6 +81,7 @@ class Kernel extends HttpKernel
         'subscription' => Middleware\CheckSubscription::class,
         'zoom.webhook' => Middleware\VerifyZoomWebhook::class,
         'guest.authenticated' => Middleware\AllowGuestOrAuthenticated::class,
+        'session.auth' => Middleware\RequireSessionAuth::class,
     ];
 
     #[Override]

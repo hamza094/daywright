@@ -41,6 +41,9 @@ final class IdempotencyContractTest extends TestCase
     #[Test]
     public function token_creation_rejects_mismatched_payloads_after_first_execution(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $headers = $this->idempotencyHeaders('phase-seven-token-create');
 
         $firstResponse = $this->withHeaders($headers)->postJson($this->apiV1Route('api-tokens.store'), [
@@ -63,6 +66,9 @@ final class IdempotencyContractTest extends TestCase
     #[Test]
     public function token_creation_returns_conflict_while_the_same_key_is_in_flight(): void
     {
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user);
+
         $payload = ['name' => 'Locked Token', 'scopes' => ['account:read']];
         $idempotencyKey = 'phase-seven-token-in-flight';
         $lock = $this->acquireUserScopedLock(
@@ -87,6 +93,9 @@ final class IdempotencyContractTest extends TestCase
     #[Test]
     public function token_creation_replays_without_creating_a_second_token(): void
     {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
         $headers = $this->idempotencyHeaders('phase-six-token-store');
         $payload = ['name' => 'Phase Six Token', 'scopes' => ['account:read']];
 

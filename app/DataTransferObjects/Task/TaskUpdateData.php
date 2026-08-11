@@ -61,7 +61,7 @@ final readonly class TaskUpdateData
     {
         $statusId = $this->attributes['status_id'] ?? null;
 
-        return is_int($statusId) ? $statusId : null;
+        return is_numeric($statusId) ? (int) $statusId : null;
     }
 
     /**

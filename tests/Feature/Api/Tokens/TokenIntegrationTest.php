@@ -15,10 +15,9 @@ class TokenIntegrationTest extends TestCase
     public function test_full_token_lifecycle_and_scope_enforcement(): void
     {
         $user = User::factory()->create();
-        $sessionToken = $user->createToken('session', ['*']);
 
         // 1. Create a scoped token via the API (simulating the Vue Dashboard)
-        $createResponse = $this->withToken($sessionToken->plainTextToken)
+        $createResponse = $this->actingAs($user)
             ->withHeaders(['Idempotency-Key' => 'test-key-1'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Limited CRM Key',
@@ -44,10 +43,9 @@ class TokenIntegrationTest extends TestCase
     public function test_token_creation_requires_scopes_strict_mode(): void
     {
         $user = User::factory()->create();
-        $sessionToken = $user->createToken('session', ['*']);
 
         // Attempt to create token without scopes (should fail in strict mode)
-        $response = $this->withToken($sessionToken->plainTextToken)
+        $response = $this->actingAs($user)
             ->withHeaders(['Idempotency-Key' => 'test-key-2'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Test Token',
@@ -61,10 +59,9 @@ class TokenIntegrationTest extends TestCase
     public function test_token_creation_rejects_invalid_scopes(): void
     {
         $user = User::factory()->create();
-        $sessionToken = $user->createToken('session', ['*']);
 
         // Attempt to create token with invalid scope
-        $response = $this->withToken($sessionToken->plainTextToken)
+        $response = $this->actingAs($user)
             ->withHeaders(['Idempotency-Key' => 'test-key-3'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Test Token',
@@ -79,10 +76,9 @@ class TokenIntegrationTest extends TestCase
     public function test_token_with_multiple_scopes_can_access_all_allowed_endpoints(): void
     {
         $user = User::factory()->create();
-        $sessionToken = $user->createToken('session', ['*']);
 
         // Create token with multiple scopes
-        $createResponse = $this->withToken($sessionToken->plainTextToken)
+        $createResponse = $this->actingAs($user)
             ->withHeaders(['Idempotency-Key' => 'test-key-4'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Multi-scope Key',

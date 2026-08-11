@@ -20,8 +20,9 @@ class ScopeMiddlewareTest extends TestCase
         $response = $this->withToken($token->plainTextToken)
             ->getJson('/api/v1/api-tokens');
 
+        // Token routes are now session-only, so API tokens are rejected
         $response->assertStatus(403);
-        $response->assertJson(['message' => 'Invalid ability provided.']);
+        $response->assertJson(['message' => 'Token management operations are only available via the web dashboard. Please use session-based authentication.']);
     }
 
     public function test_it_allows_session_requests_without_token_scope(): void

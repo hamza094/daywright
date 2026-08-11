@@ -4,9 +4,11 @@ import { getObjectData } from './apiResponse.js';
 
 export async function fetchTokens(projectSlug, meetingId, action, toastify) {
   try {
-    const response = await axios.post(`/projects/${projectSlug}/meetings/${meetingId}/zoom-tokens`, {
-      action,
-    });
+    const endpoint =
+      action === 'start'
+        ? `/projects/${projectSlug}/meetings/${meetingId}/zoom-tokens/start`
+        : `/projects/${projectSlug}/meetings/${meetingId}/zoom-tokens/join`;
+    const response = await axios.post(endpoint);
     return getObjectData(response);
   } catch (error) {
     toastify.error('Unable to generate meeting tokens');

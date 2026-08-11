@@ -33,8 +33,9 @@ final readonly class BulkDeleteProjectsAction
                 ->whereIn('id', $projectIds)
                 ->chunkById(100, function (Collection $projects) use (&$deletedProjectIds): void {
                     $projects->each(function (Project $project) use (&$deletedProjectIds): void {
-                        $this->projectService->forceDeleteIfAbandoned($project);
-                        $deletedProjectIds[] = $project->id;
+                        if ($this->projectService->forceDeleteIfAbandoned($project)) {
+                            $deletedProjectIds[] = $project->id;
+                        }
                     });
                 }, column: 'id');
 

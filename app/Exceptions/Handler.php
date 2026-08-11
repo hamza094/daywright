@@ -51,7 +51,6 @@ class Handler extends ExceptionHandler
         ModelNotFoundException::class,
         NotFoundHttpException::class,
         MethodNotAllowedHttpException::class,
-        DashboardServiceException::class,
     ];
 
     /**

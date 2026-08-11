@@ -20,14 +20,14 @@ class ApiKeyNotificationTest extends TestCase
         Notification::fake();
 
         $user = User::factory()->create();
-        $token = $user->createToken('session', ['*']);
 
-        $this->withToken($token->plainTextToken)
+        $this->actingAs($user)
             ->withHeaders(['Idempotency-Key' => 'test-key-notification'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Production Key',
                 'scopes' => ['account:read'],
-            ]);
+            ])
+            ->assertCreated();
 
         Notification::assertSentTo(
             $user,
@@ -41,11 +41,11 @@ class ApiKeyNotificationTest extends TestCase
         Notification::fake();
 
         $user = User::factory()->create();
-        $sessionToken = $user->createToken('session', ['*']);
         $apiKey = $user->createToken('To Be Deleted', ['account:read']);
 
-        $this->withToken($sessionToken->plainTextToken)
-            ->deleteJson('/api/v1/api-tokens/'.$apiKey->accessToken->id);
+        $this->actingAs($user)
+            ->deleteJson('/api/v1/api-tokens/'.$apiKey->accessToken->id)
+            ->assertOk();
 
         Notification::assertSentTo(
             $user,

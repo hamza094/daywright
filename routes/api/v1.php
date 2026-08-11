@@ -11,10 +11,12 @@ require __DIR__.'/v1/webhooks.php';
 // Public Routes
 Route::get('/scopes', [ApiScopeController::class, 'index'])->name('scopes.index');
 
+// Session-only token management routes (no API token access)
+require __DIR__.'/v1/tokens.php';
+
 // Authenticated Routes
 Route::middleware(['auth:sanctum', 'throttle:user-ceiling', 'throttle:per-token'])->group(function (): void {
     require __DIR__.'/v1/users.php';
-    require __DIR__.'/v1/tokens.php';
     require __DIR__.'/v1/dashboard.php';
     require __DIR__.'/v1/notifications.php';
     require __DIR__.'/v1/tasks.php';

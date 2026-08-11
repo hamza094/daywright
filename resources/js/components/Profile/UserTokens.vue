@@ -61,6 +61,20 @@
             <small v-if="!scopesLoading && form.scopes.length === 0" class="text-danger"
               >At least one scope must be selected</small
             >
+            <!-- Warning when all scopes selected -->
+            <div v-if="!scopesLoading && form.scopes.length === scopeOptions.length" class="alert alert-warning mt-2">
+              <i class="fa-solid fa-exclamation-triangle"></i>
+              <strong>Security Warning:</strong> You have selected all permissions. This token will have full access to
+              your account. Consider using more specific scopes for better security.
+            </div>
+            <!-- Warning for wildcard scope without 2FA -->
+            <div
+              v-if="!scopesLoading && form.scopes.includes('*') && !auth.two_factor_enabled"
+              class="alert alert-danger mt-2">
+              <i class="fa-solid fa-shield-exclamation"></i>
+              <strong>2FA Required:</strong> Creating wildcard tokens requires two-factor authentication to be enabled.
+              Please enable 2FA in your profile settings first.
+            </div>
           </div>
         </form>
         <div v-if="newToken" class="alert alert-success mt-3 d-flex align-items-center">
@@ -253,6 +267,13 @@ export default {
       if (!this.form.name) return;
       if (this.form.scopes.length === 0) {
         this.$vToastify.error('At least one scope must be selected');
+        return;
+      }
+      // Check if wildcard scope is selected and 2FA is not enabled
+      if (this.form.scopes.includes('*') && !this.auth.two_factor_enabled) {
+        this.$vToastify.error(
+          'Creating wildcard tokens requires two-factor authentication to be enabled. Please enable 2FA in your profile settings first.',
+        );
         return;
       }
       this.$Progress.start();

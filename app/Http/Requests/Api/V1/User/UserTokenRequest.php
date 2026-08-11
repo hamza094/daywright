@@ -39,7 +39,7 @@ class UserTokenRequest extends FormRequest
 
             /**
              * Array of API scopes for the token.
-             * Each scope must be a valid ApiScope enum value.
+             * Each scope must be a valid ApiScope enum value or wildcard (*).
              *
              * @example ["projects:read", "team:write"]
              */
@@ -51,7 +51,7 @@ class UserTokenRequest extends FormRequest
             'scopes.*' => [
                 'required',
                 'string',
-                Rule::in(ApiScope::values()),
+                Rule::in(array_merge(ApiScope::values(), ['*'])),
             ],
 
             /**

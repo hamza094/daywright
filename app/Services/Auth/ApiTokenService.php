@@ -46,13 +46,11 @@ class ApiTokenService
     {
         $currentToken = $user->currentAccessToken();
 
-        // @phpstan-ignore-next-line - currentAccessToken() phpdoc may be overly-certain about nullability
-        if ($currentToken === null) {
-            throw new AccessDeniedHttpException('No current access token found.');
-        }
-
-        if ($currentToken->id === $tokenId) {
-            throw new AccessDeniedHttpException('Cannot delete the current session token via this route.');
+        // If there's a current token (API token auth), check if it's the same as the one being deleted
+        if ($currentToken !== null) {
+            if ($currentToken->id === $tokenId) {
+                throw new AccessDeniedHttpException('Cannot delete the current session token via this route.');
+            }
         }
 
         $deleted = $user->tokens()->where('id', $tokenId)->delete();

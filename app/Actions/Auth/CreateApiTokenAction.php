@@ -11,7 +11,6 @@ use App\Services\Auth\ApiTokenService;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\NewAccessToken;
-use Laravel\Sanctum\TransientToken;
 
 final readonly class CreateApiTokenAction
 {
@@ -51,38 +50,17 @@ final readonly class CreateApiTokenAction
     }
 
     /**
-     * When a PAT creates another PAT, the new token's scopes must be
-     * a subset of the calling token's abilities. SPA sessions (TransientToken)
-     * can choose any scopes freely.
+     * Wildcard tokens require 2FA to be enabled.
+     * Session-only access is enforced at the middleware level.
      *
      * @param  array<int, string>  $requestedScopes
      */
     private function assertScopesAllowed(User $user, array $requestedScopes): void
     {
-        /** @var \Laravel\Sanctum\PersonalAccessToken|TransientToken|null $currentToken */
-        $currentToken = $user->currentAccessToken();
-
-        // If no token or it's a TransientToken (SPA session), no scope restriction
-        if ($currentToken === null) {
-            return;
-        }
-
-        if ($currentToken instanceof TransientToken) {
-            return;
-        }
-
-        $callerAbilities = $currentToken->abilities ?? [];
-
-        // If caller has wildcard (*) or no specific abilities, they can create tokens with any scopes
-        if (empty($callerAbilities) || in_array('*', $callerAbilities, true)) {
-            return;
-        }
-
-        $escalated = array_diff($requestedScopes, $callerAbilities);
-
-        if ($escalated !== []) {
+        // Require 2FA for wildcard token creation
+        if (in_array('*', $requestedScopes, true) && ! $user->hasTwoFactorEnabled()) {
             throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
-                'Cannot create a token with scopes exceeding your current token\'s abilities: '.implode(', ', $escalated)
+                'Creating wildcard tokens requires two-factor authentication to be enabled. Please enable 2FA in your profile settings.'
             );
         }
     }
