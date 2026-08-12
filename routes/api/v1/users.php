@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\SubscriptionController;
 use App\Http\Controllers\Api\V1\User\AvatarController;
 use App\Http\Controllers\Api\V1\User\CurrentUserController;
 use App\Http\Controllers\Api\V1\User\ForceDeleteUserController;
+use App\Http\Controllers\Api\V1\User\PasswordUpdateController;
 use App\Http\Controllers\Api\V1\User\UserController;
 use WendellAdriel\Idempotency\Enums\IdempotencyScope;
 use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
@@ -18,6 +19,10 @@ Route::prefix('users/me')->name('users.me.')->group(function (): void {
     Route::get('invitations', [App\Http\Controllers\Api\V1\User\UserInvitationsController::class, 'myInvitations'])
         ->middleware('tokenAbility:team:read')
         ->name('invitations.index');
+
+    Route::put('password', [PasswordUpdateController::class, 'update'])
+        ->middleware(['firstParty.auth', 'throttle:sensitive-password'])
+        ->name('password');
 
     Route::singleton('subscription', SubscriptionController::class)
         ->creatable()

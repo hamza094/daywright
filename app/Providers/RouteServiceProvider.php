@@ -165,6 +165,13 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by('sensitive|billing|'.$key);
         });
 
+        // Password changes — security-sensitive operation
+        RateLimiter::for('sensitive-password', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by('sensitive|password|'.$key);
+        });
+
         // Database backup — extremely expensive
         RateLimiter::for('sensitive-backup', function (Request $request) {
             $key = $request->user()?->id ?: $request->ip();

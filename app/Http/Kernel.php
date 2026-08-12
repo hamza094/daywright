@@ -80,6 +80,7 @@ class Kernel extends HttpKernel
         'zoom.webhook' => Middleware\VerifyZoomWebhook::class,
         'guest.authenticated' => Middleware\AllowGuestOrAuthenticated::class,
         'session.auth' => Middleware\RequireSessionAuth::class,
+        'firstParty.auth' => Middleware\RequireFirstPartyAuth::class,
     ];
 
     #[Override]

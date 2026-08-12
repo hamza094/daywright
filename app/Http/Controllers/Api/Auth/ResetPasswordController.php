@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\Auth\ResetPasswordRequest;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
@@ -75,6 +76,9 @@ class ResetPasswordController extends ApiController
                 ])->setRememberToken(Str::random(60));
 
                 $user->save();
+
+                // Invalidate other web sessions for security
+                Auth::guard('web')->logoutOtherDevices($password);
 
                 event(new PasswordReset($user));
             }

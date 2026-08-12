@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\User;
 
+use App\DataTransferObjects\User\PasswordUpdateData;
 use App\DataTransferObjects\User\UpdateUserData;
 use App\Events\PasswordUpdateEvent;
 use App\Models\User;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -34,10 +36,6 @@ class UserService
             $user->update($data->userAttributes());
 
             $user->info?->update($data->infoAttributes());
-
-            if ($data->hasPasswordUpdate()) {
-                $this->updatePassword($user, $data->password);
-            }
         });
 
         $user->refresh();
@@ -50,11 +48,15 @@ class UserService
         $user->delete();
     }
 
-    public function updatePassword(User $user, string $password): void
+    public function updatePassword(User $user, PasswordUpdateData $data): void
     {
         try {
-            $user->password = Hash::make($password);
+            $user->password = Hash::make($data->password);
             $user->save();
+
+            // Invalidate other web sessions for security
+            Auth::guard('web')->logoutOtherDevices($data->password);
+
             event(new PasswordUpdateEvent($user, now()->toDayDateTimeString()));
         } catch (Exception) {
             throw ValidationException::withMessages([

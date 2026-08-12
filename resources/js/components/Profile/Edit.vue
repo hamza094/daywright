@@ -48,29 +48,9 @@
               <span class="text-danger font-italic" v-if="errors.bio" v-text="errors.bio[0]"></span>
             </div>
             <hr />
-            <h3>Update Password:</h3>
-
-            <span @click="toggleShowCurrentPassword" class="eye-icon float-right" role="button" tabindex="0">{{
-              showIcon(showCurrentPassword)
-            }}</span>
-
-            <form-input
-              label="Current Password:"
-              v-model="form.current_password"
-              :error="errors.current_password"
-              :type="currentPasswordFieldType"
-              id="current_password" />
-
-            <span @click="toggleShowPassword" class="eye-icon float-right" role="button" tabindex="0">{{
-              showIcon(showPassword)
-            }}</span>
-
-            <form-input
-              label="New Password:"
-              v-model="form.password"
-              :error="errors.password"
-              id="password"
-              :type="passwordFieldType" />
+            <div class="panel-top_content">
+              <button class="btn btn-secondary" @click.prevent="openChangePasswordModal">Change Password</button>
+            </div>
           </div>
 
           <div class="panel-bottom">
@@ -100,8 +80,6 @@ export default {
   },
   data() {
     return {
-      showCurrentPassword: false,
-      showPassword: false,
       owner: this.user,
       errors: {},
       timezones: [],
@@ -114,26 +92,10 @@ export default {
         position: '',
         address: '',
         timezone: '',
-        current_password: '',
-        password: '',
         bio: '',
       },
       originalData: {},
     };
-  },
-  computed: {
-    currentPasswordFieldType() {
-      return this.showCurrentPassword ? 'text' : 'password';
-    },
-    passwordFieldType() {
-      return this.showPassword ? 'text' : 'password';
-    },
-    showIcon: function () {
-      return function (show) {
-        // return plain Unicode characters (safe to render via interpolation)
-        return show ? '👁' : '🕶';
-      };
-    },
   },
   mounted() {
     this.form.name = this.user.name;
@@ -168,12 +130,8 @@ export default {
       this.resetForm();
     },
 
-    toggleShowCurrentPassword() {
-      this.showCurrentPassword = !this.showCurrentPassword;
-    },
-
-    toggleShowPassword() {
-      this.showPassword = !this.showPassword;
+    openChangePasswordModal() {
+      this.$emit('open-change-password');
     },
 
     updateProfile() {
@@ -204,8 +162,6 @@ export default {
         position: this.user.info.position,
         address: this.user.info.address,
         timezone: this.user.timezone || '',
-        current_password: '',
-        password: '',
         bio: this.user.info.bio,
       };
       this.errors = {};

@@ -8,8 +8,6 @@ use App\DataTransferObjects\User\UpdateUserData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
-use Override;
 
 #[SchemaName('UserUpdateRequestData')]
 class UserRequest extends FormRequest
@@ -92,31 +90,6 @@ class UserRequest extends FormRequest
              * @example America/New_York
              */
             'timezone' => ['sometimes', 'nullable', 'string', 'timezone:all'],
-            /**
-             * Current password required when changing the password.
-             */
-            'current_password' => ['sometimes', 'current_password', 'required_with:password'],
-            /**
-             * New password. Submit a matching `password_confirmation` field alongside this value.
-             *
-             * @example Password4!
-             */
-            'password' => ['sometimes', 'required_with:current_password', Password::default(), 'confirmed'],
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    #[Override]
-    public function messages(): array
-    {
-        return [
-            'current_password.current_password' => 'The given password does not match to current password.',
-            'password.mixed' => 'The password must include both uppercase and lowercase letters.',
-            'password.letters' => 'The password must contain at least one letter.',
-            'password.symbols' => 'The password must include at least one special character (symbol).',
-            'password.numbers' => 'The password must contain at least one number.',
         ];
     }
 }

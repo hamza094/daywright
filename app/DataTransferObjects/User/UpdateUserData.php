@@ -15,7 +15,6 @@ final readonly class UpdateUserData
     public function __construct(
         private array $userAttributes,
         private array $infoAttributes,
-        public ?string $password,
     ) {}
 
     /**
@@ -27,8 +26,7 @@ final readonly class UpdateUserData
 
         return new self(
             userAttributes: Arr::only($payload, $userKeys),
-            infoAttributes: Arr::except($payload, [...$userKeys, 'password', 'current_password']),
-            password: array_key_exists('password', $payload) ? (string) $payload['password'] : null,
+            infoAttributes: Arr::except($payload, $userKeys),
         );
     }
 
@@ -48,20 +46,14 @@ final readonly class UpdateUserData
         return $this->infoAttributes;
     }
 
-    public function hasPasswordUpdate(): bool
-    {
-        return $this->password !== null;
-    }
-
     /**
-     * @return array{user_attributes: array<string, mixed>, info_attributes: array<string, mixed>, password: string|null}
+     * @return array{user_attributes: array<string, mixed>, info_attributes: array<string, mixed>}
      */
     public function toArray(): array
     {
         return [
             'user_attributes' => $this->userAttributes,
             'info_attributes' => $this->infoAttributes,
-            'password' => $this->password,
         ];
     }
 }

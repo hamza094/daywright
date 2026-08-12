@@ -30,7 +30,9 @@ class UserController extends ApiController
     /**
      * Update user
      *
-     * Update the specified user's information. Only the owner can update their data.
+     * Update the specified user's profile information (name, email, etc.).
+     * Password changes are handled separately via PasswordUpdateController.
+     * Only the owner can update their data.
      */
     public function update(UserRequest $request, User $user): JsonResponse
     {

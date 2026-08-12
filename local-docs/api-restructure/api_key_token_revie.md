@@ -62,21 +62,70 @@ This plan breaks down the findings from the CodeX Security Audit into four actio
 
 ---
 
-## Phase 3: Token Lifecycle & Session Revocation
+## Phase 3: Secure Password Management & Session Revocation ✅ COMPLETED
 
-**Objective**: Ensure that security-sensitive events (like password resets) properly invalidate existing sessions and API tokens.
+**Objective**: Secure password changes to first-party clients only, and properly revoke web sessions (not API tokens) on password resets without breaking integrations.
 
-### [MODIFY] `app/Http/Controllers/Api/Auth/ResetPasswordController.php`
+### [NEW] `app/Http/Middleware/RequireFirstPartyAuth.php`
 
-- Inside the reset logic, explicitly revoke all existing Personal Access Tokens for the user (`$user->tokens()->delete();`) after a successful password reset.
+- Create a new middleware that allows Web Sessions (TransientToken) OR official Mobile App tokens ($currentToken->can('\*')).
+- Strictly blocks third-party developer API keys from password changes.
+- Implementation: Check if `$currentToken` is null (web session) or `$currentToken->can('*')` (mobile wildcard tokens).
+
+### [NEW] `app/Http/Controllers/Api/V1/User/PasswordUpdateController.php`
+
+- Create a dedicated controller for password updates to follow separation of concerns best practices.
+- Implement an `update()` method that handles password changes with proper validation.
+- Use the existing `UserService@updatePassword()` method and add session invalidation.
+- Return appropriate success/error responses.
+
+### [NEW] `app/Http/Requests/Api/V1/User/PasswordUpdateRequest.php`
+
+- Create a dedicated form request for password validation.
+- Include validation rules: current_password, password, password_confirmation.
+- Use Laravel's built-in `current_password` validation rule to verify current_password matches user's existing password.
+- Use Laravel's built-in `confirmed` rule to validate password matches password_confirmation.
+- Use Laravel's `Password::default()` for strong password requirements.
+
+### [MODIFY] `routes/api/v1/users.php`
+
+- Add a new route: `PUT /users/me/password` pointing to `PasswordUpdateController@update`.
+- Guard this route with the new `RequireFirstPartyAuth` middleware.
+- Add rate limiting middleware: `throttle:sensitive-password`.
+
+### [MODIFY] `app/Http/Requests/Api/V1/User/UserRequest.php`
+
+- Remove password validation rules from the general user update request.
+- This request should only handle profile data (name, email, avatar, etc.).
+- Password changes are now handled exclusively by PasswordUpdateRequest.
 
 ### [MODIFY] `app/Services/User/UserService.php`
 
-- Inside `updateUser()`, if the user is changing their password, revoke all their other existing PATs.
+- Remove password update logic from `updateUser()` - this method should only handle profile data.
+- Enhance `updatePassword()` to invalidate other web sessions using `Auth::guard('web')->logoutOtherDevices($password)`.
+- Keep the existing `PasswordUpdateEvent` for email notifications.
+- CRITICAL: Do NOT automatically delete Personal Access Tokens - API keys are independent credentials.
 
-### [MODIFY] `config/sanctum.php`
+### [MODIFY] `app/Http/Controllers/Api/Auth/ResetPasswordController.php`
 
-- Change the global token expiration from `null` to a hard limit (e.g., `43200` minutes / 30 days) to prevent permanent, non-expiring wildcard tokens.
+- Inside the reset logic, invalidate other web sessions (e.g., using Laravel's session handling).
+- Add `Auth::guard('web')->logoutOtherDevices($newPassword)` to invalidate other browser sessions.
+- CRITICAL: Do NOT automatically delete Personal Access Tokens ($user->tokens()->delete()). API keys should only be revoked manually by the user.
+
+### [MODIFY] Frontend Components
+
+- Update password change forms to use the new `PUT /users/me/password` endpoint instead of the general user update endpoint.
+- Update error handling to handle the new 403 response if third-party tokens attempt password changes.
+- Ensure password change UI continues to work for web sessions and mobile apps.
+
+### [MODIFY] Tests
+
+- Add test to verify third-party API keys cannot change passwords (expect 403).
+- Add test to verify web sessions can change passwords successfully.
+- Add test to verify mobile wildcard tokens can change passwords successfully.
+- Add test to verify other web sessions are invalidated after password change.
+- Add test to verify API tokens remain valid after password change (not revoked).
+- Update existing user update tests to reflect password logic separation.
 
 ---
 
