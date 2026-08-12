@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http;
 
-use App\Http\Middleware\BlockApiKeys;
 use App\Http\Middleware\CheckTokenAbilities;
 use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
@@ -69,7 +68,6 @@ class Kernel extends HttpKernel
         'abilities' => CheckAbilities::class,
         'ability' => CheckForAnyAbility::class,
         'tokenAbility' => CheckTokenAbilities::class,
-        'block.api.keys' => BlockApiKeys::class,
         'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
         'can' => \Illuminate\Auth\Middleware\Authorize::class,

@@ -16,7 +16,7 @@ final readonly class RequireSessionAuth
      *
      * Ensures the request is authenticated via session, not via API token.
      * This prevents token chaining by requiring session-based authentication
-     * for sensitive operations like token management.
+     * for sensitive operations like token management, 2FA management and admin actions.
      *
      * @param  Closure(Request): (Response)  $next
      */
@@ -42,7 +42,7 @@ final readonly class RequireSessionAuth
 
         // Reject API token access
         return response()->json([
-            'message' => 'Token management operations are only available via the web dashboard. Please use session-based authentication.',
+            'message' => 'This operation is strictly reserved for the web dashboard. Please use session-based authentication.',
             'code' => 'forbidden',
             'errors' => [],
             'meta' => [],

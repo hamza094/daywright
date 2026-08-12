@@ -21,9 +21,9 @@ Route::prefix('users/me')->name('users.me.')->group(function (): void {
 
     Route::singleton('subscription', SubscriptionController::class)
         ->creatable()
-        ->middlewareFor('show', 'tokenAbility:account:read')
-        ->middlewareFor('store', [Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-billing', 'tokenAbility:account:write'])
-        ->middlewareFor(['update', 'destroy'], ['subscription', Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-billing', 'tokenAbility:account:write']);
+        ->middlewareFor('show', ['tokenAbility:account:read'])
+        ->middlewareFor('store', ['session.auth', Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-billing'])
+        ->middlewareFor(['update', 'destroy'], ['session.auth', 'subscription', Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-billing']);
 });
 
 Route::apiResource('/users', UserController::class)

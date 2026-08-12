@@ -149,7 +149,9 @@ class TwoFactorAuthenticationTest extends TestCase
 
         Sanctum::actingAs($mockedUser);
 
-        $response = $this->getJson(route('api.v1.twofactor.recovery-codes'));
+        $response = $this->postJson(route('api.v1.twofactor.recovery-codes'), [
+            'current_password' => 'password',
+        ]);
 
         $response->assertOk()
             ->assertJsonPath('data.recovery_codes', ['abc123', 'xyz789']);

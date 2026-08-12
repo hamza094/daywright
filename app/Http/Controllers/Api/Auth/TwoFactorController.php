@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Auth\ConfirmTwoFactorRequest;
 use App\Http\Requests\Api\V1\Auth\DisableTwoFactorRequest;
 use App\Http\Requests\Api\V1\Auth\PrepareTwoFactorRequest;
+use App\Http\Requests\Api\V1\Auth\RecoveryCodesRequest;
 use App\Http\Requests\Api\V1\Auth\TwoFactorLoginRequest;
 use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
@@ -120,13 +121,16 @@ class TwoFactorController extends ApiController
     }
 
     /**
-     * Show and regenerate recovery codes
+     * Generate and return fresh recovery codes
      *
      * Generates and returns a fresh set of recovery codes for the authenticated user.
      */
-    public function showRecoveryCodes(Request $request): JsonResponse
+    public function generateRecoveryCodes(RecoveryCodesRequest $request): JsonResponse
     {
-        $recoveryCodes = $request->user()->generateRecoveryCodes();
+        $user = $request->user();
+        $data = $request->toDto();
+
+        $recoveryCodes = $user->generateRecoveryCodes();
 
         return $this->respondWithData([
             'recovery_codes' => $recoveryCodes,
@@ -141,8 +145,9 @@ class TwoFactorController extends ApiController
     public function disableTwoFactorAuth(DisableTwoFactorRequest $request): JsonResponse
     {
         $user = $request->user();
+        $data = $request->toDto();
 
-        $this->disableTwoFactorAction->execute($user);
+        $this->disableTwoFactorAction->execute($user, $data);
 
         return $this->respondWithData([
             'two_factor_state' => TwoFactorStatus::DISABLED->value,

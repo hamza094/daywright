@@ -806,7 +806,7 @@ Define the architecture and strict rules for authenticating, authorizing, and ra
 
 - **SPA / Internal Clients**: Authenticate via stateful session cookies (`web` guard). Sanctum issues `TransientToken`s that implicitly pass all scope checks.
 - **Developer API Keys / Mobile**: Authenticate via `Bearer` tokens (`auth:sanctum`). These tokens carry explicit scopes.
-- **Admin Panel**: Admin routes MUST be strictly isolated to session-based users. They must explicitly reject API keys using the `BlockApiKeys` middleware to prevent unauthorized bulk actions.
+- **Admin Panel**: Admin routes MUST be strictly isolated to session-based users. They must explicitly reject API keys using the `RequireSessionAuth` middleware to prevent unauthorized bulk actions.
 
 ### Scope Enforcement (Principle of Least Privilege)
 

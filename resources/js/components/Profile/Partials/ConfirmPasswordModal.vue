@@ -14,11 +14,12 @@
         </div>
       </div>
       <div class="panel-form">
-        <form @submit.prevent="submitForm">
+        <form @submit.prevent="handleSubmit">
           <div class="mb-3">
             <label for="confirm-password" class="form-label">Current Password</label>
             <input
               id="confirm-password"
+              ref="passwordInput"
               type="password"
               v-model="password"
               class="form-control"
@@ -26,14 +27,17 @@
               autocomplete="current-password"
               required
               aria-describedby="password-error"
-              :class="{ 'is-invalid': passwordError }" />
+              :class="{ 'is-invalid': passwordError }"
+              :disabled="loading" />
             <div v-if="passwordError" id="password-error" class="invalid-feedback">
               {{ passwordError }}
             </div>
           </div>
           <div class="d-flex justify-content-end gap-2">
-            <button class="btn btn-secondary" @click.prevent="closeModal" :disabled="loading">Cancel</button>
-            <button class="btn btn-success" type="submit" :disabled="loading || !password.trim()">
+            <button type="button" class="btn btn-secondary" @click.prevent="closeModal" :disabled="loading">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-success" :disabled="loading || !password.trim()">
               <span
                 v-if="loading"
                 class="spinner-border spinner-border-sm me-1"
@@ -59,31 +63,45 @@ export default {
     },
   },
   emits: ['submit'],
+
   data() {
     return {
       password: '',
       passwordError: '',
     };
   },
+
+  watch: {
+    loading(newVal) {
+      if (!newVal) {
+        this.$nextTick().then(() => {
+          this.$refs.passwordInput?.focus();
+        });
+      }
+    },
+  },
+
   methods: {
     closeModal() {
       this.$modal.hide('ConfirmPassword');
-      this.password = ''; // Reset password on close
-      this.passwordError = ''; // Reset error
+      this.resetForm();
     },
-    submitForm() {
-      this.passwordError = ''; // Clear previous errors
+
+    resetForm() {
+      this.password = '';
+      this.passwordError = '';
+    },
+
+    handleSubmit() {
+      this.passwordError = '';
 
       if (!this.password.trim()) {
         this.passwordError = 'Password is required';
         return;
       }
 
-      if (this.password.trim()) {
-        this.$emit('submit', this.password);
-        this.password = ''; // Reset password after submit
-        this.passwordError = ''; // Reset error
-      }
+      this.$emit('submit', this.password);
+      this.resetForm();
     },
   },
 };

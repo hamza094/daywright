@@ -9,7 +9,7 @@ use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 Route::controller(TokenController::class)
     ->prefix('api-tokens')
     ->name('api-tokens.')
-    ->middleware(['auth', 'session.auth'])
+    ->middleware(['auth:sanctum', 'session.auth'])
     ->group(function (): void {
         Route::get('/', 'index')
             ->name('index');

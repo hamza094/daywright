@@ -29,7 +29,10 @@ class DisableTwoFactorRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [];
+        return [
+            'current_password' => ['required', 'string', 'current_password'],
+            'code' => ['required', 'string'],
+        ];
     }
 
     /**
@@ -46,7 +49,7 @@ class DisableTwoFactorRequest extends FormRequest
 
     public function toDto(): TwoFactorDisableData
     {
-        return TwoFactorDisableData::fromValidated();
+        return TwoFactorDisableData::fromValidated($this->validated());
     }
 
     /**

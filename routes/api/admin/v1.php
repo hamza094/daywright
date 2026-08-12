@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['prefix' => 'admin'], function (): void {
 
-    Route::middleware(['auth:sanctum', 'verified', 'admin', 'block.api.keys', 'throttle:admin-api'])->group(function (): void {
+    Route::middleware(['auth:sanctum', 'verified', 'admin', 'session.auth', 'throttle:admin-api'])->group(function (): void {
 
         // Project Api Resource Routes
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');

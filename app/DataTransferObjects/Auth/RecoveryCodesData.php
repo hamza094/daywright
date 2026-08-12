@@ -4,18 +4,16 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Auth;
 
-final readonly class TwoFactorDisableData
+final readonly class RecoveryCodesData
 {
     public function __construct(
-        public readonly string $currentPassword,
-        public readonly string $code
+        public readonly string $currentPassword
     ) {}
 
     public static function fromValidated(array $validated): self
     {
         return new self(
-            currentPassword: $validated['current_password'],
-            code: $validated['code']
+            currentPassword: $validated['current_password']
         );
     }
 
@@ -28,7 +26,6 @@ final readonly class TwoFactorDisableData
     {
         return [
             'current_password' => $this->currentPassword,
-            'code' => $this->code,
         ];
     }
 }
