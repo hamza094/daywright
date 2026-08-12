@@ -25,7 +25,7 @@ Route::get('/limits', ProjectLimitsController::class)
 
 Route::get('/insights', [ProjectInsightsController::class, 'index'])
     ->name('projects.insights')
-    ->middleware('tokenAbility:projects:read');
+    ->middleware(['tokenAbility:projects:read', 'can:access,project']);
 
 Route::delete('/force', ForceDeleteProjectController::class)
     ->name('projects.force-delete')

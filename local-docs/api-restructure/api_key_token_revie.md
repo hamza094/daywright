@@ -38,17 +38,23 @@ This plan breaks down the findings from the CodeX Security Audit into four actio
 
 ---
 
-## Phase 2: High Severity IDORs (Tenant Isolation)
+## Phase 2: High Severity IDORs (Tenant Isolation) ✅ COMPLETED
 
 **Objective**: Ensure that a token with a valid scope (`projects:read` or `team:read`) cannot access data outside the user's actual project/team (Insecure Direct Object Reference).
 
-### [MODIFY] `app/Http/Controllers/Api/V1/Project/ProjectInsightsController.php`
+### [MODIFY] `app/Http/Controllers/Api/V1/Project/ProjectInsightsController.php` ✅ COMPLETED
 
 - Add `$this->authorize('access', $project);` at the top of the `index()` method. The route has `tokenAbility:projects:read`, but we must verify the user actually belongs to the requested project.
 
-### [MODIFY] `app/Http/Controllers/Api/V1/User/UserController.php` & `app/Services/User/UserService.php`
+### [MODIFY] `app/Http/Controllers/Api/V1/User/UserController.php` ✅ COMPLETED
 
-### [MODIFY] `routes/api/v1/users.php`
+- Removed `index()` method and `UserIndexRequest` import as global user listing is now disabled.
+
+### [MODIFY] `app/Services\User/UserService.php` ✅ COMPLETED
+
+- Removed `paginateUsers()` method as it's no longer needed.
+
+### [MODIFY] `routes/api/v1/users.php` ✅ COMPLETED
 
 - Update the `apiResource('/users')` definition to `except(['index', 'store'])`.
 - Global user listing is a massive data leak risk (email scraping). Since the Admin panel already has `/admin/users`, the public API should never return a global list of users.

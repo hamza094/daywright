@@ -27,8 +27,8 @@ Route::prefix('users/me')->name('users.me.')->group(function (): void {
 });
 
 Route::apiResource('/users', UserController::class)
-    ->except(['store'])
-    ->middlewareFor(['index', 'show'], 'tokenAbility:team:read')
+    ->except(['index', 'store'])
+    ->middlewareFor(['show'], 'tokenAbility:team:read')
     ->middlewareFor(['update'], 'tokenAbility:team:write')
     ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'tokenAbility:team:write']);
 
