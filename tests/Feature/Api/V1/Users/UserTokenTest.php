@@ -34,9 +34,9 @@ class UserTokenTest extends TestCase
     {
         $user = User::first();
 
-        $this->actingAs($user);
+        $this->actingAs($user, 'web');
 
-        $user->createToken('Test Token', ['*']);
+        $user->createToken('Test Token', ['account:read']);
         $response = $this->getJson($this->apiV1Route('api-tokens.index'));
         $response->assertOk();
         $response->assertJsonFragment(['name' => 'Test Token']);
@@ -51,7 +51,7 @@ class UserTokenTest extends TestCase
     {
         $user = User::first();
 
-        $this->actingAs($user);
+        $this->actingAs($user, 'web');
 
         $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'My API Token',
@@ -76,7 +76,7 @@ class UserTokenTest extends TestCase
     {
         $user = User::first();
 
-        $this->actingAs($user);
+        $this->actingAs($user, 'web');
 
         $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Audit Test Token',
@@ -85,8 +85,8 @@ class UserTokenTest extends TestCase
         $response->assertCreated();
 
         $this->assertDatabaseHas('audit_logs', [
-            'actor_type' => 'system',
-            'actor_id' => null,
+            'actor_type' => 'user',
+            'actor_id' => $user->id,
             'event' => 'security.api_token_created',
             'auditable_type' => User::class,
             'auditable_id' => $user->id,
@@ -105,7 +105,7 @@ class UserTokenTest extends TestCase
     {
         $user = User::first();
 
-        $this->actingAs($user);
+        $this->actingAs($user, 'web');
 
         $expiresAt = '2026-05-20T15:30:00+02:00';
         $expectedExpiration = CarbonImmutable::parse($expiresAt)->setTimezone('UTC')->toIso8601String();
@@ -129,7 +129,7 @@ class UserTokenTest extends TestCase
     public function expires_at_must_be_iso_8601_with_timezone_offset(): void
     {
         $user = User::first();
-        $this->actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'Legacy Token',
@@ -143,7 +143,7 @@ class UserTokenTest extends TestCase
     public function user_can_delete_a_token(): void
     {
         $user = User::first();
-        $this->actingAs($user);
+        $this->actingAs($user, 'web');
 
         $token = $user->createToken('Delete Token', ['account:read']);
         $tokenId = $token->accessToken->id;
@@ -159,7 +159,7 @@ class UserTokenTest extends TestCase
     public function revoking_api_token_creates_audit_log(): void
     {
         $user = User::first();
-        $this->actingAs($user);
+        $this->actingAs($user, 'web');
 
         $token = $user->createToken('Revoke Test Token', ['account:read']);
         $tokenId = $token->accessToken->id;
@@ -168,8 +168,8 @@ class UserTokenTest extends TestCase
         $response->assertOk();
 
         $this->assertDatabaseHas('audit_logs', [
-            'actor_type' => 'system',
-            'actor_id' => null,
+            'actor_type' => 'user',
+            'actor_id' => $user->id,
             'event' => 'security.api_token_revoked',
             'auditable_type' => User::class,
             'auditable_id' => $user->id,
@@ -196,7 +196,7 @@ class UserTokenTest extends TestCase
     public function deleting_a_missing_token_returns_not_found_message(): void
     {
         $user = User::first();
-        $this->actingAs($user);
+        $this->actingAs($user, 'web');
         $user->createToken('Session Token', ['account:read']);
 
         $response = $this
@@ -211,7 +211,7 @@ class UserTokenTest extends TestCase
     {
         $user = User::first();
 
-        $this->actingAs($user);
+        $this->actingAs($user, 'web');
 
         // Create 5 tokens (the maximum allowed)
         for ($i = 0; $i < 5; $i++) {

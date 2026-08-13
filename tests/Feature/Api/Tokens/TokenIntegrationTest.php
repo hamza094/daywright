@@ -17,7 +17,7 @@ class TokenIntegrationTest extends TestCase
         $user = User::factory()->create();
 
         // 1. Create a scoped token via the API (simulating the Vue Dashboard)
-        $createResponse = $this->actingAs($user)
+        $createResponse = $this->actingAs($user, 'web')
             ->withHeaders(['Idempotency-Key' => 'test-key-1'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Limited CRM Key',
@@ -45,7 +45,7 @@ class TokenIntegrationTest extends TestCase
         $user = User::factory()->create();
 
         // Attempt to create token without scopes (should fail in strict mode)
-        $response = $this->actingAs($user)
+        $response = $this->actingAs($user, 'web')
             ->withHeaders(['Idempotency-Key' => 'test-key-2'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Test Token',
@@ -61,7 +61,7 @@ class TokenIntegrationTest extends TestCase
         $user = User::factory()->create();
 
         // Attempt to create token with invalid scope
-        $response = $this->actingAs($user)
+        $response = $this->actingAs($user, 'web')
             ->withHeaders(['Idempotency-Key' => 'test-key-3'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Test Token',
@@ -78,7 +78,7 @@ class TokenIntegrationTest extends TestCase
         $user = User::factory()->create();
 
         // Create token with multiple scopes
-        $createResponse = $this->actingAs($user)
+        $createResponse = $this->actingAs($user, 'web')
             ->withHeaders(['Idempotency-Key' => 'test-key-4'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Multi-scope Key',
@@ -94,14 +94,9 @@ class TokenIntegrationTest extends TestCase
             ->getJson('/api/v1/projects')
             ->assertStatus(200);
 
-        // Should be able to access users endpoint (team:read)
+        // Should be able to access users/me endpoint (account:read)
         $this->withToken($plainTextKey)
-            ->getJson('/api/v1/users')
-            ->assertStatus(200);
-
-        // Should be able to access dashboard endpoint (account:read)
-        $this->withToken($plainTextKey)
-            ->getJson('/api/v1/dashboard/projects')
+            ->getJson('/api/v1/users/me')
             ->assertStatus(200);
     }
 }

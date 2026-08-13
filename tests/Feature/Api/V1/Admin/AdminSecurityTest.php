@@ -7,7 +7,6 @@ namespace Tests\Feature\Api\V1\Admin;
 use App\Enums\ApiScope;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -22,17 +21,13 @@ final class AdminSecurityTest extends TestCase
 
         $token = $admin->createToken('Admin API Key', [ApiScope::AccountRead->value]);
 
-        Sanctum::actingAs(
-            $admin,
-            [ApiScope::AccountRead->value],
-        );
-
+        // Use only API token auth (no web session)
         $response = $this->withHeaders([
             'Authorization' => 'Bearer '.$token->plainTextToken,
         ])->getJson('/api/v1/admin/projects');
 
         $response->assertForbidden()
-            ->assertJsonPath('message', 'API Keys cannot be used for administrative actions.');
+            ->assertJsonPath('message', 'This operation is strictly reserved for the web dashboard. Please use session-based authentication.');
     }
 
     #[Test]
@@ -40,7 +35,7 @@ final class AdminSecurityTest extends TestCase
     {
         $admin = User::factory()->create(['is_admin' => true, 'email_verified_at' => now()]);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $response = $this->getJson('/api/v1/admin/projects');
 

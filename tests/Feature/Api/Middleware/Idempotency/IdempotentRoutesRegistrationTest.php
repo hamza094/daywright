@@ -57,7 +57,7 @@ class IdempotentRoutesRegistrationTest extends TestCase
     #[Test]
     public function protected_token_creation_requires_an_idempotency_key(): void
     {
-        $this->actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create(), 'web');
 
         $this->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'My API Token',

@@ -63,6 +63,7 @@ class ResetPasswordTest extends TestCase
 
         // Create web session
         $this->actingAs($user, 'web');
+        auth()->logout();
 
         $token = Password::createToken($user);
 
@@ -95,9 +96,9 @@ class ResetPasswordTest extends TestCase
             'password_confirmation' => 'NewPassword456!',
         ])->assertSuccessful();
 
-        // API token should still be valid
+        // API token should still be valid for projects endpoint
         $this->withToken($apiToken)
-            ->getJson('/api/v1/users/me')
+            ->getJson('/api/v1/projects')
             ->assertSuccessful();
 
         $this->assertEquals(1, $user->tokens()->count());

@@ -15,7 +15,7 @@ use Override;
 use Tests\Support\BuildsInsightTestData;
 use Tests\TestCase;
 
-class ProjectInsightsApiTest extends TestCase
+class ProjectInsightsTest extends TestCase
 {
     use BuildsInsightTestData;
     use RefreshDatabase;
@@ -42,10 +42,11 @@ class ProjectInsightsApiTest extends TestCase
         $this->project = Project::factory()->create([
             'name' => 'Test Project',
             'stage_id' => $this->stage->id,
+            'user_id' => $this->user->id, // Make user the project owner
         ]);
 
-        // Make user a project member
-        $this->project->members()->attach($this->user->id);
+        // Make user a project member with active status
+        $this->project->members()->attach($this->user->id, ['active' => true]);
 
         // Set up test config
         Config::set('project-metrics.health.weights.tasks', 0.4);
@@ -217,8 +218,11 @@ class ProjectInsightsApiTest extends TestCase
     public function handles_empty_project_gracefully(): void
     {
         // Arrange: Project with no tasks, activities, etc.
-        $emptyProject = Project::factory()->create(['name' => 'Empty Project']);
-        $emptyProject->members()->attach($this->user->id);
+        $emptyProject = Project::factory()->create([
+            'name' => 'Empty Project',
+            'user_id' => $this->user->id, // Make user the owner
+        ]);
+        $emptyProject->members()->attach($this->user->id, ['active' => true]);
 
         Sanctum::actingAs($this->user);
 

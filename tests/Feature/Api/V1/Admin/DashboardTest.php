@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Services\Admin\DashboardService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
-use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
@@ -32,7 +31,7 @@ class DashboardTest extends TestCase
         $this->admin = User::factory()->admin()->create();
         $this->enableTwoFactorForUser($this->admin);
 
-        Sanctum::actingAs($this->admin);
+        $this->actingAs($this->admin, 'web');
     }
 
     // Authorization
@@ -41,7 +40,7 @@ class DashboardTest extends TestCase
     public function non_admin_cannot_access_dashboard_activities(): void
     {
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->getJson($this->apiV1AdminRoute('dashboard.activities'))
             ->assertForbidden();
@@ -51,7 +50,7 @@ class DashboardTest extends TestCase
     public function non_admin_cannot_access_dashboard_data(): void
     {
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->getJson($this->apiV1AdminRoute('dashboard.data'))
             ->assertForbidden();
@@ -146,7 +145,7 @@ class DashboardTest extends TestCase
     public function non_admin_cannot_trigger_backup(): void
     {
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->postJson($this->apiV1AdminRoute('backup.database'))
             ->assertForbidden();

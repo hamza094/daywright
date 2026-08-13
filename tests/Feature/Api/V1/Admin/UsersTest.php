@@ -9,7 +9,6 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Admin\AdminAccessService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use Tests\Traits\EnablesUserTwoFactor;
@@ -24,7 +23,7 @@ class UsersTest extends TestCase
     {
         $user = $this->createUser();
 
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->getJson($this->apiV1AdminRoute('users.index'))
             ->assertForbidden()
@@ -40,7 +39,7 @@ class UsersTest extends TestCase
 
         $target = $this->createUser();
 
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => true,
@@ -56,7 +55,7 @@ class UsersTest extends TestCase
 
         $target = $this->createUser();
 
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'web');
 
         $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => true,
@@ -80,14 +79,14 @@ class UsersTest extends TestCase
 
         $target = $this->createUser();
 
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'web');
 
         $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => true,
         ])->assertOk();
 
         $this->assertDatabaseHas('audit_logs', [
-            'actor_type' => 'api_token',
+            'actor_type' => 'user',
             'actor_id' => $actor->id,
             'event' => 'security.role_updated',
             'auditable_type' => User::class,
@@ -111,7 +110,7 @@ class UsersTest extends TestCase
         $target = $this->createUser();
         (new AdminAccessService)->grantAdminAccess($target, $actor);
 
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'web');
 
         $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => true,
@@ -128,7 +127,7 @@ class UsersTest extends TestCase
 
         $target = $this->createUser();
 
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'web');
 
         $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [])
             ->assertUnprocessable()
@@ -153,7 +152,7 @@ class UsersTest extends TestCase
         (new AdminAccessService)->grantAdminAccess($target, $actor);
         $target->createToken('admin-device-token');
 
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'web');
 
         $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => false,
@@ -183,14 +182,14 @@ class UsersTest extends TestCase
         $target = $this->createUser();
         (new AdminAccessService)->grantAdminAccess($target, $actor);
 
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'web');
 
         $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => false,
         ])->assertOk();
 
         $this->assertDatabaseHas('audit_logs', [
-            'actor_type' => 'api_token',
+            'actor_type' => 'user',
             'actor_id' => $actor->id,
             'event' => 'security.role_updated',
             'auditable_type' => User::class,
@@ -213,7 +212,7 @@ class UsersTest extends TestCase
 
         $target = $this->createUser();
 
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'web');
 
         $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $target]), [
             'is_admin' => false,
@@ -228,7 +227,7 @@ class UsersTest extends TestCase
         $actor = $this->createAdminUser();
         $this->enableTwoFactorForUser($actor);
 
-        Sanctum::actingAs($actor);
+        $this->actingAs($actor, 'web');
 
         $this->patchJson($this->apiV1AdminRoute('users.role.update', ['user' => $actor]), [
             'is_admin' => false,
@@ -254,7 +253,7 @@ class UsersTest extends TestCase
         $inactiveProject = $this->createProject();
         $inactiveProject->members()->attach($target->id, ['active' => false]);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $response = $this->getJson($this->apiV1AdminRoute('users.index'))->assertOk();
 
@@ -279,7 +278,7 @@ class UsersTest extends TestCase
         $matchingUser = $this->createUser(['name' => 'Searchable Admin User']);
         $this->createUser(['name' => 'Other User']);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $response = $this->getJson($this->apiV1AdminRoute('users.index', query: [
             'filter' => ['search' => 'Searchable'],
@@ -302,7 +301,7 @@ class UsersTest extends TestCase
         $literalUser = $this->createUser(['name' => 'Literal% User']);
         $this->createUser(['name' => 'LiteralX User']);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $response = $this->getJson($this->apiV1AdminRoute('users.index', query: [
             'filter' => ['search' => 'Literal%'],
@@ -321,7 +320,7 @@ class UsersTest extends TestCase
         $this->createUser(['name' => 'Alias Search User']);
         $this->createUser(['name' => 'Other User']);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $this->getJson($this->apiV1AdminRoute('users.index', query: [
             'search' => 'Alias Search',
@@ -336,7 +335,7 @@ class UsersTest extends TestCase
         $admin = $this->createAdminUser();
         $this->enableTwoFactorForUser($admin);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $this->getJson($this->apiV1AdminRoute('users.index', query: [
             'sort' => 'invalid',
@@ -351,7 +350,7 @@ class UsersTest extends TestCase
         $admin = $this->createAdminUser();
         $this->enableTwoFactorForUser($admin);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $this->getJson($this->apiV1AdminRoute('users.index', query: [
             'filter' => ['role' => 'admin'],
@@ -366,7 +365,7 @@ class UsersTest extends TestCase
         $admin = $this->createAdminUser();
         $this->enableTwoFactorForUser($admin);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $this->getJson($this->apiV1AdminRoute('users.index', query: [
             'random' => 'value',
@@ -381,7 +380,7 @@ class UsersTest extends TestCase
         $admin = $this->createAdminUser();
         $this->enableTwoFactorForUser($admin);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $this->getJson($this->apiV1AdminRoute('users.index', query: [
             'include' => 'subscriptions',
@@ -401,7 +400,7 @@ class UsersTest extends TestCase
         $alphaUser = $this->createUser(['name' => 'Alpha Admin User']);
         $zuluUser = $this->createUser(['name' => 'Zulu Admin User']);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $response = $this->getJson($this->apiV1AdminRoute('users.index', query: [
             'sort' => 'name',
@@ -428,7 +427,7 @@ class UsersTest extends TestCase
             'created_at' => now(),
         ]);
 
-        Sanctum::actingAs($admin);
+        $this->actingAs($admin, 'web');
 
         $response = $this->getJson($this->apiV1AdminRoute('users.index'))
             ->assertOk();

@@ -47,7 +47,8 @@ class ApiTokenService
         $currentToken = $user->currentAccessToken();
 
         // If there's a current token (API token auth), check if it's the same as the one being deleted
-        if ($currentToken !== null) {
+        // Skip this check for TransientToken (session-based auth) as it doesn't have an id
+        if ($currentToken !== null && ! ($currentToken instanceof \Laravel\Sanctum\TransientToken)) {
             if ($currentToken->id === $tokenId) {
                 throw new AccessDeniedHttpException('Cannot delete the current session token via this route.');
             }

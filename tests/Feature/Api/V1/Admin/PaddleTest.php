@@ -9,7 +9,6 @@ use App\DataTransferObjects\Paddle\PaddleSubscriptionData as Data;
 use App\Interfaces\PaddleApi;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Mockery\MockInterface;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
@@ -39,7 +38,7 @@ class PaddleTest extends TestCase
             'services.paddle.results_per_page' => 10,
         ]);
 
-        Sanctum::actingAs($this->admin);
+        $this->actingAs($this->admin, 'web');
     }
 
     // Authorization
@@ -48,7 +47,7 @@ class PaddleTest extends TestCase
     public function non_admin_cannot_access_subscription_list(): void
     {
         $user = User::factory()->create();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->getJson($this->apiV1AdminRoute('subscriptions.list'))
             ->assertForbidden();

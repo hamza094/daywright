@@ -39,7 +39,8 @@ class UserTokenRequest extends FormRequest
 
             /**
              * Array of API scopes for the token.
-             * Each scope must be a valid ApiScope enum value or wildcard (*).
+             * Each scope must be a valid ApiScope enum value.
+             * Wildcard tokens are restricted to official mobile apps via the login endpoint.
              *
              * @example ["projects:read", "team:write"]
              */
@@ -51,7 +52,7 @@ class UserTokenRequest extends FormRequest
             'scopes.*' => [
                 'required',
                 'string',
-                Rule::in(array_merge(ApiScope::values(), ['*'])),
+                Rule::in(ApiScope::values()),
             ],
 
             /**

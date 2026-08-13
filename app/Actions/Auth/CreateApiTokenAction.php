@@ -24,8 +24,6 @@ final readonly class CreateApiTokenAction
      */
     public function execute(User $user, string $name, array $scopes, ?CarbonInterface $expiresAt): NewAccessToken
     {
-        $this->assertScopesAllowed($user, $scopes);
-
         return DB::transaction(function () use ($user, $name, $scopes, $expiresAt): NewAccessToken {
             $token = $this->apiTokenService->createForUser($user, $name, $scopes, $expiresAt);
 
@@ -47,21 +45,5 @@ final readonly class CreateApiTokenAction
 
             return $token;
         });
-    }
-
-    /**
-     * Wildcard tokens require 2FA to be enabled.
-     * Session-only access is enforced at the middleware level.
-     *
-     * @param  array<int, string>  $requestedScopes
-     */
-    private function assertScopesAllowed(User $user, array $requestedScopes): void
-    {
-        // Require 2FA for wildcard token creation
-        if (in_array('*', $requestedScopes, true) && ! $user->hasTwoFactorEnabled()) {
-            throw new \Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException(
-                'Creating wildcard tokens requires two-factor authentication to be enabled. Please enable 2FA in your profile settings.'
-            );
-        }
     }
 }

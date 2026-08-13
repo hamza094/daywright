@@ -9,7 +9,6 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -30,7 +29,7 @@ class TasksTest extends TestCase
         $this->admin = $this->createAdminUser();
         $this->enableTwoFactorForUser($this->admin);
 
-        Sanctum::actingAs($this->admin);
+        $this->actingAs($this->admin, 'web');
     }
 
     // Authorization
@@ -39,7 +38,7 @@ class TasksTest extends TestCase
     public function non_admin_cannot_access_tasks_index(): void
     {
         $user = $this->createUser();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->getJson($this->apiV1AdminRoute('tasks.index'))
             ->assertForbidden();
@@ -49,7 +48,7 @@ class TasksTest extends TestCase
     public function non_admin_cannot_bulk_delete_tasks(): void
     {
         $user = $this->createUser();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $task = $this->createTask();
 
@@ -294,7 +293,7 @@ class TasksTest extends TestCase
             ->assertOk();
 
         $this->assertDatabaseHas('audit_logs', [
-            'actor_type' => 'api_token',
+            'actor_type' => 'user',
             'actor_id' => $this->admin->id,
             'event' => 'destruction.bulk_tasks_deleted',
         ]);

@@ -21,7 +21,7 @@ class ApiKeyNotificationTest extends TestCase
 
         $user = User::factory()->create();
 
-        $this->actingAs($user)
+        $this->actingAs($user, 'web')
             ->withHeaders(['Idempotency-Key' => 'test-key-notification'])
             ->postJson('/api/v1/api-tokens', [
                 'name' => 'Production Key',
@@ -43,7 +43,7 @@ class ApiKeyNotificationTest extends TestCase
         $user = User::factory()->create();
         $apiKey = $user->createToken('To Be Deleted', ['account:read']);
 
-        $this->actingAs($user)
+        $this->actingAs($user, 'web')
             ->deleteJson('/api/v1/api-tokens/'.$apiKey->accessToken->id)
             ->assertOk();
 

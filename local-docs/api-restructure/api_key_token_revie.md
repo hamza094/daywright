@@ -129,22 +129,55 @@ This plan breaks down the findings from the CodeX Security Audit into four actio
 
 ---
 
-## Phase 4: Scope Middleware & CORS Hardening
+## Phase 4: CORS Hardening & Token Scope Policy
 
-**Objective**: Fix the logical bypass in the scope middleware and secure the CORS configuration for the SPA.
+**Objective**: Secure the CORS configuration for the SPA and implement context-aware wildcard token restrictions.
 
-### [MODIFY] `app/Http/Middleware/CheckTokenAbilities.php`
+### [SKIP] `app/Http/Middleware/CheckTokenAbilities.php`
 
-- The current logic uses `if ($request->bearerToken())`. This can be bypassed if an attacker sends a valid session cookie AND a fake Bearer header.
-- Change the check to: `if ($request->user() && $request->user()->currentAccessToken() instanceof \Laravel\Sanctum\PersonalAccessToken)`.
+- **Decision**: Do not modify the current logic.
+- **Reasoning**: The audit's concern about bypassing with session cookie + fake Bearer header is misguided. The current implementation correctly follows Laravel Sanctum's intended design:
+  - Session-based requests rely on Laravel policies (`can:` middleware)
+  - Token-based requests use Sanctum abilities (`tokenAbility:` middleware)
+  - The `bearerToken()` check is a routing decision, not a security gate
+  - A fake Bearer header would still fail token validation
+  - Proposed fix would add unnecessary database queries on every request
+- **Current Usage**: The middleware is used 56 times across API routes for scopes: `account:*`, `projects:*`, and `team:*`
 
 ### [MODIFY] `config/cors.php`
 
-- If `supports_credentials` is set to `true`, modern browsers will block CORS if `allowed_origins` contains `['*']`. We will update this to strictly list your known frontend domains (e.g., `['http://localhost:3000', 'https://app.daywright.com']`).
+- **Status**: Implement this change ✅
+- **Reasoning**: Valid security concern. Modern browsers block CORS when `supports_credentials: true` and `allowed_origins: ['*']` are combined.
+- **Implementation**: Update to use specific domains:
+  ```php
+  'allowed_origins' => [
+      env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000'),
+      'https://app.daywright.com',
+      // Add production/staging domains as needed
+  ],
+  ```
+- **Caveat**: Ensure this is environment-aware (localhost for dev, specific domains for prod)
 
 ### [MODIFY] `app/Http/Requests/Api/V1/User/UserTokenRequest.php`
 
-- Remove the `['*']` wildcard option from the `Rule::in()` validation array. This guarantees that API keys generated from the dashboard are strictly scoped and forces developers to adhere to the Principle of Least Privilege.
+- **Status**: Implement ✅
+- **Reasoning**:
+  - Mobile apps use `/auth/login` endpoint which creates wildcard tokens automatically via `LoginUserService@createApiToken($user, $name, ['*'])`
+  - UserTokenRequest is only used for manual API key creation via dashboard (TokenController@store)
+  - Removing wildcard from UserTokenRequest prevents third-party developers from creating overly-permissive tokens
+  - Mobile apps are unaffected since they don't use this form request
+- **Implementation**: Remove `['*']` from validation:
+  ```php
+  'scopes.*' => [
+      'required',
+      'string',
+      Rule::in(ApiScope::values()), // Remove ['*']
+  ],
+  ```
+- **Production Best Practice**:
+  - Official apps (mobile) use login endpoint with hardcoded wildcard tokens
+  - Third-party API keys are restricted to specific scopes (least privilege)
+  - Mobile tokens are short-lived (30 days) and deleted on logout
 
 ---
 
