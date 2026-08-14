@@ -128,7 +128,7 @@ class TwoFactorController extends ApiController
     public function generateRecoveryCodes(RecoveryCodesRequest $request): JsonResponse
     {
         $user = $request->user();
-        $data = $request->toDto();
+        $request->toDto();
 
         $recoveryCodes = $user->generateRecoveryCodes();
 

@@ -104,6 +104,15 @@ class LoginUserService
      *
      * Centralizes token creation so controllers don't duplicate logic.
      *
+     * Security Note: Uses wildcard ['*'] abilities for mobile app login tokens.
+     * This is intentional to provide full mobile app functionality equivalent to web sessions.
+     * The security risk (stolen credentials = full mobile access) is acceptable for the current threat model.
+     * Critical operations (token management, subscriptions, admin) are protected by session.auth middleware
+     * which blocks ALL API tokens, including wildcard tokens.
+     *
+     * Future Enhancement: Consider mobile-specific hardening (device verification, app signing, IP restrictions)
+     * if the threat model changes to require stricter mobile login security.
+     *
      * @param  array<int, string>  $abilities
      */
     public function createApiToken(User $user, ?string $name = null, array $abilities = ['*']): string

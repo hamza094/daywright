@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\User;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -112,5 +113,36 @@ class PasswordUpdateTest extends TestCase
                 'message' => 'Authentication is required.',
                 'code' => 'unauthenticated',
             ]);
+    }
+
+    /** @test */
+    public function password_change_creates_audit_log(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('OldPassword123!')]);
+
+        $this->actingAs($user, 'web')
+            ->putJson('/api/v1/users/me/password', [
+                'current_password' => 'OldPassword123!',
+                'password' => 'NewPassword456!',
+                'password_confirmation' => 'NewPassword456!',
+            ])
+            ->assertSuccessful();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_type' => 'user',
+            'actor_id' => $user->id,
+            'event' => 'security.password_changed',
+            'auditable_type' => User::class,
+            'auditable_id' => $user->id,
+        ]);
+
+        $log = AuditLog::where('event', 'security.password_changed')->first();
+
+        $this->assertNotNull($log);
+        $this->assertNotNull($log->old_values['password_last_changed']);
+        $this->assertNotNull($log->new_values['password_last_changed']);
+        $this->assertNotNull($log->metadata['via']);
+        $this->assertArrayHasKey('ip_address', $log->metadata);
+        $this->assertArrayHasKey('user_agent', $log->metadata);
     }
 }

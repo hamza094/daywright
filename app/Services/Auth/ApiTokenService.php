@@ -31,27 +31,32 @@ class ApiTokenService
      */
     public function createForUser(User $user, string $name, array $scopes, ?CarbonInterface $expiresAt): NewAccessToken
     {
+        // Enforce token expiration policy: 1-year maximum, 90-day default
+        $maxExpiry = now()->addYear();
+        $normalizedExpiresAt = $expiresAt instanceof CarbonInterface
+            ? ($expiresAt->gt($maxExpiry) ? $maxExpiry : $expiresAt)
+            : now()->addDays(90);
+
         return $this->planLimitService->executeWithinAccountLimit(
             PlanLimitType::ApiTokens,
             $user,
             fn (User $lockedUser): NewAccessToken => $lockedUser->createToken(
                 $name,
                 $scopes,
-                $expiresAt,
+                $normalizedExpiresAt,
             )
         );
     }
 
     public function deleteForUser(User $user, int $tokenId): void
     {
+        /** @var PersonalAccessToken|\Laravel\Sanctum\TransientToken|null $currentToken */
         $currentToken = $user->currentAccessToken();
 
         // If there's a current token (API token auth), check if it's the same as the one being deleted
         // Skip this check for TransientToken (session-based auth) as it doesn't have an id
-        if ($currentToken !== null && ! ($currentToken instanceof \Laravel\Sanctum\TransientToken)) {
-            if ($currentToken->id === $tokenId) {
-                throw new AccessDeniedHttpException('Cannot delete the current session token via this route.');
-            }
+        if ($currentToken !== null && ! ($currentToken instanceof \Laravel\Sanctum\TransientToken) && $currentToken->id === $tokenId) {
+            throw new AccessDeniedHttpException('Cannot delete the current session token via this route.');
         }
 
         $deleted = $user->tokens()->where('id', $tokenId)->delete();

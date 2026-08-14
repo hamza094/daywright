@@ -7,10 +7,13 @@ namespace App\DataTransferObjects\Auth;
 final readonly class TwoFactorDisableData
 {
     public function __construct(
-        public readonly string $currentPassword,
-        public readonly string $code
+        public string $currentPassword,
+        public string $code
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $validated
+     */
     public static function fromValidated(array $validated): self
     {
         return new self(

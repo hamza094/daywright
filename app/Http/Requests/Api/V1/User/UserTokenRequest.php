@@ -57,7 +57,7 @@ class UserTokenRequest extends FormRequest
 
             /**
              * Optional ISO 8601 expiration timestamp with timezone offset.
-             * Must not be more than 180 days from now.
+             * Must not be more than 1 year from now (enforced at service layer).
              *
              * @example 2025-12-31T23:59:59+00:00
              */
@@ -67,9 +67,9 @@ class UserTokenRequest extends FormRequest
                 new Iso8601Timestamp,
                 function (string $attribute, mixed $value, Closure $fail): void {
                     if ($value) {
-                        $maxDate = now()->addDays(180);
+                        $maxDate = now()->addYear();
                         if (\Carbon\Carbon::parse($value)->gt($maxDate)) {
-                            $fail('The '.$attribute.' may not be more than 180 days from now.');
+                            $fail('The '.$attribute.' may not be more than 1 year from now.');
                         }
                     }
                 },

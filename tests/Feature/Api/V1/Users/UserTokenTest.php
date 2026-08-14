@@ -59,16 +59,17 @@ class UserTokenTest extends TestCase
         ]);
         $response->assertCreated();
         $this->assertNotEmpty($response->json('data.token'));
-        $response->assertJsonPath('data.token_resource.expires_at', null);
-        $this->assertDatabaseHas('personal_access_tokens', [
-            'name' => 'My API Token',
-            'tokenable_id' => $user->id,
-        ]);
+        $this->assertNotNull($response->json('data.token_resource.expires_at'));
 
         $token = $user->tokens()->latest('id')->first();
 
         $this->assertNotNull($token);
-        $this->assertNull($token->expires_at);
+        $this->assertNotNull($token->expires_at);
+
+        // Verify default 90-day expiration
+        $expectedExpiry = now()->addDays(90);
+        $this->assertLessThanOrEqual($expectedExpiry, $token->expires_at);
+        $this->assertGreaterThanOrEqual($expectedExpiry->subMinute(), $token->expires_at);
     }
 
     #[Test]
@@ -229,5 +230,75 @@ class UserTokenTest extends TestCase
 
         // Verify only 5 tokens exist
         $this->assertEquals(5, $user->tokens()->count());
+    }
+
+    #[Test]
+    public function token_expiration_is_capped_at_1_year_maximum(): void
+    {
+        $user = User::first();
+
+        $this->actingAs($user, 'web');
+
+        // Attempt to create token with 2-year expiration
+        $expiresAt = now()->addYears(2)->toIso8601String();
+
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
+            'name' => 'Long-Lived Token',
+            'expires_at' => $expiresAt,
+            'scopes' => ['account:read'],
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['expires_at']);
+
+        // Verify no token was created due to validation failure
+        $this->assertEquals(0, $user->tokens()->count());
+    }
+
+    #[Test]
+    public function service_layer_enforces_1_year_cap(): void
+    {
+        $user = User::first();
+
+        // Directly test the service layer logic for expiration capping
+        $service = app(\App\Services\Auth\ApiTokenService::class);
+
+        // Test with 2-year expiration (should be capped)
+        $expiresAt = now()->addYears(2);
+        $token = $service->createForUser($user, 'Service Layer Test', ['account:read'], $expiresAt);
+
+        // Verify the expiration was capped at 1 year
+        $this->assertNotNull($token->accessToken->expires_at);
+        $maxExpiry = now()->addYear();
+        $this->assertLessThanOrEqual($maxExpiry, $token->accessToken->expires_at);
+        $this->assertGreaterThanOrEqual($maxExpiry->subMinute(), $token->accessToken->expires_at);
+
+        // Clean up the token
+        $token->accessToken->delete();
+    }
+
+    #[Test]
+    public function token_without_expiration_gets_90_day_default(): void
+    {
+        $user = User::first();
+
+        $this->actingAs($user, 'web');
+
+        $response = $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1Route('api-tokens.store'), [
+            'name' => 'Default Expiry Token',
+            'scopes' => ['account:read'],
+        ]);
+
+        $response->assertCreated();
+
+        $token = $user->tokens()->latest('id')->first();
+
+        $this->assertNotNull($token);
+        $this->assertNotNull($token->expires_at);
+
+        // Verify 90-day default expiration
+        $expectedExpiry = now()->addDays(90);
+        $this->assertLessThanOrEqual($expectedExpiry, $token->expires_at);
+        $this->assertGreaterThanOrEqual($expectedExpiry->subMinute(), $token->expires_at);
     }
 }

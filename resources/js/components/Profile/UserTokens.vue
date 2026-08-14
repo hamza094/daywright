@@ -24,11 +24,12 @@
             <div class="form-group col-md-4">
               <label for="expiresAt">Expires In</label>
               <select class="form-control" id="expiresAt" v-model="form.expires_in">
-                <option :value="null">Never</option>
+                <option :value="null">90 Days (Default)</option>
                 <option v-for="option in expiryOptions" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
               </select>
+              <small class="text-muted">Maximum 1 year from creation</small>
             </div>
             <div class="form-group col-md-4 d-flex align-items-end">
               <button type="submit" class="btn btn-primary mr-2">Create</button>
@@ -37,6 +38,12 @@
           </div>
           <div class="form-group mt-3">
             <label>Permissions (Scopes) <span class="text-danger">*</span></label>
+            <div class="alert alert-info mb-2">
+              <small>
+                <i class="fa-solid fa-info-circle"></i>
+                Tokens expire in 90 days by default, with a maximum of 1 year from creation.
+              </small>
+            </div>
             <div v-if="scopesLoading" class="text-center my-3">
               <div class="spinner-border spinner-border-sm text-primary" role="status">
                 <span class="sr-only">Loading scopes...</span>
@@ -116,7 +123,7 @@
                 </td>
                 <td>{{ token.created_at | datetime }}</td>
                 <td>{{ token.last_used_at ? $options.filters.msgTime(token.last_used_at) : 'Never' }}</td>
-                <td>{{ token.expires_at ? $options.filters.datetime(token.expires_at) : 'Never' }}</td>
+                <td>{{ token.expires_at ? $options.filters.datetime(token.expires_at) : '90 days (default)' }}</td>
                 <td>
                   <input
                     :type="showTokenMap[token.id] ? 'text' : 'password'"
@@ -168,11 +175,8 @@ export default {
         expires_in: null, // in days
       },
       expiryOptions: [
-        { label: '1 Day', value: 1 },
-        { label: '7 Days', value: 7 },
-        { label: '30 Days', value: 30 },
-        { label: '90 Days', value: 90 },
-        { label: '180 Days', value: 180 },
+        { label: '180 Days (6 months)', value: 180 },
+        { label: '1 Year (Maximum)', value: 365 },
       ],
       scopeOptions: [], // Fetched from API
       scopesLoading: false,

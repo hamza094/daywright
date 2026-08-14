@@ -6,7 +6,7 @@ use App\Http\Controllers\Api\OAuth\ZoomAuthController;
 
 Route::controller(ZoomAuthController::class)
     ->as('oauth.zoom.')
-    ->middleware(['throttle:oauth2-socialite', 'tokenAbility:account:write'])
+    ->middleware(['throttle:oauth2-socialite', 'session.auth'])
     ->group(function (): void {
         Route::get('oauth/zoom/redirect', 'redirect')->name('redirect');
         Route::get('oauth/zoom/callback', 'callback')->name('callback');

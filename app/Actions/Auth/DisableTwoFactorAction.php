@@ -46,7 +46,7 @@ final readonly class DisableTwoFactorAction
             throw ValidationException::withMessages(['current_password' => 'The provided password is incorrect.']);
         }
 
-        if (! $user->verifyTwoFactorCode($data->code)) {
+        if (! $user->validateTwoFactorCode($data->code)) {
             throw ValidationException::withMessages(['code' => 'The provided two-factor code is invalid.']);
         }
     }

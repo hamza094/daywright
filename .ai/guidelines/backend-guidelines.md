@@ -802,11 +802,34 @@ All API errors return a strict JSON payload defined by `ApiErrorFormatter`.
 
 Define the architecture and strict rules for authenticating, authorizing, and rate-limiting users and API tokens via Laravel Sanctum to maintain a watertight zero-trust architecture.
 
-### Two-Tier Authentication Model
+### Client Authentication Types
 
 - **SPA / Internal Clients**: Authenticate via stateful session cookies (`web` guard). Sanctum issues `TransientToken`s that implicitly pass all scope checks.
-- **Developer API Keys / Mobile**: Authenticate via `Bearer` tokens (`auth:sanctum`). These tokens carry explicit scopes.
-- **Admin Panel**: Admin routes MUST be strictly isolated to session-based users. They must explicitly reject API keys using the `RequireSessionAuth` middleware to prevent unauthorized bulk actions.
+- **Official Mobile App**: Authenticates via `Bearer` token with wildcard `*` abilities. Passes `firstParty.auth` but is blocked by `session.auth`.
+- **Developer API Keys (Third-Party)**: Authenticate via `Bearer` tokens with explicit scopes. Blocked by both `session.auth` and `firstParty.auth`. Only passes `tokenAbility:` checks.
+
+### Token Lifecycle Rules
+
+All Sanctum Personal Access Tokens MUST follow these lifecycle constraints:
+
+- ✅ **No Infinite Tokens**: Every token MUST have an `expires_at` date. Never allow `null` expiration in production.
+- ✅ **Maximum Expiry Ceiling**: Enforce a 1-year absolute maximum in `ApiTokenService::createForUser()`. Cap any user-requested expiry to this ceiling.
+- ✅ **Default Expiry**: If no expiration is specified, default to 90 days for developer PATs and 30 days for login/mobile tokens.
+- ✅ **Multiple Active Tokens**: Users should be allowed to create multiple active tokens with descriptive names (e.g., "Zapier Prod", "CI/CD Pipeline") for isolated revocation.
+- ✅ **Instant Revocation**: Deleting a token from the `personal_access_tokens` table is an immediate kill switch — Sanctum validates against the database on every request.
+- ❌ **No Wildcard Tokens for Developers**: Only official mobile app login flows may issue `*` (wildcard) ability tokens. User-created developer tokens MUST have explicit, scoped abilities.
+
+### First-Party Only & Admin Routes
+
+Certain application boundaries MUST be strictly isolated from third-party developer API keys to prevent abuse. These routes must use either `session.auth` (Web SPA only) or `firstParty.auth` (SPA + Mobile).
+
+**Always hide the following from third-party API keys:**
+
+- **Admin Panel Operations**: Bulk actions, system configuration, global user impersonation.
+- **Token Management (CRUD)**: API keys must NEVER be allowed to create, view, or delete other API keys.
+- **Account Security**: Password changes, 2FA enablement/disablement, email address changes.
+- **Billing & Subscriptions**: Upgrading/downgrading plans, viewing invoices, managing payment methods.
+- **Account Deletion**: Deleting the entire workspace or user account.
 
 ### Scope Enforcement (Principle of Least Privilege)
 

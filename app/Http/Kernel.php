@@ -41,6 +41,8 @@ class Kernel extends HttpKernel
             Middleware\EncryptCookies::class,
             \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Session\Middleware\StartSession::class,
+            // Note: AuthenticateSession is disabled for SPA architecture compatibility with Sanctum.
+            // Session invalidation on password changes is handled via logoutOtherDevices() in UserService/ResetPasswordController.
             // \Illuminate\Session\Middleware\AuthenticateSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             Middleware\VerifyCsrfToken::class,
@@ -48,9 +50,9 @@ class Kernel extends HttpKernel
         ],
 
         'api' => [
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         ],
     ];
 
@@ -78,7 +80,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'subscription' => Middleware\CheckSubscription::class,
         'zoom.webhook' => Middleware\VerifyZoomWebhook::class,
-        'guest.authenticated' => Middleware\AllowGuestOrAuthenticated::class,
         'session.auth' => Middleware\RequireSessionAuth::class,
         'firstParty.auth' => Middleware\RequireFirstPartyAuth::class,
     ];

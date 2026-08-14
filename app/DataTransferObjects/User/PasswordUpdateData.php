@@ -7,10 +7,13 @@ namespace App\DataTransferObjects\User;
 final readonly class PasswordUpdateData
 {
     public function __construct(
-        public readonly string $currentPassword,
-        public readonly string $password,
+        public string $currentPassword,
+        public string $password,
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $validated
+     */
     public static function fromValidated(array $validated): self
     {
         return new self(

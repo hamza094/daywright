@@ -124,7 +124,7 @@ class UserTest extends TestCase
         $currentPassword = 'testpassword';
         $newPassword = 'new_password';
 
-        $userService = new UserService;
+        $userService = app(UserService::class);
 
         $passwordData = new PasswordUpdateData(
             $currentPassword,

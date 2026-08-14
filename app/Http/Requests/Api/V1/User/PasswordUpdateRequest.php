@@ -8,6 +8,7 @@ use App\DataTransferObjects\User\PasswordUpdateData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Password;
+use Override;
 
 #[SchemaName('PasswordUpdateRequestData')]
 class PasswordUpdateRequest extends FormRequest
@@ -54,6 +55,7 @@ class PasswordUpdateRequest extends FormRequest
     /**
      * @return array<string, string>
      */
+    #[Override]
     public function messages(): array
     {
         return [

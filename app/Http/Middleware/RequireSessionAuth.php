@@ -33,6 +33,7 @@ final readonly class RequireSessionAuth
             ], Response::HTTP_UNAUTHORIZED);
         }
 
+        /** @var \Laravel\Sanctum\PersonalAccessToken|TransientToken|null $currentToken */
         $currentToken = $user->currentAccessToken();
 
         // Allow session-based access (no token) and TransientToken (SPA sessions)

@@ -7,9 +7,12 @@ namespace App\DataTransferObjects\Auth;
 final readonly class RecoveryCodesData
 {
     public function __construct(
-        public readonly string $currentPassword
+        public string $currentPassword
     ) {}
 
+    /**
+     * @param  array<string, mixed>  $validated
+     */
     public static function fromValidated(array $validated): self
     {
         return new self(

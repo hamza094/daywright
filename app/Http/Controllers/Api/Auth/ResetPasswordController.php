@@ -78,7 +78,9 @@ class ResetPasswordController extends ApiController
                 $user->save();
 
                 // Invalidate other web sessions for security
-                Auth::guard('web')->logoutOtherDevices($password);
+                /** @var \Illuminate\Auth\SessionGuard $guard */
+                $guard = Auth::guard('web');
+                $guard->logoutOtherDevices($password);
 
                 event(new PasswordReset($user));
             }
