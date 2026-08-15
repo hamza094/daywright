@@ -72,7 +72,7 @@ trait HandlesApiExceptions
             'method_not_allowed',
         ));
 
-        $this->renderable(function (ThrottleRequestsException $e, Request $request): \Illuminate\Http\JsonResponse {
+        $this->renderable(function (ThrottleRequestsException $e): \Illuminate\Http\JsonResponse {
             $headers = $e->getHeaders();
             $retryAfter = (int) ($headers['Retry-After'] ?? $headers['retry-after'] ?? 0);
 
@@ -88,7 +88,7 @@ trait HandlesApiExceptions
             return $response->withHeaders($headers);
         });
 
-        $this->renderable(function (HttpException $e): \Illuminate\Http\JsonResponse {
+        $this->renderable(function (HttpException $e, $request): \Illuminate\Http\JsonResponse {
             $status = $e->getStatusCode();
             $defaultMessage = ApiErrorFormatter::defaultMessageForStatus($status);
             $message = $e->getMessage() !== ''
@@ -137,7 +137,7 @@ trait HandlesApiExceptions
             'database_error',
         ));
 
-        $this->renderable(function (Throwable $e, $request): ?\Illuminate\Http\JsonResponse {
+        $this->renderable(function (Throwable $e): ?\Illuminate\Http\JsonResponse {
             if (! app()->isProduction()) {
                 return null;
             }

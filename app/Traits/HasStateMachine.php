@@ -48,26 +48,22 @@ trait HasStateMachine
      */
     private function getStateName(mixed $currentStatus, string|int|null $currentStateValue, BackedEnum $newStatus): string
     {
+        $stateName = 'None';
+
         if ($currentStatus instanceof BackedEnum) {
-            return $currentStatus->name;
-        }
-
-        // Guard against null values to prevent TypeError in tryFrom()
-        if ($currentStateValue === null) {
-            return 'None';
-        }
-
-        // Try to find the enum case from the value using the same enum type as newStatus
-        try {
-            $enumClass = $newStatus::class;
-            $enumCase = $enumClass::tryFrom($currentStateValue);
-            if ($enumCase !== null) {
-                return $enumCase->name;
+            $stateName = $currentStatus->name;
+        } elseif ($currentStateValue !== null) {
+            // Try to find the enum case from the value using the same enum type as newStatus
+            try {
+                $enumClass = $newStatus::class;
+                $enumCase = $enumClass::tryFrom($currentStateValue);
+                $stateName = $enumCase !== null ? $enumCase->name : (string) $currentStateValue;
+            } catch (Throwable) {
+                // Fallback to string value if enum lookup fails
+                $stateName = (string) $currentStateValue;
             }
-        } catch (Throwable) {
-            // Fallback to string value if enum lookup fails
         }
 
-        return (string) $currentStateValue;
+        return $stateName;
     }
 }

@@ -45,30 +45,11 @@ final readonly class AuditLogService
     }
 
     /**
-     * @return array{actor_type: string, actor_id: int|null, key_id: int|null}
+     * @return array{actor_type: string, actor_id: int|string|null, key_id: int|null}
      */
     private function determineContext(): array
     {
-        if (Auth::guard('sanctum')->check()) {
-            $user = Auth::guard('sanctum')->user();
-            /** @var PersonalAccessToken|null $token */
-            $token = $user->currentAccessToken();
-
-            if ($token instanceof PersonalAccessToken) {
-                return [
-                    'actor_type' => 'api_token',
-                    'actor_id' => $user->getAuthIdentifier(),
-                    'key_id' => $token->id,
-                ];
-            }
-
-            return [
-                'actor_type' => 'user',
-                'actor_id' => $user->getAuthIdentifier(),
-                'key_id' => null,
-            ];
-        }
-
+        // 1. Web Session (Dashboard)
         if (Auth::guard('web')->check()) {
             return [
                 'actor_type' => 'user',
@@ -77,14 +58,31 @@ final readonly class AuditLogService
             ];
         }
 
-        if (app()->runningInConsole()) {
+        // 2. API or SPA Session
+        if (Auth::guard('sanctum')->check()) {
+            $user = Auth::guard('sanctum')->user();
+
+            /** @var PersonalAccessToken|\Laravel\Sanctum\TransientToken|null $token */
+            $token = $user->currentAccessToken();
+
+            // Official Mobile App or Third-Party Developer
+            if ($token instanceof PersonalAccessToken) {
+                return [
+                    'actor_type' => $token->can('*') ? 'mobile_app' : 'api_token',
+                    'actor_id' => $user->getAuthIdentifier(),
+                    'key_id' => $token->id,
+                ];
+            }
+
+            // SPA Session (TransientToken)
             return [
-                'actor_type' => 'system',
-                'actor_id' => null,
+                'actor_type' => 'user',
+                'actor_id' => $user->getAuthIdentifier(),
                 'key_id' => null,
             ];
         }
 
+        // 3. Background Jobs / CLI
         return [
             'actor_type' => 'system',
             'actor_id' => null,

@@ -34,7 +34,7 @@ class ApiTokenService
         // Enforce token expiration policy: 1-year maximum, 90-day default
         $maxExpiry = now()->addYear();
         $normalizedExpiresAt = $expiresAt instanceof CarbonInterface
-            ? ($expiresAt->gt($maxExpiry) ? $maxExpiry : $expiresAt)
+            ? $this->normalizeExpiryDate($expiresAt, $maxExpiry)
             : now()->addDays(90);
 
         return $this->planLimitService->executeWithinAccountLimit(
@@ -64,5 +64,10 @@ class ApiTokenService
         if (! $deleted) {
             throw new NotFoundHttpException('Token not found.');
         }
+    }
+
+    private function normalizeExpiryDate(CarbonInterface $expiresAt, CarbonInterface $maxExpiry): CarbonInterface
+    {
+        return $expiresAt->gt($maxExpiry) ? $maxExpiry : $expiresAt;
     }
 }

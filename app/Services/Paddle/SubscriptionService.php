@@ -48,6 +48,8 @@ final class SubscriptionService implements Paddle
     public function swap(User $user, string $plan): array
     {
         return $this->executeSerially($user, function (User $lockedUser) use ($plan): array {
+            $this->validatePlanConfig($plan, 'swap');
+
             if (! $lockedUser->isBillingSubscribed()) {
                 throw new SubscriptionException(
                     'You are not subscribed to a paid plan.',
