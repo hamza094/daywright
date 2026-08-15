@@ -20,8 +20,6 @@ final class ProjectMessageController extends ApiController
 
     public function destroy(Project $project, Message $message, MessageService $messageService): JsonResponse
     {
-        $this->authorize('manage', $project);
-
         $messageService->deleteScheduledMessage($message);
 
         return $this->respondWithMessage('Scheduled message deleted successfully.');

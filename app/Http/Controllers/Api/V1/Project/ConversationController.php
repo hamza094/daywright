@@ -25,8 +25,6 @@ class ConversationController extends ApiController
      */
     public function index(Project $project, ConversationIndexRequest $request, ConversationRepository $repository): JsonResponse
     {
-        $this->authorize('access', $project);
-
         return ConversationResource::collection(
             $repository->getProjectConversations($project, $request->perPage())
         )->response();
@@ -39,8 +37,6 @@ class ConversationController extends ApiController
      */
     public function store(Project $project, ConversationRequest $request): JsonResponse
     {
-        $this->authorize('access', $project);
-
         $conversation = $this->conversationService->storeConversation(
             $project,
             $this->authenticatedUser(),
@@ -57,8 +53,6 @@ class ConversationController extends ApiController
      */
     public function destroy(Project $project, Conversation $conversation): JsonResponse
     {
-        $this->authorize('delete', $conversation);
-
         $this->conversationService->deleteConversation($conversation, $project);
 
         return $this->respondWithMessage('Conversation deleted successfully.');

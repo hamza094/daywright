@@ -11,22 +11,26 @@ use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
 Route::middleware([
     'subscription',
+    'can:access,project',
     EnsureFeaturesAreActive::using('project-messaging'),
 ])->group(function (): void {
     Route::post('messages', [ProjectMessageController::class, 'store'])
-        ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:projects:write'])
+        ->middleware(['throttle:sensitive-upload', Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:projects:write'])
         ->name('projects.messages.store');
+
     Route::get('messages/scheduled', ScheduledProjectMessagesController::class)
         ->middleware('tokenAbility:projects:read')
         ->name('projects.messages.scheduled');
+
     Route::delete('messages/{message}', [ProjectMessageController::class, 'destroy'])
-        ->middleware(['throttle:sensitive-destructive', 'tokenAbility:projects:write'])
+        ->middleware(['throttle:sensitive-destructive', 'can:manage,project', 'tokenAbility:projects:write'])
         ->name('projects.messages.destroy');
 });
 
 // Chat Conversation Routes
 Route::apiResource('/conversations', ConversationController::class)
     ->only(['store', 'destroy', 'index'])
+    ->middleware(['can:access,project'])
     ->middlewareFor(['index'], 'tokenAbility:projects:read')
-    ->middlewareFor(['store'], ['tokenAbility:projects:write', 'subscription', Idempotent::using(scope: IdempotencyScope::User)])
-    ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'tokenAbility:projects:write', 'subscription', Idempotent::using(scope: IdempotencyScope::User)]);
+    ->middlewareFor(['store'], ['throttle:sensitive-upload', 'tokenAbility:projects:write', 'subscription', Idempotent::using(scope: IdempotencyScope::User)])
+    ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'can:delete,conversation', 'tokenAbility:projects:write', 'subscription']);

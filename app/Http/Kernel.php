@@ -84,6 +84,23 @@ class Kernel extends HttpKernel
         'firstParty.auth' => Middleware\RequireFirstPartyAuth::class,
     ];
 
+    /**
+     * The priority-sorted list of middleware.
+     *
+     * Forces non-global middleware to always be in the given order.
+     *
+     * @var array<string>
+     */
+    protected $middlewarePriority = [
+        \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        CheckTokenAbilities::class,
+        Middleware\RequireSessionAuth::class,
+        Middleware\RequireFirstPartyAuth::class,
+        Middleware\CheckSubscription::class,
+        \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        \Illuminate\Auth\Middleware\Authorize::class,
+    ];
+
     #[Override]
     protected function bootstrappers()
     {
