@@ -11,15 +11,15 @@
       <div class="edit-border-bottom">
         <div class="panel-top_content">
           <span class="panel-heading">Change Password</span>
-          <span class="panel-exit float-right" role="button" @click.prevent="modalClose">x</span>
+          <button class="panel-exit float-right" type="button" @click.prevent="modalClose">x</button>
         </div>
       </div>
       <div class="panel-form">
         <form action="" @submit.prevent="updatePassword">
           <div class="panel-top_content">
-            <span @click="toggleShowCurrentPassword" class="eye-icon float-right" role="button" tabindex="0">{{
-              showIcon(showCurrentPassword)
-            }}</span>
+            <button @click="toggleShowCurrentPassword" class="eye-icon float-right" type="button">
+              {{ showIcon(showCurrentPassword) }}
+            </button>
 
             <form-input
               label="Current Password:"
@@ -28,9 +28,9 @@
               :type="currentPasswordFieldType"
               id="current_password" />
 
-            <span @click="toggleShowPassword" class="eye-icon float-right" role="button" tabindex="0">{{
-              showIcon(showPassword)
-            }}</span>
+            <button @click="toggleShowPassword" class="eye-icon float-right" type="button">
+              {{ showIcon(showPassword) }}
+            </button>
 
             <form-input
               label="New Password:"
@@ -150,5 +150,9 @@ export default {
 .eye-icon {
   cursor: pointer;
   margin-left: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
 }
 </style>

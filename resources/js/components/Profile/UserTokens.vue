@@ -45,7 +45,7 @@
               </small>
             </div>
             <div v-if="scopesLoading" class="text-center my-3">
-              <div class="spinner-border spinner-border-sm text-primary" role="status">
+              <div class="spinner-border spinner-border-sm text-primary">
                 <span class="sr-only">Loading scopes...</span>
               </div>
             </div>
@@ -95,7 +95,7 @@
 
       <!-- Token List -->
       <div v-if="loading" class="text-center my-4">
-        <div class="spinner-border text-primary" role="status">
+        <div class="spinner-border text-primary">
           <span class="sr-only">Loading...</span>
         </div>
       </div>
