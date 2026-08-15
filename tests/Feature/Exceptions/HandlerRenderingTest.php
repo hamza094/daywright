@@ -80,13 +80,14 @@ class HandlerRenderingTest extends TestCase
         $this->authenticateUser();
 
         // Try to access admin endpoint as regular user
+        // Admin routes now require session.auth, so this tests the specific middleware message
         $response = $this->getJson('/api/v1/admin/users');
 
         $this->assertApiErrorResponse(
             $response,
             403,
             'forbidden',
-            'This action is unauthorized.'
+            'This operation is strictly reserved for the web dashboard. Please use session-based authentication.'
         );
     }
 
