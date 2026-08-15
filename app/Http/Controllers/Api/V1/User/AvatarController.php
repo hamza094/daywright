@@ -28,7 +28,7 @@ class AvatarController extends ApiController
     {
         $this->authorize('owner', $user);
 
-        $service->update($user, $request->file('avatar'));
+        $service->update($user, $request->toDto()->avatar);
 
         return $this->respondWithData([
             'avatar' => (string) $user->avatar_path,

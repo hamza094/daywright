@@ -1,53 +1,26 @@
 <template>
-  <!-- Main 2FA Management Card -->
   <div class="card mt-4 twofa-card" role="region" aria-labelledby="twofa-title">
-    <!-- Card Header with Title and Loading Indicator -->
     <div class="card-header d-flex align-items-center justify-content-between">
       <h5 id="twofa-title" class="mb-0">
         <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>
         Two-Factor Authentication
       </h5>
       <span
-        v-if="loading"
+        v-if="twoFactorLoading"
         class="spinner-border spinner-border-sm"
         role="status"
         aria-label="Loading 2FA status"></span>
     </div>
 
-    <!-- Main Content Area -->
-    <div class="card-body" v-if="!loading">
-      <!-- ===== STEPPER INDICATOR ===== -->
-      <section v-if="isInProgress || isEnabled" class="mb-4" aria-label="2FA Setup Progress">
-        <div
-          class="stepper d-flex align-items-center"
-          role="progressbar"
-          aria-valuenow="1"
-          aria-valuemin="1"
-          aria-valuemax="2">
-          <!-- Step 1: Setup -->
-          <div :class="['step', isEnabled ? 'completed' : isInProgress ? 'active' : '']" aria-label="Setup step">1</div>
-          <div class="step-label">Setup</div>
-          <div class="step-line" aria-hidden="true"></div>
-
-          <!-- Step 2: Confirm -->
-          <div
-            :class="['step', isEnabled ? 'completed' : isInProgress ? 'active' : 'disabled']"
-            aria-label="Confirm step">
-            2
-          </div>
-          <div class="step-label">Confirm</div>
-        </div>
-      </section>
-
-      <!-- ===== ERROR DISPLAY ===== -->
-      <div v-if="error" class="alert alert-danger mb-3" role="alert" aria-live="polite">
+    <div class="card-body" v-if="!twoFactorLoading">
+      <!-- Error Display -->
+      <div v-if="twoFactorError" class="alert alert-danger mb-3" role="alert" aria-live="polite">
         <i class="bi bi-exclamation-triangle me-2" aria-hidden="true"></i>
-        {{ error }}
+        {{ twoFactorError }}
       </div>
 
-      <!-- ===== ENABLED STATE ===== -->
-      <section v-if="isEnabled" aria-label="2FA Enabled Status">
-        <!-- Security Information Alert -->
+      <!-- Enabled State -->
+      <section v-if="isTwoFactorEnabled" aria-label="2FA Enabled Status">
         <div class="alert alert-info mb-4" role="alert">
           <div class="d-flex">
             <i class="bi bi-shield-check me-3 fs-4" aria-hidden="true"></i>
@@ -56,25 +29,16 @@
                 <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>
                 Two-Factor Authentication Enabled
               </h6>
-              <p class="mb-3">
-                Your account is now protected with an additional security layer. Here's what you need to know:
-              </p>
+              <p class="mb-3">Your account is now protected with an additional security layer.</p>
               <ul class="mb-0 small">
-                <li>
-                  <strong>Authenticator App:</strong> Use your authenticator app (Google Authenticator, Authy, etc.) to
-                  generate 6-digit codes for login
-                </li>
-                <li>
-                  <strong>Recovery Codes:</strong> Store your recovery codes securely - they're your backup access
-                  method if you lose your device
-                </li>
-                <li><strong>Security:</strong> Never share your 2FA codes or recovery codes with anyone</li>
+                <li><strong>Authenticator App:</strong> Use your authenticator app to generate 6-digit codes</li>
+                <li><strong>Recovery Codes:</strong> Store your recovery codes securely as backup access</li>
+                <li><strong>Security:</strong> Never share your 2FA codes or recovery codes</li>
               </ul>
             </div>
           </div>
         </div>
 
-        <!-- Status Confirmation -->
         <div class="mb-4">
           <p class="text-success mb-0">
             <i class="bi bi-check-circle me-2" aria-hidden="true"></i>
@@ -99,21 +63,19 @@
             <button
               class="btn btn-outline-secondary btn-sm ms-2"
               @click="copyRecoveryCodes"
-              aria-label="Copy recovery codes to clipboard">
-              <i class="bi bi-clipboard me-1" aria-hidden="true"></i>
-              Copy
+              aria-label="Copy recovery codes">
+              <i class="bi bi-clipboard me-1" aria-hidden="true"></i> Copy
             </button>
             <button
               class="btn btn-outline-secondary btn-sm ms-2"
-              @click="toggleShowCodes"
-              :aria-label="showCodes ? 'Hide recovery codes' : 'Show recovery codes'">
-              <i class="bi" :class="showCodes ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
-              {{ showCodes ? 'Hide' : 'Show' }}
+              @click="toggleRecoveryCodesVisibility(openPasswordModal)"
+              :aria-label="showRecoveryCodes ? 'Hide recovery codes' : 'Show recovery codes'">
+              <i class="bi" :class="showRecoveryCodes ? 'bi-eye-slash' : 'bi-eye'" aria-hidden="true"></i>
+              {{ showRecoveryCodes ? 'Hide' : 'Show' }}
             </button>
           </div>
 
-          <!-- Recovery Codes List -->
-          <div v-if="showCodes" class="mb-3">
+          <div v-if="showRecoveryCodes" class="mb-3">
             <ul class="list-group" role="list" aria-label="Recovery codes list">
               <li
                 v-for="(rc, index) in recoveryCodes"
@@ -126,117 +88,102 @@
             </ul>
           </div>
 
-          <!-- Action Buttons -->
           <div class="d-flex gap-2 flex-wrap">
             <button
               class="btn btn-warning btn-sm"
-              :disabled="regenerateLoading"
-              @click="regenerateCodes"
+              :disabled="twoFactorRegenerateLoading"
+              @click="openPasswordModal('regenerate')"
               aria-label="Regenerate recovery codes">
               <span
-                v-if="regenerateLoading"
+                v-if="twoFactorRegenerateLoading"
                 class="spinner-border spinner-border-sm me-1"
                 role="status"
                 aria-hidden="true"></span>
-              <i v-else class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
-              Regenerate
+              <i v-else class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i> Regenerate
             </button>
             <button
               class="btn btn-danger btn-sm"
-              :disabled="disableLoading"
+              :disabled="twoFactorDisableLoading"
               @click="showDisableConfirm = true"
               aria-label="Disable 2FA">
               <span
-                v-if="disableLoading"
+                v-if="twoFactorDisableLoading"
                 class="spinner-border spinner-border-sm me-1"
                 role="status"
                 aria-hidden="true"></span>
-              <i v-else class="bi bi-shield-x me-1" aria-hidden="true"></i>
-              Disable
+              <i v-else class="bi bi-shield-x me-1" aria-hidden="true"></i> Disable
             </button>
           </div>
         </section>
       </section>
 
-      <!-- ===== IN PROGRESS STATE ===== -->
-      <section v-else-if="isInProgress" aria-label="2FA Setup in Progress">
-        <!-- QR Code Display -->
-        <div v-if="qrCode" class="text-center my-4">
+      <!-- In Progress State -->
+      <section v-else-if="isTwoFactorInProgress" aria-label="2FA Setup in Progress">
+        <div v-if="twoFactorQrCode" class="text-center my-4">
           <div class="mb-3">
-            <h6 class="mb-2">
-              <i class="bi bi-qr-code me-2" aria-hidden="true"></i>
-              Scan QR Code
-            </h6>
+            <h6 class="mb-2"><i class="bi bi-qr-code me-2" aria-hidden="true"></i> Scan QR Code</h6>
             <p class="text-muted small">Scan this QR code with your authenticator app</p>
           </div>
-          <div v-safe-html="qrCode" aria-label="QR code for 2FA setup"></div>
+          <div v-safe-html="twoFactorQrCode" aria-label="QR code for 2FA setup"></div>
         </div>
 
-        <!-- Setup Instructions -->
         <div class="mb-4">
           <p class="text-muted">
             <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
-            Two-Factor Authentication setup is <strong>in progress</strong>. Enter the 6-digit code from your
-            authenticator app.
+            Enter the 6-digit code from your authenticator app.
           </p>
         </div>
 
-        <!-- Code Entry Form -->
-        <form @submit.prevent="verify2FA" class="mb-3" aria-label="2FA verification form">
+        <form @submit.prevent="verifyTwoFactor" class="mb-3" aria-label="2FA verification form">
           <div class="mb-3">
-            <label for="twofa-code" class="form-label">
-              <i class="bi bi-key me-2" aria-hidden="true"></i>
-              2FA Code
-            </label>
+            <label for="twofa-code" class="form-label"
+              ><i class="bi bi-key me-2" aria-hidden="true"></i> 2FA Code</label
+            >
             <input
               id="twofa-code"
               type="text"
-              v-model="code"
+              v-model="twoFactorCode"
               class="form-control"
               placeholder="Enter 6-digit code"
               maxlength="6"
               autocomplete="one-time-code"
               required
               aria-describedby="code-error"
-              @input="validateCode" />
-            <div v-if="codeError" id="code-error" class="text-danger small mt-1">
-              <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>
-              {{ codeError }}
+              @input="validateTwoFactorCode" />
+            <div v-if="twoFactorCodeError" id="code-error" class="text-danger small mt-1">
+              <i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i> {{ twoFactorCodeError }}
             </div>
           </div>
 
           <button
             class="btn btn-primary w-100 mb-2"
             type="submit"
-            :disabled="verifyLoading || !!codeError"
+            :disabled="twoFactorVerifyLoading || !!twoFactorCodeError"
             aria-label="Verify 2FA code">
             <span
-              v-if="verifyLoading"
+              v-if="twoFactorVerifyLoading"
               class="spinner-border spinner-border-sm me-2"
               role="status"
               aria-hidden="true"></span>
-            <i v-else class="bi bi-check-circle me-2" aria-hidden="true"></i>
-            Verify Code
+            <i v-else class="bi bi-check-circle me-2" aria-hidden="true"></i> Verify Code
           </button>
         </form>
 
-        <!-- Cancel Setup Button -->
         <button
           class="btn btn-danger btn-sm w-100"
-          :disabled="disableLoading"
+          :disabled="twoFactorDisableLoading"
           @click="showDisableConfirm = true"
           aria-label="Cancel 2FA setup">
           <span
-            v-if="disableLoading"
+            v-if="twoFactorDisableLoading"
             class="spinner-border spinner-border-sm me-1"
             role="status"
             aria-hidden="true"></span>
-          <i v-else class="bi bi-x-circle me-1" aria-hidden="true"></i>
-          Cancel Setup
+          <i v-else class="bi bi-x-circle me-1" aria-hidden="true"></i> Cancel Setup
         </button>
       </section>
 
-      <!-- ===== DISABLED STATE ===== -->
+      <!-- Disabled State -->
       <section v-else aria-label="2FA Disabled Status">
         <div class="text-center py-4">
           <div class="mb-4">
@@ -244,33 +191,28 @@
             <h6 class="text-muted">Two-Factor Authentication is <strong>disabled</strong></h6>
             <p class="text-muted">Enable 2FA to add an extra layer of security to your account.</p>
           </div>
-
-          <button class="btn btn-primary" @click="openModal">
-            <i class="bi bi-shield-lock me-2" aria-hidden="true"></i>
-            Enable Two-Factor Authentication
+          <button class="btn btn-primary" @click="openPasswordModal('enable')">
+            <i class="bi bi-shield-lock me-2" aria-hidden="true"></i> Enable Two-Factor Authentication
           </button>
         </div>
       </section>
     </div>
 
-    <!-- ===== MODALS ===== -->
-    <!-- Password Confirmation Modal -->
-    <ConfirmPasswordModal @submit="enable2FA" :loading="enableLoading" />
-
-    <!-- Disable 2FA Confirmation Modal -->
+    <!-- Modals -->
+    <ConfirmPasswordModal @submit="handlePasswordSubmit" :loading="passwordModalLoading" />
     <Disable2FAConfirmModal
       :show="showDisableConfirm"
       @cancel="showDisableConfirm = false"
-      @confirm="confirmDisable2FA"
-      :loading="disableLoading" />
+      @confirm="handleDisableConfirm"
+      :loading="twoFactorDisableLoading"
+      :errors="disable2FAErrors" />
   </div>
 </template>
 
 <script>
 import ConfirmPasswordModal from './Partials/ConfirmPasswordModal.vue';
 import Disable2FAConfirmModal from './Partials/Disable2FAConfirmModal.vue';
-import { parseApiError } from '../../utils/apiResponse.js';
-import { parseTwoFactorResponse } from '../../utils/authResponse.js';
+import twoFactorAuthMixin from '../mixins/twoFactorAuthMixin.js';
 
 export default {
   name: 'TwoFactorAuth',
@@ -278,198 +220,78 @@ export default {
     ConfirmPasswordModal,
     Disable2FAConfirmModal,
   },
+  mixins: [twoFactorAuthMixin],
+
   data() {
     return {
-      status: '',
-      qrCode: null,
-      code: '',
-      codeError: '',
-      recoveryCodes: [],
-      loading: false,
-      verifyLoading: false,
-      disableLoading: false,
-      regenerateLoading: false,
-      enableLoading: false,
-      error: '',
-      showCodes: false,
-      showDisableConfirm: false,
-      recoveryCodesTooltip:
-        'These are one-time use codes you can use to access your account if you lose access to your authenticator app. Store them securely.',
+      passwordModalLoading: false,
+      passwordModalAction: null,
     };
   },
-  computed: {
-    isEnabled() {
-      return this.status === 'enabled';
-    },
-    isInProgress() {
-      return this.status === 'in_progress';
-    },
-    isDisabled() {
-      return !this.status || this.status === 'disabled';
-    },
-  },
+
   mounted() {
-    this.check2FAStatus();
-    document.addEventListener('keydown', this.handleEscape);
-    // Initialize Bootstrap tooltips
-    this.$nextTick().then(() => {
-      if (window.bootstrap) {
-        const tooltipTriggerList = Array.from(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-          new window.bootstrap.Tooltip(tooltipTriggerEl);
-        });
-      }
-    });
+    this.checkTwoFactorStatus();
+    this.initializeTooltips();
+    this.setupKeyboardShortcuts();
   },
+
   beforeDestroy() {
-    document.removeEventListener('keydown', this.handleEscape);
+    this.cleanupKeyboardShortcuts();
   },
+
   methods: {
-    handleEscape(e) {
+    initializeTooltips() {
+      this.$nextTick().then(() => {
+        if (window.bootstrap) {
+          const tooltipTriggerList = Array.from(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+          tooltipTriggerList.forEach((tooltipTriggerEl) => {
+            new window.bootstrap.Tooltip(tooltipTriggerEl);
+          });
+        }
+      });
+    },
+
+    setupKeyboardShortcuts() {
+      document.addEventListener('keydown', this.handleKeyboardShortcut);
+    },
+
+    cleanupKeyboardShortcuts() {
+      document.removeEventListener('keydown', this.handleKeyboardShortcut);
+    },
+
+    handleKeyboardShortcut(e) {
       if (e.key === 'Escape') {
-        this.closeModal();
         this.showDisableConfirm = false;
       }
     },
-    openModal() {
+
+    openPasswordModal(action) {
+      this.passwordModalAction = action;
       this.$modal.show('ConfirmPassword');
     },
-    closeModal() {
+
+    async handlePasswordSubmit(password) {
       this.$modal.hide('ConfirmPassword');
-    },
-    toggleShowCodes() {
-      this.showCodes = !this.showCodes;
-    },
-    copyRecoveryCodes() {
-      const codes = this.recoveryCodes.join('\n');
-      navigator.clipboard.writeText(codes).then(
-        () => {
-          this.$vToastify.success('Recovery codes copied to clipboard!');
-        },
-        () => {
-          this.$vToastify.warning('Failed to copy recovery codes.');
-        },
-      );
-    },
-    confirmDisable2FA() {
-      this.showDisableConfirm = false;
-      this.disable2FA();
-    },
-    validateCode() {
-      this.code = this.code.replace(/[^0-9]/g, '').slice(0, 6);
-      if (this.code.length > 0 && this.code.length < 6) {
-        this.codeError = 'Code must be 6 digits.';
-      } else {
-        this.codeError = '';
-      }
-    },
-    extractError(e, fallback = 'An error occurred.') {
-      const { errors, message } = parseApiError(e, fallback);
+      this.passwordModalLoading = true;
 
-      return errors.code?.[0] || errors.two_factor?.[0] || errors.password?.[0] || message || fallback;
-    },
-    resetState(loadingKey) {
-      this.error = '';
-      if (loadingKey) this[loadingKey] = true;
-    },
-    async handleApiCall(apiFn, args = [], onSuccess = () => {}, loadingKey = '') {
-      this.error = '';
-      if (loadingKey) this[loadingKey] = true;
       try {
-        const res = await apiFn(...args);
-        await onSuccess(res);
-      } catch (e) {
-        this.handleErrorResponse(e);
-        this.error = this.extractError(e);
+        const actionHandlers = {
+          enable: () => this.enableTwoFactor(password),
+          regenerate: () => this.regenerateRecoveryCodes(password),
+          fetch: () => this.fetchRecoveryCodes(password),
+        };
+
+        const handler = actionHandlers[this.passwordModalAction];
+        if (handler) await handler();
       } finally {
-        if (loadingKey) this[loadingKey] = false;
+        this.passwordModalLoading = false;
+        this.passwordModalAction = null;
       }
     },
-    async check2FAStatus() {
-      await this.handleApiCall(
-        () => axios.get('/twofactor/fetch-user'),
-        [],
-        async (res) => {
-          const twoFactor = parseTwoFactorResponse(res);
 
-          this.status = twoFactor.state;
-          if (this.status === 'in_progress') {
-            this.qrCode = twoFactor.qrCode;
-          }
-          if (this.status === 'enabled') {
-            // Always fetch recovery codes when enabled
-            await this.fetchRecoveryCodes();
-          }
-        },
-        'loading',
-      );
-    },
-    async fetchRecoveryCodes() {
-      await this.handleApiCall(
-        () => axios.get('/twofactor/recovery-codes'),
-        [],
-        (res) => {
-          this.recoveryCodes = parseTwoFactorResponse(res).recoveryCodes;
-        },
-      );
-    },
-    async enable2FA(password) {
-      await this.handleApiCall(
-        () => axios.post('/twofactor/setup', { password }),
-        [],
-        (res) => {
-          const twoFactor = parseTwoFactorResponse(res);
-
-          this.status = twoFactor.state;
-          this.qrCode = twoFactor.qrCode;
-          this.$vToastify.success('2FA setup started.');
-          this.closeModal();
-        },
-        'enableLoading',
-      );
-    },
-    async verify2FA() {
-      await this.handleApiCall(
-        () => axios.post('/twofactor/confirm', { code: this.code }),
-        [],
-        async (res) => {
-          const twoFactor = parseTwoFactorResponse(res);
-
-          this.recoveryCodes = twoFactor.recoveryCodes;
-          this.status = twoFactor.state;
-          this.qrCode = null;
-          this.code = '';
-          this.$vToastify.success('2FA successfully verified.');
-        },
-        'verifyLoading',
-      );
-    },
-    async regenerateCodes() {
-      await this.handleApiCall(
-        () => axios.get('/twofactor/recovery-codes'),
-        [],
-        (res) => {
-          this.recoveryCodes = parseTwoFactorResponse(res).recoveryCodes;
-          this.$vToastify.success('Recovery codes regenerated.');
-        },
-        'regenerateLoading',
-      );
-    },
-    async disable2FA() {
-      await this.handleApiCall(
-        () => axios.delete('/twofactor/disable'),
-        [],
-        (res) => {
-          this.status = parseTwoFactorResponse(res).state;
-          this.recoveryCodes = [];
-          this.qrCode = null;
-          this.code = '';
-          this.codeError = '';
-          this.showCodes = false;
-          this.$vToastify.success('Two-factor authentication disabled.');
-        },
-        'disableLoading',
-      );
+    handleDisableConfirm(credentials) {
+      this.showDisableConfirm = false;
+      this.disableTwoFactor(credentials);
     },
   },
 };

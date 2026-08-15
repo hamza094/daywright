@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\Models\Meeting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -31,12 +32,9 @@ abstract class SendMeetingNotificationJob implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 300;
 
-    /**
-     * @param  array<string, mixed>  $notificationData
-     */
     public function __construct(
         public readonly int $meetingId,
-        public readonly array $notificationData,
+        public readonly MeetingNotificationData $notificationData,
     ) {
         $this->onQueue('default');
     }
@@ -48,10 +46,8 @@ abstract class SendMeetingNotificationJob implements ShouldBeUnique, ShouldQueue
 
     /**
      * Create the notification instance.
-     *
-     * @param  array<string, mixed>  $data
      */
-    abstract protected function createNotification(array $data): NotificationClass;
+    abstract protected function createNotification(MeetingNotificationData $data): NotificationClass;
 
     /**
      * Check if the notification has already been sent.
@@ -103,8 +99,7 @@ abstract class SendMeetingNotificationJob implements ShouldBeUnique, ShouldQueue
     {
         Log::error($this->failedLogMessage(), [
             'meeting_id' => $this->meetingId,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
+            'exception' => $exception,
         ]);
     }
 }

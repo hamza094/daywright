@@ -25,14 +25,16 @@ class StageController extends ApiController
 
     public function store(StageRequest $request): JsonResponse
     {
-        $stage = $this->stageService->create($request->validated());
+        $data = $request->toDto();
+        $stage = $this->stageService->create($data->toArray());
 
         return $this->respondCreated(new StageResource($stage));
     }
 
     public function update(StageRequest $request, Stage $stage): JsonResponse
     {
-        $stage = $this->stageService->update($stage, $request->validated());
+        $data = $request->toDto();
+        $stage = $this->stageService->update($stage, $data->toArray());
 
         return $this->respondUpdated(new StageResource($stage));
     }

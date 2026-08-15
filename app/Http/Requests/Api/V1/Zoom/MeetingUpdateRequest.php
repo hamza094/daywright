@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Zoom;
 
+use App\DataTransferObjects\Zoom\MeetingUpdateData;
 use App\Rules\Iso8601Timestamp;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
@@ -41,6 +42,11 @@ class MeetingUpdateRequest extends FormRequest
             'join_before_host' => 'boolean|sometimes',
             'meeting_id' => 'prohibited',
         ];
+    }
+
+    public function toDto(): MeetingUpdateData
+    {
+        return MeetingUpdateData::fromValidated($this->validated());
     }
 
     #[Override]

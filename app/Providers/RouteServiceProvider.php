@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
@@ -60,55 +61,10 @@ class RouteServiceProvider extends ServiceProvider
 
     protected function configureRateLimiting(): void
     {
-        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
-
-        RateLimiter::for('oauth2-socialite', function (Request $request) {
-            $provider = mb_strtolower((string) $request->route('provider')) ?: 'generic';
-
-            return Limit::perMinute(8)->by(sprintf('oauth|%s|%s', $request->ip(), $provider));
-        });
-
-        RateLimiter::for('auth-login', function (Request $request) {
-            $email = mb_strtolower((string) $request->input('email'));
-
-            return Limit::perMinute(5)->by(sprintf('login|%s|%s', $request->ip(), $email));
-        });
-
-        RateLimiter::for('auth-register', fn (Request $request) => Limit::perMinute(5)->by(sprintf('register|%s', $request->ip())));
-
-        RateLimiter::for('password-email', function (Request $request) {
-            $email = mb_strtolower((string) $request->input('email'));
-
-            return Limit::perMinute(4)->by(sprintf('pwd-email|%s|%s', $request->ip(), $email));
-        });
-
-        RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)->by(sprintf('pwd-reset|%s', $request->ip())));
-
-        RateLimiter::for('verification', fn (Request $request) => Limit::perMinute(6)->by(optional($request->user())->id ?: $request->ip()));
-
-        RateLimiter::for('two-factor', function (Request $request) {
-            $key = optional($request->user())->id
-                ?: $request->ip();
-
-            return Limit::perMinute(5)->by(sprintf('2fa|%s', $key));
-        });
-
-        RateLimiter::for('invite-actions', fn (Request $request) => Limit::perMinute(10)->by(optional($request->user())->id ?: $request->ip()));
-
-        RateLimiter::for('admin-api', function (Request $request) {
-            $key = optional($request->user())->id
-                ?: $request->ip();
-
-            return Limit::perMinute(60)->by(sprintf('admin-api|%s', $key));
-        });
-
-        RateLimiter::for('admin-mutations', function (Request $request) {
-            $key = optional($request->user())->id
-                ?: $request->ip();
-
-            return Limit::perMinute(20)->by(sprintf('admin-mutations|%s', $key));
-        });
-
+        $this->configureGlobalRateLimiting();
+        $this->configureAuthRateLimiting();
+        $this->configureAdminRateLimiting();
+        $this->configureSensitiveRateLimiting();
     }
 
     /**
@@ -167,6 +123,130 @@ class RouteServiceProvider extends ServiceProvider
             });
     }
 
+    private function configureGlobalRateLimiting(): void
+    {
+        // LAYER 0: Global Safety Net (Runs in Kernel)
+        // We keep this at 300/min by IP. Since it runs before auth, it always keys by IP.
+        // If we kept this at 60/min, it would block authenticated users before they could reach their 200/min user ceiling.
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(300)->by('api-safetynet|'.$request->ip()));
+
+        // LAYER 1: Strict User Ceiling (Runs after auth)
+        RateLimiter::for('user-ceiling', function (Request $request) {
+            $user = $request->user();
+
+            // If unauthenticated, skip (handled by the api safety net)
+            return $user
+                ? Limit::perMinute(200)->by('user-ceiling|'.$user->id)
+                : Limit::none();
+        });
+
+        // LAYER 2: Per-Token Ceiling (3rd-party API keys only)
+        // Sub-limit for individual Sanctum Personal Access Tokens.
+        // MUST be < Layer 1 to preserve headroom for the web dashboard.
+        // SPA/session requests (no token) skip this layer entirely via Limit::none().
+        RateLimiter::for('per-token', fn (Request $request): Limit => $this->perTokenLimiter($request));
+    }
+
+    private function configureAuthRateLimiting(): void
+    {
+        RateLimiter::for('oauth2-socialite', function (Request $request) {
+            $provider = mb_strtolower((string) $request->route('provider')) ?: 'generic';
+
+            return Limit::perMinute(8)->by(sprintf('oauth|%s|%s', $request->ip(), $provider));
+        });
+
+        RateLimiter::for('auth-login', function (Request $request) {
+            $email = mb_strtolower((string) $request->input('email'));
+
+            return Limit::perMinute(5)->by(sprintf('login|%s|%s', $request->ip(), $email));
+        });
+
+        RateLimiter::for('auth-register', fn (Request $request) => Limit::perMinute(5)->by(sprintf('register|%s', $request->ip())));
+
+        RateLimiter::for('password-email', function (Request $request) {
+            $email = mb_strtolower((string) $request->input('email'));
+
+            return Limit::perMinute(4)->by(sprintf('pwd-email|%s|%s', $request->ip(), $email));
+        });
+
+        RateLimiter::for('password-reset', fn (Request $request) => Limit::perMinute(5)->by(sprintf('pwd-reset|%s', $request->ip())));
+
+        RateLimiter::for('verification', fn (Request $request) => Limit::perMinute(6)->by(optional($request->user())->id ?: $request->ip()));
+
+        RateLimiter::for('two-factor', function (Request $request) {
+            $key = optional($request->user())->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by(sprintf('2fa|%s', $key));
+        });
+
+        RateLimiter::for('invite-actions', fn (Request $request) => Limit::perMinute(10)->by(optional($request->user())->id ?: $request->ip()));
+    }
+
+    private function configureAdminRateLimiting(): void
+    {
+        RateLimiter::for('admin-api', function (Request $request) {
+            $key = optional($request->user())->id ?: $request->ip();
+
+            return Limit::perMinute(60)->by(sprintf('admin-api|%s', $key));
+        });
+
+        RateLimiter::for('admin-mutations', function (Request $request) {
+            $key = optional($request->user())->id ?: $request->ip();
+
+            return Limit::perMinute(20)->by(sprintf('admin-mutations|%s', $key));
+        });
+    }
+
+    private function configureSensitiveRateLimiting(): void
+    {
+        // LAYER 3: Sensitive Endpoint / Mutation Limits
+
+        // API Token CRUD — very tight (token creation is high-value)
+        RateLimiter::for('sensitive-token-mgmt', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by('sensitive|token-mgmt|'.$key);
+        });
+
+        // Destructive user operations (delete, force-delete)
+        RateLimiter::for('sensitive-destructive', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by('sensitive|destructive|'.$key);
+        });
+
+        // File upload (avatar) — expensive I/O
+        RateLimiter::for('sensitive-upload', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(10)->by('sensitive|upload|'.$key);
+        });
+
+        // Subscription mutations — hits external Paddle API
+        RateLimiter::for('sensitive-billing', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by('sensitive|billing|'.$key);
+        });
+
+        // Password changes — security-sensitive operation
+        RateLimiter::for('sensitive-password', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by('sensitive|password|'.$key);
+        });
+
+        // Database backup — extremely expensive
+        RateLimiter::for('sensitive-backup', function (Request $request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perHour(3)->by('sensitive|backup|'.$key);
+        });
+
+        // Webhook ingress — global per-source cap
+        RateLimiter::for('webhook-ingress', fn (Request $request) => Limit::perMinute(120)->by('webhook|'.$request->ip()));
+    }
+
     private function groupIfRouteFileExists(string $filePath, string $namePrefix): void
     {
         if (! file_exists($filePath)) {
@@ -174,5 +254,40 @@ class RouteServiceProvider extends ServiceProvider
         }
 
         Route::name($namePrefix)->group($filePath);
+    }
+
+    private function perTokenLimiter(Request $request): Limit
+    {
+        /** @var \Laravel\Sanctum\PersonalAccessToken|\Laravel\Sanctum\TransientToken|null $token */
+        $token = $request->user()?->currentAccessToken();
+
+        if ($token === null) {
+            return Limit::none();
+        }
+
+        if ($token instanceof \Laravel\Sanctum\TransientToken) {
+            return Limit::none();
+        }
+
+        return Limit::perMinute(30)
+            ->by('token:'.$token->id)
+            ->response(fn (Request $request, array $headers): JsonResponse => $this->tokenRateLimitResponse($headers));
+    }
+
+    /**
+     * @param  array<string, string|int>  $headers
+     */
+    private function tokenRateLimitResponse(array $headers): JsonResponse
+    {
+        $retryAfter = (int) ($headers['Retry-After'] ?? $headers['retry-after'] ?? 0);
+
+        return \App\Exceptions\Support\ApiErrorFormatter::response(
+            'This specific API key has exceeded its rate limit (30/min).',
+            \Illuminate\Http\Response::HTTP_TOO_MANY_REQUESTS,
+            'token_rate_limited',
+            meta: array_filter([
+                'retry_after_seconds' => $retryAfter,
+            ], fn (int $val): bool => $val > 0)
+        )->withHeaders($headers);
     }
 }

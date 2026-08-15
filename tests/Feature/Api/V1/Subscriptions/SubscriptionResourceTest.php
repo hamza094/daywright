@@ -90,7 +90,7 @@ class SubscriptionResourceTest extends TestCase
         $this->assertLimitMaximums($response, [
             'projects' => null,
             'created_meetings' => null,
-            'api_tokens' => null,
+            'api_tokens' => 5,
         ]);
     }
 

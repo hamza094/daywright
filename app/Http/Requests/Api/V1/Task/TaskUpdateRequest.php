@@ -6,6 +6,7 @@ namespace App\Http\Requests\Api\V1\Task;
 
 use App\DataTransferObjects\Task\TaskUpdateData;
 use App\Enums\TaskDueNotifies;
+use App\Enums\TaskSystemStatus;
 use App\Rules\Iso8601Timestamp;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
@@ -23,7 +24,7 @@ class TaskUpdateRequest extends FormRequest
         return true;
     }
 
-    public function taskUpdateData(): TaskUpdateData
+    public function toDto(): TaskUpdateData
     {
         /** @var array<string, mixed> $validated */
         $validated = $this->validated();
@@ -78,7 +79,12 @@ class TaskUpdateRequest extends FormRequest
              *
              * @example 1
              */
-            'status_id' => 'sometimes|required|integer|max:4',
+            'status_id' => [
+                'sometimes',
+                'required',
+                'integer',
+                Rule::in(TaskSystemStatus::all()),
+            ],
             /**
              * Notification strategy used for due-date reminders.
              *

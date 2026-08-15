@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Project;
 
+use App\DataTransferObjects\Project\InvitationData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -15,6 +16,11 @@ class InvitationUsersRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function toDto(): InvitationData
+    {
+        return InvitationData::fromArray($this->validated());
     }
 
     /**

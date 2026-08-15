@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Paddle;
 
-final class UserSubscriptionData
+final readonly class UserSubscriptionData
 {
     public function __construct(
         public int $vendorID,

@@ -7,14 +7,11 @@ namespace App\Services\Auth;
 use App\DataTransferObjects\Auth\AuthPayload;
 use App\DataTransferObjects\Auth\LoginResult;
 use App\Events\UserLogin;
-use App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource;
 use App\Models\User;
 use App\Services\TwoFactor\TwoFactorStateManager;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\HttpFoundation\Response;
 
 class LoginUserService
 {
@@ -23,7 +20,7 @@ class LoginUserService
     /**
      * Start the login flow shared by different controllers.
      */
-    public function startLoginFlow(string $email, ?Request $request = null): LoginResult
+    public function startLoginFlow(string $email, ?string $ip = null): LoginResult
     {
         $user = User::where('email', $email)->first();
 
@@ -33,7 +30,7 @@ class LoginUserService
 
         $twoFactor = $this->initializeTwoFactorState($user);
 
-        $clientPublicIp = $this->detectPublicRequestIp($request);
+        $clientPublicIp = $this->validatePublicIp($ip);
 
         $this->dispatchTimezoneIfNeeded($user, $clientPublicIp);
 
@@ -73,15 +70,11 @@ class LoginUserService
     }
 
     /**
-     * Return the standardized two-factor response when required.
+     * Return whether two-factor authentication is required for the login result.
      */
-    public function twoFactorStateResponse(LoginResult $result, ?Request $request = null): ?JsonResponse
+    public function twoFactorStateResponse(LoginResult $result): bool
     {
-        if ($result->twoFactor) {
-            return $this->buildTwoFactorRequiredResponse($request);
-        }
-
-        return null;
+        return $result->twoFactor;
     }
 
     /**
@@ -111,6 +104,15 @@ class LoginUserService
      *
      * Centralizes token creation so controllers don't duplicate logic.
      *
+     * Security Note: Uses wildcard ['*'] abilities for mobile app login tokens.
+     * This is intentional to provide full mobile app functionality equivalent to web sessions.
+     * The security risk (stolen credentials = full mobile access) is acceptable for the current threat model.
+     * Critical operations (token management, subscriptions, admin) are protected by session.auth middleware
+     * which blocks ALL API tokens, including wildcard tokens.
+     *
+     * Future Enhancement: Consider mobile-specific hardening (device verification, app signing, IP restrictions)
+     * if the threat model changes to require stricter mobile login security.
+     *
      * @param  array<int, string>  $abilities
      */
     public function createApiToken(User $user, ?string $name = null, array $abilities = ['*']): string
@@ -129,24 +131,10 @@ class LoginUserService
     }
 
     /**
-     * Standardized 2FA required response used across controllers.
+     * Return the public IP or null when the IP is private/invalid.
      */
-    public function buildTwoFactorRequiredResponse(?Request $request = null): JsonResponse
+    private function validatePublicIp(?string $ip = null): ?string
     {
-        $r = $request ?? request();
-
-        return response()->json([
-            'data' => (new TwoFactorChallengeResource)->resolve($r),
-        ], Response::HTTP_OK);
-    }
-
-    /**
-     * Return the request's public IP or null when the IP is private/invalid.
-     */
-    private function detectPublicRequestIp(?Request $request = null): ?string
-    {
-        $ip = $request?->ip() ?? null;
-
         if (! $ip) {
             return null;
         }

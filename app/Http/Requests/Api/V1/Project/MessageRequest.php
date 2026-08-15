@@ -44,7 +44,7 @@ class MessageRequest extends FormRequest
     /**
      * Convert the request into a ProjectMessageData DTO.
      */
-    public function messageData(): ProjectMessageData
+    public function toDto(): ProjectMessageData
     {
         return ProjectMessageData::fromArray($this->validated());
     }

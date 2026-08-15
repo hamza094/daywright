@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * @property int $meetingId
- * @property ?string $requestId
  * @property int $tries
  */
 trait InteractsWithZoomWebhookLogging
@@ -70,11 +68,12 @@ trait InteractsWithZoomWebhookLogging
         $tags = [
             'provider:zoom',
             'zoom_operation:'.$operation,
-            'meeting:'.$this->meetingId,
+            'meeting:'.$this->getMeetingId(),
         ];
 
-        if (is_string($this->requestId) && $this->requestId !== '') {
-            $tags[] = 'request:'.$this->requestId;
+        $requestId = $this->getRequestId();
+        if (is_string($requestId) && $requestId !== '') {
+            $tags[] = 'request:'.$requestId;
         }
 
         return $tags;
@@ -89,8 +88,8 @@ trait InteractsWithZoomWebhookLogging
             $event,
             ZoomLogContext::forWebhook(
                 operation: $operation,
-                meetingId: $this->meetingId,
-                requestId: $this->requestId,
+                meetingId: $this->getMeetingId(),
+                requestId: $this->getRequestId(),
                 userId: $userIdentifier,
                 context: $context,
             ),

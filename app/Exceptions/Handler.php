@@ -9,9 +9,8 @@ use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Exceptions\Subscription\SubscriptionRequiredException;
-use App\Exceptions\Support\ApiErrorFormatter;
+use App\Exceptions\Traits\HandlesApiExceptions;
 use App\Services\Zoom\ZoomLogContext;
-use Aws\S3\Exception\S3Exception;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -20,7 +19,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Override;
-use Saloon\RateLimitPlugin\Exceptions\RateLimitReachedException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -29,6 +27,8 @@ use Throwable;
 
 class Handler extends ExceptionHandler
 {
+    use HandlesApiExceptions;
+
     private const string API_PREFIX = 'api/*';
 
     private const string EXCEPTION_METRICS_CHANNEL = 'exception_metrics';
@@ -85,89 +85,19 @@ class Handler extends ExceptionHandler
      * Register the exception handling callbacks for the application.
      */
     #[Override]
+    public function shouldReport(Throwable $e): bool
+    {
+        if ($e instanceof HttpException && $e->getStatusCode() < Response::HTTP_INTERNAL_SERVER_ERROR) {
+            return false;
+        }
+
+        return parent::shouldReport($e);
+    }
+
+    #[Override]
     public function register(): void
     {
-        $this->renderable(fn (ApiException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            $e->publicMessage(),
-            $e->status(),
-            $e->errorCode(),
-            $e->errors(),
-            $e->meta($request),
-        ));
-
-        $this->renderable(fn (NotFoundHttpException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            ApiErrorFormatter::publicMessage($e->getMessage(), 'Resource not found.'),
-            Response::HTTP_NOT_FOUND,
-            'not_found',
-        ));
-
-        $this->renderable(fn (AuthenticationException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            'Authentication is required.',
-            Response::HTTP_UNAUTHORIZED,
-            'unauthenticated',
-        ));
-
-        $this->renderable(fn (AuthorizationException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            ApiErrorFormatter::publicMessage($e->getMessage(), 'You are not authorized to perform this action.'),
-            Response::HTTP_FORBIDDEN,
-            'forbidden',
-        ));
-
-        $this->renderable(fn (MethodNotAllowedHttpException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            'Method not allowed.',
-            Response::HTTP_METHOD_NOT_ALLOWED,
-            'method_not_allowed',
-        ));
-
-        $this->renderable(function (HttpException $e): \Illuminate\Http\JsonResponse {
-            $status = $e->getStatusCode();
-            $defaultMessage = ApiErrorFormatter::defaultMessageForStatus($status);
-            $message = $e->getMessage() !== ''
-                ? ApiErrorFormatter::publicMessage($e->getMessage(), $defaultMessage)
-                : $defaultMessage;
-
-            if ($status >= Response::HTTP_INTERNAL_SERVER_ERROR) {
-                $message = $defaultMessage;
-            }
-
-            return ApiErrorFormatter::response(
-                $message,
-                $status,
-                ApiErrorFormatter::defaultCodeForStatus($status),
-            );
-        });
-
-        $this->renderable(fn (ValidationException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            'Validation failed.',
-            Response::HTTP_UNPROCESSABLE_ENTITY,
-            'validation_error',
-            $e->errors(),
-        ));
-
-        $this->renderable(fn (RateLimitReachedException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            'Too many requests. Please try again later.',
-            Response::HTTP_TOO_MANY_REQUESTS,
-            'rate_limited',
-            meta: [
-                'retry_after_seconds' => $e->getLimit()->getRemainingSeconds(),
-            ],
-        ));
-
-        $this->renderable(fn (S3Exception $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            'Storage request could not be completed.',
-            Response::HTTP_INTERNAL_SERVER_ERROR,
-            'storage_error',
-            meta: [
-                'provider' => 's3',
-            ],
-        ));
-
-        $this->renderable(fn (Throwable $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            'An unexpected server error occurred.',
-            Response::HTTP_INTERNAL_SERVER_ERROR,
-            'internal_server_error',
-        ));
-
+        $this->registerApiExceptionHandlers();
     }
 
     /**
@@ -203,7 +133,7 @@ class Handler extends ExceptionHandler
     private function recordExceptionMetric(ApiException $e): void
     {
         $context = [
-            'exception' => $e::class,
+            'exception' => $e,
             'code' => $e->errorCode(),
             'status' => $e->status(),
             'message' => $e->publicMessage(),
@@ -234,7 +164,7 @@ class Handler extends ExceptionHandler
             ? ZoomLogContext::forRequest($request, $e)
             : ['provider' => 'zoom'];
 
-        $context['exception'] = $e::class;
+        $context['exception'] = $e;
         $context['code'] = $e->errorCode();
         $context['status'] = $e->status();
         $context['message'] = $e->publicMessage();

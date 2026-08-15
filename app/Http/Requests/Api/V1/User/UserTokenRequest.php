@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\User;
 
 use App\DataTransferObjects\Auth\TokenCreateData;
+use App\Enums\ApiScope;
 use App\Rules\Iso8601Timestamp;
 use Closure;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Override;
 
 #[SchemaName('ApiTokenStoreRequestData')]
@@ -36,8 +38,26 @@ class UserTokenRequest extends FormRequest
             'name' => 'required|string|max:255',
 
             /**
+             * Array of API scopes for the token.
+             * Each scope must be a valid ApiScope enum value.
+             * Wildcard tokens are restricted to official mobile apps via the login endpoint.
+             *
+             * @example ["projects:read", "team:write"]
+             */
+            'scopes' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+            'scopes.*' => [
+                'required',
+                'string',
+                Rule::in(ApiScope::values()),
+            ],
+
+            /**
              * Optional ISO 8601 expiration timestamp with timezone offset.
-             * Must not be more than 180 days from now.
+             * Must not be more than 1 year from now (enforced at service layer).
              *
              * @example 2025-12-31T23:59:59+00:00
              */
@@ -47,9 +67,9 @@ class UserTokenRequest extends FormRequest
                 new Iso8601Timestamp,
                 function (string $attribute, mixed $value, Closure $fail): void {
                     if ($value) {
-                        $maxDate = now()->addDays(180);
+                        $maxDate = now()->addYear();
                         if (\Carbon\Carbon::parse($value)->gt($maxDate)) {
-                            $fail('The '.$attribute.' may not be more than 180 days from now.');
+                            $fail('The '.$attribute.' may not be more than 1 year from now.');
                         }
                     }
                 },
@@ -57,7 +77,7 @@ class UserTokenRequest extends FormRequest
         ];
     }
 
-    public function tokenCreateData(): TokenCreateData
+    public function toDto(): TokenCreateData
     {
         return TokenCreateData::fromArray($this->validated());
     }

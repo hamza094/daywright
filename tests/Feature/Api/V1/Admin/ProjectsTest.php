@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Admin;
 
+use App\Models\AuditLog;
 use App\Models\Project;
 use App\Models\Stage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -28,7 +28,7 @@ class ProjectsTest extends TestCase
         $this->admin = $this->createAdminUser();
         $this->enableTwoFactorForUser($this->admin);
 
-        Sanctum::actingAs($this->admin);
+        $this->actingAs($this->admin, 'web');
     }
 
     // Authorization
@@ -37,7 +37,7 @@ class ProjectsTest extends TestCase
     public function non_admin_cannot_access_projects_index(): void
     {
         $user = $this->createUser();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->getJson($this->apiV1AdminRoute('projects.index'))
             ->assertForbidden();
@@ -47,7 +47,7 @@ class ProjectsTest extends TestCase
     public function non_admin_cannot_bulk_delete_projects(): void
     {
         $user = $this->createUser();
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $project = $this->createProject();
 
@@ -345,6 +345,32 @@ class ProjectsTest extends TestCase
         foreach ($ids as $id) {
             $this->assertDatabaseMissing('projects', ['id' => $id]);
         }
+    }
+
+    #[Test]
+    public function bulk_delete_projects_creates_audit_log(): void
+    {
+        /** @var \Illuminate\Support\Collection<int, Project> $projects */
+        $projects = Project::factory()->count(2)->create();
+        $projects->each(fn (Project $project): bool => $project->delete());
+        $ids = $projects->pluck('id')->toArray();
+
+        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => $ids])
+            ->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_type' => 'user',
+            'actor_id' => $this->admin->id,
+            'event' => 'destruction.bulk_projects_deleted',
+        ]);
+
+        $log = AuditLog::where('event', 'destruction.bulk_projects_deleted')->first();
+
+        $this->assertNotNull($log);
+        $this->assertCount(2, $log->old_values['project_ids']);
+        $this->assertSame(2, $log->old_values['count']);
+        $this->assertTrue($log->metadata['bulk_operation']);
+        $this->assertNotNull($log->created_at);
     }
 
     #[Test]

@@ -10,7 +10,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Paddle\Subscription as PaddleSubscription;
-use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -34,7 +33,7 @@ class SubscriptionManagementTest extends TestCase
         ]);
 
         /** @var User $user */
-        Sanctum::actingAs($user);
+        $this->actingAs($user, 'web');
 
         $this->fakeSubscription();
     }

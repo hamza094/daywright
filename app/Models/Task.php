@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\TaskSystemStatus;
 use App\QueryBuilder\TaskQueryBuilder;
+use App\Traits\HasStateMachine;
 use App\Traits\RecordActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,7 +21,7 @@ use Override;
  */
 class Task extends Model
 {
-    use HasFactory, RecordActivity, SoftDeletes;
+    use HasFactory, HasStateMachine, RecordActivity, SoftDeletes;
 
     protected $guarded = [];
 
@@ -116,7 +118,7 @@ class Task extends Model
     {
         static::creating(function ($task): void {
             if (! $task->status_id) {
-                $task->status_id = 1;
+                $task->status_id = TaskSystemStatus::Pending->value;
             }
         });
 
@@ -124,5 +126,33 @@ class Task extends Model
             $task->activities()->delete();
         });
 
+    }
+
+    /**
+     * Define the valid state transitions for the Task model.
+     *
+     * @return array<string, list<int|string>>
+     */
+    protected function validTransitions(): array
+    {
+        /** @phpstan-ignore return.type */
+        return [
+            TaskSystemStatus::Pending->value => [
+                TaskSystemStatus::InProgress->value,
+                TaskSystemStatus::Cancelled->value,
+            ],
+            TaskSystemStatus::InProgress->value => [
+                TaskSystemStatus::UnderReview->value,
+                TaskSystemStatus::Pending->value,
+                TaskSystemStatus::Cancelled->value,
+            ],
+            TaskSystemStatus::UnderReview->value => [
+                TaskSystemStatus::Completed->value,
+                TaskSystemStatus::InProgress->value,
+                TaskSystemStatus::Cancelled->value,
+            ],
+            TaskSystemStatus::Completed->value => [],
+            TaskSystemStatus::Cancelled->value => [],
+        ];
     }
 }

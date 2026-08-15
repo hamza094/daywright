@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Repository\OAuthConnectionRepository;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Saloon\Http\Auth\AccessTokenAuthenticator;
 
 final readonly class ZoomConnectorManager
@@ -60,6 +61,10 @@ final readonly class ZoomConnectorManager
                     fn (): AccessTokenAuthenticator => $this->refreshAuthenticatorInsideLock($user),
                 );
         } catch (LockTimeoutException $exception) {
+            Log::error('Zoom OAuth refresh lock timeout', [
+                'user_id' => $user->getKey(),
+                'exception' => $exception,
+            ]);
             throw new ZoomExternalFailureException(self::REFRESH_UNAVAILABLE_MESSAGE, $exception->getCode(), previous: $exception);
         }
     }
@@ -84,12 +89,21 @@ final readonly class ZoomConnectorManager
                 ->authenticate($authenticator)
                 ->refreshAccessToken($authenticator);
         } catch (UnauthorizedException $exception) {
+            Log::error('Zoom OAuth refresh failed: Unauthorized, clearing tokens', [
+                'user_id' => $user->getKey(),
+                'exception' => $exception,
+            ]);
             $this->oauthRepository->clearTokens($user, self::PROVIDER);
 
             throw new ZoomUserErrorException(self::USER_RECONNECT_REQUIRED, $exception->getCode(), previous: $exception);
         } catch (ZoomUserErrorException $exception) {
             // Check for OAuth error codes that indicate the refresh token is invalid
             if ($this->isInvalidOAuthError($exception)) {
+                Log::error('Zoom OAuth refresh failed: Invalid grant/token, clearing tokens', [
+                    'user_id' => $user->getKey(),
+                    'error_code' => $exception->context()['error'] ?? 'unknown',
+                    'exception' => $exception,
+                ]);
                 $this->oauthRepository->clearTokens($user, self::PROVIDER);
 
                 throw new ZoomUserErrorException(self::USER_RECONNECT_REQUIRED, $exception->getCode(), previous: $exception);

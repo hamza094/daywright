@@ -45,6 +45,7 @@ trait ProjectSetup
 
         $middlewaresToRemove = [
             \App\Http\Middleware\CheckSubscription::class,
+            \App\Http\Middleware\RequireSessionAuth::class,
         ];
 
         $this->withoutMiddleware($middlewaresToRemove);

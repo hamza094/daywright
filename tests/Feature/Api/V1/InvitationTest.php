@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1;
 
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -86,6 +87,35 @@ class InvitationTest extends TestCase
             'user_id' => $invitedUser->id,
             'active' => true,
         ]);
+    }
+
+    /** @test */
+    public function accepting_project_invitation_creates_audit_log(): void
+    {
+        /** @var User $invitedUser */
+        $invitedUser = User::factory()->create();
+        $this->project->invite($invitedUser);
+
+        Sanctum::actingAs($invitedUser);
+
+        $this->withHeaders($this->idempotencyHeaders())->postJson($this->apiV1ProjectRoute('accept.invitation', $this->project))
+            ->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_type' => 'api_token',
+            'actor_id' => $invitedUser->id,
+            'event' => 'security.project_member_added',
+            'auditable_type' => $this->project::class,
+            'auditable_id' => $this->project->id,
+        ]);
+
+        $log = AuditLog::where('event', 'security.project_member_added')->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame($invitedUser->id, $log->new_values['member_id']);
+        $this->assertSame($invitedUser->email, $log->new_values['member_email']);
+        $this->assertTrue($log->new_values['member_active']);
+        $this->assertNotNull($log->created_at);
     }
 
     /** @test */
@@ -195,6 +225,35 @@ class InvitationTest extends TestCase
             'project_id' => $this->project->id,
             'user_id' => $memberUser->id,
         ]);
+    }
+
+    /** @test */
+    public function removing_project_member_creates_audit_log(): void
+    {
+        /** @var User $memberUser */
+        $memberUser = User::factory()->create();
+
+        $this->project->members()->attach($memberUser, ['active' => true]);
+
+        $this->deleteJson($this->apiV1ProjectUserRoute('projects.members.destroy', $this->project, $memberUser))
+            ->assertOk();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'actor_type' => 'api_token',
+            'actor_id' => $this->project->user->id,
+            'event' => 'security.project_member_removed',
+            'auditable_type' => $this->project::class,
+            'auditable_id' => $this->project->id,
+        ]);
+
+        $log = AuditLog::where('event', 'security.project_member_removed')->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame($memberUser->id, $log->old_values['member_id']);
+        $this->assertSame($memberUser->email, $log->old_values['member_email']);
+        $this->assertTrue($log->old_values['member_active']);
+        $this->assertFalse($log->new_values['member_active']);
+        $this->assertNotNull($log->created_at);
     }
 
     /** @test */

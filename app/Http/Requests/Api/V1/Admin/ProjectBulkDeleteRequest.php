@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\DataTransferObjects\Admin\BulkDeleteData;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -40,5 +41,10 @@ class ProjectBulkDeleteRequest extends FormRequest
             'project_ids.*.distinct' => 'Duplicate project ids are not allowed.',
             'project_ids.*.exists' => 'One or more selected projects do not exist.',
         ];
+    }
+
+    public function toDto(): BulkDeleteData
+    {
+        return BulkDeleteData::fromIds($this->validated()['project_ids']);
     }
 }

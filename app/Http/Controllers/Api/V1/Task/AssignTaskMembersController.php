@@ -21,8 +21,7 @@ final class AssignTaskMembersController extends ApiController
      */
     public function __invoke(Project $project, Task $task, TaskMembersRequest $request, TaskService $service): JsonResponse
     {
-        $members = $request->validated('members');
-        $task = $service->assignMembers($task, $members, $project, $this->authenticatedUser());
+        $task = $service->assignMembers($task, $request->toDto(), $project, $this->authenticatedUser());
 
         return $this->respondUpdated(new TaskResource($task));
     }

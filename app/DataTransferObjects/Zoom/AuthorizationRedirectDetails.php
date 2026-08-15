@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Zoom;
 
-final class AuthorizationRedirectDetails
+final readonly class AuthorizationRedirectDetails
 {
     public function __construct(
         public string $authorizationUrl,

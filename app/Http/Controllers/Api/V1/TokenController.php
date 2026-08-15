@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Actions\Auth\CreateApiTokenAction;
+use App\Actions\Auth\RevokeApiTokenAction;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\User\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
 use App\Http\Resources\Api\V1\TokenStoreResource;
-use App\Services\Auth\ApiTokenService;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class TokenController extends ApiController
 {
-    public function __construct(private readonly ApiTokenService $apiTokenService) {}
+    public function __construct(
+        private readonly CreateApiTokenAction $createApiTokenAction,
+        private readonly RevokeApiTokenAction $revokeApiTokenAction
+    ) {}
 
     /**
      * List all personal access tokens
@@ -23,7 +27,7 @@ class TokenController extends ApiController
      */
     public function index(): JsonResponse
     {
-        $tokens = $this->apiTokenService->listForUser($this->authenticatedUser());
+        $tokens = $this->authenticatedUser()->tokens;
 
         return TokenResource::collection($tokens)->response();
     }
@@ -35,9 +39,14 @@ class TokenController extends ApiController
      */
     public function store(UserTokenRequest $request): JsonResponse
     {
-        $data = $request->tokenCreateData();
+        $data = $request->toDto();
 
-        $token = $this->apiTokenService->createForUser($this->authenticatedUser(), $data->name, $data->expires_at);
+        $token = $this->createApiTokenAction->execute(
+            $this->authenticatedUser(),
+            $data->name,
+            $data->scopes,
+            $data->expires_at
+        );
 
         return $this->respondWithData(
             new TokenStoreResource($token->plainTextToken, $token->accessToken),
@@ -53,7 +62,7 @@ class TokenController extends ApiController
      */
     public function destroy(int $token): JsonResponse
     {
-        $this->apiTokenService->deleteForUser($this->authenticatedUser(), $token);
+        $this->revokeApiTokenAction->execute($this->authenticatedUser(), $token);
 
         return $this->respondWithMessage('Token deleted successfully.');
     }

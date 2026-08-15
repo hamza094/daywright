@@ -107,18 +107,21 @@ class ProjectService
 
     public function updateStageStatus(Project $project, ProjectStageUpdateData $data): Project
     {
-        DB::transaction(function () use ($project, $data): void {
-            $project->stage()->associate($data->stageId);
+        return DB::transaction(function () use ($project, $data): Project {
+            // Handle stage transition using state machine
+            $newStage = $data->stage();
+            $project->transitionTo($newStage, 'stage_id');
 
+            // Update other stage-related fields
             $project->update([
                 'postponed_reason' => $this->getPostponedReason($project, $data),
                 'stage_updated_at' => now(),
             ]);
+
+            $project->load('stage');
+
+            return $project;
         });
-
-        $project->load('stage');
-
-        return $project;
     }
 
     public function sendNotification(Project $project, User $actor): void

@@ -51,4 +51,56 @@ class ResetPasswordTest extends TestCase
 
         $this->assertTrue(Hash::check('Password#333', $user->fresh()->password));
     }
+
+    /**
+     * Password reset invalidates other web sessions.
+     */
+
+    /** @test */
+    public function password_reset_invalidates_other_web_sessions(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('OldPassword123!')]);
+
+        // Create web session
+        $this->actingAs($user, 'web');
+        auth()->logout();
+
+        $token = Password::createToken($user);
+
+        $this->postJson($this->apiV1Route('password.update'), [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'NewPassword456!',
+            'password_confirmation' => 'NewPassword456!',
+        ])->assertSuccessful();
+
+        $this->assertTrue(Hash::check('NewPassword456!', $user->fresh()->password));
+    }
+
+    /**
+     * Password reset does not revoke API tokens.
+     */
+
+    /** @test */
+    public function password_reset_does_not_revoke_api_tokens(): void
+    {
+        $user = User::factory()->create(['password' => Hash::make('OldPassword123!')]);
+        $apiToken = $user->createToken('Test Token', ['projects:read'])->plainTextToken;
+
+        $token = Password::createToken($user);
+
+        $this->postJson($this->apiV1Route('password.update'), [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'NewPassword456!',
+            'password_confirmation' => 'NewPassword456!',
+        ])->assertSuccessful();
+
+        // API token should still be valid for projects endpoint
+        $this->withToken($apiToken)
+            ->getJson('/api/v1/projects')
+            ->assertSuccessful();
+
+        $this->assertEquals(1, $user->tokens()->count());
+    }
 }

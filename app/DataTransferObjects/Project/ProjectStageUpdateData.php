@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Project;
 
+use App\Enums\ProjectStage;
 use InvalidArgumentException;
 
 final readonly class ProjectStageUpdateData
@@ -39,5 +40,10 @@ final readonly class ProjectStageUpdateData
             'stage' => $this->stageId,
             'postponed_reason' => $this->postponedReason,
         ];
+    }
+
+    public function stage(): ProjectStage
+    {
+        return ProjectStage::from($this->stageId);
     }
 }

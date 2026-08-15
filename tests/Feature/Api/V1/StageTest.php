@@ -37,6 +37,9 @@ class StageTest extends TestCase
         Stage::factory()->create();
         Stage::factory()->design()->create();
         Stage::factory()->develop()->create();
+        Stage::factory()->testing()->create();
+        Stage::factory()->deliver()->create();
+        Stage::factory()->completed()->create();
         Stage::factory()->postponed()->create();
 
         $this->project = Project::factory()->for($user)
@@ -51,7 +54,7 @@ class StageTest extends TestCase
         $this->getJson($this->apiV1Route('stages.index'))
             ->assertOk();
 
-        $this->assertEquals($stages->count(), 4);
+        $this->assertEquals($stages->count(), 7);
     }
 
     /** @test */
@@ -83,13 +86,13 @@ class StageTest extends TestCase
         $postponed_reason = 'Unable to reach';
 
         $response = $this->withoutExceptionHandling()->patchJson($this->apiV1ProjectRoute('projects.stage.update', $this->project), [
-            'stage' => 4,
+            'stage' => 7,
             'postponed_reason' => $postponed_reason,
         ]);
 
         $this->project->refresh();
 
-        $this->assertDatabaseHas('projects', ['id' => $this->project->id, 'postponed_reason' => $postponed_reason, 'stage_id' => 4]);
+        $this->assertDatabaseHas('projects', ['id' => $this->project->id, 'postponed_reason' => $postponed_reason, 'stage_id' => 7]);
 
         $this->project->refresh();
 

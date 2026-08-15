@@ -6,7 +6,6 @@ namespace Tests\Feature\Api\Middleware\Idempotency;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use WendellAdriel\Idempotency\Enums\IdempotencyScope;
@@ -58,7 +57,7 @@ class IdempotentRoutesRegistrationTest extends TestCase
     #[Test]
     public function protected_token_creation_requires_an_idempotency_key(): void
     {
-        Sanctum::actingAs(User::factory()->create());
+        $this->actingAs(User::factory()->create(), 'web');
 
         $this->postJson($this->apiV1Route('api-tokens.store'), [
             'name' => 'My API Token',

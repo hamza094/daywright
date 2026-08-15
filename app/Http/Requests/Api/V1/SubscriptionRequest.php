@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1;
 
+use App\DataTransferObjects\Subscription\SubscriptionPlanData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
@@ -17,6 +18,11 @@ class SubscriptionRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function toDto(): SubscriptionPlanData
+    {
+        return SubscriptionPlanData::fromArray($this->validated());
     }
 
     /**

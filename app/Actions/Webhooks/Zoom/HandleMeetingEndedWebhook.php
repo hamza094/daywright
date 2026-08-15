@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Webhooks\Zoom;
 
+use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\DataTransferObjects\Notification\NotificationActorData;
 use App\DataTransferObjects\Zoom\MeetingEndedWebhookData;
 use App\Enums\MeetingState;
@@ -61,15 +62,16 @@ final readonly class HandleMeetingEndedWebhook
 
     private function dispatchNotificationJob(Meeting $meeting, ?string $startTime, ?string $endTime): void
     {
-        $notificationData = [
+        $notificationData = MeetingNotificationData::fromArray([
             'project_name' => $meeting->project->name,
             'project_slug' => $meeting->project->slug,
             'meeting_topic' => $meeting->topic,
             'meeting_timezone' => $meeting->timezone,
+            'meeting_join_url' => null,
             'start_time' => $startTime,
             'end_time' => $endTime,
             'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
-        ];
+        ]);
 
         SendMeetingEndedNotification::dispatch($meeting->id, $notificationData);
     }

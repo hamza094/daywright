@@ -36,7 +36,7 @@ class RegisterUserRequest extends FormRequest
         return true;
     }
 
-    public function registerUserData(): RegisterUserData
+    public function toDto(): RegisterUserData
     {
         /** @var array<string, mixed> $validated */
         $validated = $this->validated();

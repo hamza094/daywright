@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\DataTransferObjects\Admin\BulkDeleteData;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -40,5 +41,10 @@ class TaskBulkDeleteRequest extends FormRequest
             'task_ids.*.distinct' => 'Duplicate task ids are not allowed.',
             'task_ids.*.exists' => 'One or more selected tasks do not exist.',
         ];
+    }
+
+    public function toDto(): BulkDeleteData
+    {
+        return BulkDeleteData::fromIds($this->validated()['task_ids']);
     }
 }

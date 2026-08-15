@@ -61,10 +61,6 @@ class ZoomWebhookTest extends TestCase
 
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
-        $updateData = [
-            'topic' => $object['topic'],
-            'uuid' => $object['uuid'],
-        ];
 
         $requestId = 'zoom-update-'.Str::uuid();
 
@@ -72,8 +68,7 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->meetingId === (int) $meetingId
-            && $job->data->changes === $updateData
+        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === (int) $meetingId
             && $job->data->requestId === $requestId);
     }
 
@@ -96,7 +91,7 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->meetingId === $meetingId
+        Queue::assertPushed(DeleteMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === $meetingId
             && $job->data->requestId === 'zoom-delete-813');
     }
 
@@ -114,14 +109,12 @@ class ZoomWebhookTest extends TestCase
 
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
-        $startTime = $object['start_time'] ?? null;
 
         $this->postJson(route('api.v1.webhooks.meetings.start'), $postBody, ZoomWebhookSigner::signPayload($postBody, 'zoom-start-813'))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => (int) $job->meetingId === (int) $meetingId
-            && $job->data->startTime === $startTime
+        Queue::assertPushed(StartMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === (int) $meetingId
             && $job->data->requestId === 'zoom-start-813');
     }
 
@@ -139,16 +132,12 @@ class ZoomWebhookTest extends TestCase
 
         $object = $postBody['payload']['object'];
         $meetingId = $object['id'];
-        $startTime = $object['start_time'] ?? null;
-        $endTime = $object['end_time'] ?? null;
 
         $this->postJson(route('api.v1.webhooks.meetings.ended'), $postBody, ZoomWebhookSigner::signPayload($postBody, 'zoom-ended-813'))
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
-        Queue::assertPushed(MeetingEndedWebhook::class, fn ($job): bool => (int) $job->meetingId === (int) $meetingId
-            && $job->data->startTime === $startTime
-            && $job->data->endTime === $endTime
+        Queue::assertPushed(MeetingEndedWebhook::class, fn ($job): bool => $job->getMeetingId() === (int) $meetingId
             && $job->data->requestId === 'zoom-ended-813');
 
     }

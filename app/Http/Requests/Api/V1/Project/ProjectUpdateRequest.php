@@ -21,7 +21,7 @@ class ProjectUpdateRequest extends FormRequest
         return true;
     }
 
-    public function projectUpdateData(): ProjectUpdateData
+    public function toDto(): ProjectUpdateData
     {
         /** @var array<string, mixed> $validated */
         $validated = $this->validated();

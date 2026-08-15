@@ -18,8 +18,6 @@ final class UpdateUserDataTest extends TestCase
             'timezone' => null,
             'company' => 'Acme Inc.',
             'bio' => null,
-            'current_password' => 'CurrentPassword4!',
-            'password' => 'Password4!',
         ]);
 
         $this->assertSame([
@@ -31,9 +29,6 @@ final class UpdateUserDataTest extends TestCase
                 'company' => 'Acme Inc.',
                 'bio' => null,
             ],
-            'password' => 'Password4!',
         ], $data->toArray());
-
-        $this->assertTrue($data->hasPasswordUpdate());
     }
 }

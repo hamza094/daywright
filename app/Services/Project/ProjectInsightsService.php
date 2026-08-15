@@ -9,7 +9,7 @@ use App\Actions\ProjectMetrics\StageProgressMetricAction;
 use App\Actions\ProjectMetrics\TaskHealthMetricAction;
 use App\Actions\ProjectMetrics\TeamCollaborationMetricAction;
 use App\Actions\ProjectMetrics\UpcomingRiskMetricAction;
-use App\Data\ProjectMetricsDto;
+use App\DataTransferObjects\Project\ProjectMetricsData;
 use App\Models\Project;
 use App\Services\Insights\HealthInsightBuilder;
 use App\Services\Insights\RiskInsightBuilder;
@@ -20,7 +20,7 @@ use App\Services\Insights\TeamCollaborationInsightBuilder;
 final class ProjectInsightsService
 {
     /**
-     * @var array<string, callable(ProjectMetricsDto, ?Project): mixed>
+     * @var array<string, callable(ProjectMetricsData, ?Project): mixed>
      */
     private array $insightBuilders;
 
@@ -58,7 +58,7 @@ final class ProjectInsightsService
     /**
      * @param  array<string>  $sections
      */
-    private function getProjectMetrics(Project $project, array $sections): ProjectMetricsDto
+    private function getProjectMetrics(Project $project, array $sections): ProjectMetricsData
     {
         $this->preloader->preload($project, $sections);
 
@@ -75,24 +75,24 @@ final class ProjectInsightsService
             ->values()
             ->all();
 
-        return new ProjectMetricsDto(...$results);
+        return new ProjectMetricsData(...$results);
     }
 
     private function setupBuilders(): void
     {
         $this->insightBuilders = [
-            'health' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->healthBuilder->build($m->health),
+            'health' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->healthBuilder->build($m->health),
 
-            'task-health' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->taskHealthBuilder->build(
+            'task-health' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->taskHealthBuilder->build(
                 $m->taskHealth,
                 $project instanceof Project ? ['summary' => $this->taskHealthAction->summary($project)] : []
             ),
-            'collaboration' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->collaborationBuilder->build(
+            'collaboration' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->collaborationBuilder->build(
                 $m->collaborationScore,
                 ['details' => $this->getCollaborationDetails($project)]
             ),
-            'risk' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->riskBuilder->build($m->upcomingRisk),
-            'stage' => fn (ProjectMetricsDto $m, ?Project $project = null): array => $this->stageBuilder->build($m->stageProgress),
+            'risk' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->riskBuilder->build($m->upcomingRisk),
+            'stage' => fn (ProjectMetricsData $m, ?Project $project = null): array => $this->stageBuilder->build($m->stageProgress),
         ];
     }
 
@@ -100,7 +100,7 @@ final class ProjectInsightsService
      * @param  array<string>  $sections
      * @return array<string,mixed>
      */
-    private function buildInsights(ProjectMetricsDto $metrics, array $sections, ?Project $project = null): array
+    private function buildInsights(ProjectMetricsData $metrics, array $sections, ?Project $project = null): array
     {
         return collect($this->insightBuilders)
             ->filter(fn ($builder, string $section): bool => $this->shouldIncludeInsight($section, $sections))
@@ -126,7 +126,7 @@ final class ProjectInsightsService
         return in_array('all', $sections, true) || in_array($section, $sections, true);
     }
 
-    private function hasData(ProjectMetricsDto $metrics, string $section): bool
+    private function hasData(ProjectMetricsData $metrics, string $section): bool
     {
         return match ($section) {
             'health' => $metrics->health !== null,

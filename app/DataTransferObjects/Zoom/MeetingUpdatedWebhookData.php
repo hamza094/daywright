@@ -4,22 +4,35 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Zoom;
 
+use Carbon\Carbon;
 use InvalidArgumentException;
+use Throwable;
 
-final class MeetingUpdatedWebhookData
+final readonly class MeetingUpdatedWebhookData
 {
     /**
-     * @var array<string, mixed>
+     * @var list<string>
      */
-    public array $changes;
+    private const array ALLOWED_FIELDS = [
+        'topic',
+        'duration',
+        'password',
+        'start_time',
+        'timezone',
+        'uuid',
+        'join_url',
+        'start_url',
+        'agenda',
+    ];
 
     /**
      * @param  array<string, mixed>  $changes
      */
-    public function __construct(public int|string $meetingId, array $changes, public ?string $requestId)
-    {
-        $this->changes = MeetingWebhookUpdateData::normalizeChanges($changes);
-    }
+    public function __construct(
+        public int|string $meetingId,
+        public array $changes,
+        public ?string $requestId,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $payload
@@ -31,10 +44,93 @@ final class MeetingUpdatedWebhookData
             throw new InvalidArgumentException('Zoom webhook payload is missing a valid meeting id.');
         }
 
+        $normalizedChanges = self::normalizeChanges($payload);
+
         return new self(
             meetingId: $meetingId,
-            changes: $payload,
+            changes: $normalizedChanges,
             requestId: $requestId,
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $changes
+     * @return array<string, mixed>
+     */
+    private static function normalizeChanges(array $changes): array
+    {
+        $normalized = [];
+
+        foreach (self::ALLOWED_FIELDS as $field) {
+            if (! array_key_exists($field, $changes)) {
+                continue;
+            }
+
+            self::addNormalizedField($normalized, $field, $changes[$field]);
+        }
+
+        // Handle nested settings.join_before_host
+        if (isset($changes['settings']['join_before_host'])) {
+            $booleanValue = filter_var($changes['settings']['join_before_host'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+            if ($booleanValue !== null) {
+                $normalized['join_before_host'] = $booleanValue;
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalized
+     */
+    private static function addNormalizedField(array &$normalized, string $field, mixed $value): void
+    {
+        switch ($field) {
+            case 'topic':
+            case 'password':
+            case 'join_url':
+            case 'start_url':
+            case 'timezone':
+            case 'uuid':
+            case 'agenda':
+                if (is_string($value)) {
+                    $normalized[$field] = $value;
+                }
+
+                break;
+
+            case 'duration':
+                if (is_numeric($value)) {
+                    $normalized[$field] = (int) $value;
+                }
+
+                break;
+
+            case 'start_time':
+                $normalizedStartTime = self::normalizeStartTime($value);
+
+                if ($normalizedStartTime !== null) {
+                    $normalized[$field] = $normalizedStartTime;
+                }
+
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    private static function normalizeStartTime(mixed $value): ?string
+    {
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->utc()->toDateTimeString();
+        } catch (Throwable) {
+            return null;
+        }
     }
 }

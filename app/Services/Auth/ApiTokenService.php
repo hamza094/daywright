@@ -26,29 +26,36 @@ class ApiTokenService
         return $user->tokens;
     }
 
-    public function createForUser(User $user, string $name, ?CarbonInterface $expiresAt): NewAccessToken
+    /**
+     * @param  array<int, string>  $scopes
+     */
+    public function createForUser(User $user, string $name, array $scopes, ?CarbonInterface $expiresAt): NewAccessToken
     {
+        // Enforce token expiration policy: 1-year maximum, 90-day default
+        $maxExpiry = now()->addYear();
+        $normalizedExpiresAt = $expiresAt instanceof CarbonInterface
+            ? $this->normalizeExpiryDate($expiresAt, $maxExpiry)
+            : now()->addDays(90);
+
         return $this->planLimitService->executeWithinAccountLimit(
             PlanLimitType::ApiTokens,
             $user,
             fn (User $lockedUser): NewAccessToken => $lockedUser->createToken(
                 $name,
-                ['*'],
-                $expiresAt,
+                $scopes,
+                $normalizedExpiresAt,
             )
         );
     }
 
     public function deleteForUser(User $user, int $tokenId): void
     {
+        /** @var PersonalAccessToken|\Laravel\Sanctum\TransientToken|null $currentToken */
         $currentToken = $user->currentAccessToken();
 
-        // @phpstan-ignore-next-line - currentAccessToken() phpdoc may be overly-certain about nullability
-        if ($currentToken === null) {
-            throw new AccessDeniedHttpException('No current access token found.');
-        }
-
-        if ($currentToken->id === $tokenId) {
+        // If there's a current token (API token auth), check if it's the same as the one being deleted
+        // Skip this check for TransientToken (session-based auth) as it doesn't have an id
+        if ($currentToken !== null && ! ($currentToken instanceof \Laravel\Sanctum\TransientToken) && $currentToken->id === $tokenId) {
             throw new AccessDeniedHttpException('Cannot delete the current session token via this route.');
         }
 
@@ -57,5 +64,10 @@ class ApiTokenService
         if (! $deleted) {
             throw new NotFoundHttpException('Token not found.');
         }
+    }
+
+    private function normalizeExpiryDate(CarbonInterface $expiresAt, CarbonInterface $maxExpiry): CarbonInterface
+    {
+        return $expiresAt->gt($maxExpiry) ? $maxExpiry : $expiresAt;
     }
 }

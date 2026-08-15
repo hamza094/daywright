@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Helpers;
 
-use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskSystemStatus;
 use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\TaskStatus;
@@ -34,11 +34,11 @@ trait FixtureHelpers
         $userId = $owner?->id;
 
         $statuses = [
-            TaskStatusEnum::PENDING => 'Pending',
-            TaskStatusEnum::IN_PROGRESS => 'In Progress',
-            TaskStatusEnum::UNDER_REVIEW => 'Under Review',
-            TaskStatusEnum::COMPLETED => 'Completed',
-            TaskStatusEnum::CANCELLED => 'Cancelled',
+            TaskSystemStatus::Pending->value => 'Pending',
+            TaskSystemStatus::InProgress->value => 'In Progress',
+            TaskSystemStatus::UnderReview->value => 'Under Review',
+            TaskSystemStatus::Completed->value => 'Completed',
+            TaskSystemStatus::Cancelled->value => 'Cancelled',
         ];
 
         foreach ($statuses as $id => $label) {

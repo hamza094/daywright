@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Zoom;
 
-use App\DataTransferObjects\Zoom\AccessTokenDetails;
+use App\DataTransferObjects\OAuth\OAuthTokens;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\Http\Integrations\Zoom\Requests\GetAccessTokenRequest;
@@ -39,8 +39,8 @@ class ZoomOAuthService
 
     public function authorize(
         AuthorizationCallbackDetails $callbackDetails
-    ): AccessTokenDetails {
-        /** @var AccessTokenDetails $tokenDetails */
+    ): OAuthTokens {
+        /** @var OAuthTokens $tokenDetails */
         $tokenDetails = $this->connectors->connector()->getAccessToken(
             code: $callbackDetails->authorizationCode,
             state: $callbackDetails->state,
@@ -51,7 +51,7 @@ class ZoomOAuthService
         // Note: Server-side state validation is authoritative via ZoomAuthorizationStateStore::consume()
         // The expectedState parameter above is required by Saloon but both values are identical.
 
-        return new AccessTokenDetails(
+        return new OAuthTokens(
             accessToken: $tokenDetails->accessToken,
             refreshToken: $tokenDetails->refreshToken,
             expiresAt: $tokenDetails->expiresAt,

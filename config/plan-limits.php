@@ -16,7 +16,7 @@ return [
         'max_tasks_per_project' => null,
         'max_members_per_project' => null,
         'max_created_meetings' => null,
-        'max_api_tokens' => null,
+        'max_api_tokens' => 5,
     ],
 
     'trial' => [

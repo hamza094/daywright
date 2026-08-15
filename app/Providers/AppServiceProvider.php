@@ -18,7 +18,13 @@ use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Http\Client\Events\ConnectionFailed;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Support\Facades\Context;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
@@ -89,13 +95,43 @@ class AppServiceProvider extends ServiceProvider
                 'queue' => $event->job->getQueue(),
                 'uuid' => $event->job->uuid(),
                 'attempts' => $event->job->attempts(),
-                'exception' => $event->exception::class,
-                'message' => $event->exception->getMessage(),
+                'exception' => $event->exception,
                 'tags' => $payload['tags'] ?? [],
             ]);
         });
 
         RateLimiter::for('zoom-api', fn () => Limit::perMinute(60));
+
+        // 1. Slow DB Queries (> 500ms)
+        DB::listen(function (QueryExecuted $query): void {
+            if ($query->time > 500) {
+                Log::warning('Slow DB Query detected', [
+                    'sql' => $query->sql,
+                    'bindings' => '******** (redacted for security)',
+                    'time_ms' => $query->time,
+                ]);
+            }
+        });
+
+        // 2. Outbound HTTP Failures
+        Event::listen(function (ConnectionFailed $event): void {
+            Log::error('Outbound HTTP request failed', [
+                'url' => $event->request->url(),
+                'method' => $event->request->method(),
+                'exception' => $event->exception,
+            ]);
+        });
+
+        // 3. Auth Context (User ID)
+        Event::listen(function (\Illuminate\Auth\Events\Authenticated $event): void {
+            Context::add('user_id', $event->user->getAuthIdentifier());
+        });
+
+        // 4. Background Queue Context
+        Event::listen(function (JobProcessing $event): void {
+            Context::add('job_id', $event->job->getJobId());
+            Context::add('job_name', $event->job->resolveName());
+        });
     }
 
     // Scramble/OpenAPI related methods extracted to ScrambleServiceProvider

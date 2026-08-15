@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Zoom;
 
+use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\Notifications\NotificationLink;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
@@ -19,10 +20,8 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
 
     /**
      * Create a new notification instance.
-     *
-     * @param  array<string, mixed>  $data
      */
-    public function __construct(protected array $data) {}
+    public function __construct(protected MeetingNotificationData $data) {}
 
     /**
      * Get the notification's delivery channels.
@@ -42,15 +41,15 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
         $formattedStartTime = $this->formattedStartTime();
 
         return (new MailMessage)
-            ->subject('Meeting Started: '.$this->data['meeting_topic'])
+            ->subject('Meeting Started: '.$this->data->meetingTopic)
             ->markdown('mail.meeting.started', [
-                'projectName' => $this->data['project_name'],
+                'projectName' => $this->data->projectName,
                 'projectLink' => $this->projectUrl(),
-                'meetingTopic' => $this->data['meeting_topic'],
-                'userName' => $this->data['notifier']['name'],
-                'joinUrl' => $this->data['meeting_join_url'],
+                'meetingTopic' => $this->data->meetingTopic,
+                'userName' => $this->data->notifier['name'],
+                'joinUrl' => $this->data->meetingJoinUrl,
                 'startTime' => $formattedStartTime,
-                'timezone' => $this->data['meeting_timezone'],
+                'timezone' => $this->data->meetingTimezone,
             ]);
     }
 
@@ -59,8 +58,8 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
         $formattedStartTime = $this->formattedStartTime();
 
         return new BroadcastMessage([
-            'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' started at '.$formattedStartTime.' '.$this->data['meeting_timezone'],
-            'notifier' => $this->data['notifier'],
+            'message' => 'Project '.$this->data->projectName.' Meeting '.$this->data->meetingTopic.' started at '.$formattedStartTime.' '.$this->data->meetingTimezone,
+            'notifier' => $this->data->notifier,
             'link' => $this->projectPath(),
         ]);
     }
@@ -75,20 +74,20 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
         $formattedStartTime = $this->formattedStartTime();
 
         return [
-            'message' => 'Project '.$this->data['project_name'].' Meeting '.$this->data['meeting_topic'].' started at '.$formattedStartTime.' '.$this->data['meeting_timezone'],
-            'notifier' => $this->data['notifier'],
+            'message' => 'Project '.$this->data->projectName.' Meeting '.$this->data->meetingTopic.' started at '.$formattedStartTime.' '.$this->data->meetingTimezone,
+            'notifier' => $this->data->notifier,
             'link' => $this->projectPath(),
         ];
     }
 
     private function projectPath(): string
     {
-        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: false);
+        return NotificationLink::project(projectSlug: $this->data->projectSlug, absolute: false);
     }
 
     private function projectUrl(): string
     {
-        return NotificationLink::project(projectSlug: $this->data['project_slug'], absolute: true);
+        return NotificationLink::project(projectSlug: $this->data->projectSlug, absolute: true);
     }
 
     /**
@@ -96,15 +95,13 @@ class MeetingStarted extends Notification implements ShouldBroadcast, ShouldQueu
      */
     private function formattedStartTime(): string
     {
-        return $this->data['start_time']
-            ? Carbon::parse($this->data['start_time'])->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
+        return $this->data->startTime !== '' && $this->data->startTime !== '0'
+            ? Carbon::parse($this->data->startTime)->setTimezone($this->meetingTimezone())->format('d F \\a\\t H:i:s')
             : 'an unknown time';
     }
 
     private function meetingTimezone(): string
     {
-        $timezone = $this->data['meeting_timezone'] ?? null;
-
-        return is_string($timezone) && $timezone !== '' ? $timezone : 'UTC';
+        return $this->data->meetingTimezone !== '' ? $this->data->meetingTimezone : 'UTC';
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Admin;
 
-use App\Exceptions\Integrations\ExternalServiceUnavailableException;
+use App\Exceptions\DashboardServiceException;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Admin\ActivitiesResource;
 use App\Services\Admin\DashboardService;
@@ -13,7 +13,6 @@ use Dedoc\Scramble\Attributes\ExcludeRouteFromDocs;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
@@ -30,7 +29,7 @@ class DashboardController extends ApiController
 
             return $this->respondWithMessage('Backup completed successfully.');
         } catch (Throwable $e) {
-            throw new ExternalServiceUnavailableException('Backup process could not be started.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
+            throw new DashboardServiceException('Backup process could not be started.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
     }
 
@@ -41,9 +40,7 @@ class DashboardController extends ApiController
 
             return ActivitiesResource::collection($activities);
         } catch (Throwable $e) {
-            Log::error('Failed to load admin activities', ['error' => $e->getMessage()]);
-
-            throw new ExternalServiceUnavailableException('Failed to load activities.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
+            throw new DashboardServiceException('Failed to load activities.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
     }
 
@@ -58,9 +55,7 @@ class DashboardController extends ApiController
 
             return $this->respondWithData($data);
         } catch (Throwable $e) {
-            Log::error('Failed to load admin dashboard data', ['error' => $e->getMessage()]);
-
-            throw new ExternalServiceUnavailableException('Failed to load dashboard data.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
+            throw new DashboardServiceException('Failed to load dashboard data.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }
     }
 }

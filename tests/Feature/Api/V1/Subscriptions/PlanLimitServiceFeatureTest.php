@@ -6,7 +6,7 @@ namespace Tests\Feature\Api\V1\Subscriptions;
 
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
-use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskSystemStatus;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
@@ -251,11 +251,20 @@ class PlanLimitServiceFeatureTest extends TestCase
     #[Test]
     public function free_user_is_blocked_from_creating_a_second_api_token(): void
     {
+        // Create a fresh user with session auth for token routes (avoiding Sanctum conflicts)
+        $sessionUser = User::factory()->create();
+        $this->actingAs($sessionUser);
+
         $apiTokenLimit = $this->freePlanLimit(PlanLimitType::ApiTokens);
 
-        $this->createApiTokens($this->user, $apiTokenLimit);
+        $this->createApiTokens($sessionUser, $apiTokenLimit);
 
-        $response = $this->createApiToken('Blocked Token');
+        $response = $this->actingAs($sessionUser)
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.api-tokens.store'), [
+                'name' => 'Blocked Token',
+                'scopes' => ['account:read'],
+            ]);
 
         $this->assertPlanLimitExceeded(
             response: $response,
@@ -352,13 +361,18 @@ class PlanLimitServiceFeatureTest extends TestCase
      */
     private function createApiToken(string $name): TestResponse
     {
-        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.api-tokens.store'), ['name' => $name]);
+        return $this->actingAs($this->user)
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.api-tokens.store'), [
+                'name' => $name,
+                'scopes' => ['account:read'],
+            ]);
     }
 
     private function createActiveTasks(int $count): void
     {
         Task::factory()->count($count)->for($this->user, 'owner')->for($this->project)->create([
-            'status_id' => TaskStatusEnum::PENDING,
+            'status_id' => TaskSystemStatus::Pending->value,
         ]);
     }
 

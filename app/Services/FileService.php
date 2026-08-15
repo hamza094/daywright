@@ -10,6 +10,7 @@ use Exception;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -65,6 +66,10 @@ class FileService
                 try {
                     $this->disk()->delete($filePath);
                 } catch (Exception $exception) {
+                    Log::error('S3 file deletion failed', [
+                        'file_path' => $filePath,
+                        'exception' => $exception,
+                    ]);
                     report($exception);
                 }
             });
@@ -112,7 +117,15 @@ class FileService
         try {
             $path = $disk->putFileAs($folderName, $file, $fileName, $visibility);
         } catch (Exception $e) {
-            throw ValidationException::withMessages(['File upload failed: '.$e->getMessage()]);
+            Log::error('S3 file upload failed', [
+                'folder' => $folderName,
+                'file_name' => $fileName,
+                'exception' => $e,
+            ]);
+            report($e);
+            throw ValidationException::withMessages([
+                'file' => ['File upload failed. Please try again.'],
+            ]);
         }
 
         if ($fileType === FileType::AVATAR) {

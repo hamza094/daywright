@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Zoom;
 
+use App\DataTransferObjects\Zoom\MeetingDeletedWebhookData;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -15,6 +16,20 @@ class MeetingDeletedWebhookRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function toDto(): MeetingDeletedWebhookData
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
+
+        /** @var array<string, mixed> $payloadObject */
+        $payloadObject = $validated['payload']['object'] ?? [];
+
+        return MeetingDeletedWebhookData::fromPayloadObject(
+            $payloadObject,
+            $this->header('x-zm-request-id')
+        );
     }
 
     /**

@@ -7,7 +7,6 @@ namespace Tests\Feature\Api\V1\Admin;
 use App\Models\Stage;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Override;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -28,7 +27,7 @@ class StagesTest extends TestCase
         $this->admin = User::factory()->admin()->create();
         $this->enableTwoFactorForUser($this->admin);
 
-        Sanctum::actingAs($this->admin);
+        $this->actingAs($this->admin, 'web');
     }
 
     #[Test]

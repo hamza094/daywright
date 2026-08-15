@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Task;
 
+use App\DataTransferObjects\Task\AssignTaskMembersData;
 use App\Rules\ActiveProjectMember;
 use Closure;
 use Dedoc\Scramble\Attributes\SchemaName;
@@ -46,6 +47,11 @@ class TaskMembersRequest extends FormRequest
              */
             'members.*' => ['required', 'exists:users,id', 'distinct'],
         ];
+    }
+
+    public function toDto(): AssignTaskMembersData
+    {
+        return AssignTaskMembersData::fromValidated($this->validated());
     }
 
     protected function membersValidation(): Closure

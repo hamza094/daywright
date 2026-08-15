@@ -24,8 +24,11 @@
 16. [Validation Rules](#16-validation-rules)
 17. [Notifications](#17-notifications)
 18. [Interfaces](#18-interfaces)
-19. [Testing](#19-testing)
-20. [API Response Standards](#20-api-response-standards)
+19. [Exceptions & Error Handling](#19-exceptions--error-handling)
+20. [Logging & Operational Debuggability](#20-logging--operational-debuggability)
+21. [Testing](#21-testing)
+22. [API Response Standards](#22-api-response-standards)
+23. [API Security & Authorization](#23-api-security--authorization)
 
 ---
 
@@ -175,7 +178,7 @@ Actions are single-responsibility classes that encapsulate specific business log
 - ✅ Default public entrypoint: `execute()`
 - ✅ Inject dependencies via constructor
 - ✅ Keep actions focused on a single responsibility
-- ✅ Accept explicit domain inputs (models, scalars, arrays, DTOs)
+- ✅ Accept explicit domain inputs (models, scalars, and DTOs for complex data); avoid untyped arrays
 - ✅ Return domain results (model, bool, array, primitive, value object)
 - ✅ Use other actions as dependencies for composition
 - ✅ Create an action when the step is a named domain operation, reused in more than one flow, or isolates an integration / side effect
@@ -204,7 +207,7 @@ Services orchestrate one application use case or read workflow, coordinating bet
 - ✅ Own one use case boundary or one read/listing/composition workflow boundary
 - ✅ Wrap multi-step operations in `DB::transaction()`
 - ✅ Use PHPDoc for array parameter types: `@param array<string, mixed>`
-- ✅ Accept models, scalars, arrays, or DTOs; pass the acting user explicitly when needed
+- ✅ Accept models, scalars, or strongly typed DTOs for complex payloads; avoid untyped arrays. Pass the acting user explicitly when needed
 - ✅ Coordinate actions, repositories, transactions, notifications, domain events, and external integrations
 - ✅ Keep cohesive orchestration in the service; do not extract a new action for one-off glue code that is only used inside that service
 - ✅ Extract an action only when the step is clearly named in the domain, independently testable, reused, or integration-heavy
@@ -258,10 +261,10 @@ DTOs are immutable value objects for transferring data between layers with type 
 
 ### Guidelines
 
-- ✅ Use `final` class modifier
-- ✅ Provide default values for optional fields
-- ✅ Include `toArray()` method for serialization
-- ✅ Use nullable types with `?` syntax
+- ✅ MUST use `final readonly class` to ensure absolute immutability
+- ✅ Define static constructors like `fromValidated(array $validated): self` and `fromArray(array $payload): self`
+- ✅ Provide default values for optional fields and use nullable types with `?` syntax
+- ✅ Include `toArray()` method for serialization when passing data to external integrations or jobs
 - ❌ Do not add behavior/methods beyond data transformation
 
 ---
@@ -291,8 +294,8 @@ Controller (base)
 - ✅ Use method injection for Request and Service dependencies
 - ✅ Prefer resource controllers for canonical CRUD and invokable controllers for one-off commands or queries
 - ✅ Use `$this->authorize()` for policy checks
-- ✅ Use `$request->validated()` or `$request->safe()` for clean data
-- ✅ Pass validated arrays or explicit request accessors downstream instead of the whole request
+- ✅ Use `$request->toDto()` to transform incoming data into strict typed DTOs
+- ✅ Pass strongly typed DTOs downstream instead of `$request->validated()` arrays or the whole request
 - ✅ Resolve the authenticated user in the controller and pass it explicitly to services or actions when needed
 - ✅ Call one main collaborator per endpoint. In most cases that collaborator is a service; call an action directly only for tiny isolated operations
 - ✅ Add docblocks with `@operationId` and `@tags` for API documentation
@@ -327,6 +330,7 @@ Form Requests handle validation and authorization for incoming HTTP requests.
 
 ### Guidelines
 
+- ✅ MUST implement a `toDto()` method to transform validated data into a strict DTO (e.g., `return ProjectData::fromValidated($this->validated());`)
 - ✅ Include `@example` annotations for API documentation (Scramble/OpenAPI)
 - ✅ Use `Rule::unique()` with closures for complex uniqueness checks
 - ✅ Override `messages()` for user-friendly error messages
@@ -575,7 +579,55 @@ Interfaces define contracts for services and integrations.
 
 ---
 
-## 19. Testing
+## 19. Exceptions & Error Handling
+
+### Purpose
+
+Provide a unified, secure, and developer-friendly approach to throwing and rendering API errors.
+
+### Location
+
+- Base Handler: `app/Exceptions/Handler.php`
+- Exception Registration: `app/Exceptions/Traits/HandlesApiExceptions.php`
+- Formatting Logic: `app/Exceptions/Support/ApiErrorFormatter.php`
+- Custom Exceptions: `app/Exceptions/` or `app/Exceptions/{Integration}/`
+
+### Guidelines
+
+- ✅ Extend `App\Exceptions\ApiException` for custom business logic exceptions. It enforces `status()`, `errorCode()`, and `publicMessage()`.
+- ✅ Render all API exceptions using `ApiErrorFormatter::response()` to guarantee a strict JSON shape (`message`, `code`, `errors`, `meta`).
+- ✅ Register new exception renderables inside `HandlesApiExceptions` trait.
+- ✅ **Registration Order Matters:** Specific child exceptions (e.g., `ThrottleRequestsException`) MUST be registered before their generic parents (e.g., `HttpException`).
+- ✅ Prevent Sensitive Data Leaks: Raw `Exception` or `Throwable` messages must NOT be exposed to the user in production. `ApiErrorFormatter::publicMessage()` acts as a defense-in-depth gatekeeper against SQL leaks and stack traces.
+- ✅ Log 5xx system errors and unexpected issues; do NOT log 4xx client errors (like Validation, 404s, or Authentication errors) to prevent noise in the log stream.
+- ❌ Do not return raw HTTP responses manually when an exception can communicate the failure more cleanly.
+
+---
+
+## 20. Logging & Operational Debuggability
+
+### Purpose
+
+Ensure the application is 100% "2 AM Debuggable". When production breaks, system logs must provide the exact context needed to diagnose without reproducing locally.
+
+### Location
+
+- Global logging config: `config/logging.php`
+- Context/Redaction logic: `app/Logging/`
+
+### Guidelines
+
+- ✅ **Preserve Stack Traces**: Always pass the full `$exception` object to Monolog (e.g., `Log::error('msg', ['exception' => $e])`), NEVER serialize it as strings via `$e->getMessage()` or `$e->getTraceAsString()`.
+- ✅ **Wrap External Boundaries**: All third-party API SDK calls (e.g., Vonage, Paddle) must be wrapped in `try/catch`. Log the failure with context before re-throwing. Do not let SDK exceptions bubble up silently.
+- ✅ **Protect Loops in Commands**: When processing chunks in Console Commands, wrap the inner loop logic in a `try/catch`. A single corrupt row must never crash the entire cron job silently. Log the error and `continue`.
+- ✅ **Log Silent Early Returns**: In queue jobs, if a required model is missing (e.g., deleted before job runs), log a warning/error before `return;`. Do not fail silently. (Exception: pure idempotency checks).
+- ✅ **Redact Sensitive Data**: Use `ScrubSensitiveData` taps to prevent passwords and PII from leaking into logs. **Warning:** Do not log raw SQL bindings (e.g. `$query->bindings`), as they are indexed arrays and bypass key-based scrubbers.
+- ✅ **Use JSON Formatting**: Always use `JsonFormatter` in production log channels (e.g., `daily`) to ensure structured, queryable logs.
+- ❌ **No Happy Path Noise**: Do not log successful CRUD state changes or audit trails in the system operational logs. Keep system logs focused strictly on errors, failures, and system state anomalies.
+
+---
+
+## 21. Testing
 
 ### Directory Structure
 
@@ -675,7 +727,7 @@ abstract class TestCase extends BaseTestCase
 
 ---
 
-## 20. API Response Standards
+## 22. API Response Standards
 
 ### Success Response Structure
 
@@ -710,35 +762,94 @@ return $this->respondNoContent();
 
 ### Error Response Structure
 
-```php
+All API errors return a strict JSON payload defined by `ApiErrorFormatter`.
+
+```json
 // Validation Error (422)
 {
-    "message": "The given data was invalid.",
+    "message": "Validation failed.",
+    "code": "validation_error",
     "errors": {
         "field_name": ["Error message here."]
+    },
+    "meta": {}
+}
+
+// Rate Limited (429) - Note: also returns Retry-After HTTP Headers
+{
+    "message": "Too many requests. Please try again later.",
+    "code": "rate_limited",
+    "errors": {},
+    "meta": {
+        "retry_after_seconds": 47
     }
 }
 
-// Not Found (404)
+// Server Error (500) - Masks sensitive leak data
 {
-    "message": "Resource not found."
-}
-
-// Unauthorized (401)
-{
-    "message": "Unauthenticated."
-}
-
-// Forbidden (403)
-{
-    "message": "This action is unauthorized."
-}
-
-// Server Error (500)
-{
-    "message": "An unexpected error occurred."
+    "message": "An unexpected server error occurred.",
+    "code": "internal_server_error",
+    "errors": {},
+    "meta": {}
 }
 ```
+
+---
+
+## 23. API Security & Authorization
+
+### Purpose
+
+Define the architecture and strict rules for authenticating, authorizing, and rate-limiting users and API tokens via Laravel Sanctum to maintain a watertight zero-trust architecture.
+
+### Client Authentication Types
+
+- **SPA / Internal Clients**: Authenticate via stateful session cookies (`web` guard). Sanctum issues `TransientToken`s that implicitly pass all scope checks.
+- **Official Mobile App**: Authenticates via `Bearer` token with wildcard `*` abilities. Passes `firstParty.auth` but is blocked by `session.auth`.
+- **Developer API Keys (Third-Party)**: Authenticate via `Bearer` tokens with explicit scopes. Blocked by both `session.auth` and `firstParty.auth`. Only passes `tokenAbility:` checks.
+
+### Token Lifecycle Rules
+
+All Sanctum Personal Access Tokens MUST follow these lifecycle constraints:
+
+- ✅ **No Infinite Tokens**: Every token MUST have an `expires_at` date. Never allow `null` expiration in production.
+- ✅ **Maximum Expiry Ceiling**: Enforce a 1-year absolute maximum in `ApiTokenService::createForUser()`. Cap any user-requested expiry to this ceiling.
+- ✅ **Default Expiry**: If no expiration is specified, default to 90 days for developer PATs and 30 days for login/mobile tokens.
+- ✅ **Multiple Active Tokens**: Users should be allowed to create multiple active tokens with descriptive names (e.g., "Zapier Prod", "CI/CD Pipeline") for isolated revocation.
+- ✅ **Instant Revocation**: Deleting a token from the `personal_access_tokens` table is an immediate kill switch — Sanctum validates against the database on every request.
+- ❌ **No Wildcard Tokens for Developers**: Only official mobile app login flows may issue `*` (wildcard) ability tokens. User-created developer tokens MUST have explicit, scoped abilities.
+
+### First-Party Only & Admin Routes
+
+Certain application boundaries MUST be strictly isolated from third-party developer API keys to prevent abuse. These routes must use either `session.auth` (Web SPA only) or `firstParty.auth` (SPA + Mobile).
+
+**Always hide the following from third-party API keys:**
+
+- **Admin Panel Operations**: Bulk actions, system configuration, global user impersonation.
+- **Token Management (CRUD)**: API keys must NEVER be allowed to create, view, or delete other API keys.
+- **Account Security**: Password changes, 2FA enablement/disablement, email address changes.
+- **Billing & Subscriptions**: Upgrading/downgrading plans, viewing invoices, managing payment methods.
+- **Account Deletion**: Deleting the entire workspace or user account.
+
+### Scope Enforcement (Principle of Least Privilege)
+
+DayWright uses a predefined, strict list of domain-specific scopes (e.g., `projects:read`, `team:write`). When routing, strictly adhere to the following rules:
+
+- ✅ **No Over-Privileging**: A `GET` (read-only) route MUST NOT demand a `:write` scope. If a user only needs to read data, their read-only token must work.
+- ✅ **No Domain Bleeding**: A route must only require the scope for the specific data domain it touches (e.g., a dashboard endpoint returning tasks must require `projects:read`, not `account:read`).
+- ✅ **Strict Mutation Protection**: Every `POST`, `PUT`, `PATCH`, and `DELETE` route MUST be guarded by a `:write` scope to prevent read-only tokens from mutating data.
+- ✅ **Prevent Privilege Escalation**: API keys (PATs) that create other API keys MUST only be allowed to grant a subset of their own scopes. Only SPA sessions (`TransientToken`) or tokens with wildcard `*` abilities can freely assign scopes.
+- ✅ **Use custom middleware**: Always use the custom `tokenAbility:` middleware for scope checks. It gracefully bypasses scope checks for SPA session requests while enforcing them strictly for API keys.
+- ✅ **API Resources**: Use `->middlewareFor()` when declaring `Route::apiResource()` to independently scope `index`/`show` (read) vs `store`/`update`/`destroy` (write).
+
+### 4-Layer Rate Limiting Architecture
+
+To protect against abuse and resource starvation, enforce Portkey-style multi-layered rate limits strictly:
+
+- ✅ **Layer 0 (Global Safety Net)**: Broad IP-based limits (e.g., `300/min`) for unauthenticated routes. Must run early in the middleware stack.
+- ✅ **Layer 1 (User Ceiling)**: Aggregate limits for a single authenticated user (e.g., `200/min`) across all their devices and tokens. Protects the global application from noisy neighbors.
+- ✅ **Layer 2 (Per-Token Ceiling)**: Sub-limits for individual API keys (e.g., `30/min`). **Crucial invariant:** `(Per-Token Limit × Max Tokens) < User Ceiling` MUST always hold true to guarantee web dashboard headroom for the user. SPA requests (`TransientToken`) bypass this layer.
+- ✅ **Layer 3 (Sensitive Mutations)**: Strict, isolated limits (e.g., `5/min` to `10/min`) on high-value endpoints like token creation/deletion, destructive actions (`DELETE` routes, force-deletes, member removals), and billing operations.
 
 ---
 

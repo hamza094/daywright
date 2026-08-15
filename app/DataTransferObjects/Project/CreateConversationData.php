@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Project;
 
+use Illuminate\Http\UploadedFile;
 use InvalidArgumentException;
 
 final readonly class CreateConversationData
 {
     public function __construct(
         public ?string $message,
-        public ?string $file,
+        public UploadedFile|string|null $file,
     ) {}
 
     /**
@@ -22,7 +23,7 @@ final readonly class CreateConversationData
         $file = $payload['file'] ?? null;
 
         $normalizedMessage = is_string($message) && $message !== '' ? $message : null;
-        $normalizedFile = is_string($file) && $file !== '' ? $file : null;
+        $normalizedFile = ($file instanceof UploadedFile || (is_string($file) && $file !== '')) ? $file : null;
 
         if ($normalizedMessage === null && $normalizedFile === null) {
             throw new InvalidArgumentException('A conversation must have a message or a file.');

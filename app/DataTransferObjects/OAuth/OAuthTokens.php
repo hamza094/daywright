@@ -6,7 +6,7 @@ namespace App\DataTransferObjects\OAuth;
 
 use DateTimeImmutable;
 
-final class OAuthTokens
+final readonly class OAuthTokens
 {
     public function __construct(
         public string $accessToken,

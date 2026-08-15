@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Dashboard;
 
-use App\Enums\TaskStatus as TaskStatusEnum;
+use App\Enums\TaskSystemStatus;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -56,11 +56,11 @@ class UserTasksDataTest extends TestCase
 
         // Seed canonical TaskStatus rows needed by these tests
         TaskStatus::query()->firstOrCreate(
-            ['id' => TaskStatusEnum::IN_PROGRESS],
+            ['id' => TaskSystemStatus::InProgress->value],
             ['label' => 'In Progress', 'color' => '#0000FF', 'user_id' => $this->user->id]
         );
         TaskStatus::query()->firstOrCreate(
-            ['id' => TaskStatusEnum::COMPLETED],
+            ['id' => TaskSystemStatus::Completed->value],
             ['label' => 'Completed', 'color' => '#00FF00', 'user_id' => $this->user->id]
         );
     }
@@ -176,14 +176,14 @@ class UserTasksDataTest extends TestCase
         Task::factory([
             'user_id' => $this->user->id,
             'project_id' => $this->project->id,
-            'status_id' => TaskStatusEnum::COMPLETED,
+            'status_id' => TaskSystemStatus::Completed->value,
         ])->count(2)->create();
 
         // Create non-completed task
         Task::factory([
             'user_id' => $this->user->id,
             'project_id' => $this->project->id,
-            'status_id' => TaskStatusEnum::IN_PROGRESS,
+            'status_id' => TaskSystemStatus::InProgress->value,
         ])->create();
 
         $response = $this->withoutExceptionHandling()->getJson($this->dashboardTasksUrl([
@@ -219,7 +219,7 @@ class UserTasksDataTest extends TestCase
             'user_id' => $this->user->id,
             'project_id' => $this->project->id,
             'due_at' => Carbon::yesterday(),
-            'status_id' => TaskStatusEnum::IN_PROGRESS,
+            'status_id' => TaskSystemStatus::InProgress->value,
         ])->count(2)->create();
 
         // Create non-overdue task
@@ -227,7 +227,7 @@ class UserTasksDataTest extends TestCase
             'user_id' => $this->user->id,
             'project_id' => $this->project->id,
             'due_at' => Carbon::tomorrow(),
-            'status_id' => TaskStatusEnum::IN_PROGRESS,
+            'status_id' => TaskSystemStatus::InProgress->value,
         ])->create();
 
         $response = $this->getJson($this->dashboardTasksUrl([
@@ -262,14 +262,14 @@ class UserTasksDataTest extends TestCase
         Task::factory([
             'user_id' => $this->user->id,
             'project_id' => $this->project->id,
-            'status_id' => TaskStatusEnum::IN_PROGRESS,
+            'status_id' => TaskSystemStatus::InProgress->value,
         ])->count(2)->create();
 
         // Create completed task
         Task::factory([
             'user_id' => $this->user->id,
             'project_id' => $this->project->id,
-            'status_id' => TaskStatusEnum::COMPLETED,
+            'status_id' => TaskSystemStatus::Completed->value,
         ])->create();
 
         $response = $this->getJson($this->dashboardTasksUrl([
@@ -372,7 +372,7 @@ class UserTasksDataTest extends TestCase
             'user_id' => $this->user->id,
             'project_id' => $this->project->id,
             'due_at' => Carbon::yesterday(),
-            'status_id' => TaskStatusEnum::IN_PROGRESS,
+            'status_id' => TaskSystemStatus::InProgress->value,
         ])->create();
 
         // Create overdue task by another user (should not appear)
@@ -380,14 +380,14 @@ class UserTasksDataTest extends TestCase
         Task::factory([
             'user_id' => $otherUser->id,
             'due_at' => Carbon::yesterday(),
-            'status_id' => TaskStatusEnum::IN_PROGRESS,
+            'status_id' => TaskSystemStatus::InProgress->value,
         ])->create();
 
         // Create overdue task assigned to authenticated user
         $assignedTask = Task::factory([
             'user_id' => $otherUser->id,
             'due_at' => Carbon::yesterday(),
-            'status_id' => TaskStatusEnum::IN_PROGRESS,
+            'status_id' => TaskSystemStatus::InProgress->value,
         ])->create();
         $assignedTask->assignee()->attach($this->user);
 

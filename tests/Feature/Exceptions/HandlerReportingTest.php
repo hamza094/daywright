@@ -106,17 +106,16 @@ class HandlerReportingTest extends TestCase
             ->once()
             ->with(
                 'api_exception_metric',
-                Mockery::on(fn (array $context): bool => $context === [
-                    'exception' => SubscriptionRequiredException::class,
-                    'code' => 'subscription_required',
-                    'status' => 403,
-                    'message' => 'Access denied. An active subscription is required to perform this action.',
-                    'path' => 'api/v1/subscription/swap',
-                    'method' => 'PATCH',
-                    'meta' => [
+                Mockery::on(fn (array $context): bool => isset($context['exception'])
+                    && $context['exception'] instanceof SubscriptionRequiredException
+                    && $context['code'] === 'subscription_required'
+                    && $context['status'] === 403
+                    && $context['message'] === 'Access denied. An active subscription is required to perform this action.'
+                    && $context['path'] === 'api/v1/subscription/swap'
+                    && $context['method'] === 'PATCH'
+                    && $context['meta'] === [
                         'upgrade_required' => true,
-                    ],
-                ])
+                    ])
             );
 
         $handler->report(new SubscriptionRequiredException);
@@ -167,7 +166,8 @@ class HandlerReportingTest extends TestCase
             ->once()
             ->with(
                 'api_exception_metric',
-                Mockery::on(fn (array $context): bool => $context['exception'] === ZoomUserErrorException::class
+                Mockery::on(fn (array $context): bool => isset($context['exception'])
+                    && $context['exception'] instanceof ZoomUserErrorException
                     && $context['code'] === 'zoom_error'
                     && $context['status'] === 400
                     && $context['message'] === 'Zoom request failed.'

@@ -34,7 +34,7 @@ class SendMeetingEndedNotificationTest extends TestCase
 
         $job = new SendMeetingEndedNotification(
             meetingId: $meeting->id,
-            notificationData: [
+            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
                 'meeting_topic' => 'Test',
                 'project_name' => 'Project',
                 'notifier' => ['name' => 'Test User'],
@@ -43,7 +43,7 @@ class SendMeetingEndedNotificationTest extends TestCase
                 'end_time' => '2024-06-24T12:00:00Z',
                 'meeting_timezone' => 'UTC',
                 'project_slug' => 'test-project',
-            ]
+            ])
         );
 
         $job->handle();
@@ -67,7 +67,7 @@ class SendMeetingEndedNotificationTest extends TestCase
 
         $job = new SendMeetingEndedNotification(
             meetingId: $meeting->id,
-            notificationData: [
+            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
                 'meeting_topic' => 'Test',
                 'project_name' => 'Project',
                 'notifier' => ['name' => 'Test User'],
@@ -76,7 +76,7 @@ class SendMeetingEndedNotificationTest extends TestCase
                 'end_time' => '2024-06-24T12:00:00Z',
                 'meeting_timezone' => 'UTC',
                 'project_slug' => 'test-project',
-            ]
+            ])
         );
 
         $job->handle();
@@ -101,7 +101,7 @@ class SendMeetingEndedNotificationTest extends TestCase
 
         $job = new SendMeetingEndedNotification(
             meetingId: $meeting->id,
-            notificationData: [
+            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
                 'meeting_topic' => 'Test',
                 'project_name' => 'Project',
                 'notifier' => ['name' => 'Test User'],
@@ -110,7 +110,7 @@ class SendMeetingEndedNotificationTest extends TestCase
                 'end_time' => '2024-06-24T12:00:00Z',
                 'meeting_timezone' => 'UTC',
                 'project_slug' => 'test-project',
-            ]
+            ])
         );
 
         $job->handle();
@@ -135,7 +135,7 @@ class SendMeetingEndedNotificationTest extends TestCase
 
         $job = new SendMeetingEndedNotification(
             meetingId: $meeting->id,
-            notificationData: [
+            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
                 'meeting_topic' => 'Test',
                 'project_name' => 'Project',
                 'notifier' => ['name' => 'Test User'],
@@ -144,7 +144,7 @@ class SendMeetingEndedNotificationTest extends TestCase
                 'end_time' => '2024-06-24T12:00:00Z',
                 'meeting_timezone' => 'UTC',
                 'project_slug' => 'test-project',
-            ]
+            ])
         );
 
         $exceptionThrown = false;
@@ -169,15 +169,13 @@ class SendMeetingEndedNotificationTest extends TestCase
                 'Meeting ended notification job failed',
                 Mockery::on(fn (array $context): bool => isset($context['meeting_id']) &&
                     $context['meeting_id'] === 999 &&
-                    isset($context['error']) &&
-                    $context['error'] === 'Test failure' &&
-                    isset($context['trace'])
-                )
+                    isset($context['exception']) &&
+                    $context['exception'] instanceof RuntimeException)
             );
 
         $job = new SendMeetingEndedNotification(
             meetingId: 999,
-            notificationData: []
+            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([])
         );
 
         $job->failed(new RuntimeException('Test failure'));

@@ -46,6 +46,8 @@ Broadcast::channel('deleteConversation.{slug}', function ($user, $slug) {
     if ($user->can('access', $project)) {
         return true;
     }
+
+    return false;
 });
 
 Broadcast::channel('typing.{slug}', function ($user, $slug) {
@@ -55,6 +57,8 @@ Broadcast::channel('typing.{slug}', function ($user, $slug) {
     if ($user->can('access', $project)) {
         return true;
     }
+
+    return false;
 });
 
 Broadcast::channel('chatroom.{slug}', function ($user, $slug) {
@@ -65,6 +69,8 @@ Broadcast::channel('chatroom.{slug}', function ($user, $slug) {
     if ($user->can('access', $project)) {
         return $user;
     }
+
+    return false;
 });
 
 Broadcast::channel('meetingStatus.{id}', function ($user, $id): bool {

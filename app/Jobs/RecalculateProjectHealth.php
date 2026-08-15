@@ -59,7 +59,7 @@ class RecalculateProjectHealth implements ShouldQueue
     {
         Log::error('RecalculateProjectHealth failed', [
             'project_id' => $this->projectId,
-            'message' => $e->getMessage(),
+            'exception' => $e,
         ]);
     }
 

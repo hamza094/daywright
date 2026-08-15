@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\DataTransferObjects\Admin\UpdateUserRoleData;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -12,6 +13,11 @@ class UpdateUserRoleRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    public function toDto(): UpdateUserRoleData
+    {
+        return UpdateUserRoleData::fromArray($this->validated());
     }
 
     /**

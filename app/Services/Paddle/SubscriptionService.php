@@ -9,7 +9,9 @@ use App\Interfaces\Paddle;
 use App\Models\User;
 use Closure;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Override;
+use Throwable;
 
 final class SubscriptionService implements Paddle
 {
@@ -24,9 +26,18 @@ final class SubscriptionService implements Paddle
 
             $appUrl = rtrim((string) config('app.url'), '/');
 
-            return $lockedUser->newSubscription($lockedUser->subscriptionName(), config('services.paddle.'.$plan))
-                ->returnTo($appUrl.'/subscriptions')
-                ->create();
+            try {
+                return $lockedUser->newSubscription($lockedUser->subscriptionName(), config('services.paddle.'.$plan))
+                    ->returnTo($appUrl.'/subscriptions')
+                    ->create();
+            } catch (Throwable $e) {
+                Log::error('Paddle API Exception during subscribe', [
+                    'user_id' => $lockedUser->id,
+                    'plan' => $plan,
+                    'exception' => $e,
+                ]);
+                throw $e;
+            }
         });
     }
 
@@ -59,7 +70,16 @@ final class SubscriptionService implements Paddle
                 );
             }
 
-            $lockedUser->subscription($lockedUser->subscriptionName())->swapAndInvoice(config('services.paddle.'.$plan));
+            try {
+                $lockedUser->subscription($lockedUser->subscriptionName())->swapAndInvoice(config('services.paddle.'.$plan));
+            } catch (Throwable $e) {
+                Log::error('Paddle API Exception during swap', [
+                    'user_id' => $lockedUser->id,
+                    'plan' => $plan,
+                    'exception' => $e,
+                ]);
+                throw $e;
+            }
 
             return [
                 'message' => 'Your subscription has been successfully updated to the '.$plan.' plan',
@@ -89,7 +109,16 @@ final class SubscriptionService implements Paddle
                 );
             }
 
-            $lockedUser->subscription($lockedUser->subscriptionName())->cancel();
+            try {
+                $lockedUser->subscription($lockedUser->subscriptionName())->cancel();
+            } catch (Throwable $e) {
+                Log::error('Paddle API Exception during cancel', [
+                    'user_id' => $lockedUser->id,
+                    'plan' => $plan,
+                    'exception' => $e,
+                ]);
+                throw $e;
+            }
 
             return [
                 'message' => 'Your subscription has been canceled successfully.',

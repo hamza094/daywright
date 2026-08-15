@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Admin;
 
+use App\DataTransferObjects\Admin\TaskStatusData;
 use App\Models\TaskStatus;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -44,5 +45,10 @@ class TaskStatusRequest extends FormRequest
                 }
             },
         ];
+    }
+
+    public function toDto(): TaskStatusData
+    {
+        return TaskStatusData::fromValidated($this->validated());
     }
 }

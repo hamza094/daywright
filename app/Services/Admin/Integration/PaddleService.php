@@ -11,6 +11,7 @@ use App\Exceptions\Paddle\PaddleRequestException;
 use App\Http\Integrations\Paddle\PaddleConnector;
 use App\Http\Integrations\Paddle\Requests\SubscriptionUsersList;
 use App\Interfaces\PaddleApi;
+use Illuminate\Support\Facades\Log;
 use Override;
 use Throwable;
 
@@ -25,7 +26,14 @@ final class PaddleService implements PaddleApi
                 ->send(new SubscriptionUsersList($listData))
                 ->collect();
         } catch (Throwable $exception) {
-            throw new PaddleRequestException(message: $exception->getMessage());
+            Log::error('Paddle API request failed', [
+                'request_class' => SubscriptionUsersList::class,
+                'exception' => $exception,
+            ]);
+            throw new PaddleRequestException(
+                message: 'Paddle API request failed.',
+                previous: $exception,
+            );
         }
 
         /** @var array<int, array<string,mixed>> $subscriptionsArray */

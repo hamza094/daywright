@@ -62,6 +62,13 @@ final class SmsMessage implements ShouldQueue
         }
 
         if (! $project || ! $message) {
+            Log::warning('SmsMessage job failed: Required models not found', [
+                'message_id' => $this->messageId,
+                'project_id' => $this->projectId,
+                'project_exists' => $project !== null,
+                'message_exists' => $message !== null,
+            ]);
+
             return;
         }
 
@@ -73,8 +80,7 @@ final class SmsMessage implements ShouldQueue
         Log::error('SmsMessage job failed', [
             'message_id' => $this->messageId,
             'project_id' => $this->projectId,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
+            'exception' => $exception,
         ]);
     }
 }

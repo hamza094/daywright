@@ -7,11 +7,13 @@ namespace App\Http\Controllers\Api\Auth;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Auth\LoginUserRequest;
 use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
+use App\Http\Resources\Api\V1\Auth\TwoFactorChallengeResource;
 use App\Services\Auth\LoginUserService;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
 
 class SpaAuthController extends ApiController
 {
@@ -32,12 +34,17 @@ class SpaAuthController extends ApiController
     )]
     public function loginSpa(LoginUserRequest $request): JsonResponse
     {
-        $result = $this->loginUserService->startLoginFlow($request->email, $request);
+        $credentials = $request->toDto();
+        $ip = $request->ip();
+
+        $result = $this->loginUserService->startLoginFlow($credentials->email, $ip);
 
         $user = $result->user;
 
-        if (($response = $this->loginUserService->twoFactorStateResponse($result, $request)) instanceof JsonResponse) {
-            return $response;
+        if ($this->loginUserService->twoFactorStateResponse($result)) {
+            return response()->json([
+                'data' => (new TwoFactorChallengeResource)->resolve($request),
+            ], Response::HTTP_OK);
         }
 
         $payload = $this->loginUserService->performSessionLogin($user, $request);

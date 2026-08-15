@@ -23,13 +23,53 @@
               <i class="bi bi-shield-x me-2" aria-hidden="true"></i>
               <strong>Security Warning:</strong> Disabling 2FA will make your account less secure.
             </div>
-            <p class="mb-0">
-              Are you sure you want to disable Two-Factor Authentication? This action cannot be undone.
-            </p>
+            <p class="mb-3">To disable Two-Factor Authentication, please verify your identity:</p>
+
+            <form @submit.prevent="handleSubmit">
+              <div class="mb-3">
+                <label for="disable-password" class="form-label">Current Password</label>
+                <input
+                  id="disable-password"
+                  ref="passwordInput"
+                  type="password"
+                  v-model="credentials.password"
+                  class="form-control"
+                  placeholder="Enter your current password"
+                  autocomplete="current-password"
+                  required
+                  :class="{ 'is-invalid': errors.current_password }"
+                  :disabled="loading" />
+                <div v-if="errors.current_password" class="invalid-feedback">
+                  {{ Array.isArray(errors.current_password) ? errors.current_password[0] : errors.current_password }}
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="disable-code" class="form-label">2FA Code</label>
+                <input
+                  id="disable-code"
+                  ref="codeInput"
+                  type="text"
+                  v-model="credentials.code"
+                  class="form-control"
+                  placeholder="Enter your 6-digit code or recovery code"
+                  autocomplete="one-time-code"
+                  required
+                  :class="{ 'is-invalid': errors.code }"
+                  :disabled="loading" />
+                <div v-if="errors.code" class="invalid-feedback">
+                  {{ Array.isArray(errors.code) ? errors.code[0] : errors.code }}
+                </div>
+              </div>
+            </form>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" @click="$emit('cancel')" :disabled="loading">Cancel</button>
-            <button type="button" class="btn btn-danger" :disabled="loading" @click="$emit('confirm')">
+            <button
+              type="button"
+              class="btn btn-danger"
+              :disabled="loading || !credentials.password || !credentials.code"
+              @click="handleSubmit">
               <span
                 v-if="loading"
                 class="spinner-border spinner-border-sm me-1"
@@ -43,7 +83,6 @@
       </div>
     </div>
 
-    <!-- Modal Backdrop -->
     <div v-if="show" class="modal-backdrop fade show" @click="$emit('cancel')"></div>
   </div>
 </template>
@@ -60,26 +99,61 @@ export default {
       type: Boolean,
       default: false,
     },
+    errors: {
+      type: Object,
+      default: () => ({}),
+    },
   },
   emits: ['confirm', 'cancel'],
+
+  data() {
+    return {
+      credentials: {
+        password: '',
+        code: '',
+      },
+    };
+  },
+
   watch: {
     show(newVal) {
       if (newVal) {
         document.body.classList.add('modal-open');
+        this.$nextTick().then(() => {
+          this.$refs.passwordInput?.focus();
+        });
       } else {
+        this.resetForm();
         document.body.classList.remove('modal-open');
       }
     },
   },
+
   mounted() {
-    // Prevent body scroll when modal is open
     if (this.show) {
       document.body.classList.add('modal-open');
     }
   },
+
   beforeDestroy() {
-    // Restore body scroll when component is destroyed
     document.body.classList.remove('modal-open');
+  },
+
+  methods: {
+    resetForm() {
+      this.credentials = {
+        password: '',
+        code: '',
+      };
+    },
+
+    handleSubmit() {
+      if (!this.credentials.password.trim() || !this.credentials.code.trim()) {
+        return;
+      }
+
+      this.$emit('confirm', { ...this.credentials });
+    },
   },
 };
 </script>

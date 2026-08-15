@@ -29,7 +29,8 @@ class ProjectInsightsController extends ApiController
      */
     public function index(ProjectInsightsRequest $request, Project $project): ProjectInsightsResource
     {
-        $sections = $request->getSections();
+        $data = $request->toDto();
+        $sections = $data->sections;
 
         $insights = $this->insightService->getInsights($project, $sections);
 

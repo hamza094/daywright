@@ -24,15 +24,55 @@
             <div class="form-group col-md-4">
               <label for="expiresAt">Expires In</label>
               <select class="form-control" id="expiresAt" v-model="form.expires_in">
-                <option :value="null">Never</option>
+                <option :value="null">90 Days (Default)</option>
                 <option v-for="option in expiryOptions" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
               </select>
+              <small class="text-muted">Maximum 1 year from creation</small>
             </div>
             <div class="form-group col-md-4 d-flex align-items-end">
               <button type="submit" class="btn btn-primary mr-2">Create</button>
               <button type="button" class="btn btn-link text-danger" @click="resetCreateTokenForm">Cancel</button>
+            </div>
+          </div>
+          <div class="form-group mt-3">
+            <label>Permissions (Scopes) <span class="text-danger">*</span></label>
+            <div class="alert alert-info mb-2">
+              <small>
+                <i class="fa-solid fa-info-circle"></i>
+                Tokens expire in 90 days by default, with a maximum of 1 year from creation.
+              </small>
+            </div>
+            <div v-if="scopesLoading" class="text-center my-3">
+              <div class="spinner-border spinner-border-sm text-primary">
+                <span class="sr-only">Loading scopes...</span>
+              </div>
+            </div>
+            <div v-else class="row">
+              <div v-for="scope in scopeOptions" :key="scope.value" class="col-md-6 col-lg-4 mb-2">
+                <div class="custom-control custom-checkbox">
+                  <input
+                    type="checkbox"
+                    class="custom-control-input"
+                    :id="`scope-${scope.value}`"
+                    :value="scope.value"
+                    v-model="form.scopes" />
+                  <label class="custom-control-label" :for="`scope-${scope.value}`">
+                    <div class="font-weight-bold">{{ scope.label }}</div>
+                    <small class="text-muted">{{ scope.description }}</small>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <small v-if="!scopesLoading && form.scopes.length === 0" class="text-danger"
+              >At least one scope must be selected</small
+            >
+            <!-- Warning when all scopes selected -->
+            <div v-if="!scopesLoading && form.scopes.length === scopeOptions.length" class="alert alert-warning mt-2">
+              <i class="fa-solid fa-exclamation-triangle"></i>
+              <strong>Security Warning:</strong> You have selected all permissions. This token will have full access to
+              your account. Consider using more specific scopes for better security.
             </div>
           </div>
         </form>
@@ -55,7 +95,7 @@
 
       <!-- Token List -->
       <div v-if="loading" class="text-center my-4">
-        <div class="spinner-border text-primary" role="status">
+        <div class="spinner-border text-primary">
           <span class="sr-only">Loading...</span>
         </div>
       </div>
@@ -65,6 +105,7 @@
             <thead class="thead-light">
               <tr>
                 <th>Name</th>
+                <th>Scopes</th>
                 <th>Created</th>
                 <th>Last Used</th>
                 <th>Expires</th>
@@ -75,9 +116,14 @@
             <tbody>
               <tr v-for="token in tokens" :key="token.id">
                 <td>{{ token.name }}</td>
+                <td>
+                  <span v-for="scope in token.abilities" :key="scope" class="badge badge-info mr-1">
+                    {{ formatScopeLabel(scope) }}
+                  </span>
+                </td>
                 <td>{{ token.created_at | datetime }}</td>
                 <td>{{ token.last_used_at ? $options.filters.msgTime(token.last_used_at) : 'Never' }}</td>
-                <td>{{ token.expires_at ? $options.filters.datetime(token.expires_at) : 'Never' }}</td>
+                <td>{{ token.expires_at ? $options.filters.datetime(token.expires_at) : '90 days (default)' }}</td>
                 <td>
                   <input
                     :type="showTokenMap[token.id] ? 'text' : 'password'"
@@ -102,7 +148,7 @@
                 </td>
               </tr>
               <tr v-if="tokens.length === 0">
-                <td colspan="6" class="text-center">No tokens found.</td>
+                <td colspan="7" class="text-center">No tokens found.</td>
               </tr>
             </tbody>
           </table>
@@ -125,15 +171,15 @@ export default {
       showCreate: false,
       form: {
         name: '',
+        scopes: [], // Array of selected scopes
         expires_in: null, // in days
       },
       expiryOptions: [
-        { label: '1 Day', value: 1 },
-        { label: '7 Days', value: 7 },
-        { label: '30 Days', value: 30 },
-        { label: '90 Days', value: 90 },
-        { label: '180 Days', value: 180 },
+        { label: '180 Days (6 months)', value: 180 },
+        { label: '1 Year (Maximum)', value: 365 },
       ],
+      scopeOptions: [], // Fetched from API
+      scopesLoading: false,
       newToken: '',
       newTokenId: null,
       showTokenMap: {},
@@ -146,6 +192,7 @@ export default {
   },
   mounted() {
     this.createTokenRequest = createIdempotentRequest();
+    this.loadScopes();
     this.loadTokens();
   },
 
@@ -162,6 +209,20 @@ export default {
       navigator.clipboard.writeText(tokenValue).then(() => {
         this.$vToastify.success('Token copied to clipboard!');
       });
+    },
+    loadScopes() {
+      this.scopesLoading = true;
+      axios
+        .get('/scopes')
+        .then((res) => {
+          this.scopeOptions = getArrayData(res);
+        })
+        .catch((error) => {
+          this.handleErrorResponse(error);
+        })
+        .finally(() => {
+          this.scopesLoading = false;
+        });
     },
     loadTokens() {
       this.loading = true;
@@ -188,6 +249,7 @@ export default {
     resetCreateTokenForm(hideForm = true) {
       this.showCreate = !hideForm;
       this.form.name = '';
+      this.form.scopes = [];
       this.form.expires_in = null;
       this.createTokenRequest.reset();
 
@@ -199,8 +261,15 @@ export default {
     },
     createToken() {
       if (!this.form.name) return;
+      if (this.form.scopes.length === 0) {
+        this.$vToastify.error('At least one scope must be selected');
+        return;
+      }
       this.$Progress.start();
-      let payload = { name: this.form.name };
+      let payload = {
+        name: this.form.name,
+        scopes: this.form.scopes,
+      };
       if (this.form.expires_in) {
         const expires = new Date();
         expires.setDate(expires.getDate() + Number(this.form.expires_in));
@@ -243,6 +312,18 @@ export default {
             });
         }
       });
+    },
+    formatScopeLabel(scope) {
+      const scopeMap = {
+        'projects:read': 'Projects Read',
+        'projects:write': 'Projects Write',
+        'team:read': 'Team Read',
+        'team:write': 'Team Write',
+        'account:read': 'Account Read',
+        'account:write': 'Account Write',
+        'webhooks:write': 'Webhooks Write',
+      };
+      return scopeMap[scope] || scope;
     },
     // formatDate removed: date formatting is now handled by backend
   },

@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\Auth\ResetPasswordRequest;
 use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
@@ -40,14 +41,16 @@ class ResetPasswordController extends ApiController
      */
     public function sendResetLink(ForgotPasswordRequest $request): JsonResponse
     {
+        $data = $request->toDto();
+
         $status = Password::sendResetLink(
-            $request->only('email')
+            $data->toArray()
         );
 
         if ($status !== Password::RESET_LINK_SENT) {
             Log::warning('Password reset link request failed', [
                 'status' => $status,
-                'user_id' => User::whereEmail($request->input('email'))->select('uuid')->first()?->uuid,
+                'user_id' => User::whereEmail($data->email)->select('uuid')->first()?->uuid,
             ]);
         }
 
@@ -63,14 +66,21 @@ class ResetPasswordController extends ApiController
      */
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
+        $data = $request->toDto();
+
         $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            $data->toArray(),
             function (User $user, string $password): void {
                 $user->forceFill([
                     'password' => Hash::make($password),
                 ])->setRememberToken(Str::random(60));
 
                 $user->save();
+
+                // Invalidate other web sessions for security
+                /** @var \Illuminate\Auth\SessionGuard $guard */
+                $guard = Auth::guard('web');
+                $guard->logoutOtherDevices($password);
 
                 event(new PasswordReset($user));
             }
@@ -82,7 +92,7 @@ class ResetPasswordController extends ApiController
 
         Log::warning('Password reset attempt failed', [
             'status' => $status,
-            'user_id' => User::whereEmail($request->input('email'))->select('uuid')->first()?->uuid,
+            'user_id' => User::whereEmail($data->email)->select('uuid')->first()?->uuid,
         ]);
 
         throw new HttpException(HttpResponse::HTTP_BAD_REQUEST, 'Unable to reset password with the provided information.');

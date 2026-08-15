@@ -52,13 +52,25 @@ return [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => 'debug',
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
 
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => 'debug',
-            'days' => 7,
+            'days' => 3,
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'tap' => [App\Logging\ScrubSensitiveData::class],
+        ],
+
+        'daily_json' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/laravel.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
         ],
 
         'slack' => [
@@ -121,6 +133,8 @@ return [
             'path' => storage_path('logs/zoom-webhook-failed.log'),
             'level' => 'error',
             'days' => 30,
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
 
         'exception_metrics' => [
@@ -128,6 +142,8 @@ return [
             'path' => storage_path('logs/exception-metrics.log'),
             'level' => 'info',
             'days' => 14,
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
 
         'queue_critical' => [
@@ -135,6 +151,8 @@ return [
             'path' => storage_path('logs/queue-critical.log'),
             'level' => 'error',
             'days' => 30,
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
     ],
 

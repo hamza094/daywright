@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::group(['prefix' => 'admin'], function (): void {
 
-    Route::middleware(['auth:sanctum', 'verified', 'admin', 'throttle:admin-api'])->group(function (): void {
+    Route::middleware(['auth:sanctum', 'verified', 'admin', 'session.auth', 'throttle:admin-api'])->group(function (): void {
 
         // Project Api Resource Routes
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
@@ -27,16 +27,16 @@ Route::group(['prefix' => 'admin'], function (): void {
 
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
 
-        Route::post('/backup/database', [DashboardController::class, 'backup'])->name('backup.database');
+        Route::post('/backup/database', [DashboardController::class, 'backup'])
+            ->middleware('throttle:sensitive-backup')
+            ->name('backup.database');
 
-        // Public (read) endpoints for stages/statuses — only throttle applied
+        // Public (read) endpoints for stages/statuses — inherit parent throttle:admin-api
         Route::apiResource('/stages', StageController::class)
-            ->only(['index', 'show'])
-            ->middleware(['throttle:admin-mutations']);
+            ->only(['index', 'show']);
 
         Route::apiResource('/statuses', StatusController::class)
-            ->only(['index', 'show'])
-            ->middleware(['throttle:admin-mutations']);
+            ->only(['index', 'show']);
 
         // Mutating admin routes that require 2FA and mutation throttling
         Route::middleware(['2fa.enabled', 'throttle:admin-mutations'])->group(function (): void {

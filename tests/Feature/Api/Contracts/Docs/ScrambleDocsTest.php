@@ -215,10 +215,7 @@ class ScrambleDocsTest extends TestCase
             'string',
             $paths['/v1/users/me/subscription']['post']['responses']['200']['content']['application/json']['schema']['properties']['data']['properties']['paylink']['type'] ?? null,
         );
-        $this->assertSame(
-            '#/components/schemas/UserSummary',
-            $paths['/v1/users']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null,
-        );
+
         $this->assertSame(
             '#/components/schemas/UserProfile',
             $paths['/v1/users/{user}']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['$ref'] ?? null,

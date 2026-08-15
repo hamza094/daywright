@@ -41,7 +41,7 @@ class MeetingsController extends ApiController
         $projectMeeting = $meetingService->createMeetingForProject(
             $project,
             $this->authenticatedUser(),
-            $request->validated(),
+            $request->toDto(),
             $zoom,
         );
 
@@ -53,7 +53,7 @@ class MeetingsController extends ApiController
         $meeting = $meetingService->updateProjectMeeting(
             $meeting,
             $this->authenticatedUser(),
-            $request->validated(),
+            $request->toDto(),
             $zoom,
         );
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Webhooks\Zoom;
 
+use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\DataTransferObjects\Notification\NotificationActorData;
 use App\DataTransferObjects\Zoom\MeetingStartedWebhookData;
 use App\Enums\MeetingState;
@@ -62,15 +63,16 @@ final readonly class HandleMeetingStartedWebhook
 
     private function dispatchNotificationJob(Meeting $meeting, ?string $startTime): void
     {
-        $notificationData = [
+        $notificationData = MeetingNotificationData::fromArray([
             'project_name' => $meeting->project->name,
             'project_slug' => $meeting->project->slug,
             'meeting_topic' => $meeting->topic,
             'meeting_timezone' => $meeting->timezone,
             'meeting_join_url' => $meeting->join_url,
             'start_time' => $startTime,
+            'end_time' => null,
             'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
-        ];
+        ]);
 
         SendMeetingStartedNotification::dispatch($meeting->id, $notificationData);
     }

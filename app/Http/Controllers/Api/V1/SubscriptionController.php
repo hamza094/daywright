@@ -32,7 +32,8 @@ class SubscriptionController extends ApiController
     )]
     public function store(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
-        $payLink = $paddle->subscribe($this->authenticatedUser(), (string) $request->string('plan')->trim());
+        $data = $request->toDto();
+        $payLink = $paddle->subscribe($this->authenticatedUser(), $data->plan);
 
         return $this->respondWithData([
             'paylink' => $payLink,
@@ -70,7 +71,8 @@ class SubscriptionController extends ApiController
     public function update(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
-        $paddle->swap($user, (string) $request->string('plan')->trim());
+        $data = $request->toDto();
+        $paddle->swap($user, $data->plan);
 
         return $this->respondWithData(
             $this->subscriptionViewService->createFor($user),
@@ -90,7 +92,8 @@ class SubscriptionController extends ApiController
     public function destroy(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
-        $paddle->cancel($user, (string) $request->string('plan')->trim());
+        $data = $request->toDto();
+        $paddle->cancel($user, $data->plan);
 
         return $this->respondWithData(
             $this->subscriptionViewService->createFor($user),

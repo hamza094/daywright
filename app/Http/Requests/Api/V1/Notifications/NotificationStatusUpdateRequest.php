@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Notifications;
 
+use App\DataTransferObjects\Notification\NotificationStatusUpdateData;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
@@ -41,5 +42,10 @@ class NotificationStatusUpdateRequest extends FormRequest
             'status.required' => 'Please provide a notification status.',
             'status.in' => 'The notification status must be read or unread.',
         ];
+    }
+
+    public function toDto(): NotificationStatusUpdateData
+    {
+        return NotificationStatusUpdateData::fromValidated($this->validated());
     }
 }

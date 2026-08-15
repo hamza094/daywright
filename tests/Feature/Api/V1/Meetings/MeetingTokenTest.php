@@ -52,10 +52,11 @@ class MeetingTokenTest extends TestCase
         $this->fakeZoom();
 
         $response = $this
-            ->postJson(route('api.v1.meetings.zoom-tokens', [
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.meetings.zoom-tokens.start', [
                 'project' => $this->project->slug,
                 'meeting' => $this->meeting->id,
-            ]), ['action' => 'start']);
+            ]));
 
         $response->assertOk();
         $response->assertJsonStructure(['data' => ['jwt_token', 'zak_token']]);
@@ -66,10 +67,11 @@ class MeetingTokenTest extends TestCase
     public function active_member_can_join_and_receives_jwt_token_with_no_zak_token(): void
     {
         $response = $this->actingAs($this->member)
-            ->postJson(route('api.v1.meetings.zoom-tokens', [
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.meetings.zoom-tokens.join', [
                 'project' => $this->project->slug,
                 'meeting' => $this->meeting->id,
-            ]), ['action' => 'join']);
+            ]));
 
         $response->assertOk();
         $response->assertJsonStructure(['data' => ['jwt_token', 'zak_token']]);
@@ -80,10 +82,11 @@ class MeetingTokenTest extends TestCase
     public function member_cannot_start(): void
     {
         $response = $this->actingAs($this->member)
-            ->postJson(route('api.v1.meetings.zoom-tokens', [
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.meetings.zoom-tokens.start', [
                 'project' => $this->project->slug,
                 'meeting' => $this->meeting->id,
-            ]), ['action' => 'start']);
+            ]));
 
         $response->assertForbidden();
     }
@@ -92,10 +95,11 @@ class MeetingTokenTest extends TestCase
     public function outsider_cannot_get_any_token(): void
     {
         $response = $this->actingAs($this->outsider)
-            ->postJson(route('api.v1.meetings.zoom-tokens', [
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.meetings.zoom-tokens.join', [
                 'project' => $this->project->slug,
                 'meeting' => $this->meeting->id,
-            ]), ['action' => 'join']);
+            ]));
 
         $response->assertForbidden();
     }
@@ -111,10 +115,11 @@ class MeetingTokenTest extends TestCase
         ]);
 
         $response = $this
-            ->postJson(route('api.v1.meetings.zoom-tokens', [
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.meetings.zoom-tokens.start', [
                 'project' => $this->project->slug,
                 'meeting' => $unsyncedMeeting->id,
-            ]), ['action' => 'start']);
+            ]));
 
         $response->assertForbidden();
     }
@@ -130,10 +135,11 @@ class MeetingTokenTest extends TestCase
         ]);
 
         $response = $this
-            ->postJson(route('api.v1.meetings.zoom-tokens', [
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.meetings.zoom-tokens.start', [
                 'project' => $this->project->slug,
                 'meeting' => $inactiveMeeting->id,
-            ]), ['action' => 'start']);
+            ]));
 
         $response->assertForbidden();
     }
@@ -151,10 +157,11 @@ class MeetingTokenTest extends TestCase
         $this->fakeZoom();
 
         $response = $this
-            ->postJson(route('api.v1.meetings.zoom-tokens', [
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.meetings.zoom-tokens.start', [
                 'project' => $this->project->slug,
                 'meeting' => $otherOwnerMeeting->id,
-            ]), ['action' => 'start']);
+            ]));
 
         $response->assertOk();
         $response->assertJsonPath('data.zak_token', 'zak&token');
@@ -167,23 +174,12 @@ class MeetingTokenTest extends TestCase
         $this->project->members()->attach($inactiveMember, ['active' => false]);
 
         $response = $this->actingAs($inactiveMember)
-            ->postJson(route('api.v1.meetings.zoom-tokens', [
+            ->withHeaders($this->idempotencyHeaders())
+            ->postJson(route('api.v1.meetings.zoom-tokens.join', [
                 'project' => $this->project->slug,
                 'meeting' => $this->meeting->id,
-            ]), ['action' => 'join']);
+            ]));
 
         $response->assertForbidden();
-    }
-
-    /** @test */
-    public function action_must_be_valid(): void
-    {
-        $response = $this
-            ->postJson(route('api.v1.meetings.zoom-tokens', [
-                'project' => $this->project->slug,
-                'meeting' => $this->meeting->id,
-            ]), ['action' => 'invalid']);
-
-        $response->assertStatus(422);
     }
 }

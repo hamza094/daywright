@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Zoom;
 
-use App\DataTransferObjects\Zoom\AccessTokenDetails;
+use App\DataTransferObjects\OAuth\OAuthTokens;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
@@ -55,12 +55,12 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     #[Override]
     public function authorize(
         AuthorizationCallbackDetails $callbackDetails
-    ): AccessTokenDetails {
+    ): OAuthTokens {
         if ($this->failureException instanceof ZoomException) {
             throw $this->failureException;
         }
 
-        return new AccessTokenDetails(
+        return new OAuthTokens(
             accessToken: 'access-token-here',
             refreshToken: 'refresh-token-here',
             expiresAt: now()->addWeek()->toDateTimeImmutable(),

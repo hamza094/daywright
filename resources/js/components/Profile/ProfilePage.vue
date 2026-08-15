@@ -25,7 +25,8 @@
       </div>
     </header>
 
-    <EditProfile :user="user"></EditProfile>
+    <EditProfile :user="user" @open-change-password="$modal.show('change-password')"></EditProfile>
+    <ChangePasswordModal></ChangePasswordModal>
 
     <section class="page-content" aria-label="Profile">
       <div class="row">
@@ -104,12 +105,21 @@ import UserAvatar from './Avatar.vue';
 import ProjectInvitation from './ProjectInvitation.vue';
 import UserTokens from './UserTokens.vue';
 import TwoFactorAuth from './TwoFactorAuth.vue';
+import ChangePasswordModal from './Partials/ChangePasswordModal.vue';
 import FeatureDropdown from '../FeatureDropdown.vue';
 import { mapState, mapMutations } from 'vuex';
 import { getResponseData } from '../../utils/apiResponse.js';
 
 export default {
-  components: { EditProfile, UserAvatar, ProjectInvitation, FeatureDropdown, UserTokens, TwoFactorAuth },
+  components: {
+    EditProfile,
+    UserAvatar,
+    ProjectInvitation,
+    FeatureDropdown,
+    UserTokens,
+    TwoFactorAuth,
+    ChangePasswordModal,
+  },
   data() {
     return {
       auth: this.$store.state.currentUser.user.uuid,

@@ -267,6 +267,8 @@ class ApiExceptionHandlerTest extends TestCase
     #[Test]
     public function unexpected_errors_use_the_generic_internal_server_error_payload(): void
     {
+        app()->detectEnvironment(fn (): string => 'production');
+
         $this->getJson('/api/v1/_exception-handler-test/server-error')
             ->assertStatus(500)
             ->assertJsonStructure(['message', 'code', 'errors', 'meta'])
@@ -274,6 +276,8 @@ class ApiExceptionHandlerTest extends TestCase
             ->assertJsonPath('code', 'internal_server_error')
             ->assertJsonPath('errors', [])
             ->assertJsonPath('meta', []);
+
+        app()->detectEnvironment(fn (): string => 'testing');
     }
 
     #[Test]

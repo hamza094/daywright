@@ -25,18 +25,23 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
 
     public bool $failOnTimeout = true;
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
     public function __construct(
-        public readonly int $meetingId,
-        public readonly ?string $requestId = null,
-        public readonly array $payload = [],
+        public readonly object $data,
     ) {
         $this->onQueue('webhooks');
     }
 
     abstract protected function operation(): string;
+
+    public function getMeetingId(): int
+    {
+        return (int) $this->data->meetingId;
+    }
+
+    public function getRequestId(): ?string
+    {
+        return $this->data->requestId ?? null;
+    }
 
     /**
      * @return array<int, object>
@@ -44,7 +49,7 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
     public function middleware(): array
     {
         return [
-            (new WithoutOverlapping(key: "zoom-meeting:{$this->meetingId}", releaseAfter: 5))
+            (new WithoutOverlapping(key: "zoom-meeting:{$this->getMeetingId()}", releaseAfter: 5))
                 ->shared()
                 ->expireAfter(120),
         ];
@@ -60,7 +65,7 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
-        $meeting = Meeting::query()->where('meeting_id', $this->meetingId)->first();
+        $meeting = Meeting::query()->where('meeting_id', $this->getMeetingId())->first();
 
         $userUuid = null;
 
@@ -70,8 +75,8 @@ abstract class ZoomMeetingWebhookJob implements ShouldQueue
 
         app(ZoomWebhookLogger::class)->logWebhookFailed(
             operation: $this->operation(),
-            meetingId: $this->meetingId,
-            requestId: $this->requestId,
+            meetingId: $this->getMeetingId(),
+            requestId: $this->getRequestId(),
             exception: $exception,
             userIdentifier: $userUuid,
         );

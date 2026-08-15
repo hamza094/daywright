@@ -7,6 +7,8 @@ namespace App\Services\Project;
 use App\Actions\Meetings\CreateProjectMeeting;
 use App\Actions\Meetings\DeleteProjectMeeting;
 use App\Actions\Meetings\UpdateProjectMeeting;
+use App\DataTransferObjects\Zoom\MeetingStoreData;
+use App\DataTransferObjects\Zoom\MeetingUpdateData;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
@@ -38,23 +40,17 @@ class MeetingService
         return $meetingsQuery->paginate($perPage, ['*'], 'page', $page);
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    public function createMeetingForProject(Project $project, User $user, array $validated, Zoom $zoom): Meeting
+    public function createMeetingForProject(Project $project, User $user, MeetingStoreData $data, Zoom $zoom): Meeting
     {
         return $this->loadForResponse(
-            $this->createProjectMeeting->handle($project, $user, $validated, $zoom)
+            $this->createProjectMeeting->handle($project, $user, $data, $zoom)
         );
     }
 
-    /**
-     * @param  array<string, mixed>  $validated
-     */
-    public function updateProjectMeeting(Meeting $meeting, User $user, array $validated, Zoom $zoom): Meeting
+    public function updateProjectMeeting(Meeting $meeting, User $user, MeetingUpdateData $data, Zoom $zoom): Meeting
     {
         return $this->loadForResponse(
-            $this->updateProjectMeeting->handle($meeting, $user, $validated, $zoom)
+            $this->updateProjectMeeting->handle($meeting, $user, $data, $zoom)
         );
     }
 
