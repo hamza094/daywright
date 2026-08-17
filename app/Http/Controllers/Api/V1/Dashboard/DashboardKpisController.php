@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\Dashboard;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Services\Dashboard\DashboardInsightsService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 
@@ -16,6 +17,7 @@ final class DashboardKpisController extends ApiController
      *
      * Combines portfolio metrics and generated insight cards into a single dashboard response.
      */
+    #[Endpoint(operationId: 'dashboard.kpis')]
     #[ScrambleResponse(
         status: 200,
         description: 'Dashboard KPIs and prioritized insights generated from the current project portfolio.',

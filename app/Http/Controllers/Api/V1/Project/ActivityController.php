@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Project\ProjectActivityIndexRequest;
 use App\Http\Resources\Api\V1\ActivityResource;
 use App\Models\Project;
 use App\Services\Project\ProjectActivityListingService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 class ActivityController extends ApiController
@@ -18,6 +19,7 @@ class ActivityController extends ApiController
      *
      * Returns the released project activity feed with filter and pagination support.
      */
+    #[Endpoint(operationId: 'projects.activities')]
     public function index(
         Project $project,
         ProjectActivityIndexRequest $request,

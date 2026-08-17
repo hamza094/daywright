@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\User\UserAvatarStoreRequest;
 use App\Models\User;
 use App\Services\User\AvatarService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,6 +20,7 @@ class AvatarController extends ApiController
      *
      * Stores a new avatar image for the targeted user and returns the stored avatar path.
      */
+    #[Endpoint(operationId: 'users.uploadAvatar')]
     #[ScrambleResponse(
         status: 200,
         description: 'Avatar stored successfully and linked user profile path returned.',
@@ -41,6 +43,7 @@ class AvatarController extends ApiController
      *
      * Deletes the stored avatar for the targeted user.
      */
+    #[Endpoint(operationId: 'users.removeAvatar')]
     public function destroy(User $user, AvatarService $service): JsonResponse
     {
         $this->authorize('owner', $user);

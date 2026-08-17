@@ -13,6 +13,7 @@ use App\Http\Resources\Api\V1\Project\ProjectResource;
 use App\Models\Project;
 use App\Services\Dashboard\UserProjectListingService;
 use App\Services\Project\ProjectService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -25,6 +26,7 @@ class ProjectController extends ApiController
      *
      * Returns the released project index with supported filters, sorting, and pagination.
      */
+    #[Endpoint(operationId: 'projects.list')]
     public function index(
         DashboardProjectRequest $request,
         UserProjectListingService $userProjectListingService,
@@ -48,6 +50,7 @@ class ProjectController extends ApiController
      * the project's basic details, such as the name, about information, stage, and optional notes and tasks.
      * The response will include the newly created project's information along with related resources.
      */
+    #[Endpoint(operationId: 'projects.create')]
     public function store(ProjectStoreRequest $request): JsonResponse
     {
         $project = $this->projectService->createProject($this->authenticatedUser(), $request->toDto());
@@ -62,6 +65,7 @@ class ProjectController extends ApiController
      *
      * Returns detailed information about a project including its members, conversations, and activities.
      */
+    #[Endpoint(operationId: 'projects.show')]
     public function show(Project $project): JsonResponse
     {
         $this->authorize('access', $project);
@@ -80,6 +84,7 @@ class ProjectController extends ApiController
      * It requires the project's slug and the updated fields (name, about, notes) when they are present
      * in the request body and returns the updated resource.
      */
+    #[Endpoint(operationId: 'projects.update')]
     public function update(Project $project, ProjectUpdateRequest $request): JsonResponse
     {
         $this->authorize('access', $project);
@@ -102,6 +107,7 @@ class ProjectController extends ApiController
      *
      * Marks the project as abandoned so it can be restored or permanently deleted later.
      */
+    #[Endpoint(operationId: 'projects.destroy')]
     public function destroy(Project $project): JsonResponse
     {
         $this->authorize('manage', $project);

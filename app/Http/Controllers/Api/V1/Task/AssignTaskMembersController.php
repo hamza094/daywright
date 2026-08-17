@@ -10,6 +10,7 @@ use App\Http\Resources\Api\V1\Task\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\Task\TaskService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 final class AssignTaskMembersController extends ApiController
@@ -19,6 +20,7 @@ final class AssignTaskMembersController extends ApiController
      *
      * Assigns one or more project members to the specified task.
      */
+    #[Endpoint(operationId: 'tasks.assignMembers')]
     public function __invoke(Project $project, Task $task, TaskMembersRequest $request, TaskService $service): JsonResponse
     {
         $task = $service->assignMembers($task, $request->toDto(), $project, $this->authenticatedUser());

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Project\ProjectSummaryResource;
 use App\Models\Project;
 use App\Services\Project\InvitationService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 final class AcceptProjectInvitationController extends ApiController
@@ -17,6 +18,7 @@ final class AcceptProjectInvitationController extends ApiController
      *
      * Adds the authenticated user to the project through an existing pending invitation.
      */
+    #[Endpoint(operationId: 'invitations.acceptProject')]
     public function __invoke(Project $project, InvitationService $invitationService): JsonResponse
     {
         $user = $this->authenticatedUser();

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Project;
 use App\Http\Controllers\Api\ApiController;
 use App\Models\Project;
 use App\Services\Project\ProjectService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 final class RestoreProjectController extends ApiController
@@ -16,6 +17,7 @@ final class RestoreProjectController extends ApiController
      *
      * Re-activates a previously abandoned project.
      */
+    #[Endpoint(operationId: 'projects.restore')]
     public function __invoke(Project $project, ProjectService $projectService): JsonResponse
     {
         $projectService->restoreProject($project);

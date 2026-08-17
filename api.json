@@ -1,0 +1,5580 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "DayWright",
+    "version": "0.3.1",
+    "description": "# DayWright API Overview\n\nDayWright exposes a versioned JSON API for authentication, users, projects, tasks, conversations, notifications, subscriptions, and selected integration workflows. Individual endpoint pages describe exact request fields and schemas; this page documents the shared conventions used across the API.\n\n## Introduction\n\n- The public API is currently implemented under `v1`.\n- Requests are routed through Laravel API and web-backed API groups under the same `/api/{version}` prefix.\n- Resource serialization is handled primarily through Laravel API resources, so most payloads are JSON-first and predictable.\n\n## Base URL\n\n- Relative base path: `/api/v1`\n- Example requests and links below use relative API paths so the published docs stay environment-agnostic.\n\n\n## Authentication\n\nDayWright supports two authentication modes.\n\n### Bearer token authentication\n\n- API clients authenticate with Laravel Sanctum personal access tokens.\n- Send tokens using the `Authorization` header:\n\n```http\nAuthorization: Bearer YOUR_TOKEN\n```\n\n- `POST /login` returns a bearer token for token-based API clients when the account does not require two-factor authentication.\n- `GET /api-tokens`, `POST /api-tokens`, and `DELETE /api-tokens/{token}` let authenticated users manage additional personal access tokens.\n- Login-issued tokens are created with a one-month expiration.\n- User-created API tokens may include an optional `expires_at` value in ISO 8601 format, up to 180 days in the future.\n- Accounts with two-factor authentication enabled must use the session login flow. Token login does not expose a public 2FA continuation step.\n- `POST /register` creates a user account and returns the user resource. It does not create a session or issue an access token.\n\nExample login response:\n\n```json\n{\n    \"data\": {\n        \"user\": {\n            \"id\": 1,\n            \"uuid\": \"9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412\",\n            \"name\": \"Berry\",\n            \"username\": \"berry\",\n            \"email\": \"berry@example.com\",\n            \"timezone\": \"UTC\",\n            \"two_factor_enabled\": false,\n            \"verified\": true\n        },\n        \"access_token\": \"1|wKfQJc...\"\n    }\n}\n```\n\nExample register response:\n\n```json\n{\n    \"data\": {\n        \"id\": 1,\n        \"uuid\": \"9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412\",\n        \"name\": \"Berry\",\n        \"username\": \"berry\",\n        \"email\": \"berry@example.com\",\n        \"timezone\": \"UTC\",\n        \"two_factor_enabled\": false,\n        \"verified\": false\n    }\n}\n```\n\n### Stateful session authentication\n\n- First-party browser flows use Sanctum's stateful session mode.\n- These routes are mounted under the same versioned API prefix and use `web` middleware rather than the standard `api` middleware group.\n- Session-oriented routes include `/session/*`, `/twofactor/*`, and interactive OAuth flows under `/auth/*`.\n- Browser clients should send session cookies and satisfy CSRF requirements for these endpoints.\n- Two-factor authentication is completed only through this session-backed flow.\n- `POST /session/login` may return a 2FA challenge state for accounts with two-factor authentication enabled, and the client completes sign-in with `POST /twofactor/login-confirm`.\n- Third-party and server-to-server clients should prefer bearer tokens.\n\nExample session login response for a two-factor-enabled account:\n\n```json\n{\n    \"data\": {\n        \"two_factor_state\": \"2fa_required\",\n        \"message\": \"Two-factor authentication is enabled. Please provide the verification code.\"\n    }\n}\n```\n\n### Integration-specific tokens\n\n- The application includes Zoom utility endpoints that can return ZAK or JWT tokens for Zoom workflows.\n- These tokens are integration-specific and are not used to authenticate the DayWright API itself.\n\n## Request Format\n\n- Send JSON request bodies unless an endpoint explicitly accepts files.\n- Recommended headers for JSON requests:\n\n```http\nAccept: application/json\nContent-Type: application/json\n```\n\n- File upload endpoints use `multipart/form-data`.\n- Request and response fields use `snake_case`.\n- Where timestamps are accepted, the API expects ISO 8601 timestamps with a timezone offset, for example `2025-12-31T23:59:59+00:00`.\n- Selected filter requests normalize boolean-like query values, but JSON booleans are preferred.\n\n## Query Contract\n\nReleased collection and collection-like read endpoints use a strict query contract unless an endpoint description explicitly documents an exception.\n\n### Filtering\n\n- Use `filter[field]=value` for general collection endpoints.\n- Only documented filter keys are accepted.\n- Unknown filter keys and invalid filter values return `422 Unprocessable Entity`.\n- A valid filter that matches no records still returns `200 OK` with an empty `data` payload.\n\n### Sorting\n\n- Use `sort=field` for ascending order.\n- Use `sort=-field` for descending order.\n- Only documented sort keys are accepted.\n- Endpoints that do not document `sort` reject it with `422 Unprocessable Entity`.\n\n### Includes And Extra Parameters\n\n- `include` is not part of the public contract unless an endpoint explicitly documents it.\n- `fields` and `append` are also rejected unless an endpoint explicitly opts in.\n- Unsupported top-level parameters, including arbitrary extras such as `random=value`, return `422 Unprocessable Entity` instead of being ignored.\n\n### Pagination Categories\n\n- Paginated endpoints use the top-level `data`, `links`, and `meta` structure with `page` and `per_page`.\n- Unless an endpoint documents a narrower limit, `per_page` is validated in the range `1..100`.\n- Empty paginated results still return `data`, `links`, and `meta`.\n- Fixed-size endpoints return a documented server-controlled slice, for example the dashboard projects feed.\n- Intentional bounded exceptions return a non-paginated collection only when the dataset is small and server-controlled, for example pending project invitations and dedicated lookup endpoints.\n\n### Documented Query Exceptions\n\n- Dashboard activity reads use top-level `start_date` and `end_date`.\n- Dashboard chart data uses top-level `year` and optional `month`.\n- Dedicated lookup endpoints may use a top-level `search` parameter instead of the general `filter[...]` grammar.\n- Zoom-backed meeting endpoints under `/projects/{project}/meetings` are intentionally excluded from the generated OpenAPI. They remain supported runtime endpoints, including the `request=previous` meeting-index alias, but are treated as an integration-specific documentation exception for now.\n\n## Response Format\n\nMost successful responses use one of the following patterns.\n\n### Resource or object response\n\n```json\n{\n    \"data\": {\n        \"id\": 1,\n        \"name\": \"The Dimension\"\n    }\n}\n```\n\n### Collection response\n\n```json\n{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"name\": \"The Dimension\",\n            \"slug\": \"the-dimension\",\n            \"links\": {\n                \"self\": \"/api/v1/projects/the-dimension\"\n            }\n        }\n    ]\n}\n```\n\n### Message-only response\n\n```json\n{\n    \"message\": \"Webhook accepted.\"\n}\n```\n\n### No-content response\n\n- Some mutation endpoints intentionally return `204 No Content` with an empty body.\n\nNotes:\n\n- When a resource exposes navigational links, they are typically returned as relative API paths inside a `links` object.\n- Some endpoints include endpoint-specific `meta` data alongside `data`.\n- Not every successful response includes a `message` field; for most read and create operations, `data` is the canonical payload.\n\n## Error Handling\n\nAPI errors are normalized into a consistent envelope:\n\n```json\n{\n    \"message\": \"Resource not found.\",\n    \"code\": \"not_found\",\n    \"errors\": {},\n    \"meta\": {}\n}\n```\n\nNotes:\n\n- `message` is safe for client display.\n- `code` is the stable machine-readable error identifier.\n- `errors` contains field-level validation details when available; otherwise it is an empty object.\n- `meta` contains structured context when available; otherwise it is an empty object.\n- Application-authored 4xx messages may be preserved when safe to expose.\n- Generic 5xx responses intentionally avoid leaking internal details.\n\nDayWright also uses domain-specific error codes when appropriate, including examples such as `subscription_required`, `plan_limit_exceeded`, `project_archived`, `task_archived`, and `zoom_unavailable`.\n\n## Validation Errors\n\nValidation failures return `422 Unprocessable Entity` with the standard error envelope.\n\n```json\n{\n    \"message\": \"Validation failed.\",\n    \"code\": \"validation_error\",\n    \"errors\": {\n        \"email\": [\n            \"The provided credentials are incorrect.\"\n        ]\n    },\n    \"meta\": {}\n}\n```\n\nNotes:\n\n- Form request validation is used extensively across the API.\n- Validation errors are keyed by input name.\n- Query validation errors use the same envelope and surface nested keys in dot notation, for example `filter.state`.\n- Authentication failures during credential-based login are surfaced as validation errors on `email`, not as a separate `401` login response.\n\n## Pagination\n\nWhen an endpoint is paginated, the response uses Laravel's standard top-level `data`, `links`, and `meta` structure:\n\n```json\n{\n    \"data\": [],\n    \"links\": {\n        \"first\": \"/api/v1/projects?page=1\",\n        \"last\": \"/api/v1/projects?page=5\",\n        \"prev\": null,\n        \"next\": \"/api/v1/projects?page=2\"\n    },\n    \"meta\": {\n        \"current_page\": 1,\n        \"last_page\": 5,\n        \"per_page\": 15,\n        \"total\": 73\n    }\n}\n```\n\nNotes:\n\n- `page` and `per_page` are the common pagination parameters.\n- Many list endpoints validate `per_page` with a maximum of `100`.\n- Some list endpoints intentionally return fixed-size or bounded non-paginated collections; rely on the query-contract section above and each endpoint's description for exact behavior.\n\n## Rate Limiting\n\nThe API uses Laravel rate limiters with route-specific policies.\n\n| Limiter | Typical usage | Limit |\n| --- | --- | --- |\n| `api` | Default API middleware | `60` requests per minute by authenticated user or IP |\n| `auth-login` | Token login and session login | `5` requests per minute by IP and email |\n| `auth-register` | Registration | `5` requests per minute by IP |\n| `password-email` | Password reset link requests | `4` requests per minute by IP and email |\n| `password-reset` | Password reset submission | `5` requests per minute by IP |\n| `verification` | Email verification and resend flows | `6` requests per minute by user or IP |\n| `two-factor` | 2FA setup and confirmation | `5` requests per minute by user or IP |\n| `oauth2-socialite` | OAuth redirect and callback flows | `8` requests per minute by IP and provider |\n| `invite-actions` | Project invitation actions | `10` requests per minute by user or IP |\n\nRate-limited responses return `429 Too Many Requests`. Integration-specific rate-limit failures may also include `meta.retry_after_seconds` when the upstream exception provides that detail.\n\n## Idempotency\n\n- Selected mutation routes are protected with idempotency middleware.\n- When an endpoint requires idempotency, send a unique `Idempotency-Key` header.\n- This is used on retriable write operations such as API token creation, invitation actions, selected subscription changes, selected task assignment workflows, selected meeting mutations, and Zoom webhooks.\n- Idempotency is not enabled globally for every write endpoint, so rely on the endpoint documentation where the header is required.\n\n## Versioning\n\n- The API is path-versioned.\n- Current published routes are mounted under `/api/v1`.\n \n\n## Authorization\n\n- Protected routes generally use `auth:sanctum`.\n- Authorization is enforced with Laravel policies via route middleware such as `can:access,...` and controller-level `$this->authorize(...)` checks.\n- Common policy abilities include `access`, `manage`, `owner`, `delete`, and invitation-specific checks.\n- Additional route constraints are enforced through middleware such as `verified`, `subscription`, `2fa.enabled`, and Pennant feature checks.\n\n## File Uploads\n\nDayWright currently exposes two public multipart upload patterns.\n\n### User avatars\n\n- Endpoint: `POST /users/{user}/avatar`\n- Request type: `multipart/form-data`\n- Field: `avatar`\n- Accepted types: `jpeg`, `jpg`, `png`\n- Maximum size: `700 KB`\n- Successful responses return the stored avatar URL inside `data.avatar`.\n\n### Conversation attachments\n\n- Endpoint: `POST /projects/{project}/conversations`\n- Request type: `multipart/form-data`\n- Fields:\n    - `message` optional when `file` is present\n    - `file` optional when `message` is present\n- Accepted file types: `jpg`, `png`, `pdf`, `docx`\n- Maximum size: `700 KB`\n- Conversation attachments are stored privately and exposed through a temporary file URL when available.\n- Generated conversation file URLs are short-lived and currently expire after 5 minutes.\n\n## Webhooks\n\nDayWright exposes Zoom meeting webhooks under `/api/v1/webhooks/zoom/meetings/*`.\n\n- Webhook endpoints do not use Sanctum authentication.\n- Each request is verified using Zoom signature headers:\n    - `x-zm-request-id`\n    - `x-zm-signature`\n    - `x-zm-request-timestamp`\n- Invalid webhook signatures return `403 Forbidden`.\n- Missing required webhook headers return `400 Bad Request`.\n- The Zoom request ID is reused as the idempotency key so duplicate deliveries can be safely deduplicated.\n- Accepted webhook deliveries return:\n\n```json\n{\n    \"message\": \"Webhook accepted.\"\n}\n```\n\nWebhook processing is asynchronous after acceptance.\n\n## Caching\n\n- The API does not currently expose a public HTTP caching contract such as `ETag`, `Last-Modified`, or route-level cache headers.\n- Any server-side caching used by the application is an internal implementation detail and should not be relied on by clients.\n\n## Status Codes\n\n| Status | Meaning in DayWright |\n| --- | --- |\n| `200` | Successful read, update, action, or webhook acceptance response |\n| `201` | Resource created successfully |\n| `204` | Successful request with no response body |\n| `400` | Invalid request state, invalid signature, or malformed callback data |\n| `401` | Authentication is required |\n| `403` | Authenticated but not authorized, not subscribed, or feature access is restricted |\n| `404` | Resource or route not found |\n| `405` | Method not allowed |\n| `409` | Resource state conflict, including archived resources |\n| `422` | Validation failed |\n| `429` | Too many requests |\n| `500` | Unexpected server or storage error |\n| `503` | Upstream integration unavailable |\n\n## Conventions\n\n- JSON keys use `snake_case`.\n- Path segments use lowercase plural nouns; compound segments often use hyphens, for example `forgot-password`, `task-statuses`, and `api-tokens`.\n- Projects are addressed by slug.\n- Users are addressed by UUID.\n- Nested child resources such as tasks and conversations are typically route-scoped by their parent resource.\n- Timestamps are generally serialized as ISO 8601 strings.\n\n## Important Notes\n\n- Unmatched routes under an API version resolve to a JSON `404` response, not an HTML fallback page.\n \n- Subscription-gated endpoints use the same error envelope as the rest of the API and may include structured `meta` such as upgrade requirements or plan limit details.\n- OAuth and session endpoints live under the same `/api/v1` prefix as the token-based API, but they are intended for browser-driven workflows rather than generic third-party clients.\n- Use each endpoint page as the source of truth for request fields, accepted query parameters, and resource schemas."
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Users",
+      "description": "Current-user, profile, avatar, and public user account management endpoints."
+    },
+    {
+      "name": "Invitations",
+      "description": "Personal and project invitation management endpoints."
+    },
+    {
+      "name": "Subscription",
+      "description": "Subscription checkout, plan swap, cancellation, and subscription status endpoints."
+    },
+    {
+      "name": "Dashboard",
+      "description": "Released dashboard read models for charts, insights, tasks, activities, and projects."
+    },
+    {
+      "name": "Notifications",
+      "description": "Notification listing, bulk-read, status update, and deletion endpoints."
+    },
+    {
+      "name": "Projects",
+      "description": "Released public project CRUD, insights, limits, and activity endpoints."
+    },
+    {
+      "name": "Stages",
+      "description": "Shared project stage listing endpoints."
+    },
+    {
+      "name": "Tasks",
+      "description": "Released task CRUD, assignment, archive, restore, and task status endpoints."
+    },
+    {
+      "name": "Conversations",
+      "description": "Released project conversation list, create, attachment upload, and delete endpoints."
+    }
+  ],
+  "security": [
+    {
+      "http": []
+    }
+  ],
+  "paths": {
+    "/v1/projects/{project}/conversations": {
+      "get": {
+        "operationId": "conversations.list",
+        "summary": "List project conversations.\r\n\r\nReturns a paginated conversation feed for the specified project",
+        "tags": ["Conversations"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of `ProjectConversation`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProjectConversation"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "conversations.create",
+        "summary": "Create a project conversation.\r\n\r\nCreates a new project conversation with a message body, an attachment, or both",
+        "tags": ["Conversations"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationStoreRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ProjectConversation"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/conversations/{conversation}": {
+      "delete": {
+        "operationId": "conversations.destroy",
+        "summary": "Delete a project conversation.\r\n\r\nPermanently removes a conversation that the authenticated user is allowed to delete",
+        "tags": ["Conversations"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "conversation",
+            "in": "path",
+            "required": true,
+            "description": "The conversation ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Conversation deleted successfully."
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/chart-data": {
+      "get": {
+        "operationId": "dashboard.chartData",
+        "description": "Summarizes active, trashed, member, and total project counts for the selected dashboard time window.",
+        "summary": "Return project portfolio counts for the authenticated user's dashboard",
+        "tags": ["Dashboard"],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard project counts grouped by active, trashed, and member access.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "active_projects": {
+                          "type": "integer"
+                        },
+                        "trashed_projects": {
+                          "type": "integer"
+                        },
+                        "member_projects": {
+                          "type": "integer"
+                        },
+                        "total_projects": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": ["active_projects", "trashed_projects", "member_projects", "total_projects"]
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/insights": {
+      "get": {
+        "operationId": "dashboard.kpis",
+        "description": "Combines portfolio metrics and generated insight cards into a single dashboard response.",
+        "summary": "Return KPI cards and actionable insights for the authenticated user's dashboard",
+        "tags": ["Dashboard"],
+        "responses": {
+          "200": {
+            "description": "Dashboard KPIs and prioritized insights generated from the current project portfolio.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kpis": {
+                          "type": "object",
+                          "properties": {
+                            "total_projects": {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": "integer"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["value", "label", "status"]
+                            },
+                            "critical_projects": {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": "integer"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["value", "label", "status"]
+                            },
+                            "overdue_tasks": {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "type": "integer"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["value", "label", "status"]
+                            },
+                            "completion_rate": {
+                              "type": "object",
+                              "properties": {
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "integer"
+                                    }
+                                  ]
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["value", "label", "status"]
+                            }
+                          },
+                          "required": ["total_projects", "critical_projects", "overdue_tasks", "completion_rate"]
+                        },
+                        "insights": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "message": {
+                                "type": "string"
+                              },
+                              "action": {
+                                "type": "string"
+                              },
+                              "priority": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["type", "title", "message", "action", "priority"]
+                          }
+                        }
+                      },
+                      "required": ["kpis", "insights"]
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/tasks": {
+      "get": {
+        "operationId": "dashboard.tasks",
+        "description": "Returns the authenticated user's dashboard task list together with the human-readable filters that were applied.",
+        "summary": "Return dashboard tasks filtered by ownership, assignment, and status flags",
+        "tags": ["Dashboard"],
+        "parameters": [
+          {
+            "name": "filter[user_created]",
+            "in": "query",
+            "description": "Limit results to tasks created by the authenticated user.",
+            "schema": {
+              "type": "boolean"
+            },
+            "example": true
+          },
+          {
+            "name": "filter[task_assigned]",
+            "in": "query",
+            "description": "Limit results to tasks assigned to the authenticated user.",
+            "schema": {
+              "type": "boolean"
+            },
+            "example": true
+          },
+          {
+            "name": "filter[completed]",
+            "in": "query",
+            "description": "Limit results to completed tasks.",
+            "schema": {
+              "type": "boolean"
+            },
+            "example": false
+          },
+          {
+            "name": "filter[overdue]",
+            "in": "query",
+            "description": "Limit results to overdue tasks.",
+            "schema": {
+              "type": "boolean"
+            },
+            "example": true
+          },
+          {
+            "name": "filter[remaining]",
+            "in": "query",
+            "description": "Limit results to remaining, not-yet-completed tasks.",
+            "schema": {
+              "type": "boolean"
+            },
+            "example": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Filtered dashboard task list with the human-readable filters that were applied.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UserTasksResource"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "applied_filters": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "next_cursor": {
+                          "type": ["string", "null"]
+                        },
+                        "prev_cursor": {
+                          "type": ["string", "null"]
+                        },
+                        "per_page": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": ["applied_filters", "next_cursor", "prev_cursor", "per_page"]
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "next": {
+                          "type": ["string", "null"]
+                        },
+                        "prev": {
+                          "type": ["string", "null"]
+                        }
+                      },
+                      "required": ["next", "prev"]
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/activities": {
+      "get": {
+        "operationId": "dashboard.activities",
+        "description": "Lists dashboard activity entries between the requested start and end dates.",
+        "summary": "Return the authenticated user's dashboard activity feed for a date range",
+        "tags": ["Dashboard"],
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of `UserActivitiesResource`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/UserActivitiesResource"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/dashboard/projects": {
+      "get": {
+        "operationId": "dashboard.projects",
+        "description": "Returns the latest dashboard projects and includes a top-level total count in the response meta.",
+        "summary": "Return recent dashboard projects along with a top-level total count",
+        "tags": ["Dashboard"],
+        "responses": {
+          "200": {
+            "description": "Array of `ProjectListItem`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProjectListItem"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": ["total"]
+                    }
+                  },
+                  "required": ["data", "meta"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/users/me/invitations": {
+      "get": {
+        "operationId": "invitations.userList",
+        "description": "Returns a paginated list of the authenticated user's pending project invitations.",
+        "summary": "List all pending project invitations for the authenticated user",
+        "tags": ["Invitations"],
+        "responses": {
+          "200": {
+            "description": "Array of `ProjectInvitation`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProjectInvitation"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/invitations": {
+      "post": {
+        "operationId": "invitations.create",
+        "summary": "Invite a user to a project.\r\n\r\nSends a project invitation to the supplied email address and returns the created invitation resource",
+        "tags": ["Invitations"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvitationUsersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ProjectInvitation"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "get": {
+        "operationId": "invitations.list",
+        "summary": "List pending project invitations.\r\n\r\nReturns the released pending invitation view for a project.\r\nUse `filter[status]=pending` to retrieve the supported invitation slice.\r\nThis endpoint intentionally returns a bounded, non-paginated list",
+        "tags": ["Invitations"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter[status]",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["pending"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of `PendingInvitationUser`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PendingInvitationUser"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/invitations/accept": {
+      "post": {
+        "operationId": "invitations.acceptProject",
+        "description": "Adds the authenticated user to the project through an existing pending invitation.",
+        "summary": "Accept a project invitation",
+        "tags": ["Invitations"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "project": {
+                              "type": "array",
+                              "items": {}
+                            },
+                            "invitation_state": {
+                              "type": "string",
+                              "const": "accepted"
+                            }
+                          },
+                          "required": ["project", "invitation_state"]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/invitations/reject": {
+      "post": {
+        "operationId": "invitations.rejectProject",
+        "description": "Declines the authenticated user's pending invitation for the project.",
+        "summary": "Reject a project invitation",
+        "tags": ["Invitations"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "project": {
+                              "type": "array",
+                              "items": {}
+                            },
+                            "invitation_state": {
+                              "type": "string",
+                              "const": "rejected"
+                            }
+                          },
+                          "required": ["project", "invitation_state"]
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/invitations/{user}": {
+      "delete": {
+        "operationId": "invitations.destroy",
+        "summary": "Cancel a pending project invitation.\r\n\r\nRevokes a pending invitation for the targeted user",
+        "tags": ["Invitations"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "The user UUID",
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/members/{user}": {
+      "delete": {
+        "operationId": "projects.members",
+        "description": "Removes an existing member from the project membership list.",
+        "summary": "Remove a project member",
+        "tags": ["Invitations"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "The user UUID",
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/notifications": {
+      "get": {
+        "operationId": "notifications.list",
+        "summary": "Display a paginated listing of the authenticated user's notifications.\r\n\r\nReturns the notification feed using cursor pagination links and metadata",
+        "tags": ["Notifications"],
+        "parameters": [
+          {
+            "name": "filter[status]",
+            "in": "query",
+            "description": "Filter notifications by read state.",
+            "schema": {
+              "type": "string",
+              "enum": ["read", "unread"]
+            },
+            "example": "unread"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated notification feed with cursor pagination metadata and links.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/NotificationResource"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "next_cursor": {
+                          "type": ["string", "null"]
+                        },
+                        "prev_cursor": {
+                          "type": ["string", "null"]
+                        },
+                        "per_page": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": ["next_cursor", "prev_cursor", "per_page"]
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "next": {
+                          "type": ["string", "null"]
+                        },
+                        "prev": {
+                          "type": ["string", "null"]
+                        }
+                      },
+                      "required": ["next", "prev"]
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/notifications/read": {
+      "patch": {
+        "operationId": "notifications.markAllAsRead",
+        "summary": "Mark all notifications as read.\r\n\r\nMarks every notification for the authenticated user as read in a single operation",
+        "tags": ["Notifications"],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "All users notifications marked as read."
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/notifications/{notification}/status": {
+      "patch": {
+        "operationId": "notifications.updateStatus",
+        "summary": "Update the status of a notification.\r\n\r\nChanges the read state for a single notification belonging to the authenticated user",
+        "tags": ["Notifications"],
+        "parameters": [
+          {
+            "name": "notification",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationStatusUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Notification status updated."
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/notifications/{notification}": {
+      "delete": {
+        "operationId": "notifications.destroy",
+        "summary": "Remove the specified notification.\r\n\r\nDeletes one notification belonging to the authenticated user",
+        "tags": ["Notifications"],
+        "parameters": [
+          {
+            "name": "notification",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Notification deleted successfully."
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects": {
+      "get": {
+        "operationId": "projects.list",
+        "summary": "List the authenticated user's projects.\r\n\r\nReturns the released project index with supported filters, sorting, and pagination",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "filter[search]",
+            "in": "query",
+            "schema": {
+              "type": ["string", "null"],
+              "maxLength": 25
+            }
+          },
+          {
+            "name": "filter[member]",
+            "in": "query",
+            "schema": {
+              "type": ["boolean", "null"]
+            }
+          },
+          {
+            "name": "filter[abandoned]",
+            "in": "query",
+            "schema": {
+              "type": ["boolean", "null"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of `ProjectListItem`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProjectListItem"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "projects.create",
+        "summary": "Create a new project.\r\n\r\nThis endpoint allows authenticated users to create a new project. The request must include\r\nthe project's basic details, such as the name, about information, stage, and optional notes and tasks.\r\nThe response will include the newly created project's information along with related resources",
+        "tags": ["Projects"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectStoreRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicProject"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}": {
+      "put": {
+        "operationId": "projects.update",
+        "summary": "Update Project Fields\r\n\r\nThis endpoint allows you to update the details of an existing project.\r\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\r\nin the request body and returns the updated resource",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicProject"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/PublicBadRequestError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "projects.destroy",
+        "summary": "Soft-delete a project.\r\n\r\nMarks the project as abandoned so it can be restored or permanently deleted later",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "get": {
+        "operationId": "projects.show",
+        "summary": "Retrieve a specific project.\r\n\r\nReturns detailed information about a project including its members, conversations, and activities",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicProject"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/limits": {
+      "get": {
+        "operationId": "projects.limits",
+        "description": "Returns the current plan limits that apply to the specified project.",
+        "summary": "Retrieve project-scoped subscription limits for the project owner",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "array",
+                          "items": {}
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/insights": {
+      "get": {
+        "operationId": "projects.insights",
+        "summary": "Get actionable insights for a project.\r\n\r\nWhat this endpoint does:\r\n- Aggregates calculated insights for the given project across one or more sections\r\n  (health, task-health, collaboration, risk, stage).\r\n- You can filter which sections are returned using the `sections[]` query parameter.\r\n- If `sections[]` is omitted, all supported sections are returned",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sections[]",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "enum": ["health", "task-health", "collaboration", "risk", "stage"],
+              "items": {
+                "type": "string",
+                "enum": ["health", "task-health", "collaboration", "risk", "stage"]
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`ProjectInsightsResource`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ProjectInsightsResource"
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/force": {
+      "delete": {
+        "operationId": "v1.projects.force-delete",
+        "description": "Removes a soft-deleted project when it is eligible for force deletion.",
+        "summary": "Permanently delete an abandoned project",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Project deleted successfully."
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/restore": {
+      "patch": {
+        "operationId": "projects.restore",
+        "description": "Re-activates a previously abandoned project.",
+        "summary": "Restore a soft-deleted project",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/activities": {
+      "get": {
+        "operationId": "projects.activities",
+        "description": "Returns the released project activity feed with filter and pagination support.",
+        "summary": "List project activity entries",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter[type]",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["specifics", "tasks", "members", "mine"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of `ActivityResource`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ActivityResource"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/stage": {
+      "patch": {
+        "operationId": "projects.updateStage",
+        "description": "Updates the stage of a specified project. The new stage is provided in the request payload.",
+        "summary": "Update Project Stage",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/ProjectStageResource"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/users/search": {
+      "get": {
+        "operationId": "v1.projects.users.search",
+        "description": "Returns users who can be invited to the specified project,\nexcluding the project owner and existing members.",
+        "summary": "Search users for invitation flows",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of `TaskMember`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TaskMember"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/scopes": {
+      "get": {
+        "operationId": "apiTokens.scopes",
+        "summary": "List all available API scopes\r\n\r\nReturns all available API scopes with their labels and descriptions.\r\nThis endpoint is public and does not require authentication",
+        "tags": ["Public API"],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {}
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/stages": {
+      "get": {
+        "operationId": "stages.list",
+        "description": "Fetch and return all stages that a project can be assigned to.",
+        "summary": "Display a listing of the stages",
+        "tags": ["Stages"],
+        "responses": {
+          "200": {
+            "description": "Array of `PublicStage`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PublicStage"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/users/me/subscription": {
+      "get": {
+        "operationId": "subscription.status",
+        "summary": "Get the authenticated user's subscription details.\r\n\r\nReturns the current subscription snapshot for the authenticated user",
+        "tags": ["Subscription"],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/SubscriptionDetails"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/task-statuses": {
+      "get": {
+        "operationId": "taskStatuses.list",
+        "description": "Returns the released task status reference data used by public task workflows.",
+        "summary": "List task statuses and due-notification options",
+        "tags": ["Tasks"],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/TaskStatusIndex"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/tasks": {
+      "get": {
+        "operationId": "tasks.list",
+        "summary": "Retrieve Project Tasks.\r\n\r\nThis endpoint fetches a paginated task list for a specific project.\r\n\r\nUse `filter[state]=archived` to page through archived tasks on the same route",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "filter[state]",
+            "in": "query",
+            "description": "Filter tasks by lifecycle state.\nUse `filter[state]=archived` to retrieve archived tasks.",
+            "schema": {
+              "type": "string",
+              "enum": ["archived"]
+            },
+            "example": "archived"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated set of `ProjectTaskListItem`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProjectTaskListItem"
+                      }
+                    },
+                    "links": {
+                      "type": "object",
+                      "properties": {
+                        "first": {
+                          "type": ["string", "null"]
+                        },
+                        "last": {
+                          "type": ["string", "null"]
+                        },
+                        "prev": {
+                          "type": ["string", "null"]
+                        },
+                        "next": {
+                          "type": ["string", "null"]
+                        }
+                      },
+                      "required": ["first", "last", "prev", "next"]
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "current_page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "from": {
+                          "type": ["integer", "null"],
+                          "minimum": 1
+                        },
+                        "last_page": {
+                          "type": "integer",
+                          "minimum": 1
+                        },
+                        "links": {
+                          "type": "array",
+                          "description": "Generated paginator links.",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "url": {
+                                "type": ["string", "null"]
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "active": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": ["url", "label", "active"]
+                          }
+                        },
+                        "path": {
+                          "type": ["string", "null"],
+                          "description": "Base path for paginator generated URLs."
+                        },
+                        "per_page": {
+                          "type": "integer",
+                          "description": "Number of items shown per page.",
+                          "minimum": 0
+                        },
+                        "to": {
+                          "type": ["integer", "null"],
+                          "description": "Number of the last item in the slice.",
+                          "minimum": 1
+                        },
+                        "total": {
+                          "type": "integer",
+                          "description": "Total number of items being paginated.",
+                          "minimum": 0
+                        }
+                      },
+                      "required": ["current_page", "from", "last_page", "links", "path", "per_page", "to", "total"]
+                    }
+                  },
+                  "required": ["data", "links", "meta"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "tasks.create",
+        "summary": "Create a New Task.\r\n\r\nThis endpoint allows creating a new task related to a specific project",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskStoreRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicTask"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/tasks/{task}": {
+      "get": {
+        "operationId": "tasks.show",
+        "description": "This endpoint retrieves detailed information about a specific task within a project.",
+        "summary": "Show Task Details",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`PublicTask`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PublicTask"
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "put": {
+        "operationId": "tasks.update",
+        "summary": "Update a Task\r\n\r\nThis endpoint allows you to update the details of a specific task associated with a given project.\r\nThe user must have proper authorization to access and modify the task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicTask"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "tasks.destroy",
+        "summary": "Delete a task.\r\n\r\nPermanently removes a task that the authenticated user is allowed to manage",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Task deleted successfully."
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/tasks/{task}/assign": {
+      "patch": {
+        "operationId": "tasks.assignMembers",
+        "summary": "Assign members to a task.\r\n\r\nAssigns one or more project members to the specified task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskMemberAssignRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicTask"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/tasks/{task}/unassign": {
+      "patch": {
+        "operationId": "tasks.unassignMember",
+        "summary": "Unassign a member from a task.\r\n\r\nRemoves one assigned project member from the specified task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskMemberUnassignRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicTask"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/tasks/{task}/archive": {
+      "patch": {
+        "operationId": "tasks.archive",
+        "description": "Moves the task into the archived state without deleting its history.",
+        "summary": "Archive a task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Project task archived successfully"
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/tasks/{task}/restore": {
+      "patch": {
+        "operationId": "tasks.restore",
+        "description": "Returns an archived task to the active task list.",
+        "summary": "Restore an archived task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "Project task restored successfully"
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/projects/{project}/tasks/{task}/members/search": {
+      "get": {
+        "operationId": "v1.task.members.search",
+        "description": "Returns project members that match the provided search term for assignment workflows.",
+        "summary": "Search assignable task members",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of `TaskMember`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TaskMember"
+                      }
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/users/me": {
+      "get": {
+        "operationId": "users.current",
+        "description": "Returns the full current-user payload used by the public product.",
+        "summary": "Get the currently authenticated user",
+        "tags": ["Users"],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/CurrentUser"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/users/{user}": {
+      "get": {
+        "operationId": "users.show",
+        "summary": "Show user details\r\n\r\nGet detailed information for a specific user",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "The user UUID",
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`UserProfile`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UserProfile"
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "put": {
+        "operationId": "users.update",
+        "summary": "Update user\r\n\r\nUpdate the specified user's profile information (name, email, etc.).\r\nPassword changes are handled separately via PasswordUpdateController.\r\nOnly the owner can update their data",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "The user UUID",
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/UserProfile"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "users.destroy",
+        "summary": "Soft delete user\r\n\r\nSoft delete the specified user. Only the owner can delete their account.  * This will also soft delete all projects owned by the user*",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "The user UUID",
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "User data deleted successfully."
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/users/{user}/force": {
+      "delete": {
+        "operationId": "v1.users.forceDestroy",
+        "description": "Irreversibly removes a user account that has already been soft deleted.",
+        "summary": "Permanently delete a previously soft-deleted user profile",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "The user UUID",
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "User data permanently deleted."
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    },
+    "/v1/users/{user}/avatar": {
+      "delete": {
+        "operationId": "users.removeAvatar",
+        "summary": "Removes the user's avatar and returns a JSON response.\r\n\r\nDeletes the stored avatar for the targeted user",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "The user UUID",
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "const": "User avatar removed successfully."
+                    }
+                  },
+                  "required": ["message"]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "post": {
+        "operationId": "users.uploadAvatar",
+        "summary": "Uploads and updates the user's avatar.\r\n\r\nStores a new avatar image for the targeted user and returns the stored avatar path",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "The user UUID",
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UserAvatarUploadRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Avatar stored successfully and linked user profile path returned.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "avatar": {
+                          "type": "string"
+                        },
+                        "path": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["avatar", "path"]
+                    }
+                  },
+                  "required": ["data"]
+                }
+              }
+            }
+          },
+          "403": {
+            "$ref": "#/components/responses/PublicForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/PublicNotFoundError"
+          },
+          "401": {
+            "$ref": "#/components/responses/PublicUnauthenticatedError"
+          },
+          "422": {
+            "$ref": "#/components/responses/PublicValidationError"
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "http": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ActivityResource": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "id"]
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserSummary"
+          },
+          "affected_users": {
+            "type": "array",
+            "description": "Convert collection to array for faster lookups",
+            "items": {}
+          }
+        },
+        "required": ["description", "time", "subject"],
+        "title": "ActivityResource"
+      },
+      "AuthenticatedUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Internal numeric user identifier.",
+            "examples": [1]
+          },
+          "uuid": {
+            "type": ["string", "null"],
+            "description": "Stable public UUID for the user.",
+            "examples": ["9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412"]
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name shown across the application.",
+            "examples": ["Berry"]
+          },
+          "username": {
+            "type": ["string", "null"],
+            "description": "Public username.",
+            "examples": ["berry"]
+          },
+          "email": {
+            "type": "string",
+            "description": "Primary email address used for login and notifications.",
+            "examples": ["berry@example.com"]
+          },
+          "timezone": {
+            "description": "IANA timezone identifier.",
+            "examples": ["UTC"],
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "is_admin": {
+            "type": "boolean",
+            "description": "Indicates whether the authenticated user has admin access.",
+            "examples": [false]
+          },
+          "two_factor_enabled": {
+            "type": "boolean",
+            "description": "Indicates whether two-factor authentication is enabled.",
+            "examples": [false]
+          },
+          "avatar": {
+            "type": ["string", "null"],
+            "description": "Public avatar URL when an avatar is present.",
+            "examples": ["https://daywright.test/storage/avatars/berry.png"]
+          },
+          "verified": {
+            "type": "boolean",
+            "description": "Indicates whether the email address has been verified.",
+            "examples": [true]
+          }
+        },
+        "required": [
+          "id",
+          "uuid",
+          "name",
+          "username",
+          "email",
+          "timezone",
+          "is_admin",
+          "two_factor_enabled",
+          "verified"
+        ],
+        "title": "AuthenticatedUser"
+      },
+      "ConversationStoreRequestData": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Conversation message body. Required when no file is attached.",
+            "example": "Can someone review the latest copy draft?",
+            "minLength": 2,
+            "maxLength": 1000
+          },
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "contentMediaType": "application/octet-stream",
+            "description": "Optional conversation attachment.\nAccepted types: jpg, png, pdf, docx. Maximum size: 700 KB.",
+            "maxLength": 700
+          }
+        },
+        "title": "ConversationStoreRequestData"
+      },
+      "CurrentUser": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "description": "Fully authenticated user payload for the current account.",
+            "$ref": "#/components/schemas/AuthenticatedUser"
+          },
+          "features": {
+            "description": "Client-visible feature flags for the authenticated user.",
+            "$ref": "#/components/schemas/FeatureFlagsResource"
+          }
+        },
+        "required": ["user", "features"],
+        "title": "CurrentUser"
+      },
+      "FeatureFlagsResource": {
+        "type": "object",
+        "additionalProperties": {},
+        "title": "FeatureFlagsResource"
+      },
+      "InsightResource": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "examples": ["info"],
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "enum": ["info"]
+              }
+            ]
+          },
+          "title": {
+            "examples": ["Good Project Health"],
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "enum": [""]
+              }
+            ]
+          },
+          "message": {
+            "examples": ["Good project health at 71.0%..."],
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "enum": [""]
+              }
+            ]
+          },
+          "data": {
+            "examples": [
+              {
+                "value": 71
+              }
+            ],
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 0,
+                "maxItems": 0,
+                "additionalItems": false
+              }
+            ]
+          }
+        },
+        "required": ["type", "title", "message", "data"],
+        "title": "InsightResource"
+      },
+      "InvitationUsersRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Accept either a single email or an array of emails."
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "email"
+            }
+          }
+        },
+        "title": "InvitationUsersRequest"
+      },
+      "NotificationResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Notification identifier.",
+            "examples": ["7dcb4d40-4109-4b19-8424-4d031242f591"]
+          },
+          "type": {
+            "type": "string",
+            "description": "Short notification type name derived from the notification class.",
+            "examples": ["ProjectInvitation"]
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable notification message.",
+            "examples": ["You have been invited to join Website Refresh."]
+          },
+          "link": {
+            "type": "string",
+            "description": "Relative or absolute link the client can open from the notification.",
+            "examples": ["/api/v1/projects/website-refresh"]
+          },
+          "notifier": {
+            "description": "User summary for the actor that triggered the notification, when available.",
+            "$ref": "#/components/schemas/PendingInvitationUser"
+          },
+          "read_at": {
+            "type": "string",
+            "description": "Read timestamp in UTC ISO 8601 format, or null when unread.",
+            "examples": ["2025-08-15T10:30:00+00:00"]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Creation timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-08-15T09:00:00+00:00"]
+          }
+        },
+        "required": ["id", "type", "message", "link", "read_at", "created_at"],
+        "title": "NotificationResource"
+      },
+      "NotificationStatusUpdateRequestData": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "New notification state.",
+            "enum": ["read", "unread"],
+            "example": "read"
+          }
+        },
+        "required": ["status"],
+        "title": "NotificationStatusUpdateRequestData"
+      },
+      "PendingInvitationUser": {
+        "type": "object",
+        "properties": {
+          "uuid": {
+            "type": ["string", "null"],
+            "description": "Stable public UUID for the invited user.",
+            "examples": ["9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412"]
+          },
+          "name": {
+            "type": "string",
+            "description": "Invited user display name.",
+            "examples": ["Berry"]
+          },
+          "username": {
+            "type": ["string", "null"],
+            "description": "Invited user username.",
+            "examples": ["berry"]
+          },
+          "email": {
+            "type": "string",
+            "description": "Invited user email address.",
+            "examples": ["berry@example.com"]
+          },
+          "avatar": {
+            "type": ["string", "null"],
+            "description": "Invited user avatar URL when present."
+          },
+          "invitation_sent_at": {
+            "type": "string",
+            "description": "Invitation creation timestamp in UTC ISO 8601 format for pending invitations.",
+            "examples": ["2025-07-09T14:00:00+00:00"]
+          },
+          "links": {
+            "type": "object",
+            "description": "Route links related to the invited user.",
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            },
+            "required": ["self"]
+          }
+        },
+        "required": ["uuid", "name", "username", "email", "links"],
+        "title": "PendingInvitationUser"
+      },
+      "ProjectConversation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Conversation identifier.",
+            "examples": [44]
+          },
+          "message": {
+            "type": "string",
+            "description": "Conversation message body when the message contains text.",
+            "examples": ["Can someone review the latest copy draft?"]
+          },
+          "file": {
+            "type": "string",
+            "description": "Public URL for the uploaded attachment when the conversation contains a file."
+          },
+          "user": {
+            "description": "User who sent the conversation message.",
+            "$ref": "#/components/schemas/PendingInvitationUser"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Conversation creation timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-08-15T09:00:00+00:00"]
+          },
+          "links": {
+            "type": "object",
+            "description": "Route links related to the conversation.",
+            "properties": {
+              "project": {
+                "type": "string"
+              }
+            },
+            "required": ["project"]
+          }
+        },
+        "required": ["id", "created_at"],
+        "title": "ProjectConversation"
+      },
+      "ProjectInsightsResource": {
+        "type": "object",
+        "properties": {
+          "project_id": {
+            "type": "string",
+            "examples": ["4"]
+          },
+          "project_name": {
+            "type": "string",
+            "examples": ["The Universal Dimension"]
+          },
+          "insights": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InsightResource"
+            }
+          },
+          "generated_at": {
+            "type": ["string", "null"],
+            "examples": ["2025-09-27T20:15:32Z"]
+          },
+          "sections_requested": {
+            "type": "string",
+            "examples": ["['health']"]
+          }
+        },
+        "required": ["project_id", "project_name", "insights", "generated_at", "sections_requested"],
+        "title": "ProjectInsightsResource"
+      },
+      "ProjectInvitation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Project ID",
+            "examples": [1]
+          },
+          "name": {
+            "type": "string",
+            "description": "Project name",
+            "examples": ["My Project"]
+          },
+          "status": {
+            "type": "string",
+            "description": "Invitation status (e.g. pending, accepted, rejected)",
+            "examples": ["pending"]
+          },
+          "slug": {
+            "type": "string",
+            "description": "Project slug",
+            "examples": ["my-project"]
+          },
+          "invitation_sent_at": {
+            "type": "string",
+            "description": "Invitation sent timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-07-09T14:00:00+00:00"]
+          },
+          "owner": {
+            "description": "Project owner details",
+            "examples": ["{\"uuid\":176890,\"name\":\"Owner Name\",...}"],
+            "$ref": "#/components/schemas/UserSummary"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Project creation timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-07-07T14:00:00+00:00"]
+          },
+          "links": {
+            "type": "object",
+            "description": "Links related to the project invitation.",
+            "examples": [
+              {
+                "project": "/api/v1/projects/my-project"
+              }
+            ],
+            "properties": {
+              "project": {
+                "type": "string"
+              }
+            },
+            "required": ["project"]
+          }
+        },
+        "required": ["id", "name", "status", "slug", "created_at", "links"],
+        "title": "ProjectInvitation"
+      },
+      "ProjectListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Project identifier.",
+            "examples": [1]
+          },
+          "name": {
+            "type": "string",
+            "description": "Project display name.",
+            "examples": ["The Dimension"]
+          },
+          "slug": {
+            "type": "string",
+            "description": "Stable project slug used in public routes.",
+            "examples": ["the-dimension"]
+          },
+          "health_status": {
+            "type": "string",
+            "description": "Project status calculated on the based of score",
+            "examples": ["cold"]
+          },
+          "stage": {
+            "description": "Details of the current stage of the project.",
+            "$ref": "#/components/schemas/PublicStage"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Project creation timestamp in UTC ISO 8601 format.",
+            "examples": ["2024-06-04T00:00:00+00:00"]
+          },
+          "links": {
+            "type": "object",
+            "description": "Links related to the project.",
+            "examples": [
+              {
+                "self": "/api/v1/projects/the-dimension"
+              }
+            ],
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            },
+            "required": ["self"]
+          }
+        },
+        "required": ["id", "name", "slug", "health_status", "created_at", "links"],
+        "title": "ProjectListItem"
+      },
+      "ProjectStageResource": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Project Name",
+            "examples": ["The aura of new compass"]
+          },
+          "stage": {
+            "description": "Project Stage Resource",
+            "$ref": "#/components/schemas/PublicStage"
+          },
+          "postponed_reason": {
+            "type": ["string", "null"],
+            "description": "project postponed reason if any",
+            "examples": [null]
+          },
+          "stage_updated_at": {
+            "type": "string",
+            "description": "Project stage update timestamp in UTC ISO 8601 format.",
+            "examples": ["2024-06-10T09:15:00+00:00"]
+          },
+          "links": {
+            "type": "object",
+            "description": "Links related to the project.",
+            "examples": [
+              {
+                "self": "/api/v1/projects/the-aura-of-new-compass"
+              }
+            ],
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            },
+            "required": ["self"]
+          }
+        },
+        "required": ["name", "stage_updated_at", "links"],
+        "title": "ProjectStageResource"
+      },
+      "ProjectStoreRequestData": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 150
+          },
+          "about": {
+            "type": "string",
+            "minLength": 15
+          },
+          "stage_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 250
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 5,
+                  "maxLength": 55
+                }
+              },
+              "required": ["title"]
+            },
+            "maxItems": 3
+          }
+        },
+        "required": ["name", "about", "stage_id"],
+        "title": "ProjectStoreRequestData"
+      },
+      "ProjectSummaryResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            },
+            "required": ["self"]
+          }
+        },
+        "required": ["id", "slug", "name", "links"],
+        "title": "ProjectSummaryResource"
+      },
+      "ProjectTaskListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Task identifier.",
+            "examples": [1]
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title.",
+            "examples": ["The rise of plant"]
+          },
+          "status": {
+            "description": "Current task status.",
+            "$ref": "#/components/schemas/TaskStatusResource"
+          },
+          "due_at": {
+            "type": "string",
+            "description": "Task due at in UTC ISO 8601 format.",
+            "examples": ["2024-12-19T15:25:00+00:00"]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Task created date time in UTC ISO 8601 format.",
+            "examples": ["2024-12-15T12:00:00+00:00"]
+          },
+          "links": {
+            "type": "object",
+            "description": "Route links related to the task.",
+            "examples": [
+              {
+                "self": "/api/v1/projects/the-dimension/tasks/1"
+              }
+            ],
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            },
+            "required": ["self"]
+          }
+        },
+        "required": ["id", "title", "created_at", "links"],
+        "title": "ProjectTaskListItem"
+      },
+      "ProjectUpdateRequestData": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 4,
+            "maxLength": 150
+          },
+          "about": {
+            "type": "string",
+            "minLength": 15
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 250
+          }
+        },
+        "title": "ProjectUpdateRequestData"
+      },
+      "ProjectUsageLimit": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Stable limit key used in plan-limit checks.",
+            "examples": ["tasks_per_project"]
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable label for the tracked limit.",
+            "examples": ["Tasks per project"]
+          },
+          "scope": {
+            "type": "string",
+            "description": "Scope the limit applies to.",
+            "examples": ["project"]
+          },
+          "limit": {
+            "type": "object",
+            "description": "Current usage count and the maximum allowed value for this limit.",
+            "examples": [
+              {
+                "used": 4,
+                "max": 25
+              }
+            ],
+            "properties": {
+              "used": {
+                "type": ["integer", "null"]
+              },
+              "max": {
+                "type": ["integer", "null"]
+              }
+            },
+            "required": ["used", "max"]
+          }
+        },
+        "required": ["key", "label", "scope", "limit"],
+        "title": "ProjectUsageLimit"
+      },
+      "PublicApiErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "Resource not found.",
+          "code": "not_found",
+          "errors": [],
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "Resource not found."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "not_found"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicApiErrorEnvelope"
+      },
+      "PublicApiValidationErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "Validation failed.",
+          "code": "validation_error",
+          "errors": {
+            "email": ["The provided credentials are incorrect."]
+          },
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "Validation failed."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "validation_error"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details keyed by input name.",
+            "example": {
+              "email": ["The provided credentials are incorrect."]
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicApiValidationErrorEnvelope"
+      },
+      "PublicBadRequestErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "The request could not be processed.",
+          "code": "bad_request",
+          "errors": [],
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "The request could not be processed."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "bad_request"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicBadRequestErrorEnvelope"
+      },
+      "PublicConflictErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "The request conflicts with the current resource state.",
+          "code": "conflict",
+          "errors": [],
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "The request conflicts with the current resource state."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "conflict"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicConflictErrorEnvelope"
+      },
+      "PublicForbiddenErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "You are not authorized to perform this action.",
+          "code": "forbidden",
+          "errors": [],
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "You are not authorized to perform this action."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "forbidden"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicForbiddenErrorEnvelope"
+      },
+      "PublicInternalServerErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "An unexpected server error occurred.",
+          "code": "internal_server_error",
+          "errors": [],
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "An unexpected server error occurred."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "internal_server_error"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicInternalServerErrorEnvelope"
+      },
+      "PublicMethodNotAllowedErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "Method not allowed.",
+          "code": "method_not_allowed",
+          "errors": [],
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "Method not allowed."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "method_not_allowed"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicMethodNotAllowedErrorEnvelope"
+      },
+      "PublicNotFoundErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "Resource not found.",
+          "code": "not_found",
+          "errors": [],
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "Resource not found."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "not_found"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicNotFoundErrorEnvelope"
+      },
+      "PublicProject": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "examples": [1]
+          },
+          "slug": {
+            "type": "string",
+            "examples": ["the-dimension"]
+          },
+          "name": {
+            "type": "string",
+            "examples": ["The Dimension"]
+          },
+          "about": {
+            "type": "string",
+            "examples": ["it describes what the project is about."]
+          },
+          "notes": {
+            "type": ["string", "null"],
+            "examples": ["This is project-specific note"]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Project creation timestamp in UTC ISO 8601 format.",
+            "examples": ["2024-06-04T00:00:00+00:00"]
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "Project update timestamp in UTC ISO 8601 format.",
+            "examples": ["2024-06-04T12:30:00+00:00"]
+          },
+          "deleted_at": {
+            "type": "string",
+            "description": "Project deletion timestamp in UTC ISO 8601 format when the project is trashed.",
+            "examples": ["2024-06-10T09:15:00+00:00"]
+          },
+          "is_trashed": {
+            "$ref": "#/components/schemas/PublicProject"
+          },
+          "stage_updated_at": {
+            "type": "string",
+            "description": "Last stage update timestamp in UTC ISO 8601 format.",
+            "examples": ["2024-06-10T09:15:00+00:00"]
+          },
+          "ownerNotAuthorized": {
+            "type": "string"
+          },
+          "days_limit": {
+            "type": "string"
+          },
+          "postponed_reason": {
+            "type": ["string", "null"]
+          },
+          "user": {
+            "description": "Basic details of the project owner.",
+            "examples": ["[data]"],
+            "$ref": "#/components/schemas/UserSummary"
+          },
+          "health_status": {
+            "type": "string",
+            "description": "Project status calculated on the based of score",
+            "examples": ["cold"]
+          },
+          "health_score": {
+            "type": ["number", "null"],
+            "examples": [72.5]
+          },
+          "health_score_calculated_at": {
+            "type": "string",
+            "description": "Health score calculation timestamp in UTC ISO 8601 format.",
+            "examples": ["2024-10-01T15:30:00+00:00"]
+          },
+          "stage": {
+            "description": "Current stage information for the project.",
+            "$ref": "#/components/schemas/PublicStage"
+          },
+          "members": {
+            "type": "array",
+            "description": "List of active project members.",
+            "items": {
+              "$ref": "#/components/schemas/UserSummary"
+            }
+          },
+          "limits": {
+            "type": "array",
+            "description": "Current project-scoped usage and maximums for tracked subscription limits.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectUsageLimit"
+            }
+          },
+          "activities": {
+            "type": "array",
+            "description": "Limited list of recent project activities.",
+            "items": {
+              "$ref": "#/components/schemas/ActivityResource"
+            }
+          },
+          "links": {
+            "type": "object",
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            },
+            "required": ["self"]
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "about",
+          "notes",
+          "created_at",
+          "updated_at",
+          "is_trashed",
+          "days_limit",
+          "postponed_reason",
+          "health_status",
+          "health_score",
+          "health_score_calculated_at",
+          "links"
+        ],
+        "title": "PublicProject"
+      },
+      "PublicRateLimitErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "Too many requests. Please try again later.",
+          "code": "rate_limited",
+          "errors": [],
+          "meta": {
+            "retry_after_seconds": 42
+          }
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "Too many requests. Please try again later."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "rate_limited"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": {
+              "retry_after_seconds": 42
+            }
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicRateLimitErrorEnvelope"
+      },
+      "PublicServiceUnavailableErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "The service is temporarily unavailable.",
+          "code": "service_unavailable",
+          "errors": [],
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "The service is temporarily unavailable."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "service_unavailable"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicServiceUnavailableErrorEnvelope"
+      },
+      "PublicStage": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "examples": [1]
+          },
+          "name": {
+            "type": "string",
+            "examples": ["Planing"]
+          }
+        },
+        "required": ["id", "name"],
+        "title": "PublicStage"
+      },
+      "PublicTask": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Task identifier.",
+            "examples": [14]
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title.",
+            "examples": ["The rise of plant"]
+          },
+          "description": {
+            "type": ["string", "null"],
+            "description": "Task description.",
+            "examples": ["This is the description of the task."]
+          },
+          "status": {
+            "description": "Current task status.",
+            "$ref": "#/components/schemas/TaskStatusResource"
+          },
+          "members": {
+            "type": "array",
+            "description": "Users currently assigned to the task.",
+            "items": {
+              "$ref": "#/components/schemas/TaskMember"
+            }
+          },
+          "notified": {
+            "type": ["string", "null"],
+            "description": "Reminder strategy for due-date notifications."
+          },
+          "due_at": {
+            "type": "string",
+            "description": "Task due at in UTC ISO 8601 format.",
+            "examples": ["2024-12-09T10:25:00+00:00"]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Task created at in UTC ISO 8601 format.",
+            "examples": ["2024-12-04T11:41:34+00:00"]
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "Task updated at in UTC ISO 8601 format if present.",
+            "examples": ["2024-12-10T09:41:34+00:00"]
+          },
+          "links": {
+            "type": "object",
+            "description": "Route links related to the task.",
+            "properties": {
+              "self": {
+                "type": "string"
+              }
+            },
+            "required": ["self"]
+          }
+        },
+        "required": ["id", "title", "description", "notified", "created_at", "links"],
+        "title": "PublicTask"
+      },
+      "PublicUnauthenticatedErrorEnvelope": {
+        "type": "object",
+        "example": {
+          "message": "Authentication is required.",
+          "code": "unauthenticated",
+          "errors": [],
+          "meta": []
+        },
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Safe human-readable error message.",
+            "example": "Authentication is required."
+          },
+          "code": {
+            "type": "string",
+            "description": "Stable machine-readable error code.",
+            "example": "unauthenticated"
+          },
+          "errors": {
+            "type": "object",
+            "description": "Field-level validation details when available.",
+            "example": [],
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "meta": {
+            "type": "object",
+            "description": "Structured error context when available.",
+            "example": []
+          }
+        },
+        "required": ["message", "code", "errors", "meta"],
+        "title": "PublicUnauthenticatedErrorEnvelope"
+      },
+      "StageRequest": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "type": "integer"
+          },
+          "postponed_reason": {
+            "type": "string"
+          }
+        },
+        "required": ["stage"],
+        "title": "StageRequest"
+      },
+      "SubscriptionDetails": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "description": "Effective account plan.",
+            "examples": ["free"]
+          },
+          "entitled": {
+            "type": "boolean",
+            "description": "Indicates whether the account is currently entitled to Pro limits.",
+            "examples": [false]
+          },
+          "subscribed": {
+            "type": "boolean",
+            "description": "Indicates whether the billing subscription is currently active.",
+            "examples": [false]
+          },
+          "billing_status": {
+            "type": ["string", "null"],
+            "description": "Raw billing status from Paddle (active, trialing, past_due, paused, canceled, etc.).",
+            "examples": ["active"]
+          },
+          "available_plans": {
+            "type": "array",
+            "description": "Plans the user can purchase or switch to.",
+            "examples": [
+              [
+                {
+                  "name": "monthly",
+                  "label": "Monthly",
+                  "interval_label": "month",
+                  "price": 12,
+                  "currency": "USD",
+                  "currency_symbol": "$",
+                  "featured": true
+                }
+              ]
+            ],
+            "prefixItems": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "monthly"
+                  },
+                  "label": {
+                    "type": "string",
+                    "const": "Monthly"
+                  },
+                  "interval_label": {
+                    "type": "string",
+                    "const": "month"
+                  },
+                  "price": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "currency_symbol": {
+                    "type": "string"
+                  },
+                  "featured": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["name", "label", "interval_label", "price", "currency", "currency_symbol", "featured"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "const": "yearly"
+                  },
+                  "label": {
+                    "type": "string",
+                    "const": "Yearly"
+                  },
+                  "interval_label": {
+                    "type": "string",
+                    "const": "year"
+                  },
+                  "price": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "currency_symbol": {
+                    "type": "string"
+                  },
+                  "featured": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["name", "label", "interval_label", "price", "currency", "currency_symbol", "featured"]
+              }
+            ],
+            "minItems": 2,
+            "maxItems": 2,
+            "additionalItems": false
+          },
+          "billing_plan": {
+            "type": ["string", "null"],
+            "description": "Active billing cadence when the account has an active or grace-period subscription.",
+            "enum": ["monthly", "yearly", "Unknown", "Not Subscribed Actively", null],
+            "examples": ["monthly"]
+          },
+          "next_payment": {
+            "type": ["string", "null"],
+            "description": "Upcoming payment details from Paddle when billing is active."
+          },
+          "created_at": {
+            "type": ["string", "null"],
+            "description": "Subscription creation timestamp in UTC ISO 8601 format when billing is active.",
+            "examples": ["2025-07-01T09:00:00+00:00"]
+          },
+          "receipts": {
+            "type": "array",
+            "description": "Receipt history for the account.",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionReceipt"
+            }
+          },
+          "trial": {
+            "type": "object",
+            "description": "Trial status information.",
+            "examples": [
+              {
+                "active": false,
+                "ends_at": null
+              }
+            ],
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "ends_at": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["active", "ends_at"]
+          },
+          "grace_period": {
+            "type": "object",
+            "description": "Grace-period status information.",
+            "examples": [
+              {
+                "active": false,
+                "ends_at": null
+              }
+            ],
+            "properties": {
+              "active": {
+                "type": "string"
+              },
+              "ends_at": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["active", "ends_at"]
+          },
+          "limits": {
+            "type": "array",
+            "description": "Current plan usage and maximums for tracked limits.",
+            "items": {}
+          }
+        },
+        "required": [
+          "plan",
+          "entitled",
+          "subscribed",
+          "billing_status",
+          "available_plans",
+          "billing_plan",
+          "next_payment",
+          "created_at",
+          "trial",
+          "grace_period",
+          "limits"
+        ],
+        "title": "SubscriptionDetails"
+      },
+      "SubscriptionReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "receipt_url": {
+            "type": "string"
+          },
+          "tax": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "created_at", "currency", "quantity", "receipt_url", "tax", "amount", "updated_at"],
+        "title": "SubscriptionReceipt"
+      },
+      "TaskMember": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "User identifier.",
+            "examples": [1]
+          },
+          "uuid": {
+            "type": ["string", "null"],
+            "description": "Stable public UUID for the member.",
+            "examples": ["9b8ea076-6d80-4076-8a01-73b94f4c0bc3"]
+          },
+          "name": {
+            "type": "string",
+            "description": "Member display name.",
+            "examples": ["Berry"]
+          },
+          "username": {
+            "type": ["string", "null"],
+            "description": "Public username.",
+            "examples": ["berry"]
+          },
+          "email": {
+            "type": "string",
+            "description": "Member email address.",
+            "examples": ["user@example.com"]
+          },
+          "avatar": {
+            "type": ["string", "null"],
+            "description": "Member avatar URL when present.",
+            "examples": ["https://eu.ui-avatars.com/api/?name=Berry"]
+          }
+        },
+        "required": ["id", "uuid", "name", "username", "email"],
+        "title": "TaskMember"
+      },
+      "TaskMemberAssignRequestData": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "array",
+            "description": "Member identifiers to assign to the task.\n- Prevents assigning a task to users who are already assigned.\n- Ensures tasks can only be assigned to active members of the project.",
+            "example": [3, 5],
+            "items": {
+              "type": "integer",
+              "description": "Individual member identifier.",
+              "example": 3
+            },
+            "minItems": 1
+          }
+        },
+        "required": ["members"],
+        "title": "TaskMemberAssignRequestData"
+      },
+      "TaskMemberUnassignRequestData": {
+        "type": "object",
+        "properties": {
+          "member": {
+            "type": "integer",
+            "description": "Assigned member identifier to remove from the task.",
+            "example": 3
+          }
+        },
+        "required": ["member"],
+        "title": "TaskMemberUnassignRequestData"
+      },
+      "TaskStatusIndex": {
+        "type": "object",
+        "properties": {
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskStatusResource"
+            }
+          },
+          "due_notifies": {
+            "type": "array",
+            "items": {}
+          }
+        },
+        "required": ["statuses", "due_notifies"],
+        "title": "TaskStatusIndex"
+      },
+      "TaskStatusResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "examples": [1]
+          },
+          "label": {
+            "type": "string",
+            "examples": ["Not Started"]
+          },
+          "color": {
+            "type": "string",
+            "examples": ["#CCCCCC"]
+          }
+        },
+        "required": ["id", "label", "color"],
+        "title": "TaskStatusResource"
+      },
+      "TaskStoreRequestData": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Task title. Titles must be unique within the selected project.",
+            "example": "Draft QA checklist",
+            "minLength": 3,
+            "maxLength": 55
+          }
+        },
+        "required": ["title"],
+        "title": "TaskStoreRequestData"
+      },
+      "TaskUpdateRequestData": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Updated task title. Titles must remain unique within the project.",
+            "example": "Draft QA checklist",
+            "maxLength": 55
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional task description.",
+            "example": "Confirm release notes, test scenarios, and sign-off owners.",
+            "maxLength": 1000
+          },
+          "due_at": {
+            "type": "string",
+            "description": "Task due date in ISO 8601 format with a timezone offset.\nRequired when `notified` is present.",
+            "example": "2024-12-09T15:25:00+00:00"
+          },
+          "status_id": {
+            "type": "integer",
+            "description": "Task status identifier.",
+            "enum": ["1", "2", "3", "4", "5"],
+            "example": 1
+          },
+          "notified": {
+            "type": "string",
+            "description": "Notification strategy used for due-date reminders.",
+            "enum": ["1 Day Before", "2 Hours Before", "15 Minutes Before", "5 Minutes Before"],
+            "example": "all"
+          }
+        },
+        "title": "TaskUpdateRequestData"
+      },
+      "UserActivitiesResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Activity identifier.",
+            "examples": [91]
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable activity summary.",
+            "examples": ["Task 'Finalize copy..' status updated in Website Refresh"]
+          },
+          "project": {
+            "anyOf": [
+              {
+                "description": "Related project summary, including soft-deleted projects when the activity still references them.",
+                "$ref": "#/components/schemas/ProjectSummaryResource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Activity timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-08-15T10:00:00+00:00"]
+          },
+          "subject": {
+            "type": "object",
+            "description": "Minimal reference to the affected subject.",
+            "examples": [
+              {
+                "type": "Task",
+                "id": 22
+              }
+            ],
+            "properties": {
+              "type": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": ["type", "id"]
+          },
+          "color": {
+            "type": "string",
+            "description": "UI color hint derived from the activity type.",
+            "const": "red",
+            "examples": ["yellow"]
+          },
+          "user_id": {
+            "type": ["integer", "null"],
+            "description": "Identifier of the user who triggered the activity.",
+            "examples": [5]
+          }
+        },
+        "required": ["id", "description", "project", "created_at", "subject", "color", "user_id"],
+        "title": "UserActivitiesResource"
+      },
+      "UserAvatarUploadRequestData": {
+        "type": "object",
+        "properties": {
+          "avatar": {
+            "type": "string",
+            "format": "binary",
+            "contentMediaType": "application/octet-stream",
+            "description": "Avatar image file.\nAccepted types: jpeg, jpg, png. Maximum size: 700 KB.",
+            "maxLength": 700
+          }
+        },
+        "required": ["avatar"],
+        "title": "UserAvatarUploadRequestData"
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Internal numeric user identifier.",
+            "examples": [1]
+          },
+          "uuid": {
+            "type": ["string", "null"],
+            "description": "Stable public UUID for the user.",
+            "examples": ["9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412"]
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name shown across the application.",
+            "examples": ["Berry"]
+          },
+          "username": {
+            "type": ["string", "null"],
+            "description": "Public username.",
+            "examples": ["berry"]
+          },
+          "avatar": {
+            "type": ["string", "null"],
+            "description": "Avatar URL when present.",
+            "examples": ["https://daywright.test/storage/avatars/berry.png"]
+          },
+          "timezone": {
+            "description": "IANA timezone identifier.",
+            "examples": ["UTC"],
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "email": {
+            "type": "string",
+            "description": "Primary email address.",
+            "examples": ["berry@example.com"]
+          },
+          "verified": {
+            "type": "string",
+            "description": "Email verification timestamp for the authenticated owner, in UTC ISO 8601 format.",
+            "examples": ["2025-07-01T09:00:00+00:00"]
+          },
+          "info": {
+            "description": "Extended profile information.",
+            "$ref": "#/components/schemas/UserProfileInfo"
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Profile creation timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-07-01T09:00:00+00:00"]
+          },
+          "updated_at": {
+            "type": "string",
+            "description": "Profile update timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-07-08T12:34:56+00:00"]
+          }
+        },
+        "required": ["id", "uuid", "name", "username", "timezone", "email", "info", "created_at", "updated_at"],
+        "title": "UserProfile"
+      },
+      "UserProfileInfo": {
+        "type": "object",
+        "properties": {
+          "mobile": {
+            "type": ["integer", "null"],
+            "description": "Optional mobile number.",
+            "examples": [1234567890]
+          },
+          "company": {
+            "type": ["string", "null"],
+            "description": "Optional company name.",
+            "examples": ["Acme Inc."]
+          },
+          "position": {
+            "type": ["string", "null"],
+            "description": "Optional job title.",
+            "examples": ["Software Engineer"]
+          },
+          "bio": {
+            "type": ["string", "null"],
+            "description": "Optional biography.",
+            "examples": ["Product designer and async collaboration enthusiast."]
+          },
+          "address": {
+            "type": ["string", "null"],
+            "description": "Optional address.",
+            "examples": ["123 Main St, City, Country"]
+          }
+        },
+        "required": ["mobile", "company", "position", "bio", "address"],
+        "title": "UserProfileInfo"
+      },
+      "UserSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Internal numeric user identifier.",
+            "examples": [1]
+          },
+          "uuid": {
+            "type": ["string", "null"],
+            "description": "Stable public UUID for the user.",
+            "examples": ["9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412"]
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name shown across the application.",
+            "examples": ["Berry"]
+          },
+          "username": {
+            "type": ["string", "null"],
+            "description": "Public username.",
+            "examples": ["berry"]
+          },
+          "avatar": {
+            "type": ["string", "null"],
+            "description": "Avatar URL when present.",
+            "examples": ["https://daywright.test/storage/avatars/berry.png"]
+          }
+        },
+        "required": ["id", "uuid", "name", "username"],
+        "title": "UserSummary"
+      },
+      "UserTasksResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Task identifier.",
+            "examples": [14]
+          },
+          "title": {
+            "type": "string",
+            "description": "Task title shown in dashboard widgets.",
+            "examples": ["Finalize onboarding checklist"]
+          },
+          "status": {
+            "description": "Current task status.",
+            "$ref": "#/components/schemas/TaskStatusResource"
+          },
+          "project": {
+            "description": "Parent project summary.",
+            "$ref": "#/components/schemas/ProjectSummaryResource"
+          },
+          "assignee": {
+            "type": "array",
+            "description": "Assigned users for the task.",
+            "items": {
+              "$ref": "#/components/schemas/UserSummary"
+            }
+          },
+          "due_at": {
+            "type": "string",
+            "description": "Due date in UTC ISO 8601 format when the task has a deadline.",
+            "examples": ["2025-08-20T10:30:00+00:00"]
+          },
+          "state": {
+            "type": "string",
+            "description": "Whether the task appears because it was created by or assigned to the user.",
+            "enum": ["assigned", "created"],
+            "examples": ["assigned"]
+          },
+          "created_at": {
+            "type": "string",
+            "description": "Task creation timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-08-10T09:00:00+00:00"]
+          }
+        },
+        "required": ["id", "title", "state", "created_at"],
+        "title": "UserTasksResource"
+      },
+      "UserUpdateRequestData": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Updated display name.",
+            "example": "John Doe",
+            "maxLength": 30
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Updated primary email address.",
+            "example": "john.doe@example.com",
+            "maxLength": 100
+          },
+          "username": {
+            "type": "string",
+            "description": "Updated public username.",
+            "example": "john_doe",
+            "maxLength": 30
+          },
+          "mobile": {
+            "type": ["string", "null"],
+            "description": "Optional mobile number.",
+            "example": "1234567890"
+          },
+          "company": {
+            "type": ["string", "null"],
+            "description": "Optional company name.",
+            "example": "Company Name",
+            "maxLength": 100
+          },
+          "bio": {
+            "type": ["string", "null"],
+            "description": "Optional biography shown on the profile.",
+            "example": "Product designer and async collaboration enthusiast.",
+            "maxLength": 1500
+          },
+          "address": {
+            "type": ["string", "null"],
+            "description": "Optional mailing or profile address.",
+            "example": "123 Main St, City, Country",
+            "maxLength": 150
+          },
+          "position": {
+            "type": ["string", "null"],
+            "description": "Optional role or job title.",
+            "example": "Software Engineer",
+            "maxLength": 100
+          },
+          "timezone": {
+            "type": ["string", "null"],
+            "description": "Optional IANA timezone identifier.",
+            "example": "America/New_York"
+          }
+        },
+        "title": "UserUpdateRequestData"
+      }
+    },
+    "responses": {
+      "AuthenticationException": {
+        "description": "Unauthenticated",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "Error overview."
+                }
+              },
+              "required": ["message"]
+            }
+          }
+        }
+      },
+      "ValidationException": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "Errors overview."
+                },
+                "errors": {
+                  "type": "object",
+                  "description": "A detailed description of each field that failed validation.",
+                  "additionalProperties": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "required": ["message", "errors"]
+            }
+          }
+        }
+      },
+      "ModelNotFoundException": {
+        "description": "Not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "Error overview."
+                }
+              },
+              "required": ["message"]
+            }
+          }
+        }
+      },
+      "AuthorizationException": {
+        "description": "Authorization error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "description": "Error overview."
+                }
+              },
+              "required": ["message"]
+            }
+          }
+        }
+      },
+      "PublicBadRequestError": {
+        "description": "Bad request",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicBadRequestErrorEnvelope"
+            }
+          }
+        }
+      },
+      "PublicUnauthenticatedError": {
+        "description": "Unauthenticated",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicUnauthenticatedErrorEnvelope"
+            }
+          }
+        }
+      },
+      "PublicForbiddenError": {
+        "description": "Forbidden",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicForbiddenErrorEnvelope"
+            }
+          }
+        }
+      },
+      "PublicNotFoundError": {
+        "description": "Not found",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicNotFoundErrorEnvelope"
+            }
+          }
+        }
+      },
+      "PublicMethodNotAllowedError": {
+        "description": "Method not allowed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicMethodNotAllowedErrorEnvelope"
+            }
+          }
+        }
+      },
+      "PublicConflictError": {
+        "description": "Conflict",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicConflictErrorEnvelope"
+            }
+          }
+        }
+      },
+      "PublicValidationError": {
+        "description": "Validation error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+            }
+          }
+        }
+      },
+      "PublicRateLimitError": {
+        "description": "Too many requests",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
+            }
+          }
+        }
+      },
+      "PublicInternalServerError": {
+        "description": "Internal server error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicInternalServerErrorEnvelope"
+            }
+          }
+        }
+      },
+      "PublicServiceUnavailableError": {
+        "description": "Service unavailable",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/PublicServiceUnavailableErrorEnvelope"
+            }
+          }
+        }
+      }
+    }
+  }
+}

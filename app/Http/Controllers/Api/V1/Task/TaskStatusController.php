@@ -8,6 +8,7 @@ use App\Enums\TaskDueNotifies;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Resources\Api\V1\Task\TaskStatusIndexResource;
 use App\Models\TaskStatus;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 class TaskStatusController extends ApiController
@@ -17,6 +18,7 @@ class TaskStatusController extends ApiController
      *
      * Returns the released task status reference data used by public task workflows.
      */
+    #[Endpoint(operationId: 'taskStatuses.list')]
     public function __invoke(): JsonResponse
     {
         return $this->respondWithData(

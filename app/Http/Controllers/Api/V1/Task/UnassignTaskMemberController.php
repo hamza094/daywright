@@ -10,6 +10,7 @@ use App\Http\Resources\Api\V1\Task\TaskResource;
 use App\Models\Project;
 use App\Models\Task;
 use App\Services\Task\TaskService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 final class UnassignTaskMemberController extends ApiController
@@ -19,6 +20,7 @@ final class UnassignTaskMemberController extends ApiController
      *
      * Removes one assigned project member from the specified task.
      */
+    #[Endpoint(operationId: 'tasks.unassignMember')]
     public function __invoke(Project $project, Task $task, TaskMemberUnassignRequest $request, TaskService $service): JsonResponse
     {
         $task = $service->unassignMember($task, $request->toDto());

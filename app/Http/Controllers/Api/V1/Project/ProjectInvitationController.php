@@ -12,6 +12,7 @@ use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Project\InvitationService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 final class ProjectInvitationController extends ApiController
@@ -21,6 +22,7 @@ final class ProjectInvitationController extends ApiController
      *
      * Sends a project invitation to the supplied email address and returns the created invitation resource.
      */
+    #[Endpoint(operationId: 'invitations.create')]
     public function store(Project $project, InvitationUsersRequest $request, InvitationService $invitationService): JsonResponse
     {
         $data = $request->toDto();
@@ -42,6 +44,7 @@ final class ProjectInvitationController extends ApiController
      * Use `filter[status]=pending` to retrieve the supported invitation slice.
      * This endpoint intentionally returns a bounded, non-paginated list.
      */
+    #[Endpoint(operationId: 'invitations.list')]
     public function index(ProjectInvitationIndexRequest $request, Project $project, InvitationService $invitationService): JsonResponse
     {
         $request->validated();
@@ -56,6 +59,7 @@ final class ProjectInvitationController extends ApiController
      *
      * Revokes a pending invitation for the targeted user.
      */
+    #[Endpoint(operationId: 'invitations.destroy')]
     public function destroy(Project $project, User $user, InvitationService $invitationService): JsonResponse
     {
         $this->authorize('manage', $project);

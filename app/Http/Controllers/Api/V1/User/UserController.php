@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\User\UserRequest;
 use App\Http\Resources\Api\V1\User\UserProfileResource;
 use App\Models\User;
 use App\Services\User\UserService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 class UserController extends ApiController
@@ -20,6 +21,7 @@ class UserController extends ApiController
      *
      * Get detailed information for a specific user.
      */
+    #[Endpoint(operationId: 'users.show')]
     public function show(User $user): JsonResponse
     {
         $user = $this->userService->loadProfile($user);
@@ -34,6 +36,7 @@ class UserController extends ApiController
      * Password changes are handled separately via PasswordUpdateController.
      * Only the owner can update their data.
      */
+    #[Endpoint(operationId: 'users.update')]
     public function update(UserRequest $request, User $user): JsonResponse
     {
         $this->authorize('owner', $user);
@@ -48,6 +51,7 @@ class UserController extends ApiController
      *
      * Soft delete the specified user. Only the owner can delete their account.  * This will also soft delete all projects owned by the user*.
      */
+    #[Endpoint(operationId: 'users.destroy')]
     public function destroy(User $user): JsonResponse
     {
         $this->authorize('owner', $user);

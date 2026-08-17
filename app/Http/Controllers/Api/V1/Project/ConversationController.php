@@ -12,6 +12,7 @@ use App\Models\Conversation;
 use App\Models\Project;
 use App\Repository\Api\V1\ConversationRepository;
 use App\Services\Project\ConversationService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 class ConversationController extends ApiController
@@ -23,6 +24,7 @@ class ConversationController extends ApiController
      *
      * Returns a paginated conversation feed for the specified project.
      */
+    #[Endpoint(operationId: 'conversations.list')]
     public function index(Project $project, ConversationIndexRequest $request, ConversationRepository $repository): JsonResponse
     {
         return ConversationResource::collection(
@@ -35,6 +37,7 @@ class ConversationController extends ApiController
      *
      * Creates a new project conversation with a message body, an attachment, or both.
      */
+    #[Endpoint(operationId: 'conversations.create')]
     public function store(Project $project, ConversationRequest $request): JsonResponse
     {
         $conversation = $this->conversationService->storeConversation(
@@ -51,6 +54,7 @@ class ConversationController extends ApiController
      *
      * Permanently removes a conversation that the authenticated user is allowed to delete.
      */
+    #[Endpoint(operationId: 'conversations.destroy')]
     public function destroy(Project $project, Conversation $conversation): JsonResponse
     {
         $this->conversationService->deleteConversation($conversation, $project);
