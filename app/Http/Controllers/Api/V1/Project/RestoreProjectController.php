@@ -13,9 +13,10 @@ use Illuminate\Http\JsonResponse;
 final class RestoreProjectController extends ApiController
 {
     /**
-     * Restore a soft-deleted project.
+     * Restore a soft-deleted (abandoned) project.
      *
-     * Re-activates a previously abandoned project.
+     * This endpoint only applies to abandoned (soft-deleted) projects. It re-activates the project
+     * and makes it accessible again to members.
      */
     #[Endpoint(operationId: 'projects.restore')]
     public function __invoke(Project $project, ProjectService $projectService): JsonResponse

@@ -13,7 +13,9 @@ final class ForceDeleteUserController extends ApiController
     /**
      * Permanently delete a previously soft-deleted user profile.
      *
-     * Irreversibly removes a user account that has already been soft deleted.
+     * The user must already be soft-deleted before this endpoint can be used. This operation is irreversible
+     * and permanently removes the user account along with their notifications. Projects and associated data
+     * are not automatically force-deleted and must be cleaned up separately.
      */
     public function __invoke(User $user): JsonResponse
     {

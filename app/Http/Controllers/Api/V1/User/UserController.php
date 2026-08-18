@@ -47,9 +47,11 @@ class UserController extends ApiController
     }
 
     /**
-     * Soft delete user
+     * Soft delete user.
      *
-     * Soft delete the specified user. Only the owner can delete their account.  * This will also soft delete all projects owned by the user*.
+     * Soft delete the specified user. Only the owner can delete their account. This will also soft delete
+     * all projects owned by the user. Tasks, conversations, and messages within those projects are not
+     * automatically deleted but become inaccessible when the parent project is abandoned.
      */
     #[Endpoint(operationId: 'users.destroy')]
     public function destroy(User $user): JsonResponse

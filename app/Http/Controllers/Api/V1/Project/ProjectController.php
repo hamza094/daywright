@@ -103,9 +103,10 @@ class ProjectController extends ApiController
     }
 
     /**
-     * Soft-delete a project.
+     * Soft-delete (abandon) a project.
      *
-     * Marks the project as abandoned so it can be restored or permanently deleted later.
+     * Marks the project as abandoned using soft-deletes (deleted_at). The project can be restored later
+     * or permanently deleted. This is a reversible operation.
      */
     #[Endpoint(operationId: 'projects.destroy')]
     public function destroy(Project $project): JsonResponse

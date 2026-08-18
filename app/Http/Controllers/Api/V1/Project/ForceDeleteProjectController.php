@@ -16,7 +16,9 @@ final class ForceDeleteProjectController extends ApiController
     /**
      * Permanently delete an abandoned project.
      *
-     * Removes a soft-deleted project when it is eligible for force deletion.
+     * This endpoint only applies to abandoned (soft-deleted) projects. It triggers a permanent cascade
+     * delete of all associated resources including tasks, conversations, messages, meetings, and member associations.
+     * This operation is irreversible.
      */
     public function __invoke(Project $project, ProjectService $projectService): JsonResponse
     {
