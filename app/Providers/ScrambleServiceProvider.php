@@ -345,9 +345,6 @@ final class ScrambleServiceProvider extends ServiceProvider
                 $this->makeQueryParameter('start_date', new StringType),
                 $this->makeQueryParameter('end_date', new StringType),
             ],
-            'v1/notifications', 'notifications' => [
-                $this->makeQueryParameter('cursor', new StringType),
-            ],
             default => [],
         };
     }

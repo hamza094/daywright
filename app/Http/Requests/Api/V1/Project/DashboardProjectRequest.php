@@ -77,7 +77,7 @@ class DashboardProjectRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
              */
             'page' => $this->pageRule('nullable'),
             /**
-             * Number of projects to return per page.
+             * Number of projects to return per page. Default is 6.
              *
              * @example 20
              */

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Project;
 
 use App\DataTransferObjects\Project\ProjectStageUpdateData;
+use App\Models\Stage;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
@@ -46,7 +48,18 @@ class StageRequest extends FormRequest
              *
              * @example Waiting for client approval
              */
-            'postponed_reason' => ['sometimes', 'required', 'string'],
+            'postponed_reason' => [
+                'sometimes',
+                'string',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    $stageId = $this->input('stage');
+                    $stage = Stage::find($stageId);
+
+                    if ($stage && $stage->name === 'Postponed' && empty($value)) {
+                        $fail('The postponed_reason field is required when moving to a postponed stage.');
+                    }
+                },
+            ],
         ];
     }
 

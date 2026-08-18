@@ -42,9 +42,11 @@ class ProjectStoreRequest extends FormRequest
             /**
              * Project description. Must be at least 15 characters.
              *
+             * @var string
+             *
              * @example Complete redesign of the company website with new branding and improved UX.
              */
-            'about' => 'required|min:15',
+            'about' => 'required|string|min:15',
             /**
              * Initial stage ID for the project. Terminal stages (6 and 7) are intentionally excluded during creation.
              *
@@ -54,9 +56,11 @@ class ProjectStoreRequest extends FormRequest
             /**
              * Optional project notes. Maximum 250 characters.
              *
+             * @var string
+             *
              * @example Focus on mobile-first design approach
              */
-            'notes' => 'sometimes|max:250',
+            'notes' => 'sometimes|nullable|string|max:250',
             /**
              * Optional array of initial tasks to create with the project. Maximum 3 tasks.
              *
