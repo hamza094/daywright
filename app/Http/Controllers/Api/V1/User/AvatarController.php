@@ -19,6 +19,7 @@ class AvatarController extends ApiController
      * Uploads and updates the user's avatar.
      *
      * Stores a new avatar image for the targeted user and returns the stored avatar path.
+     * Replaces any existing avatar.
      */
     #[Endpoint(operationId: 'users.uploadAvatar')]
     #[ScrambleResponse(

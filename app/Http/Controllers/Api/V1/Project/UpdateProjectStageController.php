@@ -18,6 +18,7 @@ final class UpdateProjectStageController extends ApiController
      * Update Project Stage.
      *
      * Updates the stage of a specified project. The new stage is provided in the request payload.
+     * Stage changes trigger notifications to all project members.
      */
     #[Endpoint(operationId: 'projects.updateStage')]
     public function __invoke(Project $project, StageRequest $request, ProjectService $projectService): JsonResponse

@@ -21,6 +21,7 @@ final class ProjectInvitationController extends ApiController
      * Invite a user to a project.
      *
      * Sends a project invitation to the supplied email address and returns the created invitation resource.
+     * The invited user receives an email notification.
      */
     #[Endpoint(operationId: 'invitations.create')]
     public function store(Project $project, InvitationUsersRequest $request, InvitationService $invitationService): JsonResponse

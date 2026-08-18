@@ -17,6 +17,7 @@ class TaskStatusController extends ApiController
      * List task statuses and due-notification options.
      *
      * Returns the released task status reference data used by public task workflows.
+     * Includes TaskDueNotifies enum values for due notification configuration.
      */
     #[Endpoint(operationId: 'taskStatuses.list')]
     public function __invoke(): JsonResponse

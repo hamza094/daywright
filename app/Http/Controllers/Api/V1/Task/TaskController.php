@@ -24,6 +24,7 @@ class TaskController extends ApiController
      * Retrieve Project Tasks.
      *
      * This endpoint fetches a paginated task list for a specific project.
+     * Default `per_page` is 20 (from config tasks.limit).
      *
      * Use `filter[state]=archived` to page through archived tasks on the same route.
      *

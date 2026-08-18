@@ -25,6 +25,7 @@ class ProjectController extends ApiController
      * List the authenticated user's projects.
      *
      * Returns the released project index with supported filters, sorting, and pagination.
+     * Default `per_page` is 6 (from config app.project.items_limit).
      */
     #[Endpoint(operationId: 'projects.list')]
     public function index(
@@ -48,7 +49,8 @@ class ProjectController extends ApiController
      *
      * This endpoint allows authenticated users to create a new project. The request must include
      * the project's basic details, such as the name, about information, stage, and optional notes and tasks.
-     * The response will include the newly created project's information along with related resources.
+     * The creator is automatically added as the project owner. The response will include the newly created
+     * project's information along with related resources.
      */
     #[Endpoint(operationId: 'projects.create')]
     public function store(ProjectStoreRequest $request): JsonResponse
@@ -82,7 +84,7 @@ class ProjectController extends ApiController
      *
      * This endpoint allows you to update the details of an existing project.
      * It requires the project's slug and the updated fields (name, about, notes) when they are present
-     * in the request body and returns the updated resource.
+     * in the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.
      */
     #[Endpoint(operationId: 'projects.update')]
     public function update(Project $project, ProjectUpdateRequest $request): JsonResponse

@@ -20,7 +20,7 @@ class SubscriptionController extends ApiController
     /**
      * Generate a subscription pay link.
      *
-     * Creates the checkout URL for the selected subscription plan.
+     * Creates the checkout URL for the selected subscription plan. Available plans: free, pro.
      */
     #[Endpoint(operationId: 'subscription.checkout')]
     #[ScrambleResponse(
@@ -58,6 +58,7 @@ class SubscriptionController extends ApiController
      * Swap subscription plan.
      *
      * Changes the authenticated user's subscription to a different supported plan.
+     * Plan swaps take effect immediately. Available plans: free, pro.
      */
     #[Endpoint(operationId: 'subscription.update')]
     public function update(Paddle $paddle, SubscriptionRequest $request): JsonResponse
@@ -76,6 +77,7 @@ class SubscriptionController extends ApiController
      * Cancel subscription.
      *
      * Cancels the authenticated user's subscription and returns the updated subscription snapshot.
+     * Cancellation takes effect at the end of the current billing cycle.
      */
     #[Endpoint(operationId: 'subscription.cancel')]
     public function destroy(Paddle $paddle, SubscriptionRequest $request): JsonResponse

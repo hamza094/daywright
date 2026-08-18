@@ -18,6 +18,7 @@ final class DashboardTasksController extends ApiController
      * Return dashboard tasks filtered by ownership, assignment, and status flags.
      *
      * Returns the authenticated user's dashboard task list together with the human-readable filters that were applied.
+     * Default `per_page` is 15.
      */
     #[Endpoint(operationId: 'dashboard.tasks')]
     #[ScrambleResponse(

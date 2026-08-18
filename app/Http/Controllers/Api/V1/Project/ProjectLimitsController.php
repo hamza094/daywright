@@ -17,7 +17,7 @@ final class ProjectLimitsController extends ApiController
     /**
      * Retrieve project-scoped subscription limits for the project owner.
      *
-     * Returns the current plan limits that apply to the specified project.
+     * Returns the current plan limits that apply to the specified project, including task counts and member limits.
      */
     #[Endpoint(operationId: 'projects.limits')]
     public function __invoke(Project $project): JsonResponse

@@ -23,6 +23,7 @@ class ConversationController extends ApiController
      * List project conversations.
      *
      * Returns a paginated conversation feed for the specified project.
+     * Default `per_page` is 10.
      */
     #[Endpoint(operationId: 'conversations.list')]
     public function index(Project $project, ConversationIndexRequest $request, ConversationRepository $repository): JsonResponse

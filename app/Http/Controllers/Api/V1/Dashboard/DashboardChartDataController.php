@@ -17,6 +17,7 @@ final class DashboardChartDataController extends ApiController
      * Return project portfolio counts for the authenticated user's dashboard.
      *
      * Summarizes active, trashed, member, and total project counts for the selected dashboard time window.
+     * Uses top-level `year` (defaults to current year) and optional `month` parameters for time filtering.
      */
     #[Endpoint(operationId: 'dashboard.chartData')]
     #[ScrambleResponse(

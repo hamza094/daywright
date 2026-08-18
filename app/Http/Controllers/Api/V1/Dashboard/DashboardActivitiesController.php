@@ -17,6 +17,7 @@ final class DashboardActivitiesController extends ApiController
      * Return the authenticated user's dashboard activity feed for a date range.
      *
      * Lists dashboard activity entries between the requested start and end dates.
+     * Uses top-level `start_date` and `end_date` parameters for date filtering.
      */
     #[Endpoint(operationId: 'dashboard.activities')]
     public function __invoke(UserActivitiesRequest $request, ActivityRepository $activityRepository): AnonymousResourceCollection

@@ -17,6 +17,7 @@ final class AcceptProjectInvitationController extends ApiController
      * Accept a project invitation.
      *
      * Adds the authenticated user to the project through an existing pending invitation.
+     * Accepting grants full member access immediately.
      */
     #[Endpoint(operationId: 'invitations.acceptProject')]
     public function __invoke(Project $project, InvitationService $invitationService): JsonResponse
