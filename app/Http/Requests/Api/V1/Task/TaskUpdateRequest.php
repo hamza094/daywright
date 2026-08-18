@@ -81,6 +81,9 @@ class TaskUpdateRequest extends FormRequest
             ],
             /**
              * Task status identifier.
+             * 1 = Pending, 2 = In Progress, 3 = Under Review, 4 = Completed, 5 = Cancelled.
+             *
+             * @var int
              *
              * @example 1
              */

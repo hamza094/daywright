@@ -69,6 +69,20 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -489,6 +503,20 @@
               "type": "boolean"
             },
             "example": false
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -661,6 +689,22 @@
         "description": "Returns a paginated list of the authenticated user's pending project invitations.",
         "summary": "List all pending project invitations for the authenticated user",
         "tags": ["Invitations"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Array of `ProjectInvitation`",
@@ -1112,10 +1156,10 @@
             "example": "unread"
           },
           {
-            "name": "cursor",
+            "name": "per_page",
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "integer"
             }
           }
         ],
@@ -1344,6 +1388,20 @@
               "type": ["boolean", "null"]
             },
             "example": true
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -1872,6 +1930,20 @@
               "enum": ["specifics", "tasks", "members", "mine"]
             },
             "example": "tasks"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -2235,6 +2307,20 @@
               "enum": ["archived"]
             },
             "example": "archived"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -5096,8 +5182,7 @@
           },
           "status_id": {
             "type": "integer",
-            "description": "Task status identifier.",
-            "enum": ["1", "2", "3", "4", "5"],
+            "description": "Task status identifier.\n1 = Pending, 2 = In Progress, 3 = Under Review, 4 = Completed, 5 = Cancelled.",
             "example": 1
           },
           "notified": {
