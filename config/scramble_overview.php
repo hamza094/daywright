@@ -288,7 +288,14 @@ The API uses Laravel rate limiters with route-specific policies.
 
 | Limiter | Typical usage | Limit |
 | --- | --- | --- |
-| `api` | Default API middleware | `60` requests per minute by authenticated user or IP |
+| `api` | Default API middleware (Safety Net) | `300` requests per minute by IP |
+| `user-ceiling` | User-level rate ceiling | `200` requests per minute by user |
+| `per-token` | Token-specific rate limiting | `30` requests per minute by token |
+| `sensitive-destructive` | Destructive operations (force delete, etc.) | `5` requests per minute by user |
+| `sensitive-upload` | File upload operations | `10` requests per minute by user |
+| `sensitive-token-mgmt` | API token management | `5` requests per minute by user |
+| `sensitive-billing` | Subscription and billing operations | `5` requests per minute by user |
+| `sensitive-password` | Password-related operations | `5` requests per minute by user |
 | `auth-login` | Token login and session login | `5` requests per minute by IP and email |
 | `auth-register` | Registration | `5` requests per minute by IP |
 | `password-email` | Password reset link requests | `4` requests per minute by IP and email |
@@ -402,8 +409,10 @@ Webhook processing is asynchronous after acceptance.
 ## Important Notes
 
 - Unmatched routes under an API version resolve to a JSON `404` response, not an HTML fallback page.
- 
-- Subscription-gated endpoints use the same error envelope as the rest of the API and may include structured `meta` such as upgrade requirements or plan limit details.
+
+- Subscription-gated endpoints use the same error envelope as the rest of the API and may include structured `meta` such as upgrade requirements or plan limit details. Premium endpoints return `403 Forbidden` if the user's subscription is inactive or plan limits are exceeded.
+
+- Resources in an "abandoned" state use soft-deletes (`deleted_at`) and can be returned via endpoints using `withTrashed()`.
 - OAuth and session endpoints live under the same `/api/v1` prefix as the token-based API, but they are intended for browser-driven workflows rather than generic third-party clients.
 - Use each endpoint page as the source of truth for request fields, accepted query parameters, and resource schemas.
 MARKDOWN;
