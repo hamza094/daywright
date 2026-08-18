@@ -51,13 +51,17 @@ class UserRequest extends FormRequest
             /**
              * Updated public username.
              *
+             * @var string
+             *
              * @example john_doe
              */
             'username' => ['sometimes', 'required', 'alpha_dash:ascii', 'max:30', Rule::unique('users')->ignore($this->user())],
             /**
-             * Optional mobile number.
+             * Optional mobile number. Use quoted string to preserve leading zeros.
              *
-             * @example 1234567890
+             * @var string
+             *
+             * @example "1234567890"
              */
             'mobile' => ['sometimes', 'nullable', 'digits_between:7,15'],
             /**
@@ -85,7 +89,7 @@ class UserRequest extends FormRequest
              */
             'position' => ['sometimes', 'nullable', 'string', 'max:100'],
             /**
-             * Optional IANA timezone identifier.
+             * Optional IANA timezone identifier (e.g., America/New_York, Europe/London).
              *
              * @example America/New_York
              */

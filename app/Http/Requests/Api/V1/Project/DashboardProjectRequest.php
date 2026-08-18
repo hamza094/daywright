@@ -38,14 +38,49 @@ class DashboardProjectRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
     public function rules(): array
     {
         return [
+            /**
+             * Nested project filters.
+             *
+             * @example {"search":"launch","member":true,"abandoned":true}
+             */
             'filter' => ['sometimes', 'array:search,member,abandoned'],
+            /**
+             * Search projects by name.
+             *
+             * @example launch
+             */
             'filter.search' => ['nullable', 'string', 'max:25'],
             ...$this->topLevelFilterAliasRules(['search', 'member', 'abandoned']),
+            /**
+             * Sort projects by field. Prefix with - for descending order.
+             *
+             * @example -created_at
+             */
             'sort' => ['nullable', 'string', 'in:-created_at,created_at,name,-name'],
+            /**
+             * Filter projects where the current user is a member.
+             *
+             * @example true
+             */
             'filter.member' => ['nullable', 'boolean'],
+            /**
+             * Filter projects that have been abandoned.
+             *
+             * @example true
+             */
             'filter.abandoned' => ['nullable', 'boolean'],
             ...$this->unsupportedQueryParameterRules(),
+            /**
+             * Page number for pagination.
+             *
+             * @example 1
+             */
             'page' => $this->pageRule('nullable'),
+            /**
+             * Number of projects to return per page.
+             *
+             * @example 20
+             */
             'per_page' => $this->perPageRule('nullable'),
         ];
     }

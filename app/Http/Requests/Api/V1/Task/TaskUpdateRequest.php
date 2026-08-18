@@ -46,6 +46,8 @@ class TaskUpdateRequest extends FormRequest
             /**
              * Updated task title. Titles must remain unique within the project.
              *
+             * @var string
+             *
              * @example Draft QA checklist
              */
             'title' => [
@@ -57,6 +59,8 @@ class TaskUpdateRequest extends FormRequest
             /**
              * Optional task description.
              *
+             * @var string
+             *
              * @example Confirm release notes, test scenarios, and sign-off owners.
              */
             'description' => 'sometimes|max:1000',
@@ -64,6 +68,7 @@ class TaskUpdateRequest extends FormRequest
             /**
              * Task due date in ISO 8601 format with a timezone offset.
              * Required when `notified` is present.
+             * Format: ISO 8601 date-time string with timezone.
              *
              * @example 2024-12-09T15:25:00+00:00
              */
@@ -88,7 +93,7 @@ class TaskUpdateRequest extends FormRequest
             /**
              * Notification strategy used for due-date reminders.
              *
-             * @example all
+             * @example 1 Day Before
              */
             'notified' => [
                 'sometimes',

@@ -41,6 +41,7 @@ class UserActivitiesRequest extends ApiQueryRequest
             /**
              * Inclusive end date for the dashboard activity window.
              * Must be the same as or after `start_date`.
+             * The range between `start_date` and `end_date` cannot exceed 31 days.
              *
              * @example 2025-08-31
              */

@@ -44,6 +44,8 @@ class TaskRequest extends FormRequest
             /**
              * Task title. Titles must be unique within the selected project.
              *
+             * @var string
+             *
              * @example Draft QA checklist
              */
             'title' => [

@@ -35,6 +35,13 @@ class ProjectInsightsRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * Array of insight sections to include. Omitting this parameter returns all sections.
+             *
+             * @var array<int,string>
+             *
+             * @example ["health","risk"]
+             */
             'sections' => ['sometimes', 'array'],
             'sections.*' => ['string', Rule::in(self::ALLOWED_SECTIONS)],
         ];

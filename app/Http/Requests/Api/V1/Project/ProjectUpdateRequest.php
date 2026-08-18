@@ -36,6 +36,11 @@ class ProjectUpdateRequest extends FormRequest
     {
 
         return [
+            /**
+             * Updated project name. Must be different from the current name.
+             *
+             * @example Website Redesign v2
+             */
             'name' => [
                 'sometimes', 'required', 'max:150', 'string', 'min:4',
                 function (string $attribute, mixed $value, Closure $fail): void {
@@ -44,6 +49,11 @@ class ProjectUpdateRequest extends FormRequest
                     }
                 },
             ],
+            /**
+             * Updated project description. Must be different from the current about description.
+             *
+             * @example Complete redesign of the company website with new branding and improved UX.
+             */
             'about' => [
                 'sometimes', 'required', 'min:15',
                 function (string $attribute, mixed $value, Closure $fail): void {
@@ -52,6 +62,11 @@ class ProjectUpdateRequest extends FormRequest
                     }
                 },
             ],
+            /**
+             * Updated project notes. Must be different from the current project notes.
+             *
+             * @example Focus on mobile-first design approach
+             */
             'notes' => [
                 'sometimes', 'present', 'max:250',
                 function (string $attribute, mixed $value, Closure $fail): void {

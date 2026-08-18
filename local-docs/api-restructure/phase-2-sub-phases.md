@@ -44,9 +44,3 @@ Update the docblocks for remaining methods with missing constraints, enums, or s
 - [ ] **`SubscriptionController` (All):** Link to plans, document immediate vs end-of-cycle cancellation and swap behaviors.
 - [ ] **Polish:** Add parameter context (year/month defaults, filter flags) to Dashboard endpoints and list default `per_page` values on paginated endpoints.
       .
-
-Phase 4: Verification
-After applying all changes, generate the OpenAPI spec to verify there are no compilation errors and that stable operation IDs are present.
-
-Run php artisan scramble:export to ensure successful spec generation.
-Serve the API docs locally (/docs/api) and visually confirm the new descriptions and global conventions are rendering correctly.

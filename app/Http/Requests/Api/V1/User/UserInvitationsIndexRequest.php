@@ -21,7 +21,17 @@ class UserInvitationsIndexRequest extends ApiQueryRequest
     {
         return [
             ...$this->unsupportedQueryParameterRules(),
+            /**
+             * Page number for pagination.
+             *
+             * @example 1
+             */
             'page' => $this->pageRule(),
+            /**
+             * Number of invitations to return per page. Default is 10.
+             *
+             * @example 10
+             */
             'per_page' => $this->perPageRule(),
         ];
     }

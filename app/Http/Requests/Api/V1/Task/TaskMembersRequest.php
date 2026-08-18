@@ -32,6 +32,8 @@ class TaskMembersRequest extends FormRequest
              * - Prevents assigning a task to users who are already assigned.
              * - Ensures tasks can only be assigned to active members of the project.
              *
+             * @var array<int>
+             *
              * @example [3, 5]
              */
             'members' => ['required',
@@ -42,6 +44,8 @@ class TaskMembersRequest extends FormRequest
             ],
             /**
              * Individual member identifier.
+             *
+             * @var int
              *
              * @example 3
              */

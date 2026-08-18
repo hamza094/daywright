@@ -21,7 +21,17 @@ class ConversationIndexRequest extends ApiQueryRequest
     {
         return [
             ...$this->unsupportedQueryParameterRules(),
+            /**
+             * Cursor for pagination.
+             *
+             * @example eyJpdiI6IjEiLCJpZF9jb2x1bW4iOiJpZCJ9
+             */
             'cursor' => $this->cursorRule(),
+            /**
+             * Number of conversations to return per page. Default is 10.
+             *
+             * @example 10
+             */
             'per_page' => $this->perPageRule(),
         ];
     }

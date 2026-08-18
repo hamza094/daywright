@@ -346,12 +346,7 @@ final class ScrambleServiceProvider extends ServiceProvider
                 $this->makeQueryParameter('end_date', new StringType),
             ],
             'v1/notifications', 'notifications' => [
-                $this->makeQueryParameter('page', new IntegerType),
-                $this->makeQueryParameter('per_page', new IntegerType),
-            ],
-            'v1/projects/{project}/tasks', 'projects/{project}/tasks' => [
-                $this->makeQueryParameter('page', new IntegerType),
-                $this->makeQueryParameter('per_page', new IntegerType),
+                $this->makeQueryParameter('cursor', new StringType),
             ],
             default => [],
         };

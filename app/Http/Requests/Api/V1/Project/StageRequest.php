@@ -35,7 +35,17 @@ class StageRequest extends FormRequest
     public function rules(): array
     {
         return [
+            /**
+             * The stage ID to update the project to.
+             *
+             * @example 3
+             */
             'stage' => ['required', 'integer', 'exists:stages,id'],
+            /**
+             * Reason for postponing the project. Required when moving to a postponed stage.
+             *
+             * @example Waiting for client approval
+             */
             'postponed_reason' => ['sometimes', 'required', 'string'],
         ];
     }

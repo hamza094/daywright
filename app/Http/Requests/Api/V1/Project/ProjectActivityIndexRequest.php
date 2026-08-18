@@ -20,11 +20,31 @@ class ProjectActivityIndexRequest extends ApiQueryRequest
     public function rules(): array
     {
         return [
+            /**
+             * Nested activity filters.
+             *
+             * @example {"type":"tasks"}
+             */
             'filter' => ['sometimes', 'array:type'],
+            /**
+             * Filter activities by type. Allowed values: specifics, tasks, members, mine.
+             *
+             * @example tasks
+             */
             'filter.type' => ['sometimes', 'in:specifics,tasks,members,mine'],
             ...$this->topLevelFilterAliasRules(['type']),
             ...$this->unsupportedQueryParameterRules(),
+            /**
+             * Page number for pagination.
+             *
+             * @example 1
+             */
             'page' => $this->pageRule(),
+            /**
+             * Number of activities to return per page. Default is 10.
+             *
+             * @example 10
+             */
             'per_page' => $this->perPageRule(),
         ];
     }
