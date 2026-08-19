@@ -27,8 +27,10 @@ class ProjectInsightsResource extends JsonResource
 
         return [
             /**
+             * @var int
+             *
              * @example 4
-             * */
+             */
             'project_id' => $project->id,
 
             /**
@@ -44,8 +46,10 @@ class ProjectInsightsResource extends JsonResource
             'generated_at' => now()->toISOString(),
 
             /**
-             * @example ['health']
-             * */
+             * @var array<int, string>
+             *
+             * @example ["health"]
+             */
             'sections_requested' => $sections,
         ];
     }

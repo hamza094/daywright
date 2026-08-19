@@ -3459,7 +3459,7 @@
                 "type": "string"
               },
               "id": {
-                "type": "string"
+                "type": ["integer", "null"]
               }
             },
             "required": ["type", "id"]
@@ -3470,7 +3470,21 @@
           "affected_users": {
             "type": "array",
             "description": "Convert collection to array for faster lookups",
-            "items": {}
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "uuid": {
+                  "type": ["string", "null"]
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "uuid", "name"]
+            }
           }
         },
         "required": ["description", "time", "subject"],
@@ -3630,25 +3644,13 @@
             ]
           },
           "data": {
+            "type": "object",
             "examples": [
               {
                 "value": 71
               }
             ],
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 0,
-                "maxItems": 0,
-                "additionalItems": false
-              }
-            ]
+            "additionalProperties": {}
           }
         },
         "required": ["type", "title", "message", "data"],
@@ -3811,8 +3813,8 @@
         "type": "object",
         "properties": {
           "project_id": {
-            "type": "string",
-            "examples": ["4"]
+            "type": "integer",
+            "examples": [4]
           },
           "project_name": {
             "type": "string",
@@ -3829,8 +3831,11 @@
             "examples": ["2025-09-27T20:15:32Z"]
           },
           "sections_requested": {
-            "type": "string",
-            "examples": ["['health']"]
+            "type": "array",
+            "examples": [["health"]],
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": ["project_id", "project_name", "insights", "generated_at", "sections_requested"],
@@ -3913,7 +3918,7 @@
           },
           "health_status": {
             "type": "string",
-            "description": "Project status calculated on the based of score",
+            "description": "Project health status based on activity and engagement.\nAllowed values: hot (active), warm (moderate), cold (inactive).",
             "examples": ["cold"]
           },
           "stage": {
@@ -4042,16 +4047,28 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Project identifier.",
+            "examples": [1]
           },
           "slug": {
-            "type": "string"
+            "type": "string",
+            "description": "Stable project slug used in public routes.",
+            "examples": ["the-dimension"]
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "Project display name.",
+            "examples": ["The Dimension"]
           },
           "links": {
             "type": "object",
+            "description": "API resource links for navigation.",
+            "examples": [
+              {
+                "self": "/api/v1/projects/the-dimension"
+              }
+            ],
             "properties": {
               "self": {
                 "type": "string"
@@ -4528,7 +4545,7 @@
             "examples": ["2024-06-10T09:15:00+00:00"]
           },
           "is_trashed": {
-            "$ref": "#/components/schemas/PublicProject"
+            "type": "boolean"
           },
           "stage_updated_at": {
             "type": "string",
@@ -4536,13 +4553,15 @@
             "examples": ["2024-06-10T09:15:00+00:00"]
           },
           "ownerNotAuthorized": {
-            "type": "string"
+            "type": "boolean"
           },
           "days_limit": {
-            "type": "string"
+            "type": "integer"
           },
           "postponed_reason": {
-            "type": ["string", "null"]
+            "type": ["string", "null"],
+            "description": "Reason for postponing the project.",
+            "examples": ["Waiting for client approval"]
           },
           "user": {
             "description": "Basic details of the project owner.",
@@ -4551,11 +4570,12 @@
           },
           "health_status": {
             "type": "string",
-            "description": "Project status calculated on the based of score",
+            "description": "Project health status based on activity and engagement.\nAllowed values: hot (active), warm (moderate), cold (inactive).",
             "examples": ["cold"]
           },
           "health_score": {
             "type": ["number", "null"],
+            "description": "Health score from 0-100 indicating project health.\nHigher scores indicate healthier projects.",
             "examples": [72.5]
           },
           "health_score_calculated_at": {
@@ -4590,6 +4610,7 @@
           },
           "links": {
             "type": "object",
+            "description": "API resource links for navigation.",
             "properties": {
               "self": {
                 "type": "string"
@@ -4707,6 +4728,7 @@
           },
           "name": {
             "type": "string",
+            "description": "Stage name.",
             "examples": ["Planing"]
           }
         },
@@ -4744,7 +4766,7 @@
           },
           "notified": {
             "type": ["string", "null"],
-            "description": "Reminder strategy for due-date notifications."
+            "description": "Reminder strategy for due-date notifications.\nAllowed values: none, daily, weekly, monthly."
           },
           "due_at": {
             "type": "string",
@@ -4870,71 +4892,33 @@
                 }
               ]
             ],
-            "prefixItems": [
-              {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "const": "monthly"
-                  },
-                  "label": {
-                    "type": "string",
-                    "const": "Monthly"
-                  },
-                  "interval_label": {
-                    "type": "string",
-                    "const": "month"
-                  },
-                  "price": {
-                    "type": "integer"
-                  },
-                  "currency": {
-                    "type": "string"
-                  },
-                  "currency_symbol": {
-                    "type": "string"
-                  },
-                  "featured": {
-                    "type": "boolean"
-                  }
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
                 },
-                "required": ["name", "label", "interval_label", "price", "currency", "currency_symbol", "featured"]
+                "label": {
+                  "type": "string"
+                },
+                "interval_label": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "integer"
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "currency_symbol": {
+                  "type": "string"
+                },
+                "featured": {
+                  "type": "boolean"
+                }
               },
-              {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "const": "yearly"
-                  },
-                  "label": {
-                    "type": "string",
-                    "const": "Yearly"
-                  },
-                  "interval_label": {
-                    "type": "string",
-                    "const": "year"
-                  },
-                  "price": {
-                    "type": "integer"
-                  },
-                  "currency": {
-                    "type": "string"
-                  },
-                  "currency_symbol": {
-                    "type": "string"
-                  },
-                  "featured": {
-                    "type": "boolean"
-                  }
-                },
-                "required": ["name", "label", "interval_label", "price", "currency", "currency_symbol", "featured"]
-              }
-            ],
-            "minItems": 2,
-            "maxItems": 2,
-            "additionalItems": false
+              "required": ["name", "label", "interval_label", "price", "currency", "currency_symbol", "featured"]
+            }
           },
           "billing_plan": {
             "type": ["string", "null"],
@@ -4988,7 +4972,7 @@
             ],
             "properties": {
               "active": {
-                "type": "string"
+                "type": "boolean"
               },
               "ends_at": {
                 "type": ["string", "null"]
@@ -4999,7 +4983,33 @@
           "limits": {
             "type": "array",
             "description": "Current plan usage and maximums for tracked limits.",
-            "items": {}
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "string"
+                },
+                "limit": {
+                  "type": "object",
+                  "properties": {
+                    "used": {
+                      "type": ["integer", "null"]
+                    },
+                    "max": {
+                      "type": ["integer", "null"]
+                    }
+                  },
+                  "required": ["used", "max"]
+                }
+              },
+              "required": ["key", "label", "scope", "limit"]
+            }
           }
         },
         "required": [
@@ -5021,28 +5031,44 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "description": "Receipt identifier.",
+            "examples": ["12345"]
           },
           "created_at": {
-            "type": "string"
+            "type": "string",
+            "description": "Receipt creation timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-07-01T09:00:00+00:00"]
           },
           "currency": {
-            "type": "string"
+            "type": "string",
+            "description": "ISO 4217 currency code (e.g., USD, EUR).",
+            "examples": ["USD"]
           },
           "quantity": {
-            "type": "string"
+            "type": "string",
+            "description": "Quantity of items purchased.",
+            "examples": ["1"]
           },
           "receipt_url": {
-            "type": "string"
+            "type": "string",
+            "description": "Absolute URL to the receipt PDF.",
+            "examples": ["https://daywright.test/storage/receipts/abc123.pdf"]
           },
           "tax": {
-            "type": "string"
+            "type": "string",
+            "description": "Tax amount as decimal string.",
+            "examples": ["2.50"]
           },
           "amount": {
-            "type": "string"
+            "type": "string",
+            "description": "Total amount as decimal string.",
+            "examples": ["12.50"]
           },
           "updated_at": {
-            "type": "string"
+            "type": "string",
+            "description": "Receipt update timestamp in UTC ISO 8601 format.",
+            "examples": ["2025-07-01T09:00:00+00:00"]
           }
         },
         "required": ["id", "created_at", "currency", "quantity", "receipt_url", "tax", "amount", "updated_at"],
@@ -5119,13 +5145,17 @@
         "properties": {
           "statuses": {
             "type": "array",
+            "description": "List of available task statuses.",
             "items": {
               "$ref": "#/components/schemas/TaskStatusResource"
             }
           },
           "due_notifies": {
             "type": "array",
-            "items": {}
+            "description": "List of supported notification strategies for due dates.\nAllowed values: none, daily, weekly, monthly.",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": ["statuses", "due_notifies"],
@@ -5136,14 +5166,17 @@
         "properties": {
           "id": {
             "type": "integer",
+            "description": "Task status identifier.",
             "examples": [1]
           },
           "label": {
             "type": "string",
+            "description": "Human-readable status label.",
             "examples": ["Not Started"]
           },
           "color": {
             "type": "string",
+            "description": "Hex color code for UI display.",
             "examples": ["#CCCCCC"]
           }
         },
@@ -5244,7 +5277,7 @@
           },
           "color": {
             "type": "string",
-            "description": "UI color hint derived from the activity type.",
+            "description": "UI color hint derived from the activity type.\nAllowed values: green (meetings), purple (projects), yellow (tasks), red (deleted).",
             "const": "red",
             "examples": ["yellow"]
           },
@@ -5300,7 +5333,7 @@
             "examples": ["https://daywright.test/storage/avatars/berry.png"]
           },
           "timezone": {
-            "description": "IANA timezone identifier.",
+            "description": "IANA timezone identifier (non-null string).",
             "examples": ["UTC"],
             "anyOf": [
               {
@@ -5318,7 +5351,7 @@
           },
           "verified": {
             "type": "string",
-            "description": "Email verification timestamp for the authenticated owner, in UTC ISO 8601 format.",
+            "description": "Email verification timestamp for the authenticated owner, in UTC ISO 8601 format.\nNull if email is not verified.",
             "examples": ["2025-07-01T09:00:00+00:00"]
           },
           "info": {

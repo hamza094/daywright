@@ -39,6 +39,11 @@ final class ScrambleServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Scramble::configure()
+            ->withRuleTransformers([
+                \App\Documentation\RuleTransformers\TaskSystemStatusRuleTransformer::class,
+            ]);
+
         Scramble::resolveTagsUsing(fn (RouteInfo $routeInfo): array => [$this->resolvePublicApiTag($routeInfo)]);
 
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {

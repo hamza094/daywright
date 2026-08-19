@@ -55,7 +55,7 @@ class UserProfileResource extends JsonResource
              */
             'avatar' => $this->when($this->avatar, fn () => $this->avatar_path),
             /**
-             * IANA timezone identifier.
+             * IANA timezone identifier (non-null string).
              *
              * @example UTC
              */
@@ -68,6 +68,7 @@ class UserProfileResource extends JsonResource
             'email' => $this->email,
             /**
              * Email verification timestamp for the authenticated owner, in UTC ISO 8601 format.
+             * Null if email is not verified.
              *
              * @example 2025-07-01T09:00:00+00:00
              */

@@ -22,13 +22,53 @@ class ReceiptResource extends JsonResource
     public function toArray($request)
     {
         return [
+            /**
+             * Receipt identifier.
+             *
+             * @example 12345
+             */
             'id' => $this->id,
+            /**
+             * Receipt creation timestamp in UTC ISO 8601 format.
+             *
+             * @example 2025-07-01T09:00:00+00:00
+             */
             'created_at' => $this->created_at?->toIso8601String(),
+            /**
+             * ISO 4217 currency code (e.g., USD, EUR).
+             *
+             * @example USD
+             */
             'currency' => $this->currency,
+            /**
+             * Quantity of items purchased.
+             *
+             * @example 1
+             */
             'quantity' => $this->quantity,
+            /**
+             * Absolute URL to the receipt PDF.
+             *
+             * @example https://daywright.test/storage/receipts/abc123.pdf
+             */
             'receipt_url' => $this->receipt_url,
+            /**
+             * Tax amount as decimal string.
+             *
+             * @example 2.50
+             */
             'tax' => $this->tax,
+            /**
+             * Total amount as decimal string.
+             *
+             * @example 12.50
+             */
             'amount' => $this->amount,
+            /**
+             * Receipt update timestamp in UTC ISO 8601 format.
+             *
+             * @example 2025-07-01T09:00:00+00:00
+             */
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }

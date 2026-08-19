@@ -34,7 +34,16 @@ class TaskStatusIndexResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            /**
+             * List of available task statuses.
+             */
             'statuses' => TaskStatusResource::collection($this->statuses),
+            /**
+             * List of supported notification strategies for due dates.
+             * Allowed values: none, daily, weekly, monthly.
+             *
+             * @var array<int, string>
+             */
             'due_notifies' => $this->dueNotifies,
         ];
     }

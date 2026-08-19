@@ -59,6 +59,7 @@ class TaskResource extends JsonResource
 
             /**
              * Reminder strategy for due-date notifications.
+             * Allowed values: none, daily, weekly, monthly.
              */
             'notified' => $this->notified,
 

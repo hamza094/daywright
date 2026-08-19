@@ -56,6 +56,7 @@ class UserActivitiesResource extends JsonResource
             'subject' => $this->getSubjectDetails(),
             /**
              * UI color hint derived from the activity type.
+             * Allowed values: green (meetings), purple (projects), yellow (tasks), red (deleted).
              *
              * @example yellow
              */

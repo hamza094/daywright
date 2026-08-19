@@ -73,6 +73,8 @@ class SubscriptionResource extends JsonResource
             /**
              * Plans the user can purchase or switch to.
              *
+             * @var array<int, array{name: string, label: string, interval_label: string, price: int, currency: string, currency_symbol: string, featured: bool}>
+             *
              * @example [{"name":"monthly","label":"Monthly","interval_label":"month","price":12,"currency":"USD","currency_symbol":"$","featured":true}]
              */
             'available_plans' => $this->availablePlans,
@@ -112,12 +114,15 @@ class SubscriptionResource extends JsonResource
              * @example {"active":false,"ends_at":null}
              */
             'grace_period' => [
+                /** @var bool */
                 'active' => $this->gracePeriod['active'],
                 'ends_at' => $this->formatDate($this->gracePeriod['ends_at']),
             ],
 
             /**
              * Current plan usage and maximums for tracked limits.
+             *
+             * @var array<int, array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}}>
              */
             'limits' => $this->limits,
         ];

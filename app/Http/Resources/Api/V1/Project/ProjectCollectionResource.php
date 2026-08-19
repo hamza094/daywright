@@ -48,7 +48,8 @@ class ProjectCollectionResource extends JsonResource
             'slug' => $this->slug,
 
             /**
-             * Project status calculated on the based of score
+             * Project health status based on activity and engagement.
+             * Allowed values: hot (active), warm (moderate), cold (inactive).
              *
              * @example cold
              */

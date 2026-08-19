@@ -37,13 +37,16 @@ class ActivityResource extends JsonResource
             : $descriptionKey;
 
         return [
+            /** @var string */
             'description' => $description,
             'time' => $this->created_at?->toIso8601String(),
+            /** @var array{type: string, id: int|null} */
             'subject' => $this->getSubjectDetails(),
             'user' => $this->whenLoaded(
                 'user',
                 fn (): UserSummaryResource => new UserSummaryResource($this->user),
             ),
+            /** @var array<int, array{id: int, uuid: string|null, name: string}> */
             'affected_users' => $this->when(! empty($this->affected_users), $this->loadAffectedUsers()),
         ];
     }

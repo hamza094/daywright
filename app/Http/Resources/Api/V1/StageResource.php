@@ -31,6 +31,8 @@ class StageResource extends JsonResource
             'id' => $this->id,
 
             /**
+             * Stage name.
+             *
              * @example Planing
              */
             'name' => $this->name,
