@@ -3723,6 +3723,47 @@
         "required": ["status"],
         "title": "NotificationStatusUpdateRequestData"
       },
+      "PaymentDetails": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "integer",
+                "description": "Payment amount in cents (e.g., 1200 = $12.00).",
+                "examples": [1200]
+              },
+              "currency": {
+                "type": "string",
+                "description": "ISO 4217 currency code (e.g., USD, EUR).",
+                "examples": ["USD"]
+              },
+              "date": {
+                "type": ["string", "null"],
+                "description": "Payment date in UTC ISO 8601 format.",
+                "examples": ["2025-07-01T09:00:00+00:00"]
+              }
+            },
+            "required": ["amount", "currency", "date"]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "amount": {
+                "type": "null"
+              },
+              "currency": {
+                "type": "null"
+              },
+              "date": {
+                "type": "null"
+              }
+            },
+            "required": ["amount", "currency", "date"]
+          }
+        ],
+        "title": "PaymentDetails"
+      },
       "PendingInvitationUser": {
         "type": "object",
         "properties": {
@@ -4927,8 +4968,15 @@
             "examples": ["monthly"]
           },
           "next_payment": {
-            "type": ["string", "null"],
-            "description": "Upcoming payment details from Paddle when billing is active."
+            "anyOf": [
+              {
+                "description": "Upcoming payment details from Paddle when billing is active.",
+                "$ref": "#/components/schemas/PaymentDetails"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "created_at": {
             "type": ["string", "null"],

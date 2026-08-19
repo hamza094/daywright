@@ -87,7 +87,9 @@ class SubscriptionResource extends JsonResource
             /**
              * Upcoming payment details from Paddle when billing is active.
              */
-            'next_payment' => $this->billing['next_payment'],
+            'next_payment' => $this->billing['next_payment']
+                ? new PaymentResource($this->billing['next_payment'])
+                : null,
             /**
              * Subscription creation timestamp in UTC ISO 8601 format when billing is active.
              *
