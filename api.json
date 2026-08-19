@@ -5376,9 +5376,9 @@
         "type": "object",
         "properties": {
           "mobile": {
-            "type": ["integer", "null"],
-            "description": "Optional mobile number.",
-            "examples": [1234567890]
+            "type": "string",
+            "description": "Optional mobile number as string to preserve leading zeros.",
+            "examples": ["0123456789"]
           },
           "company": {
             "type": ["string", "null"],
@@ -5507,8 +5507,8 @@
           },
           "mobile": {
             "type": "string",
-            "description": "Optional mobile number. Use quoted string to preserve leading zeros.",
-            "example": "1234567890"
+            "description": "Optional mobile number as string to preserve leading zeros.",
+            "example": "0123456789"
           },
           "company": {
             "type": ["string", "null"],

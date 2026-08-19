@@ -57,13 +57,13 @@ class UserRequest extends FormRequest
              */
             'username' => ['sometimes', 'required', 'alpha_dash:ascii', 'max:30', Rule::unique('users')->ignore($this->user())],
             /**
-             * Optional mobile number. Use quoted string to preserve leading zeros.
+             * Optional mobile number as string to preserve leading zeros.
              *
              * @var string
              *
-             * @example "1234567890"
+             * @example "0123456789"
              */
-            'mobile' => ['sometimes', 'nullable', 'digits_between:7,15'],
+            'mobile' => ['sometimes', 'nullable', 'string', 'regex:/^[0-9+ ]{7,20}$/'],
             /**
              * Optional company name.
              *
