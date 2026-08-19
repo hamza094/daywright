@@ -27,6 +27,8 @@ class InvitedUserResource extends JsonResource
             /**
              * Stable public UUID for the invited user.
              *
+             * @format uuid
+             *
              * @example 9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412
              */
             'uuid' => $this->uuid,
@@ -45,11 +47,15 @@ class InvitedUserResource extends JsonResource
             /**
              * Invited user email address.
              *
+             * @format email
+             *
              * @example berry@example.com
              */
             'email' => $this->email,
             /**
              * Invited user avatar URL when present.
+             *
+             * @format uri
              */
             'avatar' => $this->when(! empty($this->avatar_path), fn () => $this->avatar_path),
             /**

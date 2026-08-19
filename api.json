@@ -3500,6 +3500,7 @@
           },
           "uuid": {
             "type": ["string", "null"],
+            "format": "uuid",
             "description": "Stable public UUID for the user.",
             "examples": ["9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412"]
           },
@@ -3515,6 +3516,7 @@
           },
           "email": {
             "type": "string",
+            "format": "email",
             "description": "Primary email address used for login and notifications.",
             "examples": ["berry@example.com"]
           },
@@ -3542,6 +3544,7 @@
           },
           "avatar": {
             "type": ["string", "null"],
+            "format": "uri",
             "description": "Public avatar URL when an avatar is present.",
             "examples": ["https://daywright.test/storage/avatars/berry.png"]
           },
@@ -3601,7 +3604,9 @@
       },
       "FeatureFlagsResource": {
         "type": "object",
-        "additionalProperties": {},
+        "additionalProperties": {
+          "type": "boolean"
+        },
         "title": "FeatureFlagsResource"
       },
       "InsightResource": {
@@ -3769,6 +3774,7 @@
         "properties": {
           "uuid": {
             "type": ["string", "null"],
+            "format": "uuid",
             "description": "Stable public UUID for the invited user.",
             "examples": ["9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412"]
           },
@@ -3784,11 +3790,13 @@
           },
           "email": {
             "type": "string",
+            "format": "email",
             "description": "Invited user email address.",
             "examples": ["berry@example.com"]
           },
           "avatar": {
             "type": ["string", "null"],
+            "format": "uri",
             "description": "Invited user avatar URL when present."
           },
           "invitation_sent_at": {
@@ -5132,6 +5140,7 @@
           },
           "uuid": {
             "type": ["string", "null"],
+            "format": "uuid",
             "description": "Stable public UUID for the member.",
             "examples": ["9b8ea076-6d80-4076-8a01-73b94f4c0bc3"]
           },
@@ -5147,11 +5156,13 @@
           },
           "email": {
             "type": "string",
+            "format": "email",
             "description": "Member email address.",
             "examples": ["user@example.com"]
           },
           "avatar": {
             "type": ["string", "null"],
+            "format": "uri",
             "description": "Member avatar URL when present.",
             "examples": ["https://eu.ui-avatars.com/api/?name=Berry"]
           }
@@ -5462,6 +5473,7 @@
           },
           "uuid": {
             "type": ["string", "null"],
+            "format": "uuid",
             "description": "Stable public UUID for the user.",
             "examples": ["9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412"]
           },
@@ -5477,6 +5489,7 @@
           },
           "avatar": {
             "type": ["string", "null"],
+            "format": "uri",
             "description": "Avatar URL when present.",
             "examples": ["https://daywright.test/storage/avatars/berry.png"]
           }

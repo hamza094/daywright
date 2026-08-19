@@ -35,6 +35,8 @@ class TaskMemberResource extends JsonResource
             /**
              * Stable public UUID for the member.
              *
+             * @format uuid
+             *
              * @example 9b8ea076-6d80-4076-8a01-73b94f4c0bc3
              */
             'uuid' => $this->uuid,
@@ -56,12 +58,16 @@ class TaskMemberResource extends JsonResource
             /**
              * Member email address.
              *
+             * @format email
+             *
              * @example user@example.com
              */
             'email' => $this->email,
 
             /**
              * Member avatar URL when present.
+             *
+             * @format uri
              *
              * @example https://eu.ui-avatars.com/api/?name=Berry
              */

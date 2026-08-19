@@ -15,6 +15,7 @@ use Dedoc\Scramble\Support\Generator\Schema;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Dedoc\Scramble\Support\Generator\Tag;
 use Dedoc\Scramble\Support\Generator\Types\ArrayType;
+use Dedoc\Scramble\Support\Generator\Types\BooleanType;
 use Dedoc\Scramble\Support\Generator\Types\IntegerType;
 use Dedoc\Scramble\Support\Generator\Types\ObjectType;
 use Dedoc\Scramble\Support\Generator\Types\StringType;
@@ -52,6 +53,7 @@ final class ScrambleServiceProvider extends ServiceProvider
             $this->applyPublicApiTagMetadata($openApi);
             $this->applySharedPublicApiErrorResponses($openApi);
             $this->pruneUnsupportedQueryParametersFromDocs($openApi);
+            $this->fixFeatureFlagsSchema($openApi);
 
             $applicationUrl = rtrim(url('/'), '/');
 
@@ -632,5 +634,17 @@ final class ScrambleServiceProvider extends ServiceProvider
                     'meta' => [],
                 ])
         );
+    }
+
+    private function fixFeatureFlagsSchema(OpenApi $openApi): void
+    {
+        if (! isset($openApi->components->schemas['FeatureFlagsResource'])) {
+            return;
+        }
+
+        $featureFlagsSchema = $openApi->components->schemas['FeatureFlagsResource'];
+        if ($featureFlagsSchema instanceof Schema) {
+            $featureFlagsSchema->type = (new ObjectType)->additionalProperties(new BooleanType);
+        }
     }
 }
