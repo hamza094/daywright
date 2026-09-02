@@ -1,5 +1,15 @@
 # Scramble OpenAPI Documentation — Fix Plan
 
+> [!CAUTION]
+> **SUPERSEDED — do not follow this document.**
+> All Phase 1 code fixes have been applied. Key details that are now **incorrect** in this plan:
+>
+> - Line 20 mandates `204 No Content` for `DELETE` — this is obsolete under the current API contract. Both ProjectController and TaskController intentionally return 200 message responses per the current v1 contract. Do not re-apply.
+> - Line 76 claims that 401/403/404/422/429/500 responses are _globally injected_ — they are now replaced with shared `$ref` components via `applySharedPublicApiErrorResponses()` in `ScrambleServiceProvider`, not injected as raw inline objects.
+> - The notification endpoint (`/v1/notifications`) uses **cursor** pagination, not page/per_page as implied elsewhere in this document.
+>
+> The authoritative implementation lives in `ScrambleServiceProvider.php`. This file is kept for historical reference only.
+
 ## Background
 
 The Scramble setup (`ScrambleServiceProvider`) is already excellent. The issues are concentrated in the **controllers** themselves, not the service provider. All fixes are isolated, low-risk, and do not touch business logic.
@@ -17,7 +27,7 @@ These are real bugs — wrong HTTP status codes and inconsistent return types th
 
 #### [MODIFY] `ProjectController.php` — `destroy()` returns 200 instead of 204
 
-The `destroy` method currently returns a `200` message response. Per backend guidelines, all `DELETE` endpoints must return `204 No Content`.
+**OBSOLETE INSTRUCTION:** The `destroy` method intentionally returns a `200` message response per the current v1 API contract. The 204 instruction below is obsolete and should not be applied.
 
 ```diff
 - return $this->respondWithMessage($project->name.' abandoned successfully');
@@ -43,7 +53,7 @@ The `show` method bypasses the `respondWithData` wrapper, inconsistent with ever
 
 #### [MODIFY] `TaskController.php` — `destroy()` also returns a message instead of 204
 
-Same issue as `ProjectController::destroy()`.
+**OBSOLETE INSTRUCTION:** The `destroy` method intentionally returns a `200` message response per the current v1 API contract. The 204 instruction below is obsolete and should not be applied.
 
 ```diff
 - return $this->respondWithMessage('Task deleted successfully.');

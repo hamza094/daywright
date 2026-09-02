@@ -37,7 +37,7 @@ class UsersPolicy
      * Determine if the authenticated user can view the target user's profile.
      * Allows viewing if:
      * - User is viewing their own profile
-     * - Users share a project membership (either as owner or member)
+     * - Users share at least one active project (owned or actively-membered by each user)
      */
     public function view(User $authUser, User $targetUser): bool
     {
@@ -45,9 +45,27 @@ class UsersPolicy
             return true;
         }
 
-        // Single EXISTS query: check if the target user shares any project with the auth user
-        return $targetUser->members()
-            ->whereHas('members', fn ($query) => $query->where('user_id', $authUser->id))
+        // Collect all project IDs the auth user has access to:
+        // owned projects (via projects.user_id) + active pivot memberships.
+        $authProjectIds = $authUser->projects()->pluck('id')
+            ->merge($authUser->members(true)->pluck('projects.id'))
+            ->unique();
+
+        if ($authProjectIds->isEmpty()) {
+            return false;
+        }
+
+        // Check if the target user owns or is an active member of any of those projects.
+        $ownsSharedProject = $targetUser->projects()
+            ->whereIn('id', $authProjectIds)
+            ->exists();
+
+        if ($ownsSharedProject) {
+            return true;
+        }
+
+        return $targetUser->members(true)
+            ->whereIn('projects.id', $authProjectIds)
             ->exists();
     }
 }

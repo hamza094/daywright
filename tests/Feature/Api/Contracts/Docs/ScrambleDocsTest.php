@@ -59,6 +59,7 @@ class ScrambleDocsTest extends TestCase
         $this->assertSame([
             'Users',
             'Invitations',
+            'API Tokens',
             'Subscription',
             'Dashboard',
             'Notifications',
@@ -167,7 +168,7 @@ class ScrambleDocsTest extends TestCase
         );
 
         $this->assertSame(
-            '#/components/schemas/UserProfile',
+            '#/components/schemas/PublicUserProfile',
             $paths['/v1/users/{user}']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['$ref'] ?? null,
         );
         $this->assertSame(
@@ -178,7 +179,7 @@ class ScrambleDocsTest extends TestCase
         foreach ([
             'SubscriptionDetails',
             'UserSummary',
-            'UserProfile',
+            'PublicUserProfile',
         ] as $schemaName) {
             $this->assertArrayHasKey($schemaName, $schemas);
         }
@@ -197,7 +198,7 @@ class ScrambleDocsTest extends TestCase
         $this->assertContains('integer', (array) (($paths['/v1/dashboard/chart-data']['get']['parameters'][0]['schema']['type'] ?? [])));
         $this->assertContains('integer', (array) (($paths['/v1/dashboard/chart-data']['get']['parameters'][1]['schema']['type'] ?? [])));
 
-        $this->assertSame(['filter[status]', 'page', 'per_page'], $notificationParams);
+        $this->assertSame(['filter[status]', 'cursor', 'per_page'], $notificationParams);
         $this->assertSame(
             '#/components/schemas/NotificationResource',
             $paths['/v1/notifications']['get']['responses']['200']['content']['application/json']['schema']['properties']['data']['items']['$ref'] ?? null,
