@@ -11,6 +11,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Services\Task\TaskService;
 use Dedoc\Scramble\Attributes\Endpoint;
+use Dedoc\Scramble\Attributes\HeaderParameter;
 use Illuminate\Http\JsonResponse;
 
 final class UnassignTaskMemberController extends ApiController
@@ -19,8 +20,11 @@ final class UnassignTaskMemberController extends ApiController
      * Unassign a member from a task.
      *
      * Removes one assigned project member from the specified task.
+     *
+     * @headerParameter Idempotency-Key string required Unique key to prevent duplicate unassignment requests
      */
     #[Endpoint(operationId: 'tasks.unassignMember')]
+    #[HeaderParameter(name: 'Idempotency-Key', type: 'string', required: true, description: 'Unique key to prevent duplicate unassignment requests')]
     public function __invoke(Project $project, Task $task, TaskMemberUnassignRequest $request, TaskService $service): JsonResponse
     {
         $task = $service->unassignMember($task, $request->toDto());

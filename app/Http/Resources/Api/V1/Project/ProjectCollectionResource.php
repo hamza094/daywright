@@ -66,6 +66,8 @@ class ProjectCollectionResource extends JsonResource
             /**
              * Project creation timestamp in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example "2024-06-04T00:00:00+00:00"
              */
             'created_at' => $this->created_at?->toIso8601String(),

@@ -74,6 +74,8 @@ class UserTasksResource extends JsonResource
             /**
              * Due date in UTC ISO 8601 format when the task has a deadline.
              *
+             * @format date-time
+             *
              * @example 2025-08-20T10:30:00+00:00
              */
             'due_at' => $this->when($this->due_at !== null, fn (): string => $this->due_at->toIso8601String()),
@@ -85,6 +87,8 @@ class UserTasksResource extends JsonResource
             'state' => $this->when($this->user_id !== $request->user()?->id, 'assigned', 'created'),
             /**
              * Task creation timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2025-08-10T09:00:00+00:00
              */

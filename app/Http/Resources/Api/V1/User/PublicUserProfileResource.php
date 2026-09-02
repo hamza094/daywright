@@ -35,6 +35,8 @@ class PublicUserProfileResource extends JsonResource
             /**
              * Stable public UUID for the user.
              *
+             * @format uuid
+             *
              * @example 9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412
              */
             'uuid' => $this->uuid,
@@ -61,11 +63,15 @@ class PublicUserProfileResource extends JsonResource
             /**
              * IANA timezone identifier (non-null string).
              *
+             * @var string
+             *
              * @example UTC
              */
             'timezone' => $this->timezone ?? config('app.timezone', 'UTC'),
             /**
              * Primary email address.
+             *
+             * @format email
              *
              * @example berry@example.com
              */

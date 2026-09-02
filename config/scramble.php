@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
-
 return [
     /*
      * Your API path. By default, all routes starting with this path will be added to the docs.
@@ -85,8 +83,8 @@ return [
 
     'middleware' => [
         'web',
-        // Public runtime documentation access - no RestrictedDocsAccess middleware
-        // Third-party developers can access /docs endpoint without authentication
+        // Public runtime documentation access - no authentication required
+        // Third-party developers can access /docs/api and /docs/api.json endpoints
     ],
 
     'extensions' => [],

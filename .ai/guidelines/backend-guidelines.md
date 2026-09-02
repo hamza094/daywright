@@ -763,8 +763,8 @@ return response()->json([
     ],
 ]);
 
-// Delete (204)
-return $this->respondNoContent();
+// Delete (200 with message)
+return $this->respondWithMessage('Resource deleted successfully.');
 ```
 
 ### Error Response Structure

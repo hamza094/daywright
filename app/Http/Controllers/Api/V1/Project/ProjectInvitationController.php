@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Project\InvitationService;
 use Dedoc\Scramble\Attributes\Endpoint;
+use Dedoc\Scramble\Attributes\HeaderParameter;
 use Illuminate\Http\JsonResponse;
 
 final class ProjectInvitationController extends ApiController
@@ -22,8 +23,11 @@ final class ProjectInvitationController extends ApiController
      *
      * Sends a project invitation to the supplied email address and returns the created invitation resource.
      * The invited user receives an email notification.
+     *
+     * @headerParameter Idempotency-Key string required Unique key to prevent duplicate invitation requests
      */
     #[Endpoint(operationId: 'invitations.create')]
+    #[HeaderParameter(name: 'Idempotency-Key', type: 'string', required: true, description: 'Unique key to prevent duplicate invitation requests')]
     public function store(Project $project, InvitationUsersRequest $request, InvitationService $invitationService): JsonResponse
     {
         $data = $request->toDto();

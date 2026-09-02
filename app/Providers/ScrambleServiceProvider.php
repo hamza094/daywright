@@ -341,28 +341,28 @@ final class ScrambleServiceProvider extends ServiceProvider
 
         return match ($normalizedPath) {
             'v1/dashboard/chart-data', 'dashboard/chart-data' => [
-                $this->makeQueryParameter('year', new IntegerType, 'Year for chart data', 2025, null, 2020, 2030),
+                $this->makeQueryParameter('year', new IntegerType, 'Year for chart data', 2025, null, null, null),
                 $this->makeQueryParameter('month', new IntegerType, 'Month for chart data (1-12)', 7, null, 1, 12),
             ],
             'v1/dashboard/activities', 'dashboard/activities' => [
-                $this->makeQueryParameter('start_date', new StringType, 'Start date in ISO 8601 format', '2025-01-01', null, null, null, 'date'),
-                $this->makeQueryParameter('end_date', new StringType, 'End date in ISO 8601 format', '2025-12-31', null, null, null, 'date'),
+                $this->makeQueryParameter('start_date', new StringType, 'Start date in ISO 8601 format', '2025-01-01', null, null, null, 'date', true),
+                $this->makeQueryParameter('end_date', new StringType, 'End date in ISO 8601 format', '2025-12-31', null, null, null, 'date', true),
             ],
             'v1/projects', 'projects' => [
                 $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
-                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 6, 6, 1, 100),
             ],
             'v1/projects/{project}/activities', 'projects/{project}/activities' => [
                 $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
-                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 10, 10, 1, 100),
             ],
             'v1/projects/{project}/conversations', 'projects/{project}/conversations' => [
                 $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0', null, null, null),
-                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 10, 10, 1, 100),
             ],
             'v1/users/me/invitations', 'users/me/invitations' => [
                 $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
-                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 10, 10, 1, 100),
             ],
             'v1/dashboard/tasks', 'dashboard/tasks' => [
                 $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0', null, null, null),
@@ -370,11 +370,11 @@ final class ScrambleServiceProvider extends ServiceProvider
             ],
             'v1/notifications', 'notifications' => [
                 $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0', null, null, null),
-                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 25, 25, 1, 100),
             ],
             'v1/projects/{project}/tasks', 'projects/{project}/tasks' => [
                 $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
-                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 20, 20, 1, 100),
             ],
             default => [],
         };
@@ -389,34 +389,43 @@ final class ScrambleServiceProvider extends ServiceProvider
         ?int $min = null,
         ?int $max = null,
         ?string $format = null,
+        bool $required = false,
     ): Parameter {
-        $schema = Schema::fromType($type);
-
-        if ($description !== null) {
-            $schema->setDescription($description);
-        }
-
-        if ($example !== null) {
-            $schema->example($example);
-        }
-
-        if ($default !== null) {
-            $schema->default($default);
-        }
-
+        // Apply constraints directly to the type object
         if ($min !== null && $type instanceof IntegerType) {
-            $type->setMin($min);
+            $type->min = $min;
         }
 
         if ($max !== null && $type instanceof IntegerType) {
-            $type->setMax($max);
+            $type->max = $max;
         }
 
         if ($format !== null && $type instanceof StringType) {
-            $type->setFormat($format);
+            $type->format = $format;
         }
 
-        return Parameter::make($name, 'query')->setSchema($schema);
+        $parameter = Parameter::make($name, 'query')
+            ->setSchema(Schema::fromType($type));
+
+        if ($required) {
+            $parameter->required = true;
+        }
+
+        // Set description and example on the parameter itself
+        if ($description !== null) {
+            $parameter->description = $description;
+        }
+
+        if ($example !== null) {
+            $parameter->example = $example;
+        }
+
+        // Set default on the schema
+        if ($default !== null) {
+            $parameter->schema->default = $default;
+        }
+
+        return $parameter;
     }
 
     /**
@@ -623,11 +632,11 @@ final class ScrambleServiceProvider extends ServiceProvider
         $validationErrors = (new ObjectType)
             ->setDescription('Field-level validation details when available.')
             ->additionalProperties((new ArrayType)->setItems(new StringType))
-            ->example(['email' => ['The provided credentials are incorrect.']]);
+            ->example((object) []);
 
         $meta = (new ObjectType)
             ->setDescription('Structured error context when available.')
-            ->example($metaExample);
+            ->example((object) $metaExample);
 
         return Schema::fromType(
             (new ObjectType)
@@ -639,8 +648,8 @@ final class ScrambleServiceProvider extends ServiceProvider
                 ->example([
                     'message' => $messageExample,
                     'code' => $codeExample,
-                    'errors' => [],
-                    'meta' => [],
+                    'errors' => (object) [],
+                    'meta' => (object) [],
                 ])
         );
     }
@@ -651,12 +660,12 @@ final class ScrambleServiceProvider extends ServiceProvider
             ->setDescription('Field-level validation details keyed by input name.')
             ->additionalProperties((new ArrayType)->setItems(new StringType))
             ->example([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => ['The email field is required.'],
             ]);
 
         $meta = (new ObjectType)
             ->setDescription('Structured error context when available.')
-            ->example(['retry_after_seconds' => 60]);
+            ->example((object) []);
 
         return Schema::fromType(
             (new ObjectType)
@@ -668,10 +677,10 @@ final class ScrambleServiceProvider extends ServiceProvider
                 ->example([
                     'message' => self::VALIDATION_FAILED_MESSAGE,
                     'code' => 'validation_error',
-                    'errors' => [
-                        'email' => ['The provided credentials are incorrect.'],
+                    'errors' => (object) [
+                        'email' => ['The email field is required.'],
                     ],
-                    'meta' => [],
+                    'meta' => (object) [],
                 ])
         );
     }

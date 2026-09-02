@@ -49,6 +49,8 @@ class ProjectStageResource extends JsonResource
             /**
              * Project stage update timestamp in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example "2024-06-10T09:15:00+00:00"
              */
             'stage_updated_at' => $this->stage_updated_at?->toIso8601String(),
