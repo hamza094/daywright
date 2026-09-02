@@ -59,12 +59,18 @@ class TaskResource extends JsonResource
 
             /**
              * Reminder strategy for due-date notifications.
-             * Allowed values: none, daily, weekly, monthly.
+             * Allowed values: 1 Day Before, 2 Hours Before, 15 Minutes Before, 5 Minutes Before.
+             *
+             * @var '1 Day Before'|'2 Hours Before'|'15 Minutes Before'|'5 Minutes Before'|null
+             *
+             * @example 1 Day Before
              */
             'notified' => $this->notified,
 
             /**
              * Task due at in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2024-12-09T10:25:00+00:00
              */
@@ -73,12 +79,16 @@ class TaskResource extends JsonResource
             /**
              * Task created at in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example 2024-12-04T11:41:34+00:00
              */
             'created_at' => $this->created_at?->toIso8601String(),
 
             /**
              * Task updated at in UTC ISO 8601 format if present.
+             *
+             * @format date-time
              *
              * @example 2024-12-10T09:41:34+00:00
              */

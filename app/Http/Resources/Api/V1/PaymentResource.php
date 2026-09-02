@@ -53,6 +53,8 @@ class PaymentResource extends JsonResource
             /**
              * Payment date in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @var string|null
              *
              * @example 2025-07-01T09:00:00+00:00

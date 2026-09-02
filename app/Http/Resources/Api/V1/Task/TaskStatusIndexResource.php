@@ -40,9 +40,9 @@ class TaskStatusIndexResource extends JsonResource
             'statuses' => TaskStatusResource::collection($this->statuses),
             /**
              * List of supported notification strategies for due dates.
-             * Allowed values: none, daily, weekly, monthly.
+             * Allowed values: 1 Day Before, 2 Hours Before, 15 Minutes Before, 5 Minutes Before.
              *
-             * @var array<int, string>
+             * @var array<int, '1 Day Before'|'2 Hours Before'|'15 Minutes Before'|'5 Minutes Before'>
              */
             'due_notifies' => $this->dueNotifies,
         ];

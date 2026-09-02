@@ -61,6 +61,8 @@ class InvitedUserResource extends JsonResource
             /**
              * Invitation creation timestamp in UTC ISO 8601 format for pending invitations.
              *
+             * @format date-time
+             *
              * @example 2025-07-09T14:00:00+00:00
              */
             'invitation_sent_at' => $this->when(

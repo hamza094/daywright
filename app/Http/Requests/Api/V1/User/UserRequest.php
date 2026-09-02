@@ -51,15 +51,11 @@ class UserRequest extends FormRequest
             /**
              * Updated public username.
              *
-             * @var string
-             *
              * @example john_doe
              */
             'username' => ['sometimes', 'required', 'alpha_dash:ascii', 'max:30', Rule::unique('users')->ignore($this->user())],
             /**
              * Optional mobile number as string to preserve leading zeros.
-             *
-             * @var string
              *
              * @example "0123456789"
              */

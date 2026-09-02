@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Project;
 use App\Http\Controllers\Api\ApiController;
 use App\Models\Project;
 use App\Services\Project\ProjectService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -20,6 +21,7 @@ final class ForceDeleteProjectController extends ApiController
      * delete of all associated resources including tasks, conversations, messages, meetings, and member associations.
      * This operation is irreversible.
      */
+    #[Endpoint(operationId: 'projects.forceDelete')]
     public function __invoke(Project $project, ProjectService $projectService): JsonResponse
     {
         $deleted = $projectService->forceDeleteIfAbandoned($project);

@@ -93,6 +93,8 @@ class SubscriptionResource extends JsonResource
             /**
              * Subscription creation timestamp in UTC ISO 8601 format when billing is active.
              *
+             * @format date-time
+             *
              * @example 2025-07-01T09:00:00+00:00
              */
             'created_at' => $this->formatDate($this->billing['created_at']),

@@ -39,6 +39,13 @@ class ActivityResource extends JsonResource
         return [
             /** @var string */
             'description' => $description,
+            /**
+             * Activity timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
+             *
+             * @example 2025-07-01T09:00:00+00:00
+             */
             'time' => $this->created_at?->toIso8601String(),
             /** @var array{type: string, id: int|null} */
             'subject' => $this->getSubjectDetails(),

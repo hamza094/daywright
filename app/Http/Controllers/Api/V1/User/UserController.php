@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1\User;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\User\UserRequest;
+use App\Http\Resources\Api\V1\User\PublicUserProfileResource;
 use App\Http\Resources\Api\V1\User\UserProfileResource;
 use App\Models\User;
 use App\Services\User\UserService;
@@ -20,13 +21,16 @@ class UserController extends ApiController
      * Show user details
      *
      * Get detailed information for a specific user.
+     * Only accessible to users who share a project or team membership with the target user.
      */
     #[Endpoint(operationId: 'users.show')]
     public function show(User $user): JsonResponse
     {
+        $this->authorize('view', $user);
+
         $user = $this->userService->loadProfile($user);
 
-        return (new UserProfileResource($user))->response();
+        return (new PublicUserProfileResource($user))->response();
     }
 
     /**

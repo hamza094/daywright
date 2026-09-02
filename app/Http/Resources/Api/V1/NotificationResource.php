@@ -58,11 +58,15 @@ class NotificationResource extends JsonResource
             /**
              * Read timestamp in UTC ISO 8601 format, or null when unread.
              *
+             * @format date-time
+             *
              * @example 2025-08-15T10:30:00+00:00
              */
             'read_at' => $this->read_at?->toIso8601String(),
             /**
              * Creation timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2025-08-15T09:00:00+00:00
              */

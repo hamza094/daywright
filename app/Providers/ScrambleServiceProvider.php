@@ -40,11 +40,6 @@ final class ScrambleServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        Scramble::configure()
-            ->withRuleTransformers([
-                \App\Documentation\RuleTransformers\TaskSystemStatusRuleTransformer::class,
-            ]);
-
         Scramble::resolveTagsUsing(fn (RouteInfo $routeInfo): array => [$this->resolvePublicApiTag($routeInfo)]);
 
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
@@ -127,6 +122,7 @@ final class ScrambleServiceProvider extends ServiceProvider
                 'api/v1/auth/',
                 'api/v1/twofactor/',
             ]) => 'Authentication',
+            $uri === 'api/v1/scopes' => 'API Tokens',
             Str::startsWith($uri, 'api/v1/api-tokens') => 'API Tokens',
             Str::startsWith($uri, 'api/v1/users/me/subscription') => 'Subscription',
             Str::startsWith($uri, 'api/v1/dashboard/') => 'Dashboard',
@@ -137,7 +133,6 @@ final class ScrambleServiceProvider extends ServiceProvider
             Str::contains($uri, '/invitations') || Str::contains($uri, '/members/') || $uri === 'api/v1/users/me/invitations' => 'Invitations',
             Str::startsWith($uri, 'api/v1/users') => 'Users',
             Str::startsWith($uri, 'api/v1/projects') => 'Projects',
-            default => 'Public API',
         };
     }
 
@@ -240,6 +235,7 @@ final class ScrambleServiceProvider extends ServiceProvider
             foreach ($path->operations as $operation) {
                 $this->replaceOperationErrorResponsesWithSharedReferences($operation, $openApi->components);
                 $this->ensureSharedPublicApiErrorResponse($operation, $openApi->components, 500);
+                $this->ensureSharedPublicApiErrorResponse($operation, $openApi->components, 429);
             }
         }
     }
@@ -345,48 +341,82 @@ final class ScrambleServiceProvider extends ServiceProvider
 
         return match ($normalizedPath) {
             'v1/dashboard/chart-data', 'dashboard/chart-data' => [
-                $this->makeQueryParameter('year', new IntegerType),
-                $this->makeQueryParameter('month', new IntegerType),
+                $this->makeQueryParameter('year', new IntegerType, 'Year for chart data', 2025, null, 2020, 2030),
+                $this->makeQueryParameter('month', new IntegerType, 'Month for chart data (1-12)', 7, null, 1, 12),
             ],
             'v1/dashboard/activities', 'dashboard/activities' => [
-                $this->makeQueryParameter('start_date', new StringType),
-                $this->makeQueryParameter('end_date', new StringType),
+                $this->makeQueryParameter('start_date', new StringType, 'Start date in ISO 8601 format', '2025-01-01', null, null, null, 'date'),
+                $this->makeQueryParameter('end_date', new StringType, 'End date in ISO 8601 format', '2025-12-31', null, null, null, 'date'),
             ],
             'v1/projects', 'projects' => [
-                $this->makeQueryParameter('page', new IntegerType),
-                $this->makeQueryParameter('per_page', new IntegerType),
+                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
             ],
             'v1/projects/{project}/activities', 'projects/{project}/activities' => [
-                $this->makeQueryParameter('page', new IntegerType),
-                $this->makeQueryParameter('per_page', new IntegerType),
+                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
             ],
             'v1/projects/{project}/conversations', 'projects/{project}/conversations' => [
-                $this->makeQueryParameter('cursor', new StringType),
-                $this->makeQueryParameter('per_page', new IntegerType),
+                $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0', null, null, null),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
             ],
             'v1/users/me/invitations', 'users/me/invitations' => [
-                $this->makeQueryParameter('page', new IntegerType),
-                $this->makeQueryParameter('per_page', new IntegerType),
+                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
             ],
             'v1/dashboard/tasks', 'dashboard/tasks' => [
-                $this->makeQueryParameter('cursor', new StringType),
-                $this->makeQueryParameter('per_page', new IntegerType),
+                $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0', null, null, null),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
             ],
             'v1/notifications', 'notifications' => [
-                $this->makeQueryParameter('per_page', new IntegerType),
+                $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0', null, null, null),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
             ],
             'v1/projects/{project}/tasks', 'projects/{project}/tasks' => [
-                $this->makeQueryParameter('page', new IntegerType),
-                $this->makeQueryParameter('per_page', new IntegerType),
+                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
+                $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
             ],
             default => [],
         };
     }
 
-    private function makeQueryParameter(string $name, IntegerType|StringType $type): Parameter
-    {
-        return Parameter::make($name, 'query')
-            ->setSchema(Schema::fromType($type));
+    private function makeQueryParameter(
+        string $name,
+        IntegerType|StringType $type,
+        ?string $description = null,
+        mixed $example = null,
+        mixed $default = null,
+        ?int $min = null,
+        ?int $max = null,
+        ?string $format = null,
+    ): Parameter {
+        $schema = Schema::fromType($type);
+
+        if ($description !== null) {
+            $schema->setDescription($description);
+        }
+
+        if ($example !== null) {
+            $schema->example($example);
+        }
+
+        if ($default !== null) {
+            $schema->default($default);
+        }
+
+        if ($min !== null && $type instanceof IntegerType) {
+            $type->setMin($min);
+        }
+
+        if ($max !== null && $type instanceof IntegerType) {
+            $type->setMax($max);
+        }
+
+        if ($format !== null && $type instanceof StringType) {
+            $type->setFormat($format);
+        }
+
+        return Parameter::make($name, 'query')->setSchema($schema);
     }
 
     /**
@@ -543,9 +573,18 @@ final class ScrambleServiceProvider extends ServiceProvider
             return;
         }
 
-        $components->responses[$name] = Response::make($status)
+        $response = Response::make($status)
             ->setDescription($description)
             ->setContent('application/json', new Reference('schemas', $schemaName, $components));
+
+        // Add Retry-After header to 429 rate limit response
+        if ($status === SymfonyResponse::HTTP_TOO_MANY_REQUESTS) {
+            $response->addHeader('Retry-After', (new \Dedoc\Scramble\Support\Generator\Header('Retry-After'))
+                ->setDescription('Number of seconds to wait before making a new request.')
+                ->setSchema(Schema::fromType(new IntegerType)));
+        }
+
+        $components->responses[$name] = $response;
     }
 
     private function ensureSharedPublicApiErrorResponse(Operation $operation, Components $components, int $status): void
@@ -584,7 +623,7 @@ final class ScrambleServiceProvider extends ServiceProvider
         $validationErrors = (new ObjectType)
             ->setDescription('Field-level validation details when available.')
             ->additionalProperties((new ArrayType)->setItems(new StringType))
-            ->example([]);
+            ->example(['email' => ['The provided credentials are incorrect.']]);
 
         $meta = (new ObjectType)
             ->setDescription('Structured error context when available.')
@@ -601,7 +640,7 @@ final class ScrambleServiceProvider extends ServiceProvider
                     'message' => $messageExample,
                     'code' => $codeExample,
                     'errors' => [],
-                    'meta' => $metaExample,
+                    'meta' => [],
                 ])
         );
     }
@@ -616,14 +655,15 @@ final class ScrambleServiceProvider extends ServiceProvider
             ]);
 
         $meta = (new ObjectType)
-            ->setDescription('Structured error context when available.');
+            ->setDescription('Structured error context when available.')
+            ->example(['retry_after_seconds' => 60]);
 
         return Schema::fromType(
             (new ObjectType)
                 ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example(self::VALIDATION_FAILED_MESSAGE))
                 ->addProperty('code', (new StringType)->setDescription('Stable machine-readable error code.')->example('validation_error'))
                 ->addProperty('errors', $validationErrors)
-                ->addProperty('meta', $meta->example([]))
+                ->addProperty('meta', $meta)
                 ->setRequired(['message', 'code', 'errors', 'meta'])
                 ->example([
                     'message' => self::VALIDATION_FAILED_MESSAGE,

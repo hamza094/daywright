@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1\User;
 
-use App\Models\User;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -13,11 +12,13 @@ use Override;
 /**
  * @mixin \App\Models\User
  */
-#[SchemaName('UserProfile')]
-class UserProfileResource extends JsonResource
+#[SchemaName('PublicUserProfile')]
+class PublicUserProfileResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
+     * This resource is used for the /users/{user} endpoint and shows information
+     * appropriate for collaborators (shared project/team members) and the profile owner.
      *
      * @return array<string, mixed>
      */
@@ -52,13 +53,13 @@ class UserProfileResource extends JsonResource
             /**
              * Avatar URL when present.
              *
+             * @format uri
+             *
              * @example https://daywright.test/storage/avatars/berry.png
              */
             'avatar' => $this->when($this->avatar, fn () => $this->avatar_path),
             /**
              * IANA timezone identifier (non-null string).
-             *
-             * @var string
              *
              * @example UTC
              */
@@ -70,21 +71,7 @@ class UserProfileResource extends JsonResource
              */
             'email' => $this->email,
             /**
-             * Email verification timestamp for the authenticated owner, in UTC ISO 8601 format.
-             * Null if email is not verified.
-             *
-             * @format date-time
-             *
-             * @var string|null
-             *
-             * @example 2025-07-01T09:00:00+00:00
-             */
-            'verified' => $this->when(
-                $request->user()?->is($this->resource),
-                fn () => $this->email_verified_at?->toIso8601String(),
-            ),
-            /**
-             * Extended profile information.
+             * Extended profile information (mobile, address, company, position, bio).
              */
             'info' => new UserInfoResource($this->info),
             /**

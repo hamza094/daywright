@@ -268,8 +268,10 @@ Controller (base)
 - ✅ Use method injection for Request and Service dependencies
 - ✅ Use `$this->authorize()` for policy checks
 - ✅ Use `$request->validated()` or `$request->safe()` for clean data
-- ✅ Add docblocks with `@operationId` and `@tags` for API documentation
-- ✅ Return JSON with `message` + `resource` pattern
+- ✅ Use `#[Endpoint(operationId: 'resource.action')]` attribute for stable operation IDs in generated OpenAPI specs
+- ✅ Tags are resolved centrally by `ScrambleServiceProvider`; do not manually add `@tags` to public controllers
+- ✅ Return JSON with `data` as the canonical payload envelope for resource responses and `{ "message": string }` for command-only responses
+- ✅ Error responses are documented only when inferred or explicitly ensured by the provider; do not claim all error statuses are automatically injected
 - ❌ Do not put business logic in controllers
 - ❌ Do not access database directly (use services/repositories)
 
@@ -280,7 +282,7 @@ Controller (base)
 | Create | 201         | `response()->json([...], 201)` |
 | Read   | 200         | `response()->json([...])`      |
 | Update | 200         | `response()->json([...])`      |
-| Delete | 204         | `$this->respondNoContent()`    |
+| Delete | 200         | `response()->json([...])`      |
 | Error  | 4xx/5xx     | `$this->respondError(...)`     |
 
 ---
@@ -297,6 +299,7 @@ Form Requests handle validation and authorization for incoming HTTP requests.
 
 ### Guidelines
 
+- ✅ MUST implement a `toDto()` method to transform validated data into a strict DTO (e.g., `return ProjectData::fromValidated($this->validated());`)
 - ✅ Include `@example` annotations for API documentation (Scramble/OpenAPI)
 - ✅ Use `Rule::unique()` with closures for complex uniqueness checks
 - ✅ Override `messages()` for user-friendly error messages

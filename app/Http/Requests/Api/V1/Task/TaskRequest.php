@@ -44,12 +44,11 @@ class TaskRequest extends FormRequest
             /**
              * Task title. Titles must be unique within the selected project.
              *
-             * @var string
-             *
              * @example Draft QA checklist
              */
             'title' => [
                 'required',
+                'string',
                 'max:55',
                 'min:3',
                 Rule::unique('tasks')->where(fn ($query) => $query->where('project_id', $project->id)),

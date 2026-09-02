@@ -66,6 +66,8 @@ class ProjectResource extends JsonResource
             /**
              * Project creation timestamp in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example 2024-06-04T00:00:00+00:00
              */
             'created_at' => $this->created_at?->toIso8601String(),
@@ -73,12 +75,16 @@ class ProjectResource extends JsonResource
             /**
              * Project update timestamp in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example 2024-06-04T12:30:00+00:00
              */
             'updated_at' => $this->updated_at?->toIso8601String(),
 
             /**
              * Project deletion timestamp in UTC ISO 8601 format when the project is trashed.
+             *
+             * @format date-time
              *
              * @example 2024-06-10T09:15:00+00:00
              */
@@ -92,6 +98,8 @@ class ProjectResource extends JsonResource
 
             /**
              * Last stage update timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2024-06-10T09:15:00+00:00
              */
@@ -144,6 +152,8 @@ class ProjectResource extends JsonResource
 
             /**
              * Health score calculation timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2024-10-01T15:30:00+00:00
              */

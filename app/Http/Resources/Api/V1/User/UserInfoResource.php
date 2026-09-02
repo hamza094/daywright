@@ -27,7 +27,7 @@ class UserInfoResource extends JsonResource
             /**
              * Optional mobile number as string to preserve leading zeros.
              *
-             * @var string
+             * @var string|null
              *
              * @example "0123456789"
              */

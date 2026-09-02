@@ -52,8 +52,6 @@ class ProjectUpdateRequest extends FormRequest
             /**
              * Updated project description. Must be different from the current about description.
              *
-             * @var string
-             *
              * @example Complete redesign of the company website with new branding and improved UX.
              */
             'about' => [
@@ -66,8 +64,6 @@ class ProjectUpdateRequest extends FormRequest
             ],
             /**
              * Updated project notes. Must be different from the current project notes.
-             *
-             * @var string
              *
              * @example Focus on mobile-first design approach
              */

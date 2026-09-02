@@ -9,6 +9,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use JsonSerializable;
 use Override;
 
+/**
+ * @mixin \Laravel\Paddle\Receipt
+ */
 #[SchemaName('SubscriptionReceipt')]
 class ReceiptResource extends JsonResource
 {
@@ -31,6 +34,8 @@ class ReceiptResource extends JsonResource
             /**
              * Receipt creation timestamp in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example 2025-07-01T09:00:00+00:00
              */
             'created_at' => $this->created_at?->toIso8601String(),
@@ -49,6 +54,8 @@ class ReceiptResource extends JsonResource
             /**
              * Absolute URL to the receipt PDF.
              *
+             * @format uri
+             *
              * @example https://daywright.test/storage/receipts/abc123.pdf
              */
             'receipt_url' => $this->receipt_url,
@@ -66,6 +73,8 @@ class ReceiptResource extends JsonResource
             'amount' => $this->amount,
             /**
              * Receipt update timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2025-07-01T09:00:00+00:00
              */

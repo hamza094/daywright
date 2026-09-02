@@ -10,7 +10,6 @@ DayWright exposes a versioned JSON API for authentication, users, projects, task
 ## Introduction
 
 - The public API is currently implemented under `v1`.
-- Requests are routed through Laravel API and web-backed API groups under the same `/api/{version}` prefix.
 - Resource serialization is handled primarily through Laravel API resources, so most payloads are JSON-first and predictable.
 
 ## Base URL
@@ -21,8 +20,6 @@ DayWright exposes a versioned JSON API for authentication, users, projects, task
 
 ## Authentication
 
-DayWright supports two authentication modes.
-
 ### Bearer token authentication
 
 - API clients authenticate with Laravel Sanctum personal access tokens.
@@ -32,75 +29,11 @@ DayWright supports two authentication modes.
 Authorization: Bearer YOUR_TOKEN
 ```
 
-- `POST /login` returns a bearer token for token-based API clients when the account does not require two-factor authentication.
-- `GET /api-tokens`, `POST /api-tokens`, and `DELETE /api-tokens/{token}` let authenticated users manage additional personal access tokens.
-- Login-issued tokens are created with a one-month expiration.
+- Contact your DayWright administrator to obtain API access credentials.
+- Tokens include scope-based permissions for different API operations.
 - User-created API tokens may include an optional `expires_at` value in ISO 8601 format, up to 180 days in the future.
-- Accounts with two-factor authentication enabled must use the session login flow. Token login does not expose a public 2FA continuation step.
-- `POST /register` creates a user account and returns the user resource. It does not create a session or issue an access token.
 
-Example login response:
 
-```json
-{
-    "data": {
-        "user": {
-            "id": 1,
-            "uuid": "9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412",
-            "name": "Berry",
-            "username": "berry",
-            "email": "berry@example.com",
-            "timezone": "UTC",
-            "two_factor_enabled": false,
-            "verified": true
-        },
-        "access_token": "1|wKfQJc..."
-    }
-}
-```
-
-Example register response:
-
-```json
-{
-    "data": {
-        "id": 1,
-        "uuid": "9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412",
-        "name": "Berry",
-        "username": "berry",
-        "email": "berry@example.com",
-        "timezone": "UTC",
-        "two_factor_enabled": false,
-        "verified": false
-    }
-}
-```
-
-### Stateful session authentication
-
-- First-party browser flows use Sanctum's stateful session mode.
-- These routes are mounted under the same versioned API prefix and use `web` middleware rather than the standard `api` middleware group.
-- Session-oriented routes include `/session/*`, `/twofactor/*`, and interactive OAuth flows under `/auth/*`.
-- Browser clients should send session cookies and satisfy CSRF requirements for these endpoints.
-- Two-factor authentication is completed only through this session-backed flow.
-- `POST /session/login` may return a 2FA challenge state for accounts with two-factor authentication enabled, and the client completes sign-in with `POST /twofactor/login-confirm`.
-- Third-party and server-to-server clients should prefer bearer tokens.
-
-Example session login response for a two-factor-enabled account:
-
-```json
-{
-    "data": {
-        "two_factor_state": "2fa_required",
-        "message": "Two-factor authentication is enabled. Please provide the verification code."
-    }
-}
-```
-
-### Integration-specific tokens
-
-- The application includes Zoom utility endpoints that can return ZAK or JWT tokens for Zoom workflows.
-- These tokens are integration-specific and are not used to authenticate the DayWright API itself.
 
 ## Request Format
 
@@ -154,7 +87,6 @@ Released collection and collection-like read endpoints use a strict query contra
 - Dashboard activity reads use top-level `start_date` and `end_date`.
 - Dashboard chart data uses top-level `year` and optional `month`.
 - Dedicated lookup endpoints may use a top-level `search` parameter instead of the general `filter[...]` grammar.
-- Zoom-backed meeting endpoints under `/projects/{project}/meetings` are intentionally excluded from the generated OpenAPI. They remain supported runtime endpoints, including the `request=previous` meeting-index alias, but are treated as an integration-specific documentation exception for now.
 
 ## Response Format
 
@@ -196,10 +128,6 @@ Most successful responses use one of the following patterns.
 }
 ```
 
-### No-content response
-
-- Some mutation endpoints intentionally return `204 No Content` with an empty body.
-
 Notes:
 
 - When a resource exposes navigational links, they are typically returned as relative API paths inside a `links` object.
@@ -228,7 +156,7 @@ Notes:
 - Application-authored 4xx messages may be preserved when safe to expose.
 - Generic 5xx responses intentionally avoid leaking internal details.
 
-DayWright also uses domain-specific error codes when appropriate, including examples such as `subscription_required`, `plan_limit_exceeded`, `project_archived`, `task_archived`, and `zoom_unavailable`.
+DayWright also uses domain-specific error codes when appropriate, including examples such as `subscription_required`, `plan_limit_exceeded`, `project_archived`, and `task_archived`.
 
 ## Validation Errors
 
@@ -252,7 +180,6 @@ Notes:
 - Form request validation is used extensively across the API.
 - Validation errors are keyed by input name.
 - Query validation errors use the same envelope and surface nested keys in dot notation, for example `filter.state`.
-- Authentication failures during credential-based login are surfaced as validation errors on `email`, not as a separate `401` login response.
 
 ## Pagination
 
@@ -295,24 +222,12 @@ The API uses Laravel rate limiters with route-specific policies.
 | `sensitive-upload` | File upload operations | `10` requests per minute by user |
 | `sensitive-token-mgmt` | API token management | `5` requests per minute by user |
 | `sensitive-billing` | Subscription and billing operations | `5` requests per minute by user |
-| `sensitive-password` | Password-related operations | `5` requests per minute by user |
-| `auth-login` | Token login and session login | `5` requests per minute by IP and email |
-| `auth-register` | Registration | `5` requests per minute by IP |
-| `password-email` | Password reset link requests | `4` requests per minute by IP and email |
-| `password-reset` | Password reset submission | `5` requests per minute by IP |
-| `verification` | Email verification and resend flows | `6` requests per minute by user or IP |
-| `two-factor` | 2FA setup and confirmation | `5` requests per minute by user or IP |
-| `oauth2-socialite` | OAuth redirect and callback flows | `8` requests per minute by IP and provider |
+
 | `invite-actions` | Project invitation actions | `10` requests per minute by user or IP |
 
 Rate-limited responses return `429 Too Many Requests`. Integration-specific rate-limit failures may also include `meta.retry_after_seconds` when the upstream exception provides that detail.
 
-## Idempotency
 
-- Selected mutation routes are protected with idempotency middleware.
-- When an endpoint requires idempotency, send a unique `Idempotency-Key` header.
-- This is used on retriable write operations such as API token creation, invitation actions, selected subscription changes, selected task assignment workflows, selected meeting mutations, and Zoom webhooks.
-- Idempotency is not enabled globally for every write endpoint, so rely on the endpoint documentation where the header is required.
 
 ## Versioning
 
@@ -325,7 +240,7 @@ Rate-limited responses return `429 Too Many Requests`. Integration-specific rate
 - Protected routes generally use `auth:sanctum`.
 - Authorization is enforced with Laravel policies via route middleware such as `can:access,...` and controller-level `$this->authorize(...)` checks.
 - Common policy abilities include `access`, `manage`, `owner`, `delete`, and invitation-specific checks.
-- Additional route constraints are enforced through middleware such as `verified`, `subscription`, `2fa.enabled`, and Pennant feature checks.
+- Additional route constraints are enforced through middleware such as `verified`, `subscription`, and Pennant feature checks.
 
 ## File Uploads
 
@@ -383,9 +298,8 @@ Webhook processing is asynchronous after acceptance.
 
 | Status | Meaning in DayWright |
 | --- | --- |
-| `200` | Successful read, update, action, or webhook acceptance response |
+| `200` | Successful read, update, delete, action, or webhook acceptance response |
 | `201` | Resource created successfully |
-| `204` | Successful request with no response body |
 | `400` | Invalid request state, invalid signature, or malformed callback data |
 | `401` | Authentication is required |
 | `403` | Authenticated but not authorized, not subscribed, or feature access is restricted |
@@ -413,6 +327,5 @@ Webhook processing is asynchronous after acceptance.
 - Subscription-gated endpoints use the same error envelope as the rest of the API and may include structured `meta` such as upgrade requirements or plan limit details. Premium endpoints return `403 Forbidden` if the user's subscription is inactive or plan limits are exceeded.
 
 - Resources in an "abandoned" state use soft-deletes (`deleted_at`) and can be returned via endpoints using `withTrashed()`.
-- OAuth and session endpoints live under the same `/api/v1` prefix as the token-based API, but they are intended for browser-driven workflows rather than generic third-party clients.
 - Use each endpoint page as the source of truth for request fields, accepted query parameters, and resource schemas.
 MARKDOWN;
