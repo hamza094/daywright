@@ -1,5 +1,7 @@
 # API Documentation Synchronization and Production Readiness Plan
 
+> **Note:** This plan supersedes the previous `scramble-docs-plan.md` which contained outdated requirements (204 responses, @unauthenticated restrictions, and global error injection assumptions).
+
 ## Objective
 
 Bring the public Daywright v1 OpenAPI document into strict alignment with runtime routes, validation, resources, responses, exception handling, and backend engineering guidelines.

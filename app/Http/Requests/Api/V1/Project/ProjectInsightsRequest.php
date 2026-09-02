@@ -37,8 +37,9 @@ class ProjectInsightsRequest extends FormRequest
         return [
             /**
              * Array of insight sections to include. Omitting this parameter returns all sections.
+             * Allowed values: health, task-health, collaboration, risk, stage.
              *
-             * @var array<int,string>
+             * @var array<int, 'health'|'task-health'|'collaboration'|'risk'|'stage'>
              *
              * @example ["health","risk"]
              */

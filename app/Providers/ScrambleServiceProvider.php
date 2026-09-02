@@ -404,6 +404,11 @@ final class ScrambleServiceProvider extends ServiceProvider
             $type->format = $format;
         }
 
+        // Set default on the type before creating schema
+        if ($default !== null) {
+            $type->default($default);
+        }
+
         $parameter = Parameter::make($name, 'query')
             ->setSchema(Schema::fromType($type));
 
@@ -418,11 +423,6 @@ final class ScrambleServiceProvider extends ServiceProvider
 
         if ($example !== null) {
             $parameter->example = $example;
-        }
-
-        // Set default on the schema
-        if ($default !== null) {
-            $parameter->schema->default = $default;
         }
 
         return $parameter;
@@ -638,6 +638,13 @@ final class ScrambleServiceProvider extends ServiceProvider
             ->setDescription('Structured error context when available.')
             ->example((object) $metaExample);
 
+        $completeExample = [
+            'message' => $messageExample,
+            'code' => $codeExample,
+            'errors' => (object) [],
+            'meta' => ! empty($metaExample) ? (object) $metaExample : (object) [],
+        ];
+
         return Schema::fromType(
             (new ObjectType)
                 ->addProperty('message', (new StringType)->setDescription('Safe human-readable error message.')->example($messageExample))
@@ -645,12 +652,7 @@ final class ScrambleServiceProvider extends ServiceProvider
                 ->addProperty('errors', $validationErrors)
                 ->addProperty('meta', $meta)
                 ->setRequired(['message', 'code', 'errors', 'meta'])
-                ->example([
-                    'message' => $messageExample,
-                    'code' => $codeExample,
-                    'errors' => (object) [],
-                    'meta' => (object) [],
-                ])
+                ->example($completeExample)
         );
     }
 

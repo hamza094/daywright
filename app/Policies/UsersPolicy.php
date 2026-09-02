@@ -41,25 +41,13 @@ class UsersPolicy
      */
     public function view(User $authUser, User $targetUser): bool
     {
-        // User can view their own profile
         if ($authUser->is($targetUser)) {
             return true;
         }
 
-        // Check if users share any project membership
-        // This covers:
-        // - Auth user is a member of a project owned by target user
-        // - Target user is a member of a project owned by auth user
-        // - Both users are members of the same project
-        $sharesProject = $authUser->projects()
-            ->whereHas('members', fn ($query) => $query->where('user_id', $targetUser->id))
-            ->exists();
-
-        // Also check if target user owns any project where auth user is a member
-        $targetOwnsSharedProject = $targetUser->projects()
+        // Single EXISTS query: check if the target user shares any project with the auth user
+        return $targetUser->members()
             ->whereHas('members', fn ($query) => $query->where('user_id', $authUser->id))
             ->exists();
-
-        return $sharesProject || $targetOwnsSharedProject;
     }
 }

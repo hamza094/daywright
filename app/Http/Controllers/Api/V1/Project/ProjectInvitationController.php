@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Project\InvitationService;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\HeaderParameter;
+use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 
 final class ProjectInvitationController extends ApiController
@@ -23,11 +24,12 @@ final class ProjectInvitationController extends ApiController
      *
      * Sends a project invitation to the supplied email address and returns the created invitation resource.
      * The invited user receives an email notification.
-     *
-     * @headerParameter Idempotency-Key string required Unique key to prevent duplicate invitation requests
      */
     #[Endpoint(operationId: 'invitations.create')]
     #[HeaderParameter(name: 'Idempotency-Key', type: 'string', required: true, description: 'Unique key to prevent duplicate invitation requests')]
+    #[ScrambleResponse(status: 400, description: 'Bad request - missing or invalid Idempotency-Key header')]
+    #[ScrambleResponse(status: 409, description: 'Conflict - idempotency key currently being processed')]
+    #[ScrambleResponse(status: 422, description: 'Unprocessable entity - idempotency key reused with different request data')]
     public function store(Project $project, InvitationUsersRequest $request, InvitationService $invitationService): JsonResponse
     {
         $data = $request->toDto();
