@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Repository\Api\V1\ConversationRepository;
 use App\Services\Project\ConversationService;
 use Dedoc\Scramble\Attributes\Endpoint;
+use Dedoc\Scramble\Attributes\Header as ScrambleHeader;
 use Illuminate\Http\JsonResponse;
 
 class ConversationController extends ApiController
@@ -37,8 +38,11 @@ class ConversationController extends ApiController
      * Create a project conversation.
      *
      * Creates a new project conversation with a message body, an attachment, or both.
+     *
+     * This endpoint supports idempotency via the Idempotency-Key header.
      */
     #[Endpoint(operationId: 'conversations.create')]
+    #[ScrambleHeader(name: 'Idempotency-Key', description: 'Unique key to ensure request idempotency. Reusing the same key with different request data will result in a 422 error.', example: 'req_abc123', required: true)]
     public function store(Project $project, ConversationRequest $request): JsonResponse
     {
         $conversation = $this->conversationService->storeConversation(

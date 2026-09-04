@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
+/**
+ * @mixin User
+ */
 #[SchemaName('CurrentUser')]
 class CurrentUserResource extends JsonResource
 {

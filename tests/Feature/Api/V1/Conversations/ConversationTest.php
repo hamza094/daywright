@@ -272,4 +272,58 @@ class ConversationTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.message', $message);
     }
+
+    /** @test */
+    public function idempotency_key_replay_returns_same_response(): void
+    {
+        $fake = $this->fakeSubscription();
+        $fake->setState($this->user, 'active');
+
+        $message = 'idempotency test message';
+        $idempotencyKey = 'test-idempotency-replay-key';
+
+        // First request with the key
+        $firstResponse = $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
+            'message' => $message,
+            'user_id' => $this->user->id,
+        ], ['Idempotency-Key' => $idempotencyKey]);
+
+        $firstResponse->assertCreated()
+            ->assertJsonPath('data.message', $message);
+
+        // Second request with the same key and same data should replay the response
+        $secondResponse = $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
+            'message' => $message,
+            'user_id' => $this->user->id,
+        ], ['Idempotency-Key' => $idempotencyKey]);
+
+        $secondResponse->assertCreated()
+            ->assertJsonPath('data.message', $message);
+
+        // Should have Idempotency-Replayed header
+        $this->assertTrue($secondResponse->headers->has('Idempotency-Replayed'));
+    }
+
+    /** @test */
+    public function idempotency_key_reused_with_different_data_returns_validation_error(): void
+    {
+        $fake = $this->fakeSubscription();
+        $fake->setState($this->user, 'active');
+
+        $idempotencyKey = 'test-idempotency-conflict-key';
+
+        // First request with the key
+        $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
+            'message' => 'first message',
+            'user_id' => $this->user->id,
+        ], ['Idempotency-Key' => $idempotencyKey])
+            ->assertCreated();
+
+        // Second request with the same key but different data should return 422
+        $this->postJson($this->apiV1ProjectRoute('conversations.store', $this->project), [
+            'message' => 'different message',
+            'user_id' => $this->user->id,
+        ], ['Idempotency-Key' => $idempotencyKey])
+            ->assertUnprocessable();
+    }
 }

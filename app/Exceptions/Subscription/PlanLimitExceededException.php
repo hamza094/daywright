@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exceptions\Subscription;
 
 use App\Exceptions\ApiException;
+use App\Exceptions\Support\ErrorCode;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Http\Request;
 use Override;
@@ -75,7 +76,7 @@ final class PlanLimitExceededException extends ApiException implements ShouldntR
 
     public function errorCode(): string
     {
-        return 'plan_limit_exceeded';
+        return ErrorCode::PLAN_LIMIT_EXCEEDED;
     }
 
     /**

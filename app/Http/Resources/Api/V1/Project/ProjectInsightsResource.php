@@ -8,6 +8,12 @@ use App\Http\Resources\Api\V1\InsightResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
+/**
+ * Computed resource for project insights.
+ * This resource does not wrap a single Eloquent model.
+ *
+ * @property array{project: \App\Models\Project, insights: array<mixed>, sections: array<string>} $resource
+ */
 class ProjectInsightsResource extends JsonResource
 {
     /**

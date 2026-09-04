@@ -1,0 +1,30 @@
+{
+  "version": "1.0.0",
+  "analyzer_warnings": [
+    {
+      "code": "MD001",
+      "source": "Illuminate\\Database\\Eloquent\\Relations\\Pivot",
+      "reason": "Pivot is a Laravel base class, not a table in our database. This warning is harmless and cannot be resolved in our codebase."
+    },
+    {
+      "code": "JR001",
+      "source": "TaskStatusIndexResource",
+      "reason": "Computed resource that does not wrap a single Eloquent model. It combines a Collection of TaskStatus with an array of due notification strategies. The resource has explicit @property annotations for clarity."
+    },
+    {
+      "code": "JR001",
+      "source": "ProjectLimitResource",
+      "reason": "Computed resource that does not wrap a single Eloquent model. It wraps an array with project usage limit data. The resource has explicit @property annotations for clarity."
+    },
+    {
+      "code": "JR001",
+      "source": "ProjectInsightsResource",
+      "reason": "Computed resource that does not wrap a single Eloquent model. It wraps an array containing a Project model, insights array, and sections array. The resource has explicit @property annotations for clarity."
+    },
+    {
+      "code": "JR001",
+      "source": "InsightResource",
+      "reason": "Computed resource that does not wrap a single Eloquent model. It wraps an array with insight data (type, title, message, data). The resource has explicit @property annotations for clarity."
+    }
+  ]
+}

@@ -9,6 +9,9 @@ use App\Models\Task;
 
 final class DeleteTaskAction
 {
+    /**
+     * @throws TaskNotTrashedException
+     */
     public function execute(Task $task): void
     {
         if (! $task->trashed()) {

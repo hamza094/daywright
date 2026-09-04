@@ -7,9 +7,13 @@ namespace App\Http\Resources\Api\V1;
 use App\DataTransferObjects\Notification\NotificationPayloadData;
 use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Notifications\DatabaseNotification;
 use JsonSerializable;
 use Override;
 
+/**
+ * @mixin DatabaseNotification
+ */
 class NotificationResource extends JsonResource
 {
     /**
@@ -21,7 +25,7 @@ class NotificationResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
-        $payload = NotificationPayloadData::fromArray(is_array($this->data) ? $this->data : []);
+        $payload = NotificationPayloadData::fromArray($this->data);
 
         return [
             /**

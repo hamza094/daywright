@@ -8,7 +8,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
 /**
- * Insight item resource
+ * Insight item resource.
+ * This resource does not wrap a single Eloquent model.
+ *
+ * @property array{type?: string, title?: string, message?: string, data?: array<string, mixed>} $resource
  */
 class InsightResource extends JsonResource
 {

@@ -87,5 +87,16 @@ return [
         // Third-party developers can access /docs/api and /docs/api.json endpoints
     ],
 
-    'extensions' => [],
+    /*
+     * Security strategies for API documentation.
+     * MiddlewareAuthSecurityStrategy derives authentication from route middleware.
+     */
+    'security_strategy' => Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy::class,
+
+    /*
+     * Extensions for customizing OpenAPI generation.
+     */
+    'extensions' => [
+        App\Documentation\Transformers\PublicApiMiddlewareResponses::class,
+    ],
 ];

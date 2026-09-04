@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Documentation\Transformers\PublicApiMiddlewareResponses;
+use App\Exceptions\Support\ErrorCode;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\Components;
 use Dedoc\Scramble\Support\Generator\OpenApi;
@@ -43,7 +45,8 @@ final class ScrambleServiceProvider extends ServiceProvider
         Scramble::resolveTagsUsing(fn (RouteInfo $routeInfo): array => [$this->resolvePublicApiTag($routeInfo)]);
 
         Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
-            $openApi->secure(SecurityScheme::http('bearer'));
+            // Security is now handled by MiddlewareAuthSecurityStrategy in config/scramble.php
+            // $openApi->secure(SecurityScheme::http('bearer')); // Removed - use middleware-derived security
 
             $this->applyPublicApiTagMetadata($openApi);
             $this->applySharedPublicApiErrorResponses($openApi);
@@ -133,6 +136,7 @@ final class ScrambleServiceProvider extends ServiceProvider
             Str::contains($uri, '/invitations') || Str::contains($uri, '/members/') || $uri === 'api/v1/users/me/invitations' => 'Invitations',
             Str::startsWith($uri, 'api/v1/users') => 'Users',
             Str::startsWith($uri, 'api/v1/projects') => 'Projects',
+            default => 'Other',
         };
     }
 
@@ -234,8 +238,10 @@ final class ScrambleServiceProvider extends ServiceProvider
         foreach ($openApi->paths as $path) {
             foreach ($path->operations as $operation) {
                 $this->replaceOperationErrorResponsesWithSharedReferences($operation, $openApi->components);
+                // 500 is global fallback for all operations
                 $this->ensureSharedPublicApiErrorResponse($operation, $openApi->components, 500);
-                $this->ensureSharedPublicApiErrorResponse($operation, $openApi->components, 429);
+                // 429 is now only added by PublicApiMiddlewareResponses for throttled routes
+                // Removed global 429 injection to match actual middleware behavior
             }
         }
     }
@@ -252,22 +258,54 @@ final class ScrambleServiceProvider extends ServiceProvider
     private function replaceOperationErrorResponsesWithSharedReferences(Operation $operation, Components $components): void
     {
         $operation->responses = array_values(array_map(
-            fn (Reference|Response $response): Reference|Response => $this->sharedPublicApiErrorResponseReference($response, $components) ?? $response,
+            fn (Reference|Response $response): Reference|Response => $this->mergeCanonicalSchemaIntoErrorResponse($response, $components),
             $operation->responses,
         ));
     }
 
-    private function sharedPublicApiErrorResponseReference(Reference|Response $response, Components $components): ?Reference
+    private function mergeCanonicalSchemaIntoErrorResponse(Reference|Response $response, Components $components): Reference|Response
     {
         $resolvedResponse = $response instanceof Reference ? $response->resolve() : $response;
         $responseCode = is_numeric($resolvedResponse->code) ? (int) $resolvedResponse->code : null;
-        $responseName = $responseCode ? $this->publicApiErrorResponseName($responseCode) : null;
 
-        if ($responseName === null) {
-            return null;
+        // Only process error responses (4xx and 5xx)
+        if ($responseCode === null || ($responseCode < 400 || $responseCode >= 600)) {
+            return $response;
         }
 
-        return new Reference('responses', $responseName, $components);
+        $responseName = $this->publicApiErrorResponseName($responseCode);
+        if ($responseName === null) {
+            return $response;
+        }
+
+        // If it's already a reference to a shared response, keep it
+        if ($response instanceof Reference) {
+            return $response;
+        }
+
+        // Merge canonical schema into the response while preserving custom content
+        $this->ensureCanonicalErrorSchema($resolvedResponse, $responseCode, $components);
+
+        return $resolvedResponse;
+    }
+
+    private function ensureCanonicalErrorSchema(Response $response, int $status, Components $components): void
+    {
+        // Check if the response already has a JSON schema
+        $existingContent = $response->content['application/json'] ?? null;
+        $hasExistingSchema = $existingContent && isset($existingContent->schema);
+
+        // Only add canonical schema if there isn't one already
+        if (! $hasExistingSchema) {
+            $schemaName = match ($status) {
+                422 => 'PublicApiValidationErrorEnvelope',
+                default => 'PublicApiErrorEnvelope',
+            };
+
+            if ($components->hasSchema($schemaName)) {
+                $response->setContent('application/json', new Reference('schemas', $schemaName, $components));
+            }
+        }
     }
 
     private function pruneUnsupportedOperationQueryParameters(string $path, Operation $operation): void
@@ -482,98 +520,60 @@ final class ScrambleServiceProvider extends ServiceProvider
      */
     private function publicApiErrorResponseDefinitions(): array
     {
-        return [
-            [
-                'response' => 'PublicBadRequestError',
-                'schema' => 'PublicBadRequestErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_BAD_REQUEST,
-                'description' => 'Bad request',
-                'message' => 'The request could not be processed.',
-                'code' => 'bad_request',
-                'meta' => [],
-            ],
-            [
-                'response' => 'PublicUnauthenticatedError',
-                'schema' => 'PublicUnauthenticatedErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_UNAUTHORIZED,
-                'description' => 'Unauthenticated',
-                'message' => 'Authentication is required.',
-                'code' => 'unauthenticated',
-                'meta' => [],
-            ],
-            [
-                'response' => 'PublicForbiddenError',
-                'schema' => 'PublicForbiddenErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_FORBIDDEN,
-                'description' => 'Forbidden',
-                'message' => 'You are not authorized to perform this action.',
-                'code' => 'forbidden',
-                'meta' => [],
-            ],
-            [
-                'response' => 'PublicNotFoundError',
-                'schema' => 'PublicNotFoundErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_NOT_FOUND,
-                'description' => 'Not found',
-                'message' => 'Resource not found.',
-                'code' => 'not_found',
-                'meta' => [],
-            ],
-            [
-                'response' => 'PublicMethodNotAllowedError',
-                'schema' => 'PublicMethodNotAllowedErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_METHOD_NOT_ALLOWED,
-                'description' => 'Method not allowed',
-                'message' => 'Method not allowed.',
-                'code' => 'method_not_allowed',
-                'meta' => [],
-            ],
-            [
-                'response' => 'PublicConflictError',
-                'schema' => 'PublicConflictErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_CONFLICT,
-                'description' => 'Conflict',
-                'message' => 'The request conflicts with the current resource state.',
-                'code' => 'conflict',
-                'meta' => [],
-            ],
-            [
-                'response' => 'PublicValidationError',
-                'schema' => 'PublicApiValidationErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY,
-                'description' => 'Validation error',
-                'message' => self::VALIDATION_FAILED_MESSAGE,
-                'code' => 'validation_error',
-                'meta' => [],
-            ],
-            [
-                'response' => 'PublicRateLimitError',
-                'schema' => 'PublicRateLimitErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_TOO_MANY_REQUESTS,
-                'description' => 'Too many requests',
-                'message' => 'Too many requests. Please try again later.',
-                'code' => 'rate_limited',
-                'meta' => ['retry_after_seconds' => 42],
-            ],
-            [
-                'response' => 'PublicInternalServerError',
-                'schema' => 'PublicInternalServerErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR,
-                'description' => 'Internal server error',
-                'message' => 'An unexpected server error occurred.',
-                'code' => 'internal_server_error',
-                'meta' => [],
-            ],
-            [
-                'response' => 'PublicServiceUnavailableError',
-                'schema' => 'PublicServiceUnavailableErrorEnvelope',
-                'status' => SymfonyResponse::HTTP_SERVICE_UNAVAILABLE,
-                'description' => 'Service unavailable',
-                'message' => 'The service is temporarily unavailable.',
-                'code' => 'service_unavailable',
-                'meta' => [],
-            ],
-        ];
+        $definitions = [];
+
+        foreach (ErrorCode::all() as $code => $definition) {
+            // Skip non-public service-specific errors
+            if (in_array($code, [ErrorCode::DASHBOARD_SERVICE_ERROR], true)) {
+                continue;
+            }
+
+            $responseName = $this->publicApiErrorResponseName($definition['status']);
+            if ($responseName === null) {
+                continue;
+            }
+
+            $schemaName = match ($code) {
+                ErrorCode::BAD_REQUEST => 'PublicBadRequestErrorEnvelope',
+                ErrorCode::UNAUTHENTICATED => 'PublicUnauthenticatedErrorEnvelope',
+                ErrorCode::FORBIDDEN => 'PublicForbiddenErrorEnvelope',
+                ErrorCode::NOT_FOUND => 'PublicNotFoundErrorEnvelope',
+                ErrorCode::METHOD_NOT_ALLOWED => 'PublicMethodNotAllowedErrorEnvelope',
+                ErrorCode::CONFLICT => 'PublicConflictErrorEnvelope',
+                ErrorCode::VALIDATION_ERROR => 'PublicApiValidationErrorEnvelope',
+                ErrorCode::RATE_LIMITED => 'PublicRateLimitErrorEnvelope',
+                ErrorCode::TOKEN_RATE_LIMITED => 'PublicRateLimitErrorEnvelope',
+                ErrorCode::INTERNAL_SERVER_ERROR => 'PublicInternalServerErrorEnvelope',
+                ErrorCode::SERVICE_UNAVAILABLE => 'PublicServiceUnavailableErrorEnvelope',
+                // Business error codes - use their status-based envelope
+                ErrorCode::PROJECT_ARCHIVED => 'PublicConflictErrorEnvelope',
+                ErrorCode::TASK_ARCHIVED => 'PublicConflictErrorEnvelope',
+                ErrorCode::PLAN_LIMIT_EXCEEDED => 'PublicForbiddenErrorEnvelope',
+                ErrorCode::SUBSCRIPTION_REQUIRED => 'PublicForbiddenErrorEnvelope',
+                ErrorCode::TASK_NOT_TRASHED => 'PublicForbiddenErrorEnvelope',
+                ErrorCode::INVALID_STATE_TRANSITION => 'PublicApiValidationErrorEnvelope',
+                // Infrastructure errors
+                ErrorCode::STORAGE_ERROR => 'PublicInternalServerErrorEnvelope',
+                ErrorCode::DATABASE_ERROR => 'PublicInternalServerErrorEnvelope',
+                default => null,
+            };
+
+            if ($schemaName === null) {
+                continue;
+            }
+
+            $definitions[] = [
+                'response' => $responseName,
+                'schema' => $schemaName,
+                'status' => $definition['status'],
+                'description' => $definition['description'],
+                'message' => $definition['message'],
+                'code' => $code,
+                'meta' => $definition['example']['meta'] ?? [],
+            ];
+        }
+
+        return $definitions;
     }
 
     private function registerSharedPublicApiErrorResponse(Components $components, string $name, int $status, string $description, string $schemaName): void
@@ -636,13 +636,13 @@ final class ScrambleServiceProvider extends ServiceProvider
 
         $meta = (new ObjectType)
             ->setDescription('Structured error context when available.')
-            ->example((object) $metaExample);
+            ->example($metaExample);
 
         $completeExample = [
             'message' => $messageExample,
             'code' => $codeExample,
-            'errors' => (object) [],
-            'meta' => ! empty($metaExample) ? (object) $metaExample : (object) [],
+            'errors' => [],
+            'meta' => ! empty($metaExample) ? $metaExample : [],
         ];
 
         return Schema::fromType(
@@ -667,7 +667,7 @@ final class ScrambleServiceProvider extends ServiceProvider
 
         $meta = (new ObjectType)
             ->setDescription('Structured error context when available.')
-            ->example((object) []);
+            ->example([]);
 
         return Schema::fromType(
             (new ObjectType)
@@ -694,8 +694,6 @@ final class ScrambleServiceProvider extends ServiceProvider
         }
 
         $featureFlagsSchema = $openApi->components->schemas['FeatureFlagsResource'];
-        if ($featureFlagsSchema instanceof Schema) {
-            $featureFlagsSchema->type = (new ObjectType)->additionalProperties(new BooleanType);
-        }
+        $featureFlagsSchema->type = (new ObjectType)->additionalProperties(new BooleanType);
     }
 }

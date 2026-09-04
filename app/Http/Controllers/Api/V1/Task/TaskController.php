@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Task;
 
+use App\Documentation\Attributes\ArchivedResourceErrorResponse;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Task\TaskIndexRequest;
 use App\Http\Requests\Api\V1\Task\TaskRequest;
@@ -62,6 +63,7 @@ class TaskController extends ApiController
      * This endpoint retrieves detailed information about a specific task within a project.
      */
     #[Endpoint(operationId: 'tasks.show')]
+    #[ArchivedResourceErrorResponse('task')]
     public function show(Project $project, Task $task): TaskResource
     {
         $task->loadMissing(['project:id,slug', 'status', 'assignee']);
@@ -76,6 +78,7 @@ class TaskController extends ApiController
      * The user must have proper authorization to access and modify the task.
      */
     #[Endpoint(operationId: 'tasks.update')]
+    #[ArchivedResourceErrorResponse('task')]
     public function update(Project $project, Task $task, TaskUpdateRequest $request, TaskService $taskService): JsonResponse
     {
         $this->authorize('manage', $task);
@@ -91,6 +94,7 @@ class TaskController extends ApiController
      * Permanently removes a task that the authenticated user is allowed to manage.
      */
     #[Endpoint(operationId: 'tasks.destroy')]
+    #[ArchivedResourceErrorResponse('task')]
     public function destroy(Project $project, Task $task, TaskService $taskService): JsonResponse
     {
         $this->authorize('manage', $task);

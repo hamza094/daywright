@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exceptions\Subscription;
 
 use App\Exceptions\ApiException;
+use App\Exceptions\Support\ErrorCode;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use Illuminate\Http\Request;
 use Override;
@@ -36,7 +37,7 @@ final class SubscriptionRequiredException extends ApiException implements Should
 
     public function errorCode(): string
     {
-        return $this->errorType();
+        return ErrorCode::SUBSCRIPTION_REQUIRED;
     }
 
     /**

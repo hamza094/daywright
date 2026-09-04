@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Exceptions\Support\ErrorCode;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use Override;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,7 +33,9 @@ final class ArchivedResourceException extends ApiException implements ShouldntRe
 
     public function errorCode(): string
     {
-        return sprintf('%s_archived', $this->resourceType);
+        return $this->resourceType === self::RESOURCE_PROJECT
+            ? ErrorCode::PROJECT_ARCHIVED
+            : ErrorCode::TASK_ARCHIVED;
     }
 
     public function status(): int

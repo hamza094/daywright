@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Exceptions\Support\ErrorCode;
 use Illuminate\Database\Eloquent\Model;
 use Override;
 
@@ -25,7 +26,7 @@ final class InvalidStateTransitionException extends ApiException
 
     public function errorCode(): string
     {
-        return 'invalid_state_transition';
+        return ErrorCode::INVALID_STATE_TRANSITION;
     }
 
     #[Override]

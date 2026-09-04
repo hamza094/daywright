@@ -74,8 +74,6 @@ class UserProfileResource extends JsonResource
              *
              * @format date-time
              *
-             * @var string|null
-             *
              * @example 2025-07-01T09:00:00+00:00
              */
             'verified' => $this->when(

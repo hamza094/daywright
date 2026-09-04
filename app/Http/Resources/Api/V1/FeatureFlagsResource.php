@@ -10,6 +10,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Laravel\Pennant\Feature;
 use Override;
 
+/**
+ * @mixin User
+ */
 class FeatureFlagsResource extends JsonResource
 {
     /**

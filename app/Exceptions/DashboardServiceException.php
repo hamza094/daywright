@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Exceptions\Support\ErrorCode;
 use Override;
 use Symfony\Component\HttpFoundation\Response;
 use Throwable;
@@ -29,7 +30,7 @@ class DashboardServiceException extends ApiException
 
     public function errorCode(): string
     {
-        return 'dashboard_service_error';
+        return ErrorCode::DASHBOARD_SERVICE_ERROR;
     }
 
     #[Override]

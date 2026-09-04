@@ -7,6 +7,7 @@ namespace App\Exceptions\Traits;
 use App\Exceptions\ApiException;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Exceptions\Support\ApiErrorFormatter;
+use App\Exceptions\Support\ErrorCode;
 use Aws\S3\Exception\S3Exception;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -125,7 +126,7 @@ trait HandlesApiExceptions
         $this->renderable(fn (S3Exception $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Storage request could not be completed.',
             Response::HTTP_INTERNAL_SERVER_ERROR,
-            'storage_error',
+            ErrorCode::STORAGE_ERROR,
             meta: [
                 'provider' => 's3',
             ],
@@ -134,7 +135,7 @@ trait HandlesApiExceptions
         $this->renderable(fn (QueryException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'A database error occurred. Please try again.',
             Response::HTTP_INTERNAL_SERVER_ERROR,
-            'database_error',
+            ErrorCode::DATABASE_ERROR,
         ));
 
         $this->renderable(function (Throwable $e): ?\Illuminate\Http\JsonResponse {

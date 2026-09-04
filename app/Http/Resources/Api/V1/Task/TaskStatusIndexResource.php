@@ -11,6 +11,13 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
 use Override;
 
+/**
+ * Computed resource for task status index with due notification strategies.
+ * This resource does not wrap a single Eloquent model.
+ *
+ * @property Collection<int, TaskStatus> $statuses
+ * @property array<int, string> $dueNotifies
+ */
 #[SchemaName('TaskStatusIndex')]
 class TaskStatusIndexResource extends JsonResource
 {
@@ -41,8 +48,6 @@ class TaskStatusIndexResource extends JsonResource
             /**
              * List of supported notification strategies for due dates.
              * Allowed values: 1 Day Before, 2 Hours Before, 15 Minutes Before, 5 Minutes Before.
-             *
-             * @var array<int, '1 Day Before'|'2 Hours Before'|'15 Minutes Before'|'5 Minutes Before'>
              */
             'due_notifies' => $this->dueNotifies,
         ];

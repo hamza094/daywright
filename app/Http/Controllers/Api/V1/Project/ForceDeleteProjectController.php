@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
+use App\Documentation\Attributes\ArchivedResourceErrorResponse;
 use App\Http\Controllers\Api\ApiController;
 use App\Models\Project;
 use App\Services\Project\ProjectService;
@@ -22,6 +23,7 @@ final class ForceDeleteProjectController extends ApiController
      * This operation is irreversible.
      */
     #[Endpoint(operationId: 'projects.forceDelete')]
+    #[ArchivedResourceErrorResponse('project')]
     public function __invoke(Project $project, ProjectService $projectService): JsonResponse
     {
         $deleted = $projectService->forceDeleteIfAbandoned($project);

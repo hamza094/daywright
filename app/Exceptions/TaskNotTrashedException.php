@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions;
 
+use App\Exceptions\Support\ErrorCode;
 use Illuminate\Contracts\Debug\ShouldntReport;
 use Override;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,7 +23,7 @@ final class TaskNotTrashedException extends ApiException implements ShouldntRepo
 
     public function errorCode(): string
     {
-        return 'task_not_trashed';
+        return ErrorCode::TASK_NOT_TRASHED;
     }
 
     #[Override]
