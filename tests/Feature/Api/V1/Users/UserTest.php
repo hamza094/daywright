@@ -32,7 +32,7 @@ class UserTest extends TestCase
                 'newUsername' => 'jane_doe',
                 'newEmail' => 'john_doe@example.com',
                 'newCompany' => 'Acme Inc.',
-                'newMobile' => 1234567890,
+                'newMobile' => '1234567890',
             ],
         ];
     }
@@ -68,7 +68,7 @@ class UserTest extends TestCase
 
     #[Test]
     #[DataProvider('dataProvider')]
-    public function owner_can_update_his_data(string $newName, string $newUsername, string $newEmail, string $newCompany, int $newMobile): void
+    public function owner_can_update_his_data(string $newName, string $newUsername, string $newEmail, string $newCompany, string $newMobile): void
     {
         UserInfo::factory()->for($this->user)->create();
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Dashboard;
 
+use App\Documentation\Attributes\ApiError;
+use App\Exceptions\Support\ErrorCode;
 use App\Http\Controllers\Api\ApiController;
 use App\Services\Dashboard\DashboardInsightsService;
 use Dedoc\Scramble\Attributes\Endpoint;
@@ -18,6 +20,7 @@ final class DashboardKpisController extends ApiController
      * Combines portfolio metrics and generated insight cards into a single dashboard response.
      */
     #[Endpoint(operationId: 'dashboard.kpis')]
+    #[ApiError(ErrorCode::SUBSCRIPTION_REQUIRED)]
     #[ScrambleResponse(
         status: 200,
         description: 'Dashboard KPIs and prioritized insights generated from the current project portfolio.',

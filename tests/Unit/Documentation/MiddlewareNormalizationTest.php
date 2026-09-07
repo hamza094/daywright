@@ -118,6 +118,21 @@ class MiddlewareNormalizationTest extends TestCase
     }
 
     /** @test */
+    public function recognizes_resolved_throttle_middleware_classes(): void
+    {
+        foreach (['ThrottleRequests', 'ThrottleRequestsWithRedis'] as $baseName) {
+            $middleware = [
+                ['baseName' => $baseName, 'parameters' => ['api'], 'original' => $baseName.':api'],
+            ];
+
+            $this->assertTrue(
+                PublicApiMiddlewareResponses::hasThrottleMiddlewareStatic($middleware),
+                "{$baseName} should be recognized as throttle middleware",
+            );
+        }
+    }
+
+    /** @test */
     public function recognizes_idempotent_class(): void
     {
         $middleware = [

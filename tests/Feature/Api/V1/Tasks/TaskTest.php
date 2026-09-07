@@ -126,7 +126,9 @@ class TaskTest extends TestCase
             ->for($this->project)
             ->create();
 
-        $response = $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project))
+        $response = $this->getJson($this->apiV1ProjectRoute('tasks.index', $this->project, query: [
+            'per_page' => 3,
+        ]))
             ->assertOk()
             ->assertJsonCount(3, 'data')
             ->assertJsonStructure([

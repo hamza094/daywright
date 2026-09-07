@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
+use App\Documentation\Attributes\ApiError;
+use App\Exceptions\Support\ErrorCode;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Project\ConversationIndexRequest;
 use App\Http\Requests\Api\V1\Project\ConversationRequest;
@@ -13,7 +15,6 @@ use App\Models\Project;
 use App\Repository\Api\V1\ConversationRepository;
 use App\Services\Project\ConversationService;
 use Dedoc\Scramble\Attributes\Endpoint;
-use Dedoc\Scramble\Attributes\Header as ScrambleHeader;
 use Illuminate\Http\JsonResponse;
 
 class ConversationController extends ApiController
@@ -42,7 +43,7 @@ class ConversationController extends ApiController
      * This endpoint supports idempotency via the Idempotency-Key header.
      */
     #[Endpoint(operationId: 'conversations.create')]
-    #[ScrambleHeader(name: 'Idempotency-Key', description: 'Unique key to ensure request idempotency. Reusing the same key with different request data will result in a 422 error.', example: 'req_abc123', required: true)]
+    #[ApiError(ErrorCode::SUBSCRIPTION_REQUIRED)]
     public function store(Project $project, ConversationRequest $request): JsonResponse
     {
         $conversation = $this->conversationService->storeConversation(

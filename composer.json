@@ -60,6 +60,7 @@
     "thecodingmachine/phpstan-safe-rule": "^1.2"
   },
   "config": {
+    "process-timeout": 1800,
     "optimize-autoloader": true,
     "preferred-install": "dist",
     "sort-packages": true,

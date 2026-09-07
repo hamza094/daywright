@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
-use App\Documentation\Attributes\ArchivedResourceErrorResponse;
 use App\Http\Controllers\Api\ApiController;
 use App\Models\Project;
 use App\Services\Project\ProjectService;
@@ -21,7 +20,6 @@ final class ProjectLimitsController extends ApiController
      * Returns the current plan limits that apply to the specified project, including task counts and member limits.
      */
     #[Endpoint(operationId: 'projects.limits')]
-    #[ArchivedResourceErrorResponse('project')]
     public function __invoke(Project $project): JsonResponse
     {
         return $this->respondWithData(

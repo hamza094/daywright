@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Documentation\Attributes\ApiError;
 use App\Documentation\Transformers\PublicApiMiddlewareResponses;
 use App\Exceptions\Support\ErrorCode;
 use Dedoc\Scramble\Scramble;
@@ -26,6 +27,7 @@ use Illuminate\Routing\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Override;
+use ReflectionAttribute;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 final class ScrambleServiceProvider extends ServiceProvider
@@ -48,8 +50,10 @@ final class ScrambleServiceProvider extends ServiceProvider
             // Security is now handled by MiddlewareAuthSecurityStrategy in config/scramble.php
             // $openApi->secure(SecurityScheme::http('bearer')); // Removed - use middleware-derived security
 
+            $this->ensurePublicUpdateMethodParity($openApi);
             $this->applyPublicApiTagMetadata($openApi);
             $this->applySharedPublicApiErrorResponses($openApi);
+            $this->applyExplicitPublicBusinessErrorResponses($openApi);
             $this->pruneUnsupportedQueryParametersFromDocs($openApi);
             $this->fixFeatureFlagsSchema($openApi);
 
@@ -107,6 +111,145 @@ final class ScrambleServiceProvider extends ServiceProvider
             // 4. Exclude singleton HTML form helper routes (/create, /edit)
             return ! Str::endsWith($uri, ['/create', '/edit']);
         });
+    }
+
+    /**
+     * Scramble emits one operation for Laravel's combined PUT|PATCH resource route.
+     * Keep both registered public methods visible to API consumers.
+     */
+    private function ensurePublicUpdateMethodParity(OpenApi $openApi): void
+    {
+        foreach ($openApi->paths as $path) {
+            if (! isset($path->operations['put'])
+                || isset($path->operations['patch'])) {
+                continue;
+            }
+
+            $route = $this->findPublicRouteForOperation($path->path, 'put');
+
+            if (! $route || ! in_array('PATCH', $route->methods(), true)) {
+                continue;
+            }
+
+            $patchOperation = clone $path->operations['put'];
+            $patchOperation->setMethod('patch');
+            $patchOperation->setOperationId(
+                $patchOperation->operationId ? $patchOperation->operationId.'.patch' : null,
+            );
+            $path->operations['patch'] = $patchOperation;
+        }
+    }
+
+    /**
+     * Apply business errors after all Scramble extensions have contributed responses.
+     *
+     * Middleware-derived responses can be added after controller attributes are
+     * inspected, so this final pass prevents generic responses from replacing
+     * explicitly confirmed business-error documentation.
+     */
+    private function applyExplicitPublicBusinessErrorResponses(OpenApi $openApi): void
+    {
+        foreach ($openApi->paths as $path) {
+            foreach ($path->operations as $method => $operation) {
+                $route = $this->findPublicRouteForOperation($path->path, $method);
+
+                if (! $route) {
+                    continue;
+                }
+
+                $reflectionAction = (new RouteInfo($route, mb_strtoupper($method)))->reflectionAction();
+
+                if (! $reflectionAction) {
+                    continue;
+                }
+
+                foreach ($reflectionAction->getAttributes(ApiError::class, ReflectionAttribute::IS_INSTANCEOF) as $attribute) {
+                    $error = $attribute->newInstance();
+                    $definition = ErrorCode::get($error->code);
+
+                    if ($definition === null) {
+                        continue;
+                    }
+
+                    $this->applyBusinessErrorResponse($openApi, $operation, $definition, $error->code);
+                }
+            }
+        }
+    }
+
+    private function findPublicRouteForOperation(string $path, string $method): ?Route
+    {
+        foreach (app('router')->getRoutes()->getRoutes() as $route) {
+            if (! Str::startsWith($route->uri(), 'api/')) {
+                continue;
+            }
+
+            $routePath = ltrim(Str::after($route->uri(), 'api'), '/');
+
+            if ($routePath === $path && in_array(mb_strtoupper($method), $route->methods(), true)) {
+                return $route;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{status: int, message: string, description: string, meta_schema: array<string, string>, example: array<string, mixed>}  $definition
+     */
+    private function applyBusinessErrorResponse(OpenApi $openApi, Operation $operation, array $definition, string $code): void
+    {
+        $description = sprintf(
+            '%s Machine-readable code: %s.',
+            $definition['description'],
+            $code,
+        );
+
+        foreach ($operation->responses as $index => $candidate) {
+            $response = clone ($candidate instanceof Reference ? $candidate->resolve() : $candidate);
+
+            if (! is_numeric($response->code) || (int) $response->code !== $definition['status']) {
+                continue;
+            }
+
+            if (! str_contains($response->description, $code)) {
+                $response->setDescription(rtrim($response->description, '.').'. '.$description);
+            }
+
+            $examples = $response->getExtensionProperty('error-examples');
+            $examples = is_array($examples) ? $examples : [];
+            $examples[$code] = $definition['example'];
+            $response->setExtensionProperty('error-examples', $examples);
+
+            if (! $response->hasExtensionProperty('error-example')) {
+                $response->setExtensionProperty('error-example', $definition['example']);
+            }
+
+            $operation->responses[$index] = $response;
+            $operation->responses = array_values(array_filter(
+                $operation->responses,
+                static function ($candidate, int $candidateIndex) use ($index, $definition): bool {
+                    if ($candidateIndex === $index) {
+                        return true;
+                    }
+
+                    $resolvedCandidate = $candidate instanceof Reference ? $candidate->resolve() : $candidate;
+
+                    return ! is_numeric($resolvedCandidate->code)
+                        || (int) $resolvedCandidate->code !== $definition['status'];
+                },
+                ARRAY_FILTER_USE_BOTH,
+            ));
+
+            return;
+        }
+
+        $response = Response::make($definition['status'])
+            ->setDescription($description);
+        $this->normalizeErrorResponseToCanonicalEnvelope($response, $definition['status'], $openApi->components);
+        $response->setExtensionProperty('error-examples', [$code => $definition['example']]);
+        $response->setExtensionProperty('error-example', $definition['example']);
+        $operation->responses[] = $response;
     }
 
     private function resolvePublicApiTag(RouteInfo $routeInfo): string
@@ -234,6 +377,7 @@ final class ScrambleServiceProvider extends ServiceProvider
     private function applySharedPublicApiErrorResponses(OpenApi $openApi): void
     {
         $this->registerSharedPublicApiErrorResponses($openApi->components);
+        $this->normalizeSharedErrorResponses($openApi->components);
 
         foreach ($openApi->paths as $path) {
             foreach ($path->operations as $operation) {
@@ -273,39 +417,35 @@ final class ScrambleServiceProvider extends ServiceProvider
             return $response;
         }
 
-        $responseName = $this->publicApiErrorResponseName($responseCode);
-        if ($responseName === null) {
-            return $response;
-        }
+        // Normalize the response to use canonical envelope
+        $this->normalizeErrorResponseToCanonicalEnvelope($resolvedResponse, $responseCode, $components);
 
-        // If it's already a reference to a shared response, keep it
+        // If it was originally a reference, we need to recreate it with the normalized schema
         if ($response instanceof Reference) {
-            return $response;
+            // Re-create as inline response with normalized schema
+            return $resolvedResponse;
         }
-
-        // Merge canonical schema into the response while preserving custom content
-        $this->ensureCanonicalErrorSchema($resolvedResponse, $responseCode, $components);
 
         return $resolvedResponse;
     }
 
-    private function ensureCanonicalErrorSchema(Response $response, int $status, Components $components): void
+    private function normalizeErrorResponseToCanonicalEnvelope(Response $response, int $status, Components $components): void
     {
-        // Check if the response already has a JSON schema
-        $existingContent = $response->content['application/json'] ?? null;
-        $hasExistingSchema = $existingContent && isset($existingContent->schema);
+        // Determine the canonical schema name
+        $schemaName = match ($status) {
+            422 => 'PublicApiValidationErrorEnvelope',
+            default => 'PublicApiErrorEnvelope',
+        };
 
-        // Only add canonical schema if there isn't one already
-        if (! $hasExistingSchema) {
-            $schemaName = match ($status) {
-                422 => 'PublicApiValidationErrorEnvelope',
-                default => 'PublicApiErrorEnvelope',
-            };
-
-            if ($components->hasSchema($schemaName)) {
-                $response->setContent('application/json', new Reference('schemas', $schemaName, $components));
-            }
+        if (! $components->hasSchema($schemaName)) {
+            return;
         }
+
+        // Get the canonical schema reference
+        $canonicalSchema = new Reference('schemas', $schemaName, $components);
+
+        // Replace the JSON schema with canonical envelope (even if one exists)
+        $response->setContent('application/json', $canonicalSchema);
     }
 
     private function pruneUnsupportedOperationQueryParameters(string $path, Operation $operation): void
@@ -594,6 +734,24 @@ final class ScrambleServiceProvider extends ServiceProvider
         }
 
         $components->responses[$name] = $response;
+    }
+
+    private function normalizeSharedErrorResponses(Components $components): void
+    {
+        // Normalize Laravel's default exception responses to use canonical envelopes
+        $defaultResponses = [
+            'AuthenticationException' => 401,
+            'ModelNotFoundException' => 404,
+            'AuthorizationException' => 403,
+            'ValidationException' => 422,
+        ];
+
+        foreach ($defaultResponses as $responseName => $status) {
+            if (array_key_exists($responseName, $components->responses)) {
+                $response = $components->responses[$responseName];
+                $this->normalizeErrorResponseToCanonicalEnvelope($response, $status, $components);
+            }
+        }
     }
 
     private function ensureSharedPublicApiErrorResponse(Operation $operation, Components $components, int $status): void

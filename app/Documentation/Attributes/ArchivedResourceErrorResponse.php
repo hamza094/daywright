@@ -10,8 +10,8 @@ use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 /**
  * Attribute to explicitly document archived resource error responses.
  *
- * Use this on controller methods that can throw ArchivedResourceException
- * due to custom route binding with withTrashed().
+ * Use this only when controller or service behavior rejects an archived
+ * resource independently of Laravel's implicit route binding.
  *
  * @see \App\Models\Project::resolveRouteBinding()
  * @see \App\Models\Project::resolveChildRouteBinding()

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
+use App\Documentation\Attributes\ApiError;
+use App\Exceptions\Support\ErrorCode;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Project\InvitationUsersRequest;
 use App\Http\Requests\Api\V1\Project\ProjectInvitationIndexRequest;
@@ -13,8 +15,6 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Project\InvitationService;
 use Dedoc\Scramble\Attributes\Endpoint;
-use Dedoc\Scramble\Attributes\HeaderParameter;
-use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 
 final class ProjectInvitationController extends ApiController
@@ -26,10 +26,7 @@ final class ProjectInvitationController extends ApiController
      * The invited user receives an email notification.
      */
     #[Endpoint(operationId: 'invitations.create')]
-    #[HeaderParameter(name: 'Idempotency-Key', type: 'string', required: true, description: 'Unique key to prevent duplicate invitation requests')]
-    #[ScrambleResponse(status: 400, description: 'Bad request - missing or invalid Idempotency-Key header')]
-    #[ScrambleResponse(status: 409, description: 'Conflict - idempotency key currently being processed')]
-    #[ScrambleResponse(status: 422, description: 'Unprocessable entity - idempotency key reused with different request data')]
+    #[ApiError(ErrorCode::PLAN_LIMIT_EXCEEDED)]
     public function store(Project $project, InvitationUsersRequest $request, InvitationService $invitationService): JsonResponse
     {
         $data = $request->toDto();

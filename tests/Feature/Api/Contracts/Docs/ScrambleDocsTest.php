@@ -108,20 +108,40 @@ class ScrambleDocsTest extends TestCase
         // Check that rate limit schema exists
         $this->assertArrayHasKey('PublicRateLimitErrorEnvelope', $schemas);
 
-        // Check that 401 response exists and references a shared error response
-        $user401Response = $paths['/v1/users/{user}']['get']['responses']['401'] ?? [];
-        $this->assertArrayHasKey('$ref', $user401Response, '401 response should be a reference to shared error response');
+        // Check that 401 response exists and uses canonical envelope
+        $user401Response = $paths['/v1/users/{user}']['get']['responses'] ?? [];
+        $this->assertArrayHasKey('401', $user401Response, '401 response should exist');
+        $this->assertArrayHasKey('content', $user401Response['401']);
+        $this->assertArrayHasKey('application/json', $user401Response['401']['content']);
+        $this->assertArrayHasKey('schema', $user401Response['401']['content']['application/json']);
+        $this->assertSame(
+            '#/components/schemas/PublicApiErrorEnvelope',
+            $user401Response['401']['content']['application/json']['schema']['$ref'] ?? null,
+            '401 should use canonical envelope'
+        );
         // Check that 403 response exists (reference name may vary based on middleware)
         $this->assertArrayHasKey('403', $paths['/v1/projects/{project}/force']['delete']['responses'] ?? []);
-        // Check that 404 response exists and references a shared error response
-        $user404Response = $paths['/v1/users/{user}']['get']['responses']['404'] ?? [];
-        $this->assertArrayHasKey('$ref', $user404Response, '404 response should be a reference to shared error response');
-        // Check that 422 response exists and references a shared error response
-        $avatar422Response = $paths['/v1/users/{user}/avatar']['post']['responses']['422'] ?? [];
-        $this->assertArrayHasKey('$ref', $avatar422Response, '422 response should be a reference to shared error response');
+        // Check that 404 response exists and uses canonical envelope
+        $user404Response = $paths['/v1/users/{user}']['get']['responses'] ?? [];
+        $this->assertArrayHasKey('404', $user404Response, '404 response should exist');
+        $this->assertArrayHasKey('content', $user404Response['404']);
+        $this->assertArrayHasKey('application/json', $user404Response['404']['content']);
+        $this->assertArrayHasKey('schema', $user404Response['404']['content']['application/json']);
         $this->assertSame(
-            '#/components/responses/PublicInternalServerError',
-            $paths['/v1/users/{user}']['get']['responses']['500']['$ref'] ?? null,
+            '#/components/schemas/PublicApiErrorEnvelope',
+            $user404Response['404']['content']['application/json']['schema']['$ref'] ?? null,
+            '404 should use canonical envelope'
+        );
+        // Check that 422 response exists and uses canonical envelope
+        $avatar422Response = $paths['/v1/users/{user}/avatar']['post']['responses'] ?? [];
+        $this->assertArrayHasKey('422', $avatar422Response, '422 response should exist');
+        $this->assertArrayHasKey('content', $avatar422Response['422']);
+        $this->assertArrayHasKey('application/json', $avatar422Response['422']['content']);
+        $this->assertArrayHasKey('schema', $avatar422Response['422']['content']['application/json']);
+        $this->assertSame(
+            '#/components/schemas/PublicApiValidationErrorEnvelope',
+            $avatar422Response['422']['content']['application/json']['schema']['$ref'] ?? null,
+            '422 should use canonical envelope'
         );
     }
 
@@ -315,9 +335,10 @@ class ScrambleDocsTest extends TestCase
         // Routes with can:* middleware should have 403
         $this->assertArrayHasKey('403', $paths['/v1/projects/{project}/force']['delete']['responses'] ?? []);
 
-        // Routes with throttle middleware should have 429
+        // All public operations should have 429 (throttle:api is global)
         $this->assertArrayHasKey('429', $paths['/v1/projects']['post']['responses'] ?? []);
-        // Note: Headers are added via middleware transformer, verify 429 exists
+        $this->assertArrayHasKey('429', $paths['/v1/projects/{project}']['get']['responses'] ?? []);
+        $this->assertArrayHasKey('429', $paths['/v1/users/me']['get']['responses'] ?? []);
     }
 
     public function test_docs_json_idempotency_headers_and_responses(): void
@@ -328,9 +349,19 @@ class ScrambleDocsTest extends TestCase
         // POST /v1/projects/{project}/conversations should have idempotency headers and error responses
         $conversationPost = $paths['/v1/projects/{project}/conversations']['post'] ?? [];
 
-        // Check for Idempotency-Key in description (documented via controller attributes)
+        // The operation description remains business context, while the header is generated from middleware.
         $this->assertStringContainsString('Idempotency-Key', $conversationPost['description'] ?? '',
             'Idempotency-Key should be documented in description');
+
+        $idempotencyHeaders = array_values(array_filter(
+            $conversationPost['parameters'] ?? [],
+            static fn (array $parameter): bool => ($parameter['in'] ?? null) === 'header'
+                && ($parameter['name'] ?? null) === 'Idempotency-Key',
+        ));
+        $this->assertCount(1, $idempotencyHeaders, 'Idempotency-Key should be generated exactly once');
+        $this->assertTrue($idempotencyHeaders[0]['required'] ?? false);
+        $this->assertSame('string', $idempotencyHeaders[0]['schema']['type'] ?? null);
+        $this->assertSame('req_abc123', $idempotencyHeaders[0]['example'] ?? null);
 
         // Check for Idempotency-Replayed response header on 201 success response
         $response201 = $conversationPost['responses']['201'] ?? [];
@@ -348,6 +379,20 @@ class ScrambleDocsTest extends TestCase
         if (! isset($response409['$ref'])) {
             $this->assertArrayHasKey('headers', $response409);
             $this->assertArrayHasKey('Retry-After', $response409['headers']);
+        }
+
+        // A non-idempotent operation must not inherit the idempotency contract.
+        $projectShow = $paths['/v1/projects/{project}']['get'] ?? [];
+        $projectHeaders = array_values(array_filter(
+            $projectShow['parameters'] ?? [],
+            static fn (array $parameter): bool => ($parameter['name'] ?? null) === 'Idempotency-Key',
+        ));
+        $this->assertCount(0, $projectHeaders);
+        $this->assertArrayNotHasKey('400', $projectShow['responses'] ?? []);
+        $this->assertArrayNotHasKey('422', $projectShow['responses'] ?? []);
+
+        foreach ($projectShow['responses'] ?? [] as $response) {
+            $this->assertArrayNotHasKey('Idempotency-Replayed', $response['headers'] ?? []);
         }
     }
 
@@ -454,80 +499,124 @@ class ScrambleDocsTest extends TestCase
         $this->assertContains('forbidden', $codeExamples, 'Forbidden envelope should include forbidden error code');
     }
 
-    public function test_docs_json_archived_resource_409_on_withtrashed_routes(): void
+    public function test_docs_json_documents_confirmed_business_errors_and_update_methods(): void
     {
         $docs = $this->docs();
         $paths = $docs['paths'] ?? [];
 
-        // Project routes with withTrashed should have 409 response for project_archived
-        $projectRoutes = [
-            '/v1/projects/{project}' => 'get',
-            '/v1/projects/{project}/limits' => 'get',
-            '/v1/projects/{project}/force' => 'delete',
-            '/v1/projects/{project}/restore' => 'patch',
-        ];
+        foreach ([
+            ['/v1/projects', 'post', '403', 'plan_limit_exceeded'],
+            ['/v1/projects/{project}/stage', 'patch', '422', 'invalid_state_transition'],
+            ['/v1/projects/{project}/tasks', 'post', '403', 'plan_limit_exceeded'],
+            ['/v1/projects/{project}/tasks/{task}', 'put', '422', 'invalid_state_transition'],
+            ['/v1/projects/{project}/tasks/{task}', 'delete', '403', 'task_not_trashed'],
+            ['/v1/projects/{project}/tasks/{task}/restore', 'patch', '403', 'task_not_trashed'],
+            ['/v1/dashboard/insights', 'get', '403', 'subscription_required'],
+            ['/v1/projects/{project}/conversations', 'post', '403', 'subscription_required'],
+        ] as [$path, $method, $status, $code]) {
+            $response = $paths[$path][$method]['responses'][$status] ?? null;
 
-        foreach ($projectRoutes as $path => $method) {
-            $operation = $paths[$path][$method] ?? [];
-            $this->assertArrayHasKey('409', $operation['responses'] ?? [], "{$method} {$path} should have 409 response for archived project");
+            $this->assertIsArray($response, "Missing {$status} response for {$method} {$path}");
 
-            // Check the 409 response uses canonical envelope
-            $resolved = $this->resolveResponse($operation['responses']['409'], $docs);
-            $schemaRef = $resolved['content']['application/json']['schema']['$ref'] ?? null;
-            $this->assertSame(
-                '#/components/schemas/PublicApiErrorEnvelope',
-                $schemaRef,
-                '409 response should reference PublicApiErrorEnvelope'
+            $resolved = $this->resolveResponse($response, $docs);
+            $description = (string) ($resolved['description'] ?? '');
+
+            $this->assertStringContainsString(
+                $code,
+                $description,
+                "{$status} {$method} {$path} should document {$code}"
             );
-
-            // Check description mentions archived
-            $description = $resolved['description'] ?? '';
-            $this->assertStringContainsStringIgnoringCase('archived', $description,
-                '409 description should mention archived resource');
+            $this->assertArrayHasKey(
+                'x-error-example',
+                $resolved,
+                "{$status} {$method} {$path} should expose a business error example"
+            );
         }
 
-        // Task routes with withTrashed should have 409 response for task_archived
-        $taskRoutes = [
-            '/v1/projects/{project}/tasks/{task}' => 'get',
-            '/v1/projects/{project}/tasks/{task}' => 'put',
-            '/v1/projects/{project}/tasks/{task}' => 'patch',
-            '/v1/projects/{project}/tasks/{task}' => 'delete',
-            '/v1/projects/{project}/tasks/{task}/restore' => 'patch',
+        foreach ([
+            '/v1/projects/{project}',
+            '/v1/projects/{project}/tasks/{task}',
+        ] as $path) {
+            $this->assertArrayHasKey('put', $paths[$path] ?? [], "{$path} should document PUT");
+            $this->assertArrayHasKey('patch', $paths[$path] ?? [], "{$path} should document PATCH");
+            $this->assertNotSame(
+                $paths[$path]['put']['operationId'] ?? null,
+                $paths[$path]['patch']['operationId'] ?? null,
+                "{$path} PUT and PATCH should have distinct operation IDs"
+            );
+        }
+    }
+
+    public function test_docs_json_archived_resource_409_on_nontrashed_routes(): void
+    {
+        $docs = $this->docs();
+        $paths = $docs['paths'] ?? [];
+
+        // Routes WITH withTrashed should NOT have archived resource 409
+        // because they accept archived resources
+        $withTrashedRoutes = [
+            ['/v1/projects/{project}', 'get'], // projects.show
+            ['/v1/projects/{project}/limits', 'get'], // projects.limits
+            ['/v1/projects/{project}/force', 'delete'], // projects.force-delete
+            ['/v1/projects/{project}/restore', 'patch'], // projects.restore
+            ['/v1/projects/{project}/tasks', 'get'], // tasks.index
+            ['/v1/projects/{project}/tasks/{task}', 'get'], // tasks.show
+            ['/v1/projects/{project}/tasks/{task}', 'delete'], // tasks.destroy
+            ['/v1/projects/{project}/tasks/{task}/restore', 'patch'], // tasks.restore
         ];
 
-        foreach ($taskRoutes as $path => $method) {
+        foreach ($withTrashedRoutes as [$path, $method]) {
             $operation = $paths[$path][$method] ?? [];
-            $this->assertArrayHasKey('409', $operation['responses'] ?? [], "{$method} {$path} should have 409 response for archived task");
-
-            // Check the 409 response uses canonical envelope
-            $resolved = $this->resolveResponse($operation['responses']['409'], $docs);
-            $schemaRef = $resolved['content']['application/json']['schema']['$ref'] ?? null;
-            $this->assertSame(
-                '#/components/schemas/PublicApiErrorEnvelope',
-                $schemaRef,
-                '409 response should reference PublicApiErrorEnvelope'
-            );
-
-            // Check description mentions archived
-            $description = $resolved['description'] ?? '';
-            $this->assertStringContainsStringIgnoringCase('archived', $description,
-                '409 description should mention archived resource');
+            $this->assertArrayNotHasKey('409', $operation['responses'] ?? [],
+                "{$method} {$path} should NOT have 409 because it accepts archived resources (withTrashed)");
         }
 
-        // Routes without withTrashed should NOT have archived resource 409
+        // Routes WITHOUT withTrashed that bind {project} or {task} SHOULD have 409
+        // because they can emit archived resource errors
         $nonTrashedRoutes = [
-            '/v1/projects' => 'post',
-            '/v1/projects/{project}/activities' => 'get',
-            '/v1/projects/{project}/conversations' => 'post',
+            '/v1/projects/{project}/conversations' => 'post', // binds {project}
+            '/v1/projects/{project}/activities' => 'get', // binds {project}
+            '/v1/projects/{project}/tasks' => 'post', // binds {project}
+            '/v1/projects/{project}/tasks/{task}' => 'put', // Scramble publishes the resource update as PUT
         ];
 
         foreach ($nonTrashedRoutes as $path => $method) {
             $operation = $paths[$path][$method] ?? [];
-            $responses = $operation['responses'] ?? [];
+            $this->assertArrayHasKey('409', $operation['responses'] ?? [],
+                "{$method} {$path} should have 409 for archived resource error");
 
-            // If 409 exists, check it's not for archived resources
-            if (isset($responses['409'])) {
-                $description = $responses['409']['description'] ?? '';
+            // Check the 409 response uses canonical envelope
+            $resolved = $this->resolveResponse($operation['responses']['409'], $docs);
+            $schemaRef = $resolved['content']['application/json']['schema']['$ref'] ?? null;
+            $this->assertSame(
+                '#/components/schemas/PublicApiErrorEnvelope',
+                $schemaRef,
+                '409 response should reference PublicApiErrorEnvelope'
+            );
+
+            // Check description mentions archived
+            $description = $resolved['description'] ?? '';
+            $this->assertStringContainsStringIgnoringCase('archived', $description,
+                '409 description should mention archived resource');
+        }
+
+        $projectDescription = $paths['/v1/projects/{project}/conversations']['post']['responses']['409']['description'] ?? '';
+        $this->assertStringContainsString('project_archived', $projectDescription);
+
+        $taskDescription = $paths['/v1/projects/{project}/tasks/{task}']['put']['responses']['409']['description'] ?? '';
+        $this->assertStringContainsString('project_archived', $taskDescription);
+        $this->assertStringContainsString('task_archived', $taskDescription);
+
+        // Routes that don't bind {project} or {task} should NOT have archived 409
+        $nonBindingRoutes = [
+            '/v1/projects' => 'post',
+            '/v1/users/me' => 'get',
+        ];
+
+        foreach ($nonBindingRoutes as $path => $method) {
+            $operation = $paths[$path][$method] ?? [];
+            if (isset($operation['responses']['409'])) {
+                $description = $operation['responses']['409']['description'] ?? '';
                 $this->assertStringNotContainsStringIgnoringCase('archived', $description,
                     "{$method} {$path} should not have archived resource 409");
             }
@@ -543,19 +632,19 @@ class ScrambleDocsTest extends TestCase
         $projectGet = $paths['/v1/projects/{project}']['get'] ?? [];
         $responses = $projectGet['responses'] ?? [];
 
-        // 404 should be a reference to ModelNotFoundException
+        // 404 should use canonical envelope (now inline, not a reference)
         $this->assertArrayHasKey('404', $responses, 'Project GET should have 404 response');
-        $this->assertArrayHasKey('$ref', $responses['404'], '404 should be a reference');
+        $this->assertArrayHasKey('content', $responses['404']);
+        $this->assertArrayHasKey('application/json', $responses['404']['content']);
+        $this->assertArrayHasKey('schema', $responses['404']['content']['application/json']);
         $this->assertSame(
-            '#/components/responses/ModelNotFoundException',
-            $responses['404']['$ref'],
-            '404 should reference ModelNotFoundException response'
+            '#/components/schemas/PublicApiErrorEnvelope',
+            $responses['404']['content']['application/json']['schema']['$ref'] ?? null,
+            '404 should use canonical envelope'
         );
-        // Resolve the reference and check it has a description
-        $responseName = str_replace('#/components/responses/', '', $responses['404']['$ref']);
-        $response = $docs['components']['responses'][$responseName] ?? [];
-        $this->assertArrayHasKey('description', $response, 'ModelNotFoundException should have description');
-        $this->assertNotEmpty($response['description'], 'ModelNotFoundException description should not be empty');
+        // Check that the response has a description
+        $this->assertArrayHasKey('description', $responses['404'], '404 response should have description');
+        $this->assertNotEmpty($responses['404']['description'], '404 response description should not be empty');
     }
 
     public function test_docs_json_error_responses_have_canonical_schema(): void
@@ -585,28 +674,113 @@ class ScrambleDocsTest extends TestCase
         }
     }
 
-    public function test_docs_json_429_only_on_throttled_routes(): void
+    public function test_all_error_responses_use_canonical_envelope(): void
+    {
+        $docs = $this->docs();
+        $paths = $docs['paths'] ?? [];
+        $components = $docs['components'] ?? [];
+        $schemas = $components['schemas'] ?? [];
+
+        // Get canonical envelope schemas
+        $canonicalErrorSchema = $schemas['PublicApiErrorEnvelope'] ?? null;
+        $canonicalValidationSchema = $schemas['PublicApiValidationErrorEnvelope'] ?? null;
+
+        $this->assertNotNull($canonicalErrorSchema, 'PublicApiErrorEnvelope should exist');
+        $this->assertNotNull($canonicalValidationSchema, 'PublicApiValidationErrorEnvelope should exist');
+
+        // Walk every public operation and every 4xx/5xx response
+        foreach ($paths as $path => $pathItem) {
+            foreach ($pathItem as $method => $operation) {
+                if (! in_array($method, ['get', 'post', 'put', 'patch', 'delete'], true)) {
+                    continue;
+                }
+
+                $responses = $operation['responses'] ?? [];
+
+                foreach ($responses as $statusCode => $response) {
+                    $code = (int) $statusCode;
+
+                    // Only check error responses (4xx and 5xx)
+                    if ($code < 400 || $code >= 600) {
+                        continue;
+                    }
+
+                    // Skip responses that are direct references to shared responses
+                    // (we normalize the shared responses themselves separately)
+                    if (isset($response['$ref'])) {
+                        continue;
+                    }
+
+                    // Resolve the response content
+                    $content = $response['content']['application/json'] ?? null;
+                    $this->assertNotNull($content, "{$method} {$path} {$statusCode} should have JSON content");
+
+                    $schemaRef = $content['schema']['$ref'] ?? null;
+                    $this->assertNotNull($schemaRef, "{$method} {$path} {$statusCode} should have schema reference");
+
+                    // Resolve the schema
+                    $schemaName = str_replace('#/components/schemas/', '', $schemaRef);
+                    $schema = $schemas[$schemaName] ?? null;
+                    $this->assertNotNull($schema, "{$method} {$path} {$statusCode} schema {$schemaName} should exist");
+
+                    // Check it's one of the canonical envelopes
+                    $this->assertContains(
+                        $schemaName,
+                        ['PublicApiErrorEnvelope', 'PublicApiValidationErrorEnvelope'],
+                        "{$method} {$path} {$statusCode} should use canonical envelope, got {$schemaName}"
+                    );
+
+                    // Check the canonical envelope has the required fields
+                    $properties = $schema['properties'] ?? [];
+                    $required = $schema['required'] ?? [];
+
+                    $this->assertArrayHasKey('message', $properties, "{$schemaName} should have message field");
+                    $this->assertArrayHasKey('code', $properties, "{$schemaName} should have code field");
+                    $this->assertArrayHasKey('errors', $properties, "{$schemaName} should have errors field");
+                    $this->assertArrayHasKey('meta', $properties, "{$schemaName} should have meta field");
+
+                    $this->assertContains('message', $required, "{$schemaName} should require message");
+                    $this->assertContains('code', $required, "{$schemaName} should require code");
+                    $this->assertContains('errors', $required, "{$schemaName} should require errors");
+                    $this->assertContains('meta', $required, "{$schemaName} should require meta");
+
+                    // Check errors and meta are objects
+                    $this->assertSame('object', $properties['errors']['type'] ?? null, "{$schemaName} errors should be object");
+                    $this->assertSame('object', $properties['meta']['type'] ?? null, "{$schemaName} meta should be object");
+                }
+            }
+        }
+    }
+
+    public function test_docs_json_429_on_throttled_routes(): void
     {
         $docs = $this->docs();
         $paths = $docs['paths'] ?? [];
 
         // Routes WITH throttle middleware should have 429
+        // These may have explicit throttle or inherit from middleware groups
         $throttledRoutes = [
-            '/v1/projects/{project}/force' => 'delete', // throttle:sensitive-destructive
-            '/v1/projects/{project}/conversations' => 'post', // throttle:sensitive-upload
+            '/v1/projects' => 'post', // Should inherit throttle:api from API group
+            '/v1/projects/{project}' => 'get', // Should inherit throttle:api from API group
+            '/v1/projects/{project}/conversations' => 'post', // Should inherit throttle:api from API group
+            '/v1/projects/{project}/tasks' => 'post', // Should inherit throttle:api from API group
+            '/v1/users/me' => 'get', // Should inherit throttle:api from API group
+            '/v1/scopes' => 'get', // Should inherit throttle:api from API group
         ];
 
         foreach ($throttledRoutes as $path => $method) {
             $operation = $paths[$path][$method] ?? [];
             $this->assertArrayHasKey('429', $operation['responses'] ?? [],
                 "{$method} {$path} should have 429 response (throttled route)");
-        }
 
-        // Note: Global throttling (throttle:user-ceiling, throttle:per-token) applies to all authenticated routes
-        // So we cannot assert that routes without specific throttle middleware don't have 429
-        // Instead, we verify that routes WITH specific throttle middleware DO have 429
-        // The key improvement is that we removed the GLOBAL 429 injection that was adding 429 to ALL routes
-        // Now 429 only comes from actual middleware (global or route-specific)
+            // Resolve the 429 response (it might be a reference)
+            $response429 = $operation['responses']['429'] ?? [];
+            $resolved429 = $this->resolveResponse($response429, $docs);
+
+            // Verify 429 has Retry-After header
+            $this->assertArrayHasKey('headers', $resolved429, "{$method} {$path} 429 should have headers");
+            $this->assertArrayHasKey('Retry-After', $resolved429['headers'], "{$method} {$path} 429 should have Retry-After header");
+        }
     }
 
     public function test_docs_json_documents_project_collaboration_contracts(): void

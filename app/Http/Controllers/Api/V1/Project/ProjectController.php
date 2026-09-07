@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
-use App\Documentation\Attributes\ArchivedResourceErrorResponse;
+use App\Documentation\Attributes\ApiError;
+use App\Exceptions\Support\ErrorCode;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Project\DashboardProjectRequest;
 use App\Http\Requests\Api\V1\Project\ProjectStoreRequest;
@@ -54,6 +55,7 @@ class ProjectController extends ApiController
      * project's information along with related resources.
      */
     #[Endpoint(operationId: 'projects.create')]
+    #[ApiError(ErrorCode::PLAN_LIMIT_EXCEEDED)]
     public function store(ProjectStoreRequest $request): JsonResponse
     {
         $project = $this->projectService->createProject($this->authenticatedUser(), $request->toDto());
@@ -69,7 +71,6 @@ class ProjectController extends ApiController
      * Returns detailed information about a project including its members, conversations, and activities.
      */
     #[Endpoint(operationId: 'projects.show')]
-    #[ArchivedResourceErrorResponse('project')]
     public function show(Project $project): JsonResponse
     {
         $this->authorize('access', $project);

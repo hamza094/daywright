@@ -64,7 +64,9 @@ class ZoomWebhookTest extends TestCase
 
         $requestId = 'zoom-update-'.Str::uuid();
 
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId))
+        $headers = ZoomWebhookSigner::signPayload($postBody, $requestId);
+
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, $headers)
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
@@ -193,15 +195,16 @@ class ZoomWebhookTest extends TestCase
         $postBody['payload']['object']['settings'] = ['waiting_room' => true];
 
         $requestId = 'zoom-update-duplicate';
+        $headers = ZoomWebhookSigner::signPayload($postBody, $requestId);
 
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId))
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, $headers)
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
         Queue::assertPushed(UpdateMeetingWebhook::class, 1);
 
         // Send the same request again with the same request ID
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId))
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, $headers)
             ->assertStatus(202)
             ->assertExactJson(['message' => 'Webhook accepted']);
 
@@ -227,11 +230,15 @@ class ZoomWebhookTest extends TestCase
         $requestId1 = 'zoom-update-1';
         $requestId2 = 'zoom-update-2';
 
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId1))
+        $headers = ZoomWebhookSigner::signPayload($postBody, $requestId1);
+
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, $headers)
             ->assertOk();
 
         // Same body/timestamp/signature with different request ID is treated as replay
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, ZoomWebhookSigner::signPayload($postBody, $requestId2))
+        $headers['x-zm-request-id'] = $requestId2;
+
+        $this->postJson(route('api.v1.webhooks.meetings.update'), $postBody, $headers)
             ->assertStatus(202)
             ->assertExactJson(['message' => 'Webhook accepted']);
 

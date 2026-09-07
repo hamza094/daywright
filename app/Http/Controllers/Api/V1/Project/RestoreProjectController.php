@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
-use App\Documentation\Attributes\ArchivedResourceErrorResponse;
 use App\Http\Controllers\Api\ApiController;
 use App\Models\Project;
 use App\Services\Project\ProjectService;
@@ -20,7 +19,6 @@ final class RestoreProjectController extends ApiController
      * and makes it accessible again to members.
      */
     #[Endpoint(operationId: 'projects.restore')]
-    #[ArchivedResourceErrorResponse('project')]
     public function __invoke(Project $project, ProjectService $projectService): JsonResponse
     {
         $projectService->restoreProject($project);

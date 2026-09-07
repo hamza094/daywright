@@ -64,6 +64,18 @@ class ArchivedResourceBindingTest extends TestCase
     }
 
     /** @test */
+    public function archived_project_is_rejected_by_a_route_without_withtrashed(): void
+    {
+        $project = Project::factory()->create(['user_id' => $this->user->id]);
+        $project->members()->attach($this->user->id);
+        $project->delete();
+
+        $this->getJson(route('api.v1.projects.activities', $project->slug))
+            ->assertConflict()
+            ->assertJsonPath('code', 'project_archived');
+    }
+
+    /** @test */
     public function active_task_is_accessible(): void
     {
         $project = Project::factory()->create(['user_id' => $this->user->id]);

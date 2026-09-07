@@ -101,6 +101,24 @@
               }
             }
           },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
           "500": {
             "$ref": "#/components/responses/PublicInternalServerError"
           }
@@ -216,7 +234,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -229,10 +254,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -248,6 +287,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -271,6 +320,16 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "description": "Required unique key used to prevent duplicate requests.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "req_abc123"
           }
         ],
         "requestBody": {
@@ -335,10 +394,7 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -347,11 +403,46 @@
               }
             }
           },
+          "403": {
+            "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "subscription_required": {
+                "message": "Access denied. An active subscription is required to perform this action.",
+                "code": "subscription_required",
+                "errors": [],
+                "meta": {
+                  "upgrade_required": true
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Access denied. An active subscription is required to perform this action.",
+              "code": "subscription_required",
+              "errors": [],
+              "meta": {
+                "upgrade_required": true
+              }
+            }
+          },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Validation error - Idempotency-Key was reused with different request data",
+            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
             "content": {
               "application/json": {
                 "schema": {
@@ -379,7 +470,7 @@
             }
           },
           "400": {
-            "description": "Bad request - Idempotency-Key header is required",
+            "description": "Bad request (bad_request) - the configured idempotency header is required.",
             "content": {
               "application/json": {
                 "schema": {
@@ -389,7 +480,7 @@
             }
           },
           "409": {
-            "description": "Conflict - Request with this Idempotency-Key is already being processed",
+            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project is archived (project_archived)",
             "content": {
               "application/json": {
                 "schema": {
@@ -457,7 +548,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -470,7 +568,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -486,6 +591,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -557,10 +672,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -720,15 +849,40 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions. The action requires an active subscription. Machine-readable code: subscription_required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "subscription_required": {
+                "message": "Access denied. An active subscription is required to perform this action.",
+                "code": "subscription_required",
+                "errors": [],
+                "meta": {
+                  "upgrade_required": true
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Access denied. An active subscription is required to perform this action.",
+              "code": "subscription_required",
+              "errors": [],
+              "meta": {
+                "upgrade_required": true
               }
             }
           },
@@ -884,10 +1038,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -974,10 +1142,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -1058,7 +1240,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -1228,10 +1417,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -1287,10 +1490,11 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
-            "description": "Unique key to prevent duplicate invitation requests",
+            "description": "Required unique key used to prevent duplicate requests.",
             "schema": {
               "type": "string"
-            }
+            },
+            "example": "req_abc123"
           }
         ],
         "requestBody": {
@@ -1356,47 +1560,73 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization error. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "plan_limit_exceeded": {
+                "message": "Plan limit exceeded.",
+                "code": "plan_limit_exceeded",
+                "errors": [],
+                "meta": {
+                  "reason": "Maximum projects reached",
+                  "limit_type": "projects",
+                  "limit_label": "Projects",
+                  "current_usage": 5,
+                  "max_allowed": 5,
+                  "limit_scope": "workspace",
+                  "can_upgrade": true,
+                  "upgrade_required": true
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Plan limit exceeded.",
+              "code": "plan_limit_exceeded",
+              "errors": [],
+              "meta": {
+                "reason": "Maximum projects reached",
+                "limit_type": "projects",
+                "limit_label": "Projects",
+                "current_usage": 5,
+                "max_allowed": 5,
+                "limit_scope": "workspace",
+                "can_upgrade": true,
+                "upgrade_required": true
               }
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Unprocessable entity - idempotency key reused with different request data",
+            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request - missing or invalid Idempotency-Key header",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - idempotency key currently being processed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -1413,6 +1643,34 @@
             "headers": {
               "Retry-After": {
                 "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (bad_request) - the configured idempotency header is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before retrying the request.",
                 "schema": {
                   "type": "integer"
                 }
@@ -1472,7 +1730,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -1485,10 +1750,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -1504,6 +1783,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -1534,10 +1823,11 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
-            "description": "Unique key to prevent duplicate acceptance requests",
+            "description": "Required unique key used to prevent duplicate requests.",
             "schema": {
               "type": "string"
-            }
+            },
+            "example": "req_abc123"
           }
         ],
         "responses": {
@@ -1596,47 +1886,63 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            }
+          },
+          "403": {
+            "description": "Authorization error. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "plan_limit_exceeded": {
+                "message": "Plan limit exceeded.",
+                "code": "plan_limit_exceeded",
+                "errors": [],
+                "meta": {
+                  "reason": "Maximum projects reached",
+                  "limit_type": "projects",
+                  "limit_label": "Projects",
+                  "current_usage": 5,
+                  "max_allowed": 5,
+                  "limit_scope": "workspace",
+                  "can_upgrade": true,
+                  "upgrade_required": true
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Plan limit exceeded.",
+              "code": "plan_limit_exceeded",
+              "errors": [],
+              "meta": {
+                "reason": "Maximum projects reached",
+                "limit_type": "projects",
+                "limit_label": "Projects",
+                "current_usage": 5,
+                "max_allowed": 5,
+                "limit_scope": "workspace",
+                "can_upgrade": true,
+                "upgrade_required": true
               }
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "400": {
-            "description": "Bad request - missing or invalid Idempotency-Key header",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - idempotency key currently being processed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable entity - idempotency key reused with different request data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
               }
             }
@@ -1655,6 +1961,44 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (bad_request) - the configured idempotency header is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
               }
             }
@@ -1685,10 +2029,11 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
-            "description": "Unique key to prevent duplicate rejection requests",
+            "description": "Required unique key used to prevent duplicate requests.",
             "schema": {
               "type": "string"
-            }
+            },
+            "example": "req_abc123"
           }
         ],
         "responses": {
@@ -1747,7 +2092,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -1760,34 +2112,11 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "400": {
-            "description": "Bad request - missing or invalid Idempotency-Key header",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - idempotency key currently being processed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Unprocessable entity - idempotency key reused with different request data",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
               }
             }
@@ -1806,6 +2135,44 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (bad_request) - the configured idempotency header is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before retrying the request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
               }
             }
@@ -1870,10 +2237,24 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -1889,6 +2270,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -1943,7 +2334,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -1956,7 +2354,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -1972,6 +2377,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -2069,10 +2484,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -2133,7 +2562,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -2214,10 +2650,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -2288,7 +2738,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -2478,10 +2935,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -2576,18 +3047,64 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationException"
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "plan_limit_exceeded": {
+                "message": "Plan limit exceeded.",
+                "code": "plan_limit_exceeded",
+                "errors": [],
+                "meta": {
+                  "reason": "Maximum projects reached",
+                  "limit_type": "projects",
+                  "limit_label": "Projects",
+                  "current_usage": 5,
+                  "max_allowed": 5,
+                  "limit_scope": "workspace",
+                  "can_upgrade": true,
+                  "upgrade_required": true
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Plan limit exceeded.",
+              "code": "plan_limit_exceeded",
+              "errors": [],
+              "meta": {
+                "reason": "Maximum projects reached",
+                "limit_type": "projects",
+                "limit_label": "Projects",
+                "current_usage": 5,
+                "max_allowed": 5,
+                "limit_scope": "workspace",
+                "can_upgrade": true,
+                "upgrade_required": true
               }
             }
           },
@@ -2706,13 +3223,34 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -2728,6 +3266,168 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "projects.update.patch",
+        "description": "This endpoint allows you to update the details of an existing project.\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.",
+        "summary": "Update Project Fields",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/PublicProject"
+                            },
+                            {
+                              "type": "object",
+                              "required": ["ownerNotAuthorized", "user", "stage", "members", "activities"]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -2781,10 +3481,24 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -2800,6 +3514,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -2880,13 +3604,17 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "409": {
-            "description": "Conflict - Project is archived and cannot be accessed",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
@@ -2974,7 +3702,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -2987,10 +3722,7 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "409": {
-            "description": "Conflict - Project is archived and cannot be accessed",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
@@ -3070,7 +3802,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -3083,10 +3822,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -3102,6 +3855,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -3148,16 +3911,27 @@
             }
           },
           "403": {
-            "$ref": "#/components/responses/AuthorizationException"
+            "description": "Authorization error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "409": {
-            "description": "Conflict - Project is archived and cannot be accessed",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
@@ -3225,7 +3999,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -3238,10 +4019,7 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "409": {
-            "description": "Conflict - Project is archived and cannot be accessed",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
@@ -3419,7 +4197,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -3432,10 +4217,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -3451,6 +4250,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -3525,7 +4334,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -3538,10 +4354,46 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -3557,6 +4409,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -3605,7 +4467,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -3618,10 +4487,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -3637,6 +4520,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -3674,7 +4567,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -3761,7 +4661,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -3840,7 +4747,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -4021,7 +4935,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -4034,10 +4955,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -4125,10 +5060,7 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4137,11 +5069,67 @@
               }
             }
           },
+          "403": {
+            "description": "Authorization error. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "plan_limit_exceeded": {
+                "message": "Plan limit exceeded.",
+                "code": "plan_limit_exceeded",
+                "errors": [],
+                "meta": {
+                  "reason": "Maximum projects reached",
+                  "limit_type": "projects",
+                  "limit_label": "Projects",
+                  "current_usage": 5,
+                  "max_allowed": 5,
+                  "limit_scope": "workspace",
+                  "can_upgrade": true,
+                  "upgrade_required": true
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Plan limit exceeded.",
+              "code": "plan_limit_exceeded",
+              "errors": [],
+              "meta": {
+                "reason": "Maximum projects reached",
+                "limit_type": "projects",
+                "limit_label": "Projects",
+                "current_usage": 5,
+                "max_allowed": 5,
+                "limit_scope": "workspace",
+                "can_upgrade": true,
+                "upgrade_required": true
+              }
+            }
+          },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -4157,6 +5145,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -4219,7 +5217,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -4232,10 +5237,7 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "409": {
-            "description": "Conflict - Task is archived and cannot be accessed",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
@@ -4348,21 +5350,54 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
-          },
-          "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationException"
-          },
-          "409": {
-            "description": "Conflict - Task is archived and cannot be accessed",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -4380,6 +5415,181 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tasks.update.patch",
+        "description": "This endpoint allows you to update the details of a specific task associated with a given project.\nThe user must have proper authorization to access and modify the task.",
+        "summary": "Update a Task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicTask"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -4433,7 +5643,31 @@
             }
           },
           "403": {
-            "description": "Forbidden - insufficient permissions",
+            "description": "Authorization error. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "task_not_trashed": {
+                "message": "Task must be trashed to perform this action.",
+                "code": "task_not_trashed",
+                "errors": [],
+                "meta": []
+              }
+            },
+            "x-error-example": {
+              "message": "Task must be trashed to perform this action.",
+              "code": "task_not_trashed",
+              "errors": [],
+              "meta": []
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4442,14 +5676,8 @@
               }
             }
           },
-          "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
-          },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
-          },
-          "409": {
-            "description": "Conflict - Task is archived and cannot be accessed",
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
@@ -4511,10 +5739,11 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
-            "description": "Unique key to prevent duplicate assignment requests",
+            "description": "Required unique key used to prevent duplicate requests.",
             "schema": {
               "type": "string"
-            }
+            },
+            "example": "req_abc123"
           }
         ],
         "requestBody": {
@@ -4572,7 +5801,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -4585,34 +5821,21 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Unprocessable entity - idempotency key reused with different request data",
+            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request - missing or invalid Idempotency-Key header",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - idempotency key currently being processed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -4629,6 +5852,34 @@
             "headers": {
               "Retry-After": {
                 "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (bad_request) - the configured idempotency header is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project or task is archived (project_archived or task_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before retrying the request.",
                 "schema": {
                   "type": "integer"
                 }
@@ -4670,10 +5921,11 @@
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
-            "description": "Unique key to prevent duplicate unassignment requests",
+            "description": "Required unique key used to prevent duplicate requests.",
             "schema": {
               "type": "string"
-            }
+            },
+            "example": "req_abc123"
           }
         ],
         "requestBody": {
@@ -4731,7 +5983,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -4744,34 +6003,21 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "description": "Unprocessable entity - idempotency key reused with different request data",
+            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request - missing or invalid Idempotency-Key header",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - idempotency key currently being processed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -4788,6 +6034,34 @@
             "headers": {
               "Retry-After": {
                 "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request (bad_request) - the configured idempotency header is required.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project or task is archived (project_archived or task_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before retrying the request.",
                 "schema": {
                   "type": "integer"
                 }
@@ -4845,7 +6119,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -4858,7 +6139,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -4874,6 +6162,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -4929,10 +6227,7 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4941,11 +6236,47 @@
               }
             }
           },
-          "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+          "403": {
+            "description": "Authorization error. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "task_not_trashed": {
+                "message": "Task must be trashed to perform this action.",
+                "code": "task_not_trashed",
+                "errors": [],
+                "meta": []
+              },
+              "plan_limit_exceeded": {
+                "message": "Plan limit exceeded.",
+                "code": "plan_limit_exceeded",
+                "errors": [],
+                "meta": {
+                  "reason": "Maximum projects reached",
+                  "limit_type": "projects",
+                  "limit_label": "Projects",
+                  "current_usage": 5,
+                  "max_allowed": 5,
+                  "limit_scope": "workspace",
+                  "can_upgrade": true,
+                  "upgrade_required": true
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Task must be trashed to perform this action.",
+              "code": "task_not_trashed",
+              "errors": [],
+              "meta": []
+            }
           },
-          "409": {
-            "description": "Conflict - Task is archived and cannot be accessed",
+          "401": {
+            "description": "Unauthenticated",
             "content": {
               "application/json": {
                 "schema": {
@@ -5025,7 +6356,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -5038,10 +6376,24 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -5057,6 +6409,16 @@
                 "description": "Number of seconds to wait before making a new request.",
                 "schema": {
                   "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -5110,7 +6472,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -5191,10 +6560,24 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -5291,13 +6674,158 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "users.update.patch",
+        "description": "Update the specified user's profile information (name, email, etc.).\nPassword changes are handled separately via PasswordUpdateController.\nOnly the owner can update their data.",
+        "summary": "Update user",
+        "tags": ["Users"],
+        "parameters": [
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "description": "The user UUID",
+            "schema": {
+              "type": ["string", "null"]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/UserProfile"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -5367,10 +6895,24 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -5442,10 +6984,24 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -5507,7 +7063,14 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "403": {
             "description": "Forbidden - insufficient permissions",
@@ -5520,7 +7083,14 @@
             }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -5608,13 +7178,34 @@
             }
           },
           "404": {
-            "$ref": "#/components/responses/ModelNotFoundException"
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "401": {
-            "$ref": "#/components/responses/AuthenticationException"
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationException"
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            }
           },
           "429": {
             "description": "Too many requests",
@@ -7977,14 +9568,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "description": "Error overview."
-                }
-              },
-              "required": ["message"]
+              "$ref": "#/components/schemas/PublicApiErrorEnvelope"
             }
           }
         }
@@ -7994,24 +9578,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "description": "Errors overview."
-                },
-                "errors": {
-                  "type": "object",
-                  "description": "A detailed description of each field that failed validation.",
-                  "additionalProperties": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                }
-              },
-              "required": ["message", "errors"]
+              "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
             }
           }
         }
@@ -8021,14 +9588,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "description": "Error overview."
-                }
-              },
-              "required": ["message"]
+              "$ref": "#/components/schemas/PublicApiErrorEnvelope"
             }
           }
         }
@@ -8038,14 +9598,7 @@
         "content": {
           "application/json": {
             "schema": {
-              "type": "object",
-              "properties": {
-                "message": {
-                  "type": "string",
-                  "description": "Error overview."
-                }
-              },
-              "required": ["message"]
+              "$ref": "#/components/schemas/PublicApiErrorEnvelope"
             }
           }
         }

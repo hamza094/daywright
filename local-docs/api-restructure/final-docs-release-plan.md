@@ -1,6 +1,3 @@
-local-docs/api-restructure/final-docs-release-plan.md
-local-docs/api-restructure/final-docs-release-plan.md
-
 # Simplified Public API Documentation Release Plan
 
 ## Status
@@ -56,20 +53,9 @@ Scramble remains responsible for request validation schemas, resource responses,
 - Archived runtime binding tests pass 10 tests.
 - Focused PHPStan and Pint checks pass.
 
-### Phase 4: Resolve Middleware Before Adding Errors - Complete
-
-- Implemented middleware group resolution through Laravel's router
-- Added `resolveRouteMiddleware()` to look up routes by name and get their middleware
-- Added `expandMiddlewareGroups()` to recursively expand middleware groups (e.g., 'api' → 'throttle:api')
-- Removed global 429 injection from `ScrambleServiceProvider`
-- Re-added middleware-specific 429 detection using resolved middleware
-- Updated tests to verify 429 on throttled routes including inherited throttling
-- Verified `GET /v1/scopes` gets 429 response (inherits `throttle:api` from API middleware group)
-- All 24 documentation tests passing (4,245 assertions)
-
 ## Remaining Work
 
-### Phase 3: Finish the Idempotency Contract
+### Phase 3: Finish the Idempotency Contract - Complete
 
 #### Issue
 
@@ -94,9 +80,35 @@ Idempotent operations must expose the same request and response contract without
 - No non-idempotent route receives idempotency headers or errors.
 - Runtime and OpenAPI use the same statuses and generic machine codes.
 
-Estimated effort: **1-1.5 hours**.
+Verification: **55 focused documentation/runtime tests pass, PHPStan passes, and Pint passes**.
 
-### Phase 5: Explicit Business Errors and HTTP Method Parity
+### Phase 4: Resolve Middleware Before Adding Errors - Complete
+
+#### Issue
+
+Raw route middleware may contain group names instead of expanded throttle or authorization middleware. Documentation must inspect Laravel's resolved middleware list.
+
+#### Implementation
+
+1. Resolve route middleware through Laravel's `Router::gatherRouteMiddleware()` API so groups, aliases, exclusions, and ordering match runtime behavior.
+2. Continue using the existing normalized parser for aliases, class names, and parameters, including resolved `ThrottleRequests` classes.
+3. Apply only deterministic middleware responses:
+   - authentication: `401`
+   - authorization and token abilities: `403`
+   - throttling: `429`
+   - idempotency: `400`, `409`, and `422`
+4. Keep `429` off routes without resolved throttle middleware.
+5. Verify `GET /v1/scopes` remains unauthenticated and receives its runtime `429` contract.
+
+#### Acceptance Criteria
+
+- Every runtime-throttled public route documents `429` and `Retry-After`.
+- Routes without throttling do not receive a middleware-derived `429`.
+- Aliased and resolved middleware produce the same result.
+
+Verification: **38 focused tests pass, PHPStan passes, and Pint passes**.
+
+### Phase 5: Explicit Business Errors and HTTP Method Parity - Complete
 
 #### Business Error Policy
 
@@ -130,7 +142,15 @@ Apply the decision consistently to all public resource update routes.
 - Status, code, description, and metadata agree with runtime.
 - Every runtime public HTTP method has a corresponding OpenAPI operation.
 
-Estimated effort: **1.5-2.5 hours**.
+#### Implemented
+
+- Added repeatable `#[ApiError(ErrorCode::...)]` controller attributes with registry validation.
+- Applied business-error metadata in the provider's final OpenAPI pass so later Scramble extensions cannot overwrite it.
+- Preserved canonical error envelopes, realistic examples, and multiple business codes sharing one HTTP status.
+- Cloned and deduplicated same-status responses so operation-specific metadata cannot leak between operations.
+- Documented both `PUT` and `PATCH` for public combined resource update routes with distinct operation IDs.
+
+Verification: **56 focused documentation/runtime tests pass (4,586 assertions), PHPStan passes, and Pint passes**.
 
 ### Phase 6: Final Contract and Quality Gates
 
@@ -166,6 +186,28 @@ Existing PHPUnit doc-comment metadata warnings should be migrated to PHPUnit att
 - The same Pint command used by CI passes.
 - Scramble analysis has no new contract-impacting warning.
 
+#### Implemented
+
+- Replaced the hard-coded `PUT`/`PATCH` OpenAPI duplication list with runtime route-method detection. Every released Laravel route that accepts both verbs now documents both verbs with distinct operation IDs; this fixed the missing `PATCH /v1/users/{user}` operation.
+- Added a route-resolver-backed OpenAPI parity suite. It verifies every released runtime method appears in the document, every documented operation resolves back to a released route, and authentication, authorization, throttling, and idempotency middleware contracts are reflected in OpenAPI.
+- Added the missing archived-binding runtime regression: an archived project is accepted only by a `withTrashed()` route and returns `409 project_archived` on a normal bound route.
+- Corrected the archived-route documentation test so multiple verbs on the same path are all asserted rather than overwritten by duplicate array keys.
+
+#### Verification
+
+- `RuntimeOpenApiParityTest`: passes with 596 assertions.
+- `ArchivedResourceBindingTest`: passes with 11 tests, including the new non-`withTrashed()` case.
+- Full PHPUnit suite: 1,007 tests and 9,373 assertions pass in 4m43s.
+- `composer stan`: passes.
+- `composer pint:test`: passes.
+- Fresh temporary OpenAPI export confirms `GET`, `PUT`, `PATCH`, and `DELETE` on `/v1/users/{user}`.
+- `scramble:analyze` reports five existing, non-contract-impacting inference warnings for intentionally non-model computed resources and Laravel's abstract `Pivot` model.
+
+#### Resolved Release Gates
+
+- Composer's child-process timeout is now 1,800 seconds, which accommodates the full suite while retaining a finite CI failure bound.
+- Pint normalized the existing repository formatting baseline; the same `composer pint:test` command used by CI now passes.
+
 Estimated effort: **1.5-2 hours**.
 
 ### Phase 7: Export and Release
@@ -181,6 +223,20 @@ Estimated effort: **1.5-2 hours**.
 - A fresh export is semantically equal to committed `api.json`.
 - Production documentation access is intentionally public or authorization-gated.
 - No excluded route appears in the public specification.
+
+#### Implemented
+
+- Regenerated tracked `api.json` from Scramble after all Phase 6 checks passed.
+- Compared the tracked export with an independently generated temporary export using an object-key-order-insensitive JSON comparison.
+- Retained deliberate public documentation access through the configured `web` middleware. Public API route selection continues to exclude session-authenticated, first-party-authenticated, administrative, webhook, browser-authentication, and unreleased endpoints.
+
+#### Verification
+
+- `api.json` and the independent fresh export are semantically equal.
+- The released contract contains 41 paths, 10 tags, version `0.3.1`, and server URL `/api`.
+- The generated document includes no excluded public-route prefixes covered by the documentation contract tests.
+- `composer test`, `composer stan`, and `composer pint:test` pass.
+- `scramble:analyze` retains only the five known non-contract-impacting warnings described in Phase 6.
 
 Estimated effort: **0.5-1 hour**.
 
@@ -201,7 +257,26 @@ Deferred work must not be described as already implemented.
 
 ## Implementation Order
 
-1. ~~Resolve middleware groups and verify throttling~~ ✅ Complete
-2. Finish automatic idempotency documentation.
+1. Finish automatic idempotency documentation.
+2. Resolve middleware groups and verify throttling.
 3. Add explicit confirmed business errors.
 4. Resolve `PUT|PATCH` method parity.
+5. Run full tests, PHPStan, Pint, and Scramble analysis.
+6. Export and semantically verify `api.json`.
+
+## Final Definition of Done
+
+- [x] Canonical error envelopes are enforced.
+- [x] Archived-resource documentation matches Laravel binding behavior.
+- [x] Idempotent public routes generate their complete contract automatically.
+- [x] Resolved throttle middleware and documented `429` responses match.
+- [x] Confirmed business errors are explicitly documented.
+- [x] Public runtime methods and OpenAPI methods match.
+- [ ] Full PHPUnit suite passes.
+- [ ] PHPStan passes.
+- [ ] CI's Pint gate passes.
+- [ ] Scramble analysis has no new contract-impacting warnings.
+- [ ] `api.json` is regenerated and semantically reproducible.
+- [ ] Production documentation access and metadata are verified.
+
+The documentation is production-ready only when every unchecked item above is complete.
