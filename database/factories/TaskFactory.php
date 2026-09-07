@@ -7,6 +7,7 @@ namespace Database\Factories;
 use App\Enums\TaskSystemStatus;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -32,7 +33,7 @@ class TaskFactory extends Factory
             'user_id' => User::factory(),
             'project_id' => Project::factory(),
             'description' => $this->faker->text($maxNbChars = 250),
-            'status_id' => TaskSystemStatus::Pending->value,
+            'status_id' => fn () => $this->systemStatusId(TaskSystemStatus::Pending),
         ];
     }
 
@@ -66,7 +67,7 @@ class TaskFactory extends Factory
     {
         return $this->state(function (array $attributes) {
             return [
-                'status_id' => TaskSystemStatus::Completed->value,
+                'status_id' => fn () => $this->systemStatusId(TaskSystemStatus::Completed),
                 'due_at' => Carbon::now()->addDays($this->faker->numberBetween(1, 5)),
             ];
         });
@@ -76,9 +77,17 @@ class TaskFactory extends Factory
     {
         return $this->state(function (array $attributes) {
             return [
-                'status_id' => TaskSystemStatus::InProgress->value,
+                'status_id' => fn () => $this->systemStatusId(TaskSystemStatus::InProgress),
                 'due_at' => Carbon::now()->addDays($this->faker->numberBetween(5, 30)),
             ];
         });
+    }
+
+    private function systemStatusId(TaskSystemStatus $status): int
+    {
+        return TaskStatus::query()->firstOrCreate(
+            ['id' => $status->value],
+            ['label' => $status->name, 'color' => '#CCCCCC'],
+        )->id;
     }
 }

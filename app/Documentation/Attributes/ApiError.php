@@ -14,10 +14,10 @@ use InvalidArgumentException;
  * The error code must exist in the public ErrorCode registry.
  */
 #[Attribute(Attribute::IS_REPEATABLE | Attribute::TARGET_METHOD)]
-final class ApiError
+final readonly class ApiError
 {
     public function __construct(
-        public readonly string $code,
+        public string $code,
     ) {
         if (ErrorCode::get($code) === null) {
             throw new InvalidArgumentException("Unknown public API error code [{$code}].");

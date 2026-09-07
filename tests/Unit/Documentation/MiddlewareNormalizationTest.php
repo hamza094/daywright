@@ -50,11 +50,11 @@ class MiddlewareNormalizationTest extends TestCase
     /** @test */
     public function parses_namespaced_middleware(): void
     {
-        $result = PublicApiMiddlewareResponses::parseMiddleware('Illuminate\Auth\Middleware\Authorize');
+        $result = PublicApiMiddlewareResponses::parseMiddleware(\Illuminate\Auth\Middleware\Authorize::class);
 
         $this->assertSame('Authorize', $result['baseName']);
         $this->assertSame([], $result['parameters']);
-        $this->assertSame('Illuminate\Auth\Middleware\Authorize', $result['original']);
+        $this->assertSame(\Illuminate\Auth\Middleware\Authorize::class, $result['original']);
     }
 
     /** @test */
@@ -136,7 +136,7 @@ class MiddlewareNormalizationTest extends TestCase
     public function recognizes_idempotent_class(): void
     {
         $middleware = [
-            ['baseName' => 'Idempotent', 'parameters' => [], 'original' => 'WendellAdriel\Idempotency\Http\Middleware\Idempotent'],
+            ['baseName' => 'Idempotent', 'parameters' => [], 'original' => \WendellAdriel\Idempotency\Http\Middleware\Idempotent::class],
         ];
 
         $this->assertTrue(PublicApiMiddlewareResponses::hasIdempotencyMiddlewareStatic($middleware));

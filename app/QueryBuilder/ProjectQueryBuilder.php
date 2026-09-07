@@ -33,11 +33,11 @@ class ProjectQueryBuilder extends Builder
     public function sortBy(string $sortBy = '-created_at'): self
     {
         return match ($sortBy) {
-            'created_at' => $this->orderBy('created_at', 'asc'),
-            '-created_at' => $this->orderBy('created_at', 'desc'),
-            'name' => $this->orderBy('name', 'asc'),
-            '-name' => $this->orderBy('name', 'desc'),
-            default => $this->orderBy('created_at', 'desc'),
+            'created_at' => $this->orderBy($this->qualifyColumn('created_at'), 'asc'),
+            '-created_at' => $this->orderBy($this->qualifyColumn('created_at'), 'desc'),
+            'name' => $this->orderBy($this->qualifyColumn('name'), 'asc'),
+            '-name' => $this->orderBy($this->qualifyColumn('name'), 'desc'),
+            default => $this->orderBy($this->qualifyColumn('created_at'), 'desc'),
         };
     }
 

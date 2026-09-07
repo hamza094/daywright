@@ -11,6 +11,7 @@ use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\Stage;
 use App\Models\Task;
 use App\Models\User;
 use Carbon\Carbon;
@@ -39,6 +40,7 @@ class PlanLimitServiceFeatureTest extends TestCase
 
         // FixtureHelpers seeds the task statuses required by the task factories.
         $this->createTaskStatuses();
+        Stage::factory()->create(['id' => 1]);
 
         // AuthenticatedProjectHelpers provisions the signed-in user and default project.
         $this->setUpAuthenticatedUserWithProject(disableSubscriptionMiddleware: true);

@@ -15,7 +15,7 @@ class MentionedUserTest extends TestCase
     /** @test */
     public function it_wraps_mentioned_usernames_in_the_body_within_anchor_tag(): void
     {
-        $conversation = Conversation::factory()->create(['user_id' => 1, 'message' => 'Hello @johnathan77']);
+        $conversation = Conversation::factory()->create(['message' => 'Hello @johnathan77']);
 
         $this->assertEquals(
             'Hello <a href="/user/johnathan77/profile" target="_blank">@johnathan77</a>',

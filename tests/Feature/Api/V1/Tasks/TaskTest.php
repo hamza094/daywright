@@ -158,13 +158,13 @@ class TaskTest extends TestCase
     /** @test */
     public function allowed_user_can_create_projects_task(): void
     {
-        $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), [
+        $response = $this->postJson($this->apiV1ProjectRoute('tasks.store', $this->project), [
             'title' => 'My Project Task',
             'status_id' => $this->status->id,
         ])->assertCreated()
-            ->assertJsonPath('data.id', 1)
             ->assertJsonPath('data.title', 'My Project Task');
 
+        $response->assertJsonPath('data.id', $this->project->tasks()->sole()->id);
         $this->assertDatabaseHas('tasks', ['title' => 'My Project Task']);
     }
 
@@ -261,7 +261,7 @@ class TaskTest extends TestCase
         $updatedTitle = 'Task title updated';
         $updatedDescription = 'Task updated description';
 
-        $status2 = TaskStatus::factory()->create();
+        $status2 = TaskStatus::factory()->create(['id' => 2]);
 
         $this->withoutExceptionHandling()->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'title' => $updatedTitle,

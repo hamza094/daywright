@@ -41,7 +41,7 @@ class ProjectTest extends TestCase
     {
         $user = User::factory()->create();
         Sanctum::actingAs($user);
-        TaskStatus::factory()->create();
+        TaskStatus::factory()->create(['id' => 1]);
         $project = Project::factory()->create(['user_id' => $user->id]);
         $project->addTask('run berry run');
         $this->assertCount(1, $project->tasks);

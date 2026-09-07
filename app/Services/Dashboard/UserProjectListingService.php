@@ -84,6 +84,7 @@ class UserProjectListingService
         $query = $projects->getQuery();
 
         return $query
+            ->select('projects.*')
             ->with(self::PROJECT_LIST_RELATIONS)
             ->when($filters->abandoned, fn (Builder $query): Builder => $query->onlyTrashed())
             ->when($filters->search, function (Builder $query, string $value): Builder {

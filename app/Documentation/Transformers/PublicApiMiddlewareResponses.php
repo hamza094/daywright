@@ -45,7 +45,7 @@ final class PublicApiMiddlewareResponses extends OperationExtension
         if (str_contains($baseName, ':')) {
             [$baseName, $paramString] = explode(':', $baseName, 2);
             $parameters = explode(',', $paramString);
-            $parameters = array_map('trim', $parameters);
+            $parameters = array_map(trim(...), $parameters);
         }
 
         return [
@@ -157,9 +157,7 @@ final class PublicApiMiddlewareResponses extends OperationExtension
      */
     private function resolveRouteMiddleware(IlluminateRoute $route): array
     {
-        $middleware = app(Router::class)->gatherRouteMiddleware($route);
-
-        return $middleware;
+        return app(Router::class)->gatherRouteMiddleware($route);
     }
 
     /**
@@ -402,8 +400,8 @@ final class PublicApiMiddlewareResponses extends OperationExtension
                 continue;
             }
 
-            if (! str_contains($response->description, $description)) {
-                $response->setDescription(rtrim($response->description, '.').'. '.$description);
+            if (! str_contains((string) $response->description, $description)) {
+                $response->setDescription(rtrim((string) $response->description, '.').'. '.$description);
             }
 
             $operation->responses[$index] = $response;

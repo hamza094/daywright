@@ -153,7 +153,7 @@ final class ScrambleServiceProvider extends ServiceProvider
             foreach ($path->operations as $method => $operation) {
                 $route = $this->findPublicRouteForOperation($path->path, $method);
 
-                if (! $route) {
+                if (! $route instanceof Route) {
                     continue;
                 }
 
@@ -420,12 +420,6 @@ final class ScrambleServiceProvider extends ServiceProvider
         // Normalize the response to use canonical envelope
         $this->normalizeErrorResponseToCanonicalEnvelope($resolvedResponse, $responseCode, $components);
 
-        // If it was originally a reference, we need to recreate it with the normalized schema
-        if ($response instanceof Reference) {
-            // Re-create as inline response with normalized schema
-            return $resolvedResponse;
-        }
-
         return $resolvedResponse;
     }
 
@@ -519,7 +513,7 @@ final class ScrambleServiceProvider extends ServiceProvider
 
         return match ($normalizedPath) {
             'v1/dashboard/chart-data', 'dashboard/chart-data' => [
-                $this->makeQueryParameter('year', new IntegerType, 'Year for chart data', 2025, null, null, null),
+                $this->makeQueryParameter('year', new IntegerType, 'Year for chart data', 2025),
                 $this->makeQueryParameter('month', new IntegerType, 'Month for chart data (1-12)', 7, null, 1, 12),
             ],
             'v1/dashboard/activities', 'dashboard/activities' => [
@@ -527,31 +521,31 @@ final class ScrambleServiceProvider extends ServiceProvider
                 $this->makeQueryParameter('end_date', new StringType, 'End date in ISO 8601 format', '2025-12-31', null, null, null, 'date', true),
             ],
             'v1/projects', 'projects' => [
-                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
+                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1),
                 $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 6, 6, 1, 100),
             ],
             'v1/projects/{project}/activities', 'projects/{project}/activities' => [
-                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
+                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1),
                 $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 10, 10, 1, 100),
             ],
             'v1/projects/{project}/conversations', 'projects/{project}/conversations' => [
-                $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0', null, null, null),
+                $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0'),
                 $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 10, 10, 1, 100),
             ],
             'v1/users/me/invitations', 'users/me/invitations' => [
-                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
+                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1),
                 $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 10, 10, 1, 100),
             ],
             'v1/dashboard/tasks', 'dashboard/tasks' => [
-                $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0', null, null, null),
+                $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0'),
                 $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 15, 15, 1, 100),
             ],
             'v1/notifications', 'notifications' => [
-                $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0', null, null, null),
+                $this->makeQueryParameter('cursor', new StringType, 'Cursor for pagination', 'eyJpZCI6MX0'),
                 $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 25, 25, 1, 100),
             ],
             'v1/projects/{project}/tasks', 'projects/{project}/tasks' => [
-                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1, null),
+                $this->makeQueryParameter('page', new IntegerType, 'Page number for pagination', 1, 1, 1),
                 $this->makeQueryParameter('per_page', new IntegerType, 'Number of items per page', 20, 20, 1, 100),
             ],
             default => [],
@@ -664,7 +658,7 @@ final class ScrambleServiceProvider extends ServiceProvider
 
         foreach (ErrorCode::all() as $code => $definition) {
             // Skip non-public service-specific errors
-            if (in_array($code, [ErrorCode::DASHBOARD_SERVICE_ERROR], true)) {
+            if ($code === ErrorCode::DASHBOARD_SERVICE_ERROR) {
                 continue;
             }
 
@@ -800,7 +794,7 @@ final class ScrambleServiceProvider extends ServiceProvider
             'message' => $messageExample,
             'code' => $codeExample,
             'errors' => [],
-            'meta' => ! empty($metaExample) ? $metaExample : [],
+            'meta' => $metaExample,
         ];
 
         return Schema::fromType(

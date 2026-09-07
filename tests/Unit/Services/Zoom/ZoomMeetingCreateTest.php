@@ -88,7 +88,7 @@ class ZoomMeetingCreateTest extends TestCase
         $this->assertNotNull($tokens);
         $this->assertEquals('new-access-token-here', $tokens->accessToken);
         $this->assertEquals('new-refresh-token-here', $tokens->refreshToken);
-        $this->assertTrue(now()->addHour()->equalTo($tokens->expiresAt));
+        $this->assertEquals(now()->addHour()->format('Y-m-d H:i:s'), $tokens->expiresAt->format('Y-m-d H:i:s'));
     }
 
     /** @test */

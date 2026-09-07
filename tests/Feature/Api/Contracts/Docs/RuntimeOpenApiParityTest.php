@@ -29,7 +29,7 @@ final class RuntimeOpenApiParityTest extends TestCase
             $path = '/'.Str::after($route->uri(), 'api/');
 
             foreach ($route->methods() as $method) {
-                $method = mb_strtolower($method);
+                $method = mb_strtolower((string) $method);
 
                 if (! in_array($method, self::DOCUMENTED_METHODS, true)) {
                     continue;

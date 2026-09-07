@@ -5387,16 +5387,16 @@
         },
         {
             "name": "mtdowling/jmespath.php",
-            "version": "2.8.0",
+            "version": "2.9.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/jmespath/jmespath.php.git",
-                "reference": "a2a865e05d5f420b50cc2f85bb78d565db12a6bc"
+                "reference": "2157c5e50e813ec6a96c1eed3be7f64a20fb32a8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/jmespath/jmespath.php/zipball/a2a865e05d5f420b50cc2f85bb78d565db12a6bc",
-                "reference": "a2a865e05d5f420b50cc2f85bb78d565db12a6bc",
+                "url": "https://api.github.com/repos/jmespath/jmespath.php/zipball/2157c5e50e813ec6a96c1eed3be7f64a20fb32a8",
+                "reference": "2157c5e50e813ec6a96c1eed3be7f64a20fb32a8",
                 "shasum": ""
             },
             "require": {
@@ -5405,7 +5405,7 @@
             },
             "require-dev": {
                 "composer/xdebug-handler": "^3.0.3",
-                "phpunit/phpunit": "^8.5.33"
+                "phpunit/phpunit": "^8.5.52"
             },
             "bin": [
                 "bin/jp.php"
@@ -5413,7 +5413,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "2.8-dev"
+                    "dev-master": "2.9-dev"
                 }
             },
             "autoload": {
@@ -5447,9 +5447,9 @@
             ],
             "support": {
                 "issues": "https://github.com/jmespath/jmespath.php/issues",
-                "source": "https://github.com/jmespath/jmespath.php/tree/2.8.0"
+                "source": "https://github.com/jmespath/jmespath.php/tree/2.9.2"
             },
-            "time": "2024-09-04T18:46:31+00:00"
+            "time": "2026-07-06T18:56:19+00:00"
         },
         {
             "name": "myclabs/deep-copy",
@@ -6180,16 +6180,16 @@
         },
         {
             "name": "paragonie/sodium_compat",
-            "version": "v2.5.0",
+            "version": "v2.5.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/paragonie/sodium_compat.git",
-                "reference": "4714da6efdc782c06690bc72ce34fae7941c2d9f"
+                "reference": "3246b36803c177847e677862fedeb7f937869adb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/paragonie/sodium_compat/zipball/4714da6efdc782c06690bc72ce34fae7941c2d9f",
-                "reference": "4714da6efdc782c06690bc72ce34fae7941c2d9f",
+                "url": "https://api.github.com/repos/paragonie/sodium_compat/zipball/3246b36803c177847e677862fedeb7f937869adb",
+                "reference": "3246b36803c177847e677862fedeb7f937869adb",
                 "shasum": ""
             },
             "require": {
@@ -6270,9 +6270,9 @@
             ],
             "support": {
                 "issues": "https://github.com/paragonie/sodium_compat/issues",
-                "source": "https://github.com/paragonie/sodium_compat/tree/v2.5.0"
+                "source": "https://github.com/paragonie/sodium_compat/tree/v2.5.2"
             },
-            "time": "2025-12-30T16:12:18+00:00"
+            "time": "2026-08-18T23:46:48+00:00"
         },
         {
             "name": "php-debugbar/php-debugbar",
@@ -6350,16 +6350,16 @@
         },
         {
             "name": "phpoffice/phpspreadsheet",
-            "version": "1.30.4",
+            "version": "1.30.6",
             "source": {
                 "type": "git",
                 "url": "https://github.com/PHPOffice/PhpSpreadsheet.git",
-                "reference": "02970383cc12e7bf0bc0707ea6e2e8ed23a7aec9"
+                "reference": "a416375ffc8bf5b661c1bb4e6c60d8f3fddbe5ce"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/PHPOffice/PhpSpreadsheet/zipball/02970383cc12e7bf0bc0707ea6e2e8ed23a7aec9",
-                "reference": "02970383cc12e7bf0bc0707ea6e2e8ed23a7aec9",
+                "url": "https://api.github.com/repos/PHPOffice/PhpSpreadsheet/zipball/a416375ffc8bf5b661c1bb4e6c60d8f3fddbe5ce",
+                "reference": "a416375ffc8bf5b661c1bb4e6c60d8f3fddbe5ce",
                 "shasum": ""
             },
             "require": {
@@ -6452,9 +6452,9 @@
             ],
             "support": {
                 "issues": "https://github.com/PHPOffice/PhpSpreadsheet/issues",
-                "source": "https://github.com/PHPOffice/PhpSpreadsheet/tree/1.30.4"
+                "source": "https://github.com/PHPOffice/PhpSpreadsheet/tree/1.30.6"
             },
-            "time": "2026-04-19T06:00:39+00:00"
+            "time": "2026-07-12T19:59:31+00:00"
         },
         {
             "name": "phpoption/phpoption",
@@ -6533,16 +6533,16 @@
         },
         {
             "name": "phpseclib/phpseclib",
-            "version": "3.0.52",
+            "version": "3.0.57",
             "source": {
                 "type": "git",
                 "url": "https://github.com/phpseclib/phpseclib.git",
-                "reference": "2adaefc83df2ec548558307690f376dd7d4f4fce"
+                "reference": "d17e0ddaeaf6f22f7e007cbb437d78792fe2a0e4"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/2adaefc83df2ec548558307690f376dd7d4f4fce",
-                "reference": "2adaefc83df2ec548558307690f376dd7d4f4fce",
+                "url": "https://api.github.com/repos/phpseclib/phpseclib/zipball/d17e0ddaeaf6f22f7e007cbb437d78792fe2a0e4",
+                "reference": "d17e0ddaeaf6f22f7e007cbb437d78792fe2a0e4",
                 "shasum": ""
             },
             "require": {
@@ -6623,7 +6623,7 @@
             ],
             "support": {
                 "issues": "https://github.com/phpseclib/phpseclib/issues",
-                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.52"
+                "source": "https://github.com/phpseclib/phpseclib/tree/3.0.57"
             },
             "funding": [
                 {
@@ -6639,7 +6639,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-04-27T07:02:15+00:00"
+            "time": "2026-08-26T12:13:21+00:00"
         },
         {
             "name": "phpstan/phpdoc-parser",

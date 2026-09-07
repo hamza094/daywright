@@ -10,7 +10,7 @@ trait EscapesLikeWildcards
 {
     protected function escapeLikeWildcards(string $value): string
     {
-        return str_replace(['%', '_'], ['\\%', '\\_'], $value);
+        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
     }
 
     /**
@@ -26,7 +26,7 @@ trait EscapesLikeWildcards
         $wrappedColumn = $query->getQuery()->getGrammar()->wrap($column);
 
         return $query->whereRaw(
-            "{$wrappedColumn} LIKE ? ESCAPE '\\'",
+            "{$wrappedColumn} LIKE ? ESCAPE '!'",
             [$this->escapeLikeWildcards($value).'%'],
             $boolean,
         );

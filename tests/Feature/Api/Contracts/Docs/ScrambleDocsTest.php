@@ -956,28 +956,6 @@ class ScrambleDocsTest extends TestCase
     }
 
     /**
-     * Assert that an error response has the correct structure
-     *
-     * @param  array<string, mixed>  $response
-     * @param  array<string, mixed>  $docs
-     */
-    private function assertErrorResponse(
-        array $response,
-        array $docs,
-        string $expectedErrorRef
-    ): void {
-        $resolved = $this->resolveResponse($response, $docs);
-
-        // Check schema reference
-        $schemaRef = $resolved['content']['application/json']['schema']['$ref'] ?? null;
-        $this->assertSame(
-            $expectedErrorRef,
-            $schemaRef,
-            'Error response should reference the correct error envelope schema'
-        );
-    }
-
-    /**
      * @param  array<string, mixed>  $schema
      * @return array<int, string>
      */

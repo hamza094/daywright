@@ -128,8 +128,6 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
         $meeting = MeetingTestHelper::createMeeting($project, $user, [
             'meeting_id' => 813,
             'topic' => 'Original topic',
-            'user_id' => 1,
-            'project_id' => 1,
         ]);
 
         $payload = [
@@ -144,8 +142,8 @@ class ProcessMeetingUpdateWebhookTest extends TestCase
         $job->handle(app(HandleMeetingUpdatedWebhook::class));
 
         $this->assertSame('Updated topic', $meeting->fresh()->topic);
-        $this->assertSame(1, $meeting->fresh()->user_id);
-        $this->assertSame(1, $meeting->fresh()->project_id);
+        $this->assertSame($user->id, $meeting->fresh()->user_id);
+        $this->assertSame($project->id, $meeting->fresh()->project_id);
     }
 
     /** @test */

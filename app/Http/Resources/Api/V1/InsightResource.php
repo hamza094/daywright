@@ -27,9 +27,9 @@ class InsightResource extends JsonResource
         // The underlying builders return arrays; handle both array and object resources
         $item = $this->resource;
 
-        $type = isset($item['type']) ? (string) $item['type'] : ($this->type ?? 'info');
-        $title = isset($item['title']) ? (string) $item['title'] : ($this->title ?? '');
-        $message = isset($item['message']) ? (string) $item['message'] : ($this->message ?? '');
+        $type = $item['type'] ?? ($this->type ?? 'info');
+        $title = $item['title'] ?? ($this->title ?? '');
+        $message = $item['message'] ?? ($this->message ?? '');
         $data = $item['data'] ?? ($this->data ?? []);
 
         return [
