@@ -264,12 +264,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -404,7 +426,7 @@
             }
           },
           "403": {
-            "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required.",
+            "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -420,6 +442,27 @@
                 "meta": {
                   "upgrade_required": true
                 }
+              },
+              "plan_limit_exceeded": {
+                "message": "Plan limit exceeded.",
+                "code": "plan_limit_exceeded",
+                "errors": [],
+                "meta": {
+                  "reason": "Maximum projects reached",
+                  "limit_type": "projects",
+                  "limit_label": "Projects",
+                  "current_usage": 5,
+                  "max_allowed": 5,
+                  "limit_scope": "workspace",
+                  "can_upgrade": true,
+                  "upgrade_required": true
+                }
+              },
+              "task_not_trashed": {
+                "message": "Task must be trashed to perform this action.",
+                "code": "task_not_trashed",
+                "errors": [],
+                "meta": []
               }
             },
             "x-error-example": {
@@ -682,12 +725,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -1048,12 +1113,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -1152,12 +1239,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -1427,12 +1536,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -1570,7 +1701,7 @@
             }
           },
           "403": {
-            "description": "Authorization error. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded.",
+            "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1579,6 +1710,14 @@
               }
             },
             "x-error-examples": {
+              "subscription_required": {
+                "message": "Access denied. An active subscription is required to perform this action.",
+                "code": "subscription_required",
+                "errors": [],
+                "meta": {
+                  "upgrade_required": true
+                }
+              },
               "plan_limit_exceeded": {
                 "message": "Plan limit exceeded.",
                 "code": "plan_limit_exceeded",
@@ -1593,20 +1732,19 @@
                   "can_upgrade": true,
                   "upgrade_required": true
                 }
+              },
+              "task_not_trashed": {
+                "message": "Task must be trashed to perform this action.",
+                "code": "task_not_trashed",
+                "errors": [],
+                "meta": []
               }
             },
             "x-error-example": {
-              "message": "Plan limit exceeded.",
-              "code": "plan_limit_exceeded",
+              "message": "Access denied. An active subscription is required to perform this action.",
+              "code": "subscription_required",
               "errors": [],
               "meta": {
-                "reason": "Maximum projects reached",
-                "limit_type": "projects",
-                "limit_label": "Projects",
-                "current_usage": 5,
-                "max_allowed": 5,
-                "limit_scope": "workspace",
-                "can_upgrade": true,
                 "upgrade_required": true
               }
             }
@@ -1760,12 +1898,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -1896,7 +2056,7 @@
             }
           },
           "403": {
-            "description": "Authorization error. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded.",
+            "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1905,6 +2065,14 @@
               }
             },
             "x-error-examples": {
+              "subscription_required": {
+                "message": "Access denied. An active subscription is required to perform this action.",
+                "code": "subscription_required",
+                "errors": [],
+                "meta": {
+                  "upgrade_required": true
+                }
+              },
               "plan_limit_exceeded": {
                 "message": "Plan limit exceeded.",
                 "code": "plan_limit_exceeded",
@@ -1919,20 +2087,19 @@
                   "can_upgrade": true,
                   "upgrade_required": true
                 }
+              },
+              "task_not_trashed": {
+                "message": "Task must be trashed to perform this action.",
+                "code": "task_not_trashed",
+                "errors": [],
+                "meta": []
               }
             },
             "x-error-example": {
-              "message": "Plan limit exceeded.",
-              "code": "plan_limit_exceeded",
+              "message": "Access denied. An active subscription is required to perform this action.",
+              "code": "subscription_required",
               "errors": [],
               "meta": {
-                "reason": "Maximum projects reached",
-                "limit_type": "projects",
-                "limit_label": "Projects",
-                "current_usage": 5,
-                "max_allowed": 5,
-                "limit_scope": "workspace",
-                "can_upgrade": true,
                 "upgrade_required": true
               }
             }
@@ -2494,12 +2661,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -2660,12 +2849,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -2945,12 +3156,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -3057,12 +3290,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -3243,12 +3498,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -3395,12 +3672,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -3832,12 +4131,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -3911,12 +4232,51 @@
             }
           },
           "403": {
-            "description": "Authorization error",
+            "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "subscription_required": {
+                "message": "Access denied. An active subscription is required to perform this action.",
+                "code": "subscription_required",
+                "errors": [],
+                "meta": {
+                  "upgrade_required": true
+                }
+              },
+              "plan_limit_exceeded": {
+                "message": "Plan limit exceeded.",
+                "code": "plan_limit_exceeded",
+                "errors": [],
+                "meta": {
+                  "reason": "Maximum projects reached",
+                  "limit_type": "projects",
+                  "limit_label": "Projects",
+                  "current_usage": 5,
+                  "max_allowed": 5,
+                  "limit_scope": "workspace",
+                  "can_upgrade": true,
+                  "upgrade_required": true
+                }
+              },
+              "task_not_trashed": {
+                "message": "Task must be trashed to perform this action.",
+                "code": "task_not_trashed",
+                "errors": [],
+                "meta": []
+              }
+            },
+            "x-error-example": {
+              "message": "Access denied. An active subscription is required to perform this action.",
+              "code": "subscription_required",
+              "errors": [],
+              "meta": {
+                "upgrade_required": true
               }
             }
           },
@@ -4227,12 +4587,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -4497,12 +4879,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -4965,12 +5369,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -5070,7 +5496,7 @@
             }
           },
           "403": {
-            "description": "Authorization error. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded.",
+            "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5079,6 +5505,14 @@
               }
             },
             "x-error-examples": {
+              "subscription_required": {
+                "message": "Access denied. An active subscription is required to perform this action.",
+                "code": "subscription_required",
+                "errors": [],
+                "meta": {
+                  "upgrade_required": true
+                }
+              },
               "plan_limit_exceeded": {
                 "message": "Plan limit exceeded.",
                 "code": "plan_limit_exceeded",
@@ -5093,20 +5527,19 @@
                   "can_upgrade": true,
                   "upgrade_required": true
                 }
+              },
+              "task_not_trashed": {
+                "message": "Task must be trashed to perform this action.",
+                "code": "task_not_trashed",
+                "errors": [],
+                "meta": []
               }
             },
             "x-error-example": {
-              "message": "Plan limit exceeded.",
-              "code": "plan_limit_exceeded",
+              "message": "Access denied. An active subscription is required to perform this action.",
+              "code": "subscription_required",
               "errors": [],
               "meta": {
-                "reason": "Maximum projects reached",
-                "limit_type": "projects",
-                "limit_label": "Projects",
-                "current_usage": 5,
-                "max_allowed": 5,
-                "limit_scope": "workspace",
-                "can_upgrade": true,
                 "upgrade_required": true
               }
             }
@@ -5122,12 +5555,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -5643,7 +6098,7 @@
             }
           },
           "403": {
-            "description": "Authorization error. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
+            "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -5652,6 +6107,29 @@
               }
             },
             "x-error-examples": {
+              "subscription_required": {
+                "message": "Access denied. An active subscription is required to perform this action.",
+                "code": "subscription_required",
+                "errors": [],
+                "meta": {
+                  "upgrade_required": true
+                }
+              },
+              "plan_limit_exceeded": {
+                "message": "Plan limit exceeded.",
+                "code": "plan_limit_exceeded",
+                "errors": [],
+                "meta": {
+                  "reason": "Maximum projects reached",
+                  "limit_type": "projects",
+                  "limit_label": "Projects",
+                  "current_usage": 5,
+                  "max_allowed": 5,
+                  "limit_scope": "workspace",
+                  "can_upgrade": true,
+                  "upgrade_required": true
+                }
+              },
               "task_not_trashed": {
                 "message": "Task must be trashed to perform this action.",
                 "code": "task_not_trashed",
@@ -5660,10 +6138,12 @@
               }
             },
             "x-error-example": {
-              "message": "Task must be trashed to perform this action.",
-              "code": "task_not_trashed",
+              "message": "Access denied. An active subscription is required to perform this action.",
+              "code": "subscription_required",
               "errors": [],
-              "meta": []
+              "meta": {
+                "upgrade_required": true
+              }
             }
           },
           "404": {
@@ -6237,7 +6717,7 @@
             }
           },
           "403": {
-            "description": "Authorization error. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded.",
+            "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
             "content": {
               "application/json": {
                 "schema": {
@@ -6246,11 +6726,13 @@
               }
             },
             "x-error-examples": {
-              "task_not_trashed": {
-                "message": "Task must be trashed to perform this action.",
-                "code": "task_not_trashed",
+              "subscription_required": {
+                "message": "Access denied. An active subscription is required to perform this action.",
+                "code": "subscription_required",
                 "errors": [],
-                "meta": []
+                "meta": {
+                  "upgrade_required": true
+                }
               },
               "plan_limit_exceeded": {
                 "message": "Plan limit exceeded.",
@@ -6266,13 +6748,21 @@
                   "can_upgrade": true,
                   "upgrade_required": true
                 }
+              },
+              "task_not_trashed": {
+                "message": "Task must be trashed to perform this action.",
+                "code": "task_not_trashed",
+                "errors": [],
+                "meta": []
               }
             },
             "x-error-example": {
-              "message": "Task must be trashed to perform this action.",
-              "code": "task_not_trashed",
+              "message": "Access denied. An active subscription is required to perform this action.",
+              "code": "subscription_required",
               "errors": [],
-              "meta": []
+              "meta": {
+                "upgrade_required": true
+              }
             }
           },
           "401": {
@@ -6386,12 +6876,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -6694,12 +7206,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -6818,12 +7352,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -7198,12 +7754,34 @@
             }
           },
           "422": {
-            "description": "Validation error",
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
               }
             }
           },
@@ -9598,22 +10176,83 @@
         }
       },
       "ValidationException": {
-        "description": "Validation error",
+        "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
             }
           }
+        },
+        "x-error-examples": {
+          "invalid_state_transition": {
+            "message": "Invalid state transition.",
+            "code": "invalid_state_transition",
+            "errors": [],
+            "meta": {
+              "model": "Task",
+              "current_state": "completed",
+              "attempted_state": "in_progress"
+            }
+          }
+        },
+        "x-error-example": {
+          "message": "Invalid state transition.",
+          "code": "invalid_state_transition",
+          "errors": [],
+          "meta": {
+            "model": "Task",
+            "current_state": "completed",
+            "attempted_state": "in_progress"
+          }
         }
       },
       "AuthorizationException": {
-        "description": "Authorization error",
+        "description": "Authorization error. The action requires an active subscription. Machine-readable code: subscription_required. The action would exceed the current plan limits. Machine-readable code: plan_limit_exceeded. The task must be in trashed state to perform this action. Machine-readable code: task_not_trashed.",
         "content": {
           "application/json": {
             "schema": {
               "$ref": "#/components/schemas/PublicApiErrorEnvelope"
             }
+          }
+        },
+        "x-error-examples": {
+          "subscription_required": {
+            "message": "Access denied. An active subscription is required to perform this action.",
+            "code": "subscription_required",
+            "errors": [],
+            "meta": {
+              "upgrade_required": true
+            }
+          },
+          "plan_limit_exceeded": {
+            "message": "Plan limit exceeded.",
+            "code": "plan_limit_exceeded",
+            "errors": [],
+            "meta": {
+              "reason": "Maximum projects reached",
+              "limit_type": "projects",
+              "limit_label": "Projects",
+              "current_usage": 5,
+              "max_allowed": 5,
+              "limit_scope": "workspace",
+              "can_upgrade": true,
+              "upgrade_required": true
+            }
+          },
+          "task_not_trashed": {
+            "message": "Task must be trashed to perform this action.",
+            "code": "task_not_trashed",
+            "errors": [],
+            "meta": []
+          }
+        },
+        "x-error-example": {
+          "message": "Access denied. An active subscription is required to perform this action.",
+          "code": "subscription_required",
+          "errors": [],
+          "meta": {
+            "upgrade_required": true
           }
         }
       },

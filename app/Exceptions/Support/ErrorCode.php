@@ -59,6 +59,8 @@ final class ErrorCode
     // Service-specific errors (non-public)
     public const string DASHBOARD_SERVICE_ERROR = 'dashboard_service_error';
 
+    private const string DEFAULT_SERVER_ERROR_MESSAGE = 'An unexpected server error occurred.';
+
     /**
      * @return array<string, array{status: int, message: string, description: string, meta_schema: array<string, string>, example: array<string, mixed>}>
      */
@@ -356,7 +358,7 @@ final class ErrorCode
      */
     public static function message(string $code): string
     {
-        return self::get($code)['message'] ?? 'An unexpected server error occurred.';
+        return self::get($code)['message'] ?? self::DEFAULT_SERVER_ERROR_MESSAGE;
     }
 
     /**
