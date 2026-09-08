@@ -726,7 +726,7 @@ class ScrambleDocsTest extends TestCase
                     // Check it's one of the canonical envelopes
                     $this->assertContains(
                         $schemaName,
-                        ['PublicApiErrorEnvelope', 'PublicApiValidationErrorEnvelope'],
+                        ['PublicApiErrorEnvelope', 'PublicApiValidationErrorEnvelope', 'PublicRateLimitErrorEnvelope'],
                         "{$method} {$path} {$statusCode} should use canonical envelope, got {$schemaName}"
                     );
 
@@ -780,6 +780,11 @@ class ScrambleDocsTest extends TestCase
             // Verify 429 has Retry-After header
             $this->assertArrayHasKey('headers', $resolved429, "{$method} {$path} 429 should have headers");
             $this->assertArrayHasKey('Retry-After', $resolved429['headers'], "{$method} {$path} 429 should have Retry-After header");
+            $this->assertSame(
+                '#/components/schemas/PublicRateLimitErrorEnvelope',
+                $resolved429['content']['application/json']['schema']['$ref'] ?? null,
+                "{$method} {$path} 429 should use the rate-limit error envelope",
+            );
         }
     }
 

@@ -62,6 +62,7 @@ class TaskUpdateRequest extends FormRequest
              */
             'description' => [
                 'sometimes',
+                'nullable',
                 'string',
                 'max:1000',
             ],

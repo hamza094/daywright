@@ -428,6 +428,7 @@ final class ScrambleServiceProvider extends ServiceProvider
         // Determine the canonical schema name
         $schemaName = match ($status) {
             422 => 'PublicApiValidationErrorEnvelope',
+            429 => 'PublicRateLimitErrorEnvelope',
             default => 'PublicApiErrorEnvelope',
         };
 

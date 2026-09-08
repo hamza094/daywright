@@ -6,8 +6,8 @@ namespace App\Http\Requests\Api\V1\Project;
 
 use App\DataTransferObjects\Project\ProjectStageUpdateData;
 use App\Models\Stage;
-use Closure;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 use Override;
 
 class StageRequest extends FormRequest
@@ -50,15 +50,8 @@ class StageRequest extends FormRequest
              */
             'postponed_reason' => [
                 'sometimes',
+                'nullable',
                 'string',
-                function (string $attribute, mixed $value, Closure $fail): void {
-                    $stageId = $this->input('stage');
-                    $stage = Stage::find($stageId);
-
-                    if ($stage && $stage->name === 'Postponed' && empty($value)) {
-                        $fail('The postponed_reason field is required when moving to a postponed stage.');
-                    }
-                },
             ],
         ];
     }
@@ -70,5 +63,20 @@ class StageRequest extends FormRequest
             'stage.required' => 'The stage field is required.',
             'stage.in' => 'The selected stage is invalid. Please choose a valid stage.',
         ];
+    }
+
+    /**
+     * Configure the validator instance.
+     */
+    protected function withValidator(Validator $validator): void
+    {
+        $validator->after(function () use ($validator): void {
+            $stageId = $this->input('stage');
+            $stage = Stage::find($stageId);
+
+            if ($stage && $stage->name === 'Postponed' && empty($this->input('postponed_reason'))) {
+                $validator->errors()->add('postponed_reason', 'The postponed_reason field is required when moving to a postponed stage.');
+            }
+        });
     }
 }

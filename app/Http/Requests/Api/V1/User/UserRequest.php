@@ -59,7 +59,7 @@ class UserRequest extends FormRequest
              *
              * @example "0123456789"
              */
-            'mobile' => ['sometimes', 'nullable', 'string', 'regex:/^[0-9+ ]{7,20}$/'],
+            'mobile' => ['sometimes', 'nullable', 'string', 'regex:/^(\+[0-9]{1,3}[ ]?)?[0-9 ]{7,15}$/'],
             /**
              * Optional company name.
              *

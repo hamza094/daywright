@@ -106,7 +106,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -278,7 +278,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -456,7 +456,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -582,7 +582,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -706,7 +706,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -891,7 +891,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -1072,7 +1072,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -1176,7 +1176,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -1264,7 +1264,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -1451,7 +1451,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -1636,7 +1636,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -1774,7 +1774,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -1952,7 +1952,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -2126,7 +2126,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -2261,7 +2261,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -2368,7 +2368,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -2518,7 +2518,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -2586,7 +2586,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -2684,7 +2684,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -2762,7 +2762,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -2969,7 +2969,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -3113,7 +3113,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -3257,7 +3257,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -3409,7 +3409,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -3505,7 +3505,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -3628,7 +3628,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -3736,7 +3736,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -3846,7 +3846,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -3945,7 +3945,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -4033,7 +4033,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -4241,7 +4241,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -4400,7 +4400,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -4511,7 +4511,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -4591,7 +4591,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -4685,7 +4685,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -4771,7 +4771,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -4979,7 +4979,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -5136,7 +5136,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -5251,7 +5251,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -5406,7 +5406,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -5571,7 +5571,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -5691,7 +5691,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -5845,7 +5845,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -6027,7 +6027,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -6153,7 +6153,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -6290,7 +6290,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -6400,7 +6400,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -6496,7 +6496,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -6584,7 +6584,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -6708,7 +6708,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -6832,7 +6832,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -6919,7 +6919,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -7008,7 +7008,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -7097,7 +7097,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -7212,7 +7212,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
                 }
               }
             },
@@ -7416,16 +7416,40 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": "string",
-            "examples": ["info"]
+            "examples": ["info"],
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "enum": ["info"]
+              }
+            ]
           },
           "title": {
-            "type": "string",
-            "examples": ["Good Project Health"]
+            "examples": ["Good Project Health"],
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "enum": [""]
+              }
+            ]
           },
           "message": {
-            "type": "string",
-            "examples": ["Good project health at 71.0%..."]
+            "examples": ["Good project health at 71.0%..."],
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "string",
+                "enum": [""]
+              }
+            ]
           },
           "data": {
             "type": "object",
@@ -8833,7 +8857,7 @@
             "examples": [3]
           },
           "postponed_reason": {
-            "type": "string",
+            "type": ["string", "null"],
             "description": "Reason for postponing the project. Required when moving to a postponed stage.",
             "examples": ["Waiting for client approval"]
           }
@@ -9212,7 +9236,7 @@
             "maxLength": 55
           },
           "description": {
-            "type": "string",
+            "type": ["string", "null"],
             "description": "Optional task description.",
             "examples": ["Confirm release notes, test scenarios, and sign-off owners."],
             "maxLength": 1000
@@ -9526,7 +9550,7 @@
           "mobile": {
             "type": ["string", "null"],
             "description": "Optional mobile number as string to preserve leading zeros.",
-            "pattern": "^[0-9+ ]{7,20}$",
+            "pattern": "^(\\+[0-9]{1,3}[ ]?)?[0-9 ]{7,15}$",
             "examples": ["0123456789"]
           },
           "company": {
