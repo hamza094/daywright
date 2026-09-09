@@ -48,7 +48,8 @@ class ProjectCollectionResource extends JsonResource
             'slug' => $this->slug,
 
             /**
-             * Project status calculated on the based of score
+             * Project health status based on activity and engagement.
+             * Allowed values: hot (active), warm (moderate), cold (inactive).
              *
              * @example cold
              */
@@ -64,6 +65,8 @@ class ProjectCollectionResource extends JsonResource
 
             /**
              * Project creation timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example "2024-06-04T00:00:00+00:00"
              */

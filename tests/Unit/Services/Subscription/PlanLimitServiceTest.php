@@ -10,6 +10,7 @@ use App\Enums\TaskSystemStatus;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\Stage;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\Subscription\PlanLimitService;
@@ -237,6 +238,7 @@ class PlanLimitServiceTest extends TestCase
     {
         // Uses: local factory helper makeUser() and PlanLimitService::executeWithinAccountLimit()
         $user = $this->makeUser();
+        $stage = Stage::factory()->create();
 
         $createdProject = $this->service->executeWithinAccountLimit(
             PlanLimitType::Projects,
@@ -244,7 +246,7 @@ class PlanLimitServiceTest extends TestCase
             fn (User $lockedUser): Project => $lockedUser->projects()->create([
                 'name' => 'Locked Project',
                 'about' => 'Created within account limit guard',
-                'stage_id' => 1,
+                'stage_id' => $stage->id,
             ])
         );
 

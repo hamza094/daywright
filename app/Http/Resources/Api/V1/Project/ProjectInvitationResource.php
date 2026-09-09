@@ -60,6 +60,8 @@ class ProjectInvitationResource extends JsonResource
             /**
              * Invitation sent timestamp in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example "2025-07-09T14:00:00+00:00"
              */
             // @phpstan-ignore-next-line - Eloquent pivot exposes dynamic properties at runtime
@@ -74,6 +76,8 @@ class ProjectInvitationResource extends JsonResource
 
             /**
              * Project creation timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example "2025-07-07T14:00:00+00:00"
              */

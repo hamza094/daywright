@@ -40,6 +40,7 @@ class ProjectFeatureTest extends TestCase
     {
         $attributes = Project::factory()->raw([
             'user_id' => auth()->id(),
+            'stage_id' => $this->project->stage_id,
         ]);
 
         $attributes['tasks'] = [

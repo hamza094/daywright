@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\User\UserTokenRequest;
 use App\Http\Resources\Api\V1\TokenResource;
 use App\Http\Resources\Api\V1\TokenStoreResource;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -25,6 +26,7 @@ class TokenController extends ApiController
      *
      * Returns the authenticated user's existing personal access tokens.
      */
+    #[Endpoint(operationId: 'apiTokens.list')]
     public function index(): JsonResponse
     {
         $tokens = $this->authenticatedUser()->tokens;
@@ -37,6 +39,7 @@ class TokenController extends ApiController
      *
      * Creates a new personal access token for the authenticated user.
      */
+    #[Endpoint(operationId: 'apiTokens.create')]
     public function store(UserTokenRequest $request): JsonResponse
     {
         $data = $request->toDto();
@@ -60,6 +63,7 @@ class TokenController extends ApiController
      * Deletes a personal access token by ID for the authenticated user.
      * The current token used for this request cannot be deleted through this route.
      */
+    #[Endpoint(operationId: 'apiTokens.destroy')]
     public function destroy(int $token): JsonResponse
     {
         $this->revokeApiTokenAction->execute($this->authenticatedUser(), $token);

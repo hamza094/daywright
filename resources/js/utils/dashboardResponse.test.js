@@ -42,13 +42,23 @@ test('readDashboardTasks reads task collections with applied filter labels', () 
     data: [{ id: 7, title: 'Finish docs' }],
     meta: {
       applied_filters: ['Assigned', 'Overdue'],
-      total: 1,
+      next_cursor: null,
+      prev_cursor: null,
+      per_page: 25,
     },
   });
 
   assert.deepEqual(readDashboardTasks(response), {
     tasks: [{ id: 7, title: 'Finish docs' }],
     appliedFilters: ['Assigned', 'Overdue'],
-    total: 1,
+    meta: {
+      next_cursor: null,
+      prev_cursor: null,
+      per_page: 25,
+    },
+    links: {
+      next: null,
+      prev: null,
+    },
   });
 });

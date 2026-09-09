@@ -66,12 +66,16 @@ class ProjectResource extends JsonResource
             /**
              * Project creation timestamp in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example 2024-06-04T00:00:00+00:00
              */
             'created_at' => $this->created_at?->toIso8601String(),
 
             /**
              * Project update timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2024-06-04T12:30:00+00:00
              */
@@ -80,6 +84,8 @@ class ProjectResource extends JsonResource
             /**
              * Project deletion timestamp in UTC ISO 8601 format when the project is trashed.
              *
+             * @format date-time
+             *
              * @example 2024-06-10T09:15:00+00:00
              */
             'deleted_at' => $this->when(
@@ -87,10 +93,13 @@ class ProjectResource extends JsonResource
                 fn () => $this->deleted_at->toIso8601String()
             ),
 
+            /** @var bool */
             'is_trashed' => $this->trashed(),
 
             /**
              * Last stage update timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2024-06-10T09:15:00+00:00
              */
@@ -99,13 +108,20 @@ class ProjectResource extends JsonResource
                 fn () => $this->stage_updated_at->toIso8601String()
             ),
 
+            /** @var bool */
             'ownerNotAuthorized' => $this->whenLoaded(
                 'user',
                 fn (): bool => $requestUser && $requestUser->is($this->user) && ! $requestUser->oauthConnections()->where('provider', 'zoom')->exists(),
             ),
 
+            /** @var int */
             'days_limit' => config('app.project.abandonedLimit'),
 
+            /**
+             * Reason for postponing the project.
+             *
+             * @example Waiting for client approval
+             */
             'postponed_reason' => $this->postponed_reason,
 
             /**
@@ -119,19 +135,25 @@ class ProjectResource extends JsonResource
             ),
 
             /**
-             * Project status calculated on the based of score
+             * Project health status based on activity and engagement.
+             * Allowed values: hot (active), warm (moderate), cold (inactive).
              *
              * @example cold
              */
             'health_status' => $this->health_status,
 
             /**
+             * Health score from 0-100 indicating project health.
+             * Higher scores indicate healthier projects.
+             *
              * @example 72.5
              */
             'health_score' => $this->health_score,
 
             /**
              * Health score calculation timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2024-10-01T15:30:00+00:00
              */
@@ -168,6 +190,9 @@ class ProjectResource extends JsonResource
              */
             'activities' => $this->whenLoaded('limitedActivities', fn () => ActivityResource::collection($this->limitedActivities)),
 
+            /**
+             * API resource links for navigation.
+             */
             'links' => [
                 'self' => ApiResourceLink::project($this->resource),
             ],

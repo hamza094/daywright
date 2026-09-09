@@ -298,8 +298,15 @@ Controller (base)
 - ✅ Pass strongly typed DTOs downstream instead of `$request->validated()` arrays or the whole request
 - ✅ Resolve the authenticated user in the controller and pass it explicitly to services or actions when needed
 - ✅ Call one main collaborator per endpoint. In most cases that collaborator is a service; call an action directly only for tiny isolated operations
-- ✅ Add docblocks with `@operationId` and `@tags` for API documentation
-- ✅ Return JSON with `message` + `resource` pattern
+- ✅ Add docblocks for API documentation using Scramble attributes (`#[Endpoint]`, `#[ScrambleResponse]`)
+- ✅ Document critical behaviors that aren't obvious from code: cascades, preconditions, side effects, irreversibility warnings
+- ✅ Document parameter context (defaults, filter flags) when Scramble can't infer them from Form Request validation rules
+- ✅ Document default `per_page` values since they're set in request methods (`perPageValue()`), not in validation rules
+- ✅ Avoid redundant documentation that Scramble can infer from Form Request validation rules (e.g., file types, max sizes, filter flags)
+- ✅ Use `#[Endpoint(operationId: 'resource.action')]` attribute for stable operation IDs in generated OpenAPI specs
+- ✅ Error responses are documented only when inferred or explicitly ensured by the provider; do not claim all error statuses are automatically injected
+- ✅ Tags are resolved centrally by `ScrambleServiceProvider`; do not manually add `@tags` to public controllers
+- ✅ Return JSON with `data` as the canonical payload envelope for resource responses and `{ "message": string }` for command-only responses
 - ❌ Do not put business logic in controllers
 - ❌ Do not coordinate multi-step workflows, transactions, or multiple domain collaborators in controllers
 - ❌ Do not access database directly (use services/repositories)
@@ -313,7 +320,7 @@ Controller (base)
 | Create | 201         | `response()->json([...], 201)` |
 | Read   | 200         | `response()->json([...])`      |
 | Update | 200         | `response()->json([...])`      |
-| Delete | 204         | `$this->respondNoContent()`    |
+| Delete | 200         | `response()->json([...])`      |
 | Error  | 4xx/5xx     | `$this->respondError(...)`     |
 
 ---
@@ -756,8 +763,8 @@ return response()->json([
     ],
 ]);
 
-// Delete (204)
-return $this->respondNoContent();
+// Delete (200 with message)
+return $this->respondWithMessage('Resource deleted successfully.');
 ```
 
 ### Error Response Structure

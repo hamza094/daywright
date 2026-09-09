@@ -34,13 +34,13 @@ class StageTest extends TestCase
             $user,
         );
 
-        Stage::factory()->create();
-        Stage::factory()->design()->create();
-        Stage::factory()->develop()->create();
-        Stage::factory()->testing()->create();
-        Stage::factory()->deliver()->create();
-        Stage::factory()->completed()->create();
-        Stage::factory()->postponed()->create();
+        Stage::factory()->create(['id' => 1]);
+        Stage::factory()->design()->create(['id' => 2]);
+        Stage::factory()->develop()->create(['id' => 3]);
+        Stage::factory()->testing()->create(['id' => 4]);
+        Stage::factory()->deliver()->create(['id' => 5]);
+        Stage::factory()->completed()->create(['id' => 6]);
+        Stage::factory()->postponed()->create(['id' => 7]);
 
         $this->project = Project::factory()->for($user)
             ->create(['stage_id' => 1]);

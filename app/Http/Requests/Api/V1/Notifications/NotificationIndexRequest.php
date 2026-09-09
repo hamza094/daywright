@@ -26,6 +26,8 @@ class NotificationIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
         return [
             /**
              * Nested notification filters.
+             *
+             * @example {"status":"unread"}
              */
             'filter' => ['sometimes', 'array:status'],
             /**
@@ -43,7 +45,7 @@ class NotificationIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
              */
             'cursor' => $this->cursorRule(),
             /**
-             * Number of notifications to return per page.
+             * Number of notifications to return per page. Default is 25.
              *
              * @example 25
              */

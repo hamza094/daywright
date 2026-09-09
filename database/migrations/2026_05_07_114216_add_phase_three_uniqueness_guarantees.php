@@ -10,14 +10,15 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // MySQL needs the replacement index before dropping one used by a foreign key.
         Schema::table('project_members', function (Blueprint $table): void {
-            $table->dropIndex('project_members_project_id_user_id_index');
             $table->unique(['project_id', 'user_id'], 'project_members_project_id_user_id_unique');
+            $table->dropIndex('project_members_project_id_user_id_index');
         });
 
         Schema::table('task_user', function (Blueprint $table): void {
-            $table->dropIndex('task_user_user_id_task_id_index');
             $table->unique(['user_id', 'task_id'], 'task_user_user_id_task_id_unique');
+            $table->dropIndex('task_user_user_id_task_id_index');
         });
 
         Schema::table('message_user', function (Blueprint $table): void {

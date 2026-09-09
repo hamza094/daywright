@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\User\InvitationUserSearchRequest;
 use App\Http\Resources\Api\V1\Task\TaskMemberResource;
 use App\Models\Project;
 use App\Services\Project\InvitationService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 final class InvitationUserSearchController extends ApiController
@@ -19,6 +20,7 @@ final class InvitationUserSearchController extends ApiController
      * Returns users who can be invited to the specified project,
      * excluding the project owner and existing members.
      */
+    #[Endpoint(operationId: 'invitations.searchUsers')]
     public function __invoke(InvitationUserSearchRequest $request, Project $project, InvitationService $invitationService): AnonymousResourceCollection
     {
         return TaskMemberResource::collection($invitationService->usersSearch($project, $request->searchTerm()));

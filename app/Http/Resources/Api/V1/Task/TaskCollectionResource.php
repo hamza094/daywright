@@ -48,11 +48,15 @@ class TaskCollectionResource extends JsonResource
             /**
              * Task due at in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example 2024-12-19T15:25:00+00:00
              */
             'due_at' => $this->when($this->due_at !== null, fn (): string => $this->due_at->toIso8601String()),
             /**
              * Task created date time in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2024-12-15T12:00:00+00:00
              */

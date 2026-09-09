@@ -8,6 +8,12 @@ use App\Http\Resources\Api\V1\InsightResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
+/**
+ * Computed resource for project insights.
+ * This resource does not wrap a single Eloquent model.
+ *
+ * @property array{project: \App\Models\Project, insights: array<mixed>, sections: array<string>} $resource
+ */
 class ProjectInsightsResource extends JsonResource
 {
     /**
@@ -27,8 +33,10 @@ class ProjectInsightsResource extends JsonResource
 
         return [
             /**
+             * @var int
+             *
              * @example 4
-             * */
+             */
             'project_id' => $project->id,
 
             /**
@@ -44,8 +52,10 @@ class ProjectInsightsResource extends JsonResource
             'generated_at' => now()->toISOString(),
 
             /**
-             * @example ['health']
-             * */
+             * @var array<int, string>
+             *
+             * @example ["health"]
+             */
             'sections_requested' => $sections,
         ];
     }

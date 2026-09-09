@@ -33,6 +33,8 @@ class UserSummaryResource extends JsonResource
             /**
              * Stable public UUID for the user.
              *
+             * @format uuid
+             *
              * @example 9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412
              */
             'uuid' => $this->uuid,
@@ -50,6 +52,8 @@ class UserSummaryResource extends JsonResource
             'username' => $this->username,
             /**
              * Avatar URL when present.
+             *
+             * @format uri
              *
              * @example https://daywright.test/storage/avatars/berry.png
              */

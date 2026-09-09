@@ -6,7 +6,6 @@ namespace App\Http\Requests\Api\V1\Project;
 
 use App\DataTransferObjects\Project\InvitationData;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Validator;
 
 class InvitationUsersRequest extends FormRequest
 {
@@ -29,19 +28,12 @@ class InvitationUsersRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Accept either a single email or an array of emails.
-            'email' => ['sometimes', 'required', 'email'],
-            'emails' => ['sometimes', 'array'],
-            'emails.*' => ['required', 'email'],
+            /**
+             * Email address of the user to invite to the project.
+             *
+             * @example john.doe@example.com
+             */
+            'email' => ['required', 'email'],
         ];
-    }
-
-    public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $validator): void {
-            if (! $this->has('email') && ! $this->has('emails')) {
-                $validator->errors()->add('email', 'Provide at least one email address to invite.');
-            }
-        });
     }
 }

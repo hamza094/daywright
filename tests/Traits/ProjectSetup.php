@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Tests\Traits;
 
+use App\Enums\ProjectStage;
+use App\Enums\TaskSystemStatus;
 use App\Models\Project;
+use App\Models\Stage;
 use App\Models\TaskStatus;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -33,10 +36,11 @@ trait ProjectSetup
             $this->user,
         );
 
-        $status = TaskStatus::factory()->create();
+        $status = TaskStatus::factory()->create(['id' => TaskSystemStatus::Pending->value]);
         $this->status = $status;
 
-        $project = Project::factory()->for($this->user)->create();
+        $stage = Stage::factory()->create(['id' => ProjectStage::Planning->value]);
+        $project = Project::factory()->for($this->user)->create(['stage_id' => $stage->id]);
         $this->project = $project;
 
         // if ($this instanceof \Tests\Feature\TaskTest) {

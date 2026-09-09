@@ -25,9 +25,9 @@ class UserInfoResource extends JsonResource
     {
         return [
             /**
-             * Optional mobile number.
+             * Optional mobile number as string to preserve leading zeros.
              *
-             * @example 1234567890
+             * @example "0123456789"
              */
             'mobile' => $this->mobile,
             /**

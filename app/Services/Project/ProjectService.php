@@ -11,6 +11,7 @@ use App\DataTransferObjects\Project\ProjectStageUpdateData;
 use App\DataTransferObjects\Project\ProjectUpdateData;
 use App\Enums\StageStatus;
 use App\Enums\Subscription\PlanLimitType;
+use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Subscription\PlanLimitService;
@@ -105,6 +106,9 @@ class ProjectService
         $project->restore();
     }
 
+    /**
+     * @throws InvalidStateTransitionException
+     */
     public function updateStageStatus(Project $project, ProjectStageUpdateData $data): Project
     {
         return DB::transaction(function () use ($project, $data): Project {

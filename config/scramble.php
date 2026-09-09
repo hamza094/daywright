@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
-
 return [
     /*
      * Your API path. By default, all routes starting with this path will be added to the docs.
@@ -34,7 +32,7 @@ return [
          * For maintainability this content is loaded from a separate config file:
          * `config/scramble_overview.php`.
          */
-        'description' => require_once __DIR__.'/scramble_overview.php',
+        'description' => require __DIR__.'/scramble_overview.php',
     ],
 
     /*
@@ -85,8 +83,20 @@ return [
 
     'middleware' => [
         'web',
-        RestrictedDocsAccess::class,
+        // Public runtime documentation access - no authentication required
+        // Third-party developers can access /docs/api and /docs/api.json endpoints
     ],
 
-    'extensions' => [],
+    /*
+     * Security strategies for API documentation.
+     * MiddlewareAuthSecurityStrategy derives authentication from route middleware.
+     */
+    'security_strategy' => Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy::class,
+
+    /*
+     * Extensions for customizing OpenAPI generation.
+     */
+    'extensions' => [
+        App\Documentation\Transformers\PublicApiMiddlewareResponses::class,
+    ],
 ];

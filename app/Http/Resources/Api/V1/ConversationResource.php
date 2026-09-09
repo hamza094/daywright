@@ -56,6 +56,8 @@ class ConversationResource extends JsonResource
             /**
              * Conversation creation timestamp in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example 2025-08-15T09:00:00+00:00
              */
             'created_at' => $this->created_at?->toIso8601String(),

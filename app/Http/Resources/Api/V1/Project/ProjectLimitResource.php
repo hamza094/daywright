@@ -8,6 +8,12 @@ use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
+/**
+ * Computed resource for project usage limits.
+ * This resource does not wrap a single Eloquent model.
+ *
+ * @property array{key: string, label: string, scope: string, limit: array{used: int|null, max: int|null}} $resource
+ */
 #[SchemaName('ProjectUsageLimit')]
 final class ProjectLimitResource extends JsonResource
 {
@@ -45,23 +51,17 @@ final class ProjectLimitResource extends JsonResource
             /**
              * Current usage count and the maximum allowed value for this limit.
              *
-             * @var array{used: int|null, max: int|null}
-             *
              * @example {"used":4,"max":25}
              */
             'limit' => [
                 /**
                  * Current usage value for the limit.
                  *
-                 * @var int|null
-                 *
                  * @example 4
                  */
                 'used' => data_get($this->resource, 'limit.used'),
                 /**
                  * Maximum allowed value for the limit.
-                 *
-                 * @var int|null
                  *
                  * @example 25
                  */

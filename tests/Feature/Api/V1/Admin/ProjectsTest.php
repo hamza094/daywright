@@ -226,7 +226,7 @@ class ProjectsTest extends TestCase
     public function can_filter_projects_by_stage(): void
     {
         /** @var Stage $stage */
-        $stage = Stage::factory()->create();
+        $stage = Stage::factory()->create(['id' => 1]);
         $this->createProject(['stage_id' => $stage->id]);
         $this->createProject();
 

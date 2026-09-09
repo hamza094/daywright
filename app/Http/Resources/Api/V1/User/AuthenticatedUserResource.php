@@ -33,6 +33,8 @@ class AuthenticatedUserResource extends JsonResource
             /**
              * Stable public UUID for the user.
              *
+             * @format uuid
+             *
              * @example 9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412
              */
             'uuid' => $this->uuid,
@@ -50,6 +52,8 @@ class AuthenticatedUserResource extends JsonResource
             'username' => $this->username,
             /**
              * Primary email address used for login and notifications.
+             *
+             * @format email
              *
              * @example berry@example.com
              */
@@ -74,6 +78,8 @@ class AuthenticatedUserResource extends JsonResource
             'two_factor_enabled' => $this->hasTwoFactorEnabled(),
             /**
              * Public avatar URL when an avatar is present.
+             *
+             * @format uri
              *
              * @example https://daywright.test/storage/avatars/berry.png
              */

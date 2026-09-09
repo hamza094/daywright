@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1\Project;
 use App\Http\Controllers\Api\ApiController;
 use App\Models\Project;
 use App\Services\Project\ProjectService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 final class ProjectLimitsController extends ApiController
@@ -16,8 +17,9 @@ final class ProjectLimitsController extends ApiController
     /**
      * Retrieve project-scoped subscription limits for the project owner.
      *
-     * Returns the current plan limits that apply to the specified project.
+     * Returns the current plan limits that apply to the specified project, including task counts and member limits.
      */
+    #[Endpoint(operationId: 'projects.limits')]
     public function __invoke(Project $project): JsonResponse
     {
         return $this->respondWithData(

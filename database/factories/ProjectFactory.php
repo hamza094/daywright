@@ -33,7 +33,9 @@ class ProjectFactory extends Factory
             'user_id' => User::factory(),
             'stage_id' => Stage::factory(),
             'name' => $this->faker->catchPhrase,
-            'slug' => $this->faker->slug,
+            // Projects have a database-level unique slug constraint. Faker's
+            // non-unique slug generator can collide when creating large batches.
+            'slug' => $this->faker->unique()->slug,
             'about' => $this->faker->text($maxNbChars = 250),
             'stage_updated_at' => Carbon::now(),
         ];

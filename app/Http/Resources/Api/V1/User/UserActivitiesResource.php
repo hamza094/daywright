@@ -45,6 +45,8 @@ class UserActivitiesResource extends JsonResource
             /**
              * Activity timestamp in UTC ISO 8601 format.
              *
+             * @format date-time
+             *
              * @example 2025-08-15T10:00:00+00:00
              */
             'created_at' => $this->created_at?->toIso8601String(),
@@ -56,6 +58,7 @@ class UserActivitiesResource extends JsonResource
             'subject' => $this->getSubjectDetails(),
             /**
              * UI color hint derived from the activity type.
+             * Allowed values: green (meetings), purple (projects), yellow (tasks), red (deleted).
              *
              * @example yellow
              */

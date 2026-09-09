@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Task;
 
 use App\Enums\Subscription\PlanLimitType;
+use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Exceptions\TaskNotTrashedException;
 use App\Models\Task;
 use App\Services\Subscription\PlanLimitService;
@@ -15,6 +16,10 @@ final readonly class RestoreTaskAction
         private PlanLimitService $planLimitService,
     ) {}
 
+    /**
+     * @throws TaskNotTrashedException
+     * @throws PlanLimitExceededException
+     */
     public function execute(Task $task): void
     {
         if (! $task->trashed()) {

@@ -7,9 +7,13 @@ namespace App\Http\Resources\Api\V1;
 use App\DataTransferObjects\Notification\NotificationPayloadData;
 use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Notifications\DatabaseNotification;
 use JsonSerializable;
 use Override;
 
+/**
+ * @mixin DatabaseNotification
+ */
 class NotificationResource extends JsonResource
 {
     /**
@@ -21,7 +25,7 @@ class NotificationResource extends JsonResource
     #[Override]
     public function toArray($request)
     {
-        $payload = NotificationPayloadData::fromArray(is_array($this->data) ? $this->data : []);
+        $payload = NotificationPayloadData::fromArray($this->data);
 
         return [
             /**
@@ -58,11 +62,15 @@ class NotificationResource extends JsonResource
             /**
              * Read timestamp in UTC ISO 8601 format, or null when unread.
              *
+             * @format date-time
+             *
              * @example 2025-08-15T10:30:00+00:00
              */
             'read_at' => $this->read_at?->toIso8601String(),
             /**
              * Creation timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
              *
              * @example 2025-08-15T09:00:00+00:00
              */

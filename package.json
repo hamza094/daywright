@@ -3,6 +3,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "node --test resources/js/**/*.test.js",
     "lint": "eslint *.js resources",
     "format": "prettier --write '**/*.{js,vue,css,scss,json,yml,md}'",
     "stylelint": "stylelint \"resources/sass/**/*.scss\"",

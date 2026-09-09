@@ -15,6 +15,15 @@ class UserInfo extends Model
     protected $guarded = [];
 
     /**
+     * The attributes that should be cast to native types.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'mobile' => 'string',
+    ];
+
+    /**
      * @var array<string>
      */
     protected $touches = ['user'];

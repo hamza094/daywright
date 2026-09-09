@@ -8,6 +8,7 @@ use App\Actions\Subscription\PlanLimitExceededExceptionFactory;
 use App\Actions\Subscription\PlanUsageCountResolver;
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\Subscription\SubscriptionPlan;
+use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Models\Project;
 use App\Models\User;
 use Closure;
@@ -39,6 +40,8 @@ final readonly class PlanLimitService
      *
      * @param  Closure(User): TReturn  $callback
      * @return TReturn
+     *
+     * @throws PlanLimitExceededException
      */
     public function executeWithinAccountLimit(PlanLimitType $type, User $user, Closure $callback): mixed
     {
@@ -60,6 +63,8 @@ final readonly class PlanLimitService
      *
      * @param  Closure(Project): TReturn  $callback
      * @return TReturn
+     *
+     * @throws PlanLimitExceededException
      */
     public function executeWithinProjectLimit(PlanLimitType $type, Project $project, Closure $callback): mixed
     {
@@ -78,6 +83,8 @@ final readonly class PlanLimitService
 
     /**
      * Throws when the current usage has already reached the configured maximum for the plan.
+     *
+     * @throws PlanLimitExceededException
      */
     public function assertWithinLimit(PlanLimitType $type, User $user, ?Project $project = null): void
     {

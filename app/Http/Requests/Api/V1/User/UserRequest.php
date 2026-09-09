@@ -55,11 +55,11 @@ class UserRequest extends FormRequest
              */
             'username' => ['sometimes', 'required', 'alpha_dash:ascii', 'max:30', Rule::unique('users')->ignore($this->user())],
             /**
-             * Optional mobile number.
+             * Optional mobile number as string to preserve leading zeros.
              *
-             * @example 1234567890
+             * @example "0123456789"
              */
-            'mobile' => ['sometimes', 'nullable', 'digits_between:7,15'],
+            'mobile' => ['sometimes', 'nullable', 'string', 'regex:/^(\+[0-9]{1,3}[ ]?)?[0-9 ]{7,15}$/'],
             /**
              * Optional company name.
              *
@@ -85,7 +85,7 @@ class UserRequest extends FormRequest
              */
             'position' => ['sometimes', 'nullable', 'string', 'max:100'],
             /**
-             * Optional IANA timezone identifier.
+             * Optional IANA timezone identifier (e.g., America/New_York, Europe/London).
              *
              * @example America/New_York
              */

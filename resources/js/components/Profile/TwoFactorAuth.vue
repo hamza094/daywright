@@ -212,7 +212,7 @@
 <script>
 import ConfirmPasswordModal from './Partials/ConfirmPasswordModal.vue';
 import Disable2FAConfirmModal from './Partials/Disable2FAConfirmModal.vue';
-import twoFactorAuthMixin from '../mixins/twoFactorAuthMixin.js';
+import twoFactorAuthMixin from '../../mixins/twoFactorAuthMixin.js';
 
 export default {
   name: 'TwoFactorAuth',

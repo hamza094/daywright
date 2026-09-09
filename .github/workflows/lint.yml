@@ -43,3 +43,6 @@ jobs:
             echo "::error::Please run 'vendor/bin/pint' locally and commit the fixes."
             exit 1
           fi
+
+      - name: Run Composer security audit
+        run: composer audit --no-dev

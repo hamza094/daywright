@@ -19,7 +19,17 @@ class ProjectInvitationIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRe
     public function rules(): array
     {
         return [
+            /**
+             * Nested invitation filters. Currently only accepts status filter.
+             *
+             * @example {"status":"pending"}
+             */
             'filter' => ['required', 'array:status'],
+            /**
+             * Filter invitations by status. Currently only accepts "pending".
+             *
+             * @example pending
+             */
             'filter.status' => ['required', 'in:pending'],
             ...$this->unsupportedQueryParameterRules(),
         ];

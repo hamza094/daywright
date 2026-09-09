@@ -39,6 +39,49 @@ Out of scope:
 
 ## Target Conventions
 
+### Error Handling
+
+All public API errors must follow the canonical error envelope:
+
+```json
+{
+  "message": "Human-readable explanation.",
+  "code": "stable_machine_code",
+  "errors": {},
+  "meta": {}
+}
+```
+
+**Global Error Policy:**
+
+- `500`: Valid as the production fallback (globally ensured on all public operations)
+- `401`: Add only to authenticated routes (handled by MiddlewareAuthSecurityStrategy)
+- `403`: Add only from scope, policy, or subscription middleware (tokenAbility:_, can:_, CheckSubscription)
+- `404`: Rely on model-binding inference or explicit route behavior (do not assume every route parameter implies 404)
+- `405`: Keep as a shared runtime component; do not attach to every operation
+- `503`: Attach only where an external dependency can affect the operation (not globally)
+- `400`, `409`, `422`: Infer or explicitly attach based on actual behavior
+- `429`: Add only from `throttle:*` middleware (not globally)
+
+**Error Code Registry:**
+
+All error codes must be defined in `App\Exceptions\Support\ErrorCode`. Both runtime error handling and OpenAPI documentation consume this single source of truth. Do not manually maintain error codes in multiple places.
+
+**Idempotency Errors:**
+
+Use stable error codes for idempotency failures:
+
+- `idempotency_key_required` (400)
+- `idempotency_in_progress` (409)
+- `idempotency_key_reused` (422)
+
+**Exception Documentation:**
+
+- Add `@throws` declarations to service methods for developer documentation
+- Note: Scramble only reads `@throws` from controller methods, not service methods
+- To document exceptions in OpenAPI, use the ErrorCode registry and ScrambleServiceProvider mappings
+- Route-binding exceptions are handled via middleware transformers
+
 ### Controllers
 
 - Validate input and authorize access.

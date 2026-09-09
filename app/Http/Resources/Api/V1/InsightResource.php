@@ -8,7 +8,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
 
 /**
- * Insight item resource
+ * Insight item resource.
+ * This resource does not wrap a single Eloquent model.
+ *
+ * @property array{type?: string, title?: string, message?: string, data?: array<string, mixed>} $resource
  */
 class InsightResource extends JsonResource
 {
@@ -24,9 +27,9 @@ class InsightResource extends JsonResource
         // The underlying builders return arrays; handle both array and object resources
         $item = $this->resource;
 
-        $type = isset($item['type']) ? (string) $item['type'] : ($this->type ?? 'info');
-        $title = isset($item['title']) ? (string) $item['title'] : ($this->title ?? '');
-        $message = isset($item['message']) ? (string) $item['message'] : ($this->message ?? '');
+        $type = $item['type'] ?? ($this->type ?? 'info');
+        $title = $item['title'] ?? ($this->title ?? '');
+        $message = $item['message'] ?? ($this->message ?? '');
         $data = $item['data'] ?? ($this->data ?? []);
 
         return [
@@ -47,8 +50,10 @@ class InsightResource extends JsonResource
 
             /**
              * @example {"value":71.0}
+             *
+             * @var array<string, mixed>
              */
-            'data' => is_array($data) ? $data : [],
+            'data' => (array) $data,
         ];
     }
 }

@@ -64,7 +64,7 @@ class TaskIndexRequest extends \App\Http\Requests\Api\V1\ApiQueryRequest
 
     public function perPage(): int
     {
-        return $this->perPageValue((int) config('tasks.limit', 3));
+        return $this->perPageValue((int) config('app.tasks.limit', 20));
     }
 
     /**

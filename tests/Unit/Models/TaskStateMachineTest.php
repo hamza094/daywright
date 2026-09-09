@@ -7,7 +7,9 @@ namespace Tests\Unit\Models;
 use App\Enums\TaskSystemStatus;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Task;
+use App\Models\TaskStatus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Override;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -22,7 +24,23 @@ use Tests\Traits\ProjectSetup;
  */
 class TaskStateMachineTest extends TestCase
 {
-    use ProjectSetup, RefreshDatabase;
+    use ProjectSetup {
+        setUp as private setUpProject;
+    }
+    use RefreshDatabase;
+
+    #[Override]
+    protected function setUp(): void
+    {
+        $this->setUpProject();
+
+        foreach (TaskSystemStatus::cases() as $status) {
+            TaskStatus::query()->firstOrCreate(
+                ['id' => $status->value],
+                ['label' => $status->name, 'color' => '#CCCCCC'],
+            );
+        }
+    }
 
     /**
      * @return array<string, array{from: TaskSystemStatus, to: TaskSystemStatus}>

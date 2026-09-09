@@ -1,4 +1,4 @@
-import { getCursorPaginatedData, getResponsePayload } from './apiResponse.js';
+import { getCursorPaginatedData, getPaginatedData, getResponsePayload } from './apiResponse.js';
 
 const asStringArray = (value) => {
   if (!Array.isArray(value)) {

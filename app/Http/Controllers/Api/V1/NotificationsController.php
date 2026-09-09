@@ -9,6 +9,7 @@ use App\Http\Requests\Api\V1\Notifications\NotificationIndexRequest;
 use App\Http\Requests\Api\V1\Notifications\NotificationStatusUpdateRequest;
 use App\Http\Resources\Api\V1\NotificationResource;
 use App\Services\UserNotificationService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Dedoc\Scramble\Attributes\Response as ScrambleResponse;
 use Illuminate\Http\JsonResponse;
 
@@ -19,6 +20,7 @@ class NotificationsController extends ApiController
      *
      * Returns the notification feed using cursor pagination links and metadata.
      */
+    #[Endpoint(operationId: 'notifications.list')]
     #[ScrambleResponse(
         status: 200,
         description: 'Paginated notification feed with cursor pagination metadata and links.',
@@ -42,6 +44,7 @@ class NotificationsController extends ApiController
      *
      * Marks every notification for the authenticated user as read in a single operation.
      */
+    #[Endpoint(operationId: 'notifications.markAllAsRead')]
     public function markAllAsRead(UserNotificationService $userNotificationService): JsonResponse
     {
         $userNotificationService->markAllAsRead($this->authenticatedUser());
@@ -54,6 +57,7 @@ class NotificationsController extends ApiController
      *
      * Deletes one notification belonging to the authenticated user.
      */
+    #[Endpoint(operationId: 'notifications.destroy')]
     public function destroy(string $notification, UserNotificationService $userNotificationService): JsonResponse
     {
         $userNotificationService->deleteForUser($this->authenticatedUser(), $notification);
@@ -66,6 +70,7 @@ class NotificationsController extends ApiController
      *
      * Changes the read state for a single notification belonging to the authenticated user.
      */
+    #[Endpoint(operationId: 'notifications.updateStatus')]
     public function updateStatus(
         NotificationStatusUpdateRequest $request,
         string $notification,

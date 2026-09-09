@@ -7,7 +7,9 @@ namespace Tests\Unit\Models;
 use App\Enums\ProjectStage;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Project;
+use App\Models\Stage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Override;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -22,7 +24,20 @@ use Tests\Traits\ProjectSetup;
  */
 class ProjectStateMachineTest extends TestCase
 {
-    use ProjectSetup, RefreshDatabase;
+    use ProjectSetup {
+        setUp as private setUpProject;
+    }
+    use RefreshDatabase;
+
+    #[Override]
+    protected function setUp(): void
+    {
+        $this->setUpProject();
+
+        foreach (ProjectStage::cases() as $stage) {
+            Stage::query()->firstOrCreate(['id' => $stage->value], ['name' => $stage->label()]);
+        }
+    }
 
     /**
      * @return array<string, array{from: ProjectStage, to: ProjectStage}>

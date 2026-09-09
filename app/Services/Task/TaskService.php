@@ -18,6 +18,7 @@ use App\DataTransferObjects\Task\TaskUpdateData;
 use App\DataTransferObjects\Task\UnassignTaskMemberData;
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\TaskSystemStatus;
+use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
@@ -70,6 +71,9 @@ class TaskService
         return $task;
     }
 
+    /**
+     * @throws InvalidStateTransitionException
+     */
     public function updateTask(Task $task, TaskUpdateData $data): Task
     {
         if ($data->isEmpty()) {

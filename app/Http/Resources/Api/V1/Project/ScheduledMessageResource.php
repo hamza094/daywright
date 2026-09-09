@@ -27,7 +27,21 @@ class ScheduledMessageResource extends JsonResource
             'type' => $this->type,
             'subject' => $this->subject,
             'message' => $this->message,
+            /**
+             * Message delivery timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
+             *
+             * @example 2025-07-01T09:00:00+00:00
+             */
             'delivered_at' => $this->delivered_at?->toIso8601String(),
+            /**
+             * Message creation timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
+             *
+             * @example 2025-07-01T09:00:00+00:00
+             */
             'created_at' => $this->created_at?->toIso8601String(),
             'users' => UserSummaryResource::collection($this->whenLoaded('users')),
         ];

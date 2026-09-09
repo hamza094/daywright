@@ -32,18 +32,49 @@ class MeetingResource extends JsonResource
             'meeting_id' => $this->meeting_id,
             'topic' => $this->topic,
             'agenda' => $this->agenda,
+            /**
+             * Meeting creation timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
+             *
+             * @example 2025-07-01T09:00:00+00:00
+             */
             'created_at' => $this->created_at?->toIso8601String(),
+            /**
+             * Meeting update timestamp in UTC ISO 8601 format.
+             *
+             * @format date-time
+             *
+             * @example 2025-07-01T09:00:00+00:00
+             */
             'updated_at' => $this->updated_at?->toIso8601String(),
             'owner' => $this->whenLoaded('user', fn (): UserSummaryResource => new UserSummaryResource($this->user)),
+            /**
+             * Meeting start time in UTC ISO 8601 format.
+             *
+             * @format date-time
+             *
+             * @example 2025-07-01T09:00:00+00:00
+             */
             'start_time' => $this->when(
                 (bool) $this->start_time,
                 fn (): string => Carbon::parse($this->start_time)->setTimezone('UTC')->toIso8601String(),
             ),
             'duration' => $this->duration,
+            /**
+             * Meeting start URL for the host.
+             *
+             * @format uri
+             */
             'start_url' => $this->when(
                 $request->user()?->is($this->user),
                 $this->start_url,
             ),
+            /**
+             * Meeting join URL for participants.
+             *
+             * @format uri
+             */
             'join_url' => $this->when(
                 $canAccessProject,
                 $this->join_url,
