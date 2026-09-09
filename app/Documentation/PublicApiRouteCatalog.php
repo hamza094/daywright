@@ -84,7 +84,7 @@ final class PublicApiRouteCatalog
             );
 
             foreach ($route->methods() as $routeMethod) {
-                $this->routeLookup[$routePath.':'.mb_strtoupper($routeMethod)] = $route;
+                $this->routeLookup[$routePath.':'.mb_strtoupper((string) $routeMethod)] = $route;
             }
         }
     }

@@ -26,7 +26,7 @@ final class ScrambleServiceProvider extends ServiceProvider
     ): void {
         Scramble::resolveTagsUsing(fn (RouteInfo $routeInfo): array => [$tags->resolve($routeInfo)]);
 
-        Scramble::afterOpenApiGenerated(function (OpenApi $openApi) use ($tags, $queries, $responses, $compatibility) {
+        Scramble::afterOpenApiGenerated(function (OpenApi $openApi) use ($tags, $queries, $responses, $compatibility): void {
             $compatibility->applyMethodCorrections($openApi);
             $tags->applyMetadata($openApi);
             $responses->apply($openApi);

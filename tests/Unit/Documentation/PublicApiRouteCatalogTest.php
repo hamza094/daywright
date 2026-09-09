@@ -37,9 +37,9 @@ final class PublicApiRouteCatalogTest extends TestCase
     public function test_route_publication_rules(string $uri, array $middleware, bool $expected, bool $fallback): void
     {
         if ($fallback) {
-            RouteFacade::fallback(fn () => 'not found');
+            RouteFacade::fallback(fn (): string => 'not found');
         } else {
-            RouteFacade::get($uri, fn () => 'ok')->middleware($middleware);
+            RouteFacade::get($uri, fn (): string => 'ok')->middleware($middleware);
         }
 
         $route = $this->findRouteByUri($uri);
@@ -50,7 +50,7 @@ final class PublicApiRouteCatalogTest extends TestCase
 
     public function test_find_for_operation_matches_normalized_path_and_method(): void
     {
-        RouteFacade::get('api/v1/projects', fn () => 'ok');
+        RouteFacade::get('api/v1/projects', fn (): string => 'ok');
 
         $route = $this->catalog->findForOperation('projects', 'GET');
         $this->assertNotNull($route);
@@ -59,7 +59,7 @@ final class PublicApiRouteCatalogTest extends TestCase
 
     public function test_find_for_operation_rejects_wrong_method(): void
     {
-        RouteFacade::get('api/v1/test-unique-route', fn () => 'ok');
+        RouteFacade::get('api/v1/test-unique-route', fn (): string => 'ok');
 
         $route = $this->catalog->findForOperation('test-unique-route', 'POST');
         $this->assertNull($route, 'Should not find route with wrong method');
@@ -67,7 +67,7 @@ final class PublicApiRouteCatalogTest extends TestCase
 
     public function test_find_for_operation_handles_v1_prefix_normalization(): void
     {
-        RouteFacade::get('api/v1/projects', fn () => 'ok');
+        RouteFacade::get('api/v1/projects', fn (): string => 'ok');
 
         // Both normalized and non-normalized paths should work
         $route1 = $this->catalog->findForOperation('projects', 'GET');

@@ -10,10 +10,10 @@ use Dedoc\Scramble\Support\Generator\Types\ObjectType;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Str;
 
-final class ScrambleCompatibility
+final readonly class ScrambleCompatibility
 {
     public function __construct(
-        private readonly PublicApiRouteCatalog $routeCatalog,
+        private PublicApiRouteCatalog $routeCatalog,
     ) {}
 
     /**

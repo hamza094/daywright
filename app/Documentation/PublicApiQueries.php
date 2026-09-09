@@ -103,56 +103,150 @@ final class PublicApiQueries
 
         return match ($normalizedPath) {
             'v1/dashboard/chart-data', 'dashboard/chart-data' => [
-                $this->makeQueryParameter('year', new IntegerType, 'Year for chart data', 2025),
-                $this->makeQueryParameter('month', new IntegerType, 'Month for chart data (1-12)', 7, null, 1, 12),
+                $this->makeQueryParameter('year', new IntegerType, [
+                    'description' => 'Year for chart data',
+                    'example' => 2025,
+                ]),
+                $this->makeQueryParameter('month', new IntegerType, [
+                    'description' => 'Month for chart data (1-12)',
+                    'example' => 7,
+                    'min' => 1,
+                    'max' => 12,
+                ]),
             ],
             'v1/dashboard/activities', 'dashboard/activities' => [
-                $this->makeQueryParameter('start_date', new StringType, 'Start date in ISO 8601 format', '2025-01-01', null, null, null, 'date', true),
-                $this->makeQueryParameter('end_date', new StringType, 'End date in ISO 8601 format', '2025-12-31', null, null, null, 'date', true),
+                $this->makeQueryParameter('start_date', new StringType, [
+                    'description' => 'Start date in ISO 8601 format',
+                    'example' => '2025-01-01',
+                    'format' => 'date',
+                    'required' => true,
+                ]),
+                $this->makeQueryParameter('end_date', new StringType, [
+                    'description' => 'End date in ISO 8601 format',
+                    'example' => '2025-12-31',
+                    'format' => 'date',
+                    'required' => true,
+                ]),
             ],
             'v1/projects', 'projects' => [
-                $this->makeQueryParameter('page', new IntegerType, self::PAGE_NUMBER_FOR_PAGINATION, 1, 1, 1),
-                $this->makeQueryParameter('per_page', new IntegerType, self::NUMBER_OF_ITEMS_PER_PAGE, 6, 6, 1, 100),
+                $this->makeQueryParameter('page', new IntegerType, [
+                    'description' => self::PAGE_NUMBER_FOR_PAGINATION,
+                    'example' => 1,
+                    'default' => 1,
+                    'min' => 1,
+                ]),
+                $this->makeQueryParameter('per_page', new IntegerType, [
+                    'description' => self::NUMBER_OF_ITEMS_PER_PAGE,
+                    'example' => 6,
+                    'default' => 6,
+                    'min' => 1,
+                    'max' => 100,
+                ]),
             ],
             'v1/projects/{project}/activities', 'projects/{project}/activities' => [
-                $this->makeQueryParameter('page', new IntegerType, self::PAGE_NUMBER_FOR_PAGINATION, 1, 1, 1),
-                $this->makeQueryParameter('per_page', new IntegerType, self::NUMBER_OF_ITEMS_PER_PAGE, 10, 10, 1, 100),
+                $this->makeQueryParameter('page', new IntegerType, [
+                    'description' => self::PAGE_NUMBER_FOR_PAGINATION,
+                    'example' => 1,
+                    'default' => 1,
+                    'min' => 1,
+                ]),
+                $this->makeQueryParameter('per_page', new IntegerType, [
+                    'description' => self::NUMBER_OF_ITEMS_PER_PAGE,
+                    'example' => 10,
+                    'default' => 10,
+                    'min' => 1,
+                    'max' => 100,
+                ]),
             ],
             'v1/projects/{project}/conversations', 'projects/{project}/conversations' => [
-                $this->makeQueryParameter('cursor', new StringType, self::CURSOR_FOR_PAGINATION, 'eyJpZCI6MX0'),
-                $this->makeQueryParameter('per_page', new IntegerType, self::NUMBER_OF_ITEMS_PER_PAGE, 10, 10, 1, 100),
+                $this->makeQueryParameter('cursor', new StringType, [
+                    'description' => self::CURSOR_FOR_PAGINATION,
+                    'example' => 'eyJpZCI6MX0',
+                ]),
+                $this->makeQueryParameter('per_page', new IntegerType, [
+                    'description' => self::NUMBER_OF_ITEMS_PER_PAGE,
+                    'example' => 10,
+                    'default' => 10,
+                    'min' => 1,
+                    'max' => 100,
+                ]),
             ],
             'v1/users/me/invitations', 'users/me/invitations' => [
-                $this->makeQueryParameter('page', new IntegerType, self::PAGE_NUMBER_FOR_PAGINATION, 1, 1, 1),
-                $this->makeQueryParameter('per_page', new IntegerType, self::NUMBER_OF_ITEMS_PER_PAGE, 10, 10, 1, 100),
+                $this->makeQueryParameter('page', new IntegerType, [
+                    'description' => self::PAGE_NUMBER_FOR_PAGINATION,
+                    'example' => 1,
+                    'default' => 1,
+                    'min' => 1,
+                ]),
+                $this->makeQueryParameter('per_page', new IntegerType, [
+                    'description' => self::NUMBER_OF_ITEMS_PER_PAGE,
+                    'example' => 10,
+                    'default' => 10,
+                    'min' => 1,
+                    'max' => 100,
+                ]),
             ],
             'v1/dashboard/tasks', 'dashboard/tasks' => [
-                $this->makeQueryParameter('cursor', new StringType, self::CURSOR_FOR_PAGINATION, 'eyJpZCI6MX0'),
-                $this->makeQueryParameter('per_page', new IntegerType, self::NUMBER_OF_ITEMS_PER_PAGE, 15, 15, 1, 100),
+                $this->makeQueryParameter('cursor', new StringType, [
+                    'description' => self::CURSOR_FOR_PAGINATION,
+                    'example' => 'eyJpZCI6MX0',
+                ]),
+                $this->makeQueryParameter('per_page', new IntegerType, [
+                    'description' => self::NUMBER_OF_ITEMS_PER_PAGE,
+                    'example' => 15,
+                    'default' => 15,
+                    'min' => 1,
+                    'max' => 100,
+                ]),
             ],
             'v1/notifications', 'notifications' => [
-                $this->makeQueryParameter('cursor', new StringType, self::CURSOR_FOR_PAGINATION, 'eyJpZCI6MX0'),
-                $this->makeQueryParameter('per_page', new IntegerType, self::NUMBER_OF_ITEMS_PER_PAGE, 25, 25, 1, 100),
+                $this->makeQueryParameter('cursor', new StringType, [
+                    'description' => self::CURSOR_FOR_PAGINATION,
+                    'example' => 'eyJpZCI6MX0',
+                ]),
+                $this->makeQueryParameter('per_page', new IntegerType, [
+                    'description' => self::NUMBER_OF_ITEMS_PER_PAGE,
+                    'example' => 25,
+                    'default' => 25,
+                    'min' => 1,
+                    'max' => 100,
+                ]),
             ],
             'v1/projects/{project}/tasks', 'projects/{project}/tasks' => [
-                $this->makeQueryParameter('page', new IntegerType, self::PAGE_NUMBER_FOR_PAGINATION, 1, 1, 1),
-                $this->makeQueryParameter('per_page', new IntegerType, self::NUMBER_OF_ITEMS_PER_PAGE, 20, 20, 1, 100),
+                $this->makeQueryParameter('page', new IntegerType, [
+                    'description' => self::PAGE_NUMBER_FOR_PAGINATION,
+                    'example' => 1,
+                    'default' => 1,
+                    'min' => 1,
+                ]),
+                $this->makeQueryParameter('per_page', new IntegerType, [
+                    'description' => self::NUMBER_OF_ITEMS_PER_PAGE,
+                    'example' => 20,
+                    'default' => 20,
+                    'min' => 1,
+                    'max' => 100,
+                ]),
             ],
             default => [],
         };
     }
 
+    /**
+     * @param  array{description?: string, example?: mixed, default?: mixed, min?: int, max?: int, format?: string, required?: bool}  $options
+     */
     private function makeQueryParameter(
         string $name,
         IntegerType|StringType $type,
-        ?string $description = null,
-        mixed $example = null,
-        mixed $default = null,
-        ?int $min = null,
-        ?int $max = null,
-        ?string $format = null,
-        bool $required = false,
+        array $options = [],
     ): Parameter {
+        $description = $options['description'] ?? null;
+        $example = $options['example'] ?? null;
+        $default = $options['default'] ?? null;
+        $min = $options['min'] ?? null;
+        $max = $options['max'] ?? null;
+        $format = $options['format'] ?? null;
+        $required = $options['required'] ?? false;
+
         // Apply constraints directly to the type object
         if ($min !== null && $type instanceof IntegerType) {
             $type->min = $min;

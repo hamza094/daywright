@@ -20,12 +20,12 @@ use Illuminate\Routing\Route;
 use ReflectionAttribute;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
-final class PublicApiResponses
+final readonly class PublicApiResponses
 {
     private const string VALIDATION_FAILED_MESSAGE = 'Validation failed.';
 
     public function __construct(
-        private readonly PublicApiRouteCatalog $routeCatalog,
+        private PublicApiRouteCatalog $routeCatalog,
     ) {}
 
     public function apply(OpenApi $openApi): void
@@ -91,51 +91,93 @@ final class PublicApiResponses
             $code,
         );
 
-        foreach ($operation->responses as $index => $candidate) {
-            $response = clone $candidate instanceof Reference ? $candidate->resolve() : $candidate;
+        $index = $this->findResponseIndex($operation, $definition['status']);
 
-            if (! is_numeric($response->code) || (int) $response->code !== $definition['status']) {
-                continue;
-            }
-
-            if (! str_contains($response->description, $code)) {
-                $response->setDescription(rtrim($response->description, '.').'. '.$description);
-            }
-
-            $examples = $response->getExtensionProperty('error-examples');
-            $examples = is_array($examples) ? $examples : [];
-            $examples[$code] = $definition['example'];
-            $response->setExtensionProperty('error-examples', $examples);
-
-            if (! $response->hasExtensionProperty('error-example')) {
-                $response->setExtensionProperty('error-example', $definition['example']);
-            }
-
-            $operation->responses[$index] = $response;
-            $operation->responses = array_values(array_filter(
-                $operation->responses,
-                static function ($candidate, int $candidateIndex) use ($index, $definition): bool {
-                    if ($candidateIndex === $index) {
-                        return true;
-                    }
-
-                    $resolvedCandidate = $candidate instanceof Reference ? $candidate->resolve() : $candidate;
-
-                    return ! is_numeric($resolvedCandidate->code)
-                        || (int) $resolvedCandidate->code !== $definition['status'];
-                },
-                ARRAY_FILTER_USE_BOTH,
-            ));
+        if ($index !== null) {
+            $this->updateExistingBusinessErrorResponse($operation, $index, $definition, $code, $description);
 
             return;
         }
 
+        $this->appendBusinessErrorResponse($openApi, $operation, $definition, $code, $description);
+    }
+
+    private function findResponseIndex(Operation $operation, int $status): ?int
+    {
+        foreach ($operation->responses as $index => $candidate) {
+            $response = $candidate instanceof Reference ? $candidate->resolve() : $candidate;
+
+            if (is_numeric($response->code) && (int) $response->code === $status) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{status: int, message: string, description: string, meta_schema: array<string, string>, example: array<string, mixed>}  $definition
+     */
+    private function updateExistingBusinessErrorResponse(
+        Operation $operation,
+        int $index,
+        array $definition,
+        string $code,
+        string $description,
+    ): void {
+        $candidate = $operation->responses[$index];
+        $response = clone $candidate instanceof Reference ? $candidate->resolve() : $candidate;
+
+        if (! str_contains((string) $response->description, $code)) {
+            $response->setDescription(rtrim((string) $response->description, '.').'. '.$description);
+        }
+
+        $examples = $response->getExtensionProperty('error-examples');
+        $examples = is_array($examples) ? $examples : [];
+        $examples[$code] = $definition['example'];
+        $response->setExtensionProperty('error-examples', $examples);
+
+        if (! $response->hasExtensionProperty('error-example')) {
+            $response->setExtensionProperty('error-example', $definition['example']);
+        }
+
+        $operation->responses[$index] = $response;
+        $this->removeDuplicateResponses($operation, $index, $definition['status']);
+    }
+
+    /**
+     * @param  array{status: int, message: string, description: string, meta_schema: array<string, string>, example: array<string, mixed>}  $definition
+     */
+    private function appendBusinessErrorResponse(
+        OpenApi $openApi,
+        Operation $operation,
+        array $definition,
+        string $code,
+        string $description,
+    ): void {
         $response = Response::make($definition['status'])
             ->setDescription($description);
         $this->normalizeErrorResponseToCanonicalEnvelope($response, $definition['status'], $openApi->components);
         $response->setExtensionProperty('error-examples', [$code => $definition['example']]);
         $response->setExtensionProperty('error-example', $definition['example']);
         $operation->responses[] = $response;
+    }
+
+    private function removeDuplicateResponses(Operation $operation, int $keepIndex, int $status): void
+    {
+        $operation->responses = array_values(array_filter(
+            $operation->responses,
+            static function ($candidate, int $candidateIndex) use ($keepIndex, $status): bool {
+                if ($candidateIndex === $keepIndex) {
+                    return true;
+                }
+
+                $response = $candidate instanceof Reference ? $candidate->resolve() : $candidate;
+
+                return ! is_numeric($response->code) || (int) $response->code !== $status;
+            },
+            ARRAY_FILTER_USE_BOTH,
+        ));
     }
 
     private function registerSharedPublicApiErrorResponses(Components $components): void
