@@ -28,9 +28,9 @@ class UsersPolicy
         return null;
     }
 
-    public function owner(User $user): bool
+    public function owner(User $actor, User $target): bool
     {
-        return $user->is(auth()->user());
+        return $actor->is($target);
     }
 
     /**

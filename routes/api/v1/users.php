@@ -34,21 +34,21 @@ Route::prefix('users/me')->name('users.me.')->group(function (): void {
 Route::apiResource('/users', UserController::class)
     ->except(['index', 'store'])
     ->middlewareFor(['show'], 'tokenAbility:team:read')
-    ->middlewareFor(['update'], 'tokenAbility:team:write')
-    ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'tokenAbility:team:write']);
+    ->middlewareFor(['update'], 'tokenAbility:account:write')
+    ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'tokenAbility:account:write']);
 
 Route::delete('/users/{user}/force', ForceDeleteUserController::class)
-    ->middleware(['throttle:sensitive-destructive', 'tokenAbility:team:write'])
+    ->middleware(['throttle:sensitive-destructive', 'tokenAbility:account:write'])
     ->name('users.forceDestroy')
     ->withTrashed();
 
 Route::group(['prefix' => 'users/{user}'], function (): void {
 
     Route::delete('/avatar', [AvatarController::class, 'destroy'])
-        ->middleware('tokenAbility:team:write')
+        ->middleware('tokenAbility:account:write')
         ->name('user.avatar.remove');
 
     Route::post('/avatar', [AvatarController::class, 'store'])
-        ->middleware(['throttle:sensitive-upload', 'tokenAbility:team:write'])
+        ->middleware(['throttle:sensitive-upload', 'tokenAbility:account:write'])
         ->name('user.avatar');
 });

@@ -202,4 +202,48 @@ class UserTest extends TestCase
             ->expectsOutput('User profile deletion process completed.')
             ->assertExitCode(0);
     }
+
+    #[Test]
+    public function user_cannot_modify_another_users_profile_even_with_shared_project(): void
+    {
+        $otherUser = User::factory()->create();
+        UserInfo::factory()->for($otherUser)->create();
+
+        // Add other user to the same project
+        $this->project->members()->attach($otherUser->id);
+
+        // Try to modify other user's profile
+        $response = $this->patchJson($this->apiV1Route('users.update', ['user' => $otherUser]), [
+            'name' => 'Hacked Name',
+            'email' => 'hacked@example.com',
+        ]);
+
+        $response->assertForbidden();
+
+        // Verify other user's data was not changed
+        $this->assertDatabaseMissing('users', [
+            'id' => $otherUser->id,
+            'name' => 'Hacked Name',
+        ]);
+    }
+
+    #[Test]
+    public function user_cannot_delete_another_users_account_even_with_shared_project(): void
+    {
+        $otherUser = User::factory()->create();
+
+        // Add other user to the same project
+        $this->project->members()->attach($otherUser->id);
+
+        // Try to delete other user's account
+        $response = $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $otherUser]));
+
+        $response->assertForbidden();
+
+        // Verify other user's account was not deleted
+        $this->assertDatabaseHas('users', [
+            'id' => $otherUser->id,
+            'deleted_at' => null,
+        ]);
+    }
 }
