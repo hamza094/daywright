@@ -30,7 +30,6 @@ class UserTest extends TestCase
             [
                 'newName' => 'john doe',
                 'newUsername' => 'jane_doe',
-                'newEmail' => 'john_doe@example.com',
                 'newCompany' => 'Acme Inc.',
                 'newMobile' => '1234567890',
             ],
@@ -68,13 +67,14 @@ class UserTest extends TestCase
 
     #[Test]
     #[DataProvider('dataProvider')]
-    public function owner_can_update_his_data(string $newName, string $newUsername, string $newEmail, string $newCompany, string $newMobile): void
+    public function owner_can_update_his_data(string $newName, string $newUsername, string $newCompany, string $newMobile): void
     {
         UserInfo::factory()->for($this->user)->create();
 
+        $originalEmail = $this->user->email;
+
         $response = $this->patchJson($this->apiV1Route('users.update', ['user' => $this->user]), [
             'name' => $newName,
-            'email' => $newEmail,
             'username' => $newUsername,
             'company' => $newCompany,
             'mobile' => $newMobile,
@@ -82,13 +82,13 @@ class UserTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('data.name', $newName)
-            ->assertJsonPath('data.email', $newEmail)
+            ->assertJsonPath('data.email', $originalEmail)
             ->assertJsonPath('data.username', $newUsername);
 
         $this->assertDatabaseHas('users', [
             'id' => $this->user->id,
             'name' => $newName,
-            'email' => $newEmail,
+            'email' => $originalEmail,
         ])
             ->assertDatabaseHas('user_infos', [
                 'user_id' => $this->user->id,
@@ -215,7 +215,6 @@ class UserTest extends TestCase
         // Try to modify other user's profile
         $response = $this->patchJson($this->apiV1Route('users.update', ['user' => $otherUser]), [
             'name' => 'Hacked Name',
-            'email' => 'hacked@example.com',
         ]);
 
         $response->assertForbidden();
@@ -244,6 +243,27 @@ class UserTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $otherUser->id,
             'deleted_at' => null,
+        ]);
+    }
+
+    #[Test]
+    public function user_cannot_change_email_address(): void
+    {
+        UserInfo::factory()->for($this->user)->create();
+
+        $originalEmail = $this->user->email;
+        $newEmail = 'different@example.com';
+
+        $response = $this->patchJson($this->apiV1Route('users.update', ['user' => $this->user]), [
+            'email' => $newEmail,
+        ]);
+
+        $response->assertUnprocessable();
+
+        // Verify email was not changed
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'email' => $originalEmail,
         ]);
     }
 }

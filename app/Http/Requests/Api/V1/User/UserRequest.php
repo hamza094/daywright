@@ -43,17 +43,16 @@ class UserRequest extends FormRequest
              */
             'name' => ['sometimes', 'required', 'string', 'max:30'],
             /**
-             * Updated primary email address.
-             *
-             * @example john.doe@example.com
-             */
-            'email' => ['sometimes', 'required', 'email', 'max:100', Rule::unique('users')->ignore($this->user())],
-            /**
              * Updated public username.
              *
              * @example john_doe
              */
             'username' => ['sometimes', 'required', 'alpha_dash:ascii', 'max:30', Rule::unique('users')->ignore($this->user())],
+            /**
+             * Email field is explicitly prohibited for security reasons.
+             * Email serves as a permanent account identifier to prevent account takeover attacks.
+             */
+            'email' => ['prohibited'],
             /**
              * Optional mobile number as string to preserve leading zeros.
              *
