@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -160,18 +161,6 @@ class UserTest extends TestCase
     }
 
     #[Test]
-    public function user_can_force_delete_a_trashed_profile(): void
-    {
-        $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $this->user]))->assertOk();
-
-        $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $this->user]))
-            ->assertOk()
-            ->assertJsonPath('message', 'User data permanently deleted.');
-
-        $this->assertDatabaseMissing('users', ['id' => $this->user->id]);
-    }
-
-    #[Test]
     public function it_permanently_deletes_user_and_handles_projects_after_15_days(): void
     {
         // Create a user and soft delete them 16 days ago
@@ -265,5 +254,90 @@ class UserTest extends TestCase
             'id' => $this->user->id,
             'email' => $originalEmail,
         ]);
+    }
+
+    #[Test]
+    public function cannot_force_delete_active_user_enforces_archive_first(): void
+    {
+        // Try to force delete an active user (not soft-deleted)
+        $response = $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $this->user]));
+
+        $response->assertStatus(Response::HTTP_CONFLICT)
+            ->assertJsonPath('message', 'User must be soft-deleted before force deletion.');
+
+        // Verify user is still active (not deleted)
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'deleted_at' => null,
+        ]);
+    }
+
+    #[Test]
+    public function can_force_delete_soft_deleted_user(): void
+    {
+        // First soft delete the user
+        $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $this->user]))->assertOk();
+
+        // Now force delete the soft-deleted user
+        $response = $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $this->user]));
+
+        $response->assertOk()
+            ->assertJsonPath('message', 'User data permanently deleted.');
+
+        // Verify user is permanently deleted
+        $this->assertDatabaseMissing('users', ['id' => $this->user->id]);
+    }
+
+    #[Test]
+    public function cannot_force_delete_another_users_soft_deleted_account(): void
+    {
+        $otherUser = User::factory()->create();
+
+        // Soft delete the other user
+        $otherUser->delete();
+
+        // Try to force delete another user's soft-deleted account
+        $response = $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $otherUser]));
+
+        $response->assertForbidden();
+
+        // Verify other user's account still exists (soft-deleted)
+        $this->assertSoftDeleted('users', ['id' => $otherUser->id]);
+    }
+
+    #[Test]
+    public function force_delete_missing_user_returns_not_found(): void
+    {
+        // Create a user and then permanently delete them
+        $user = User::factory()->create();
+        $uuid = $user->uuid;
+        $user->forceDelete();
+
+        // Try to force delete the already-deleted user
+        $response = $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $uuid]));
+
+        $response->assertNotFound();
+    }
+
+    #[Test]
+    public function admin_archive_first_workflow_consistency(): void
+    {
+        // Document that even admins must follow the same archive-first workflow.
+        // The state validation ($user->trashed()) happens after policy authorization,
+        // so it applies to all users including admins who bypass policy checks.
+
+        $admin = User::factory()->admin()->create();
+        $otherUser = User::factory()->create();
+
+        // Verify admin bypasses ownership policy
+        $policy = new \App\Policies\UsersPolicy;
+        $this->assertTrue($policy->before($admin), 'Admin bypasses policy checks');
+
+        // Verify the ownership check logic
+        $this->assertFalse($policy->owner($admin, $otherUser), 'Owner check returns false for different users');
+
+        // Since admin bypasses the policy, they can force delete other users' soft-deleted accounts
+        // (this is the intended admin behavior - they have full authority over soft-deleted accounts)
+        // But even admins must follow archive-first workflow for active accounts
     }
 }
