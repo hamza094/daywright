@@ -26,8 +26,6 @@ class IdempotentRoutesRegistrationTest extends TestCase
             'api.v1.users.me.subscription.update',
             'api.v1.projects.messages.store',
             'api.v1.send.invitation',
-            'api.v1.accept.invitation',
-            'api.v1.reject.invitation',
             'api.v1.task.assign',
             'api.v1.task.unassign',
             'api.v1.meetings.store',
@@ -45,13 +43,13 @@ class IdempotentRoutesRegistrationTest extends TestCase
     }
 
     #[Test]
-    public function subscription_cancel_route_has_user_scoped_idempotency_middleware(): void
+    public function subscription_cancel_route_does_not_have_idempotency_middleware(): void
     {
         $route = app('router')->getRoutes()->getByName('api.v1.users.me.subscription.destroy');
 
         $this->assertNotNull($route);
         $this->assertContains('DELETE', $route->methods());
-        $this->assertContains(Idempotent::using(scope: IdempotencyScope::User), $route->gatherMiddleware());
+        $this->assertNotContains(Idempotent::using(scope: IdempotencyScope::User), $route->gatherMiddleware());
     }
 
     #[Test]

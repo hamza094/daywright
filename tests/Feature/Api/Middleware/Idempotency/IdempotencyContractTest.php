@@ -18,7 +18,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
-use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -221,48 +220,6 @@ final class IdempotencyContractTest extends TestCase
     }
 
     #[Test]
-    public function invitation_accept_replays_without_reprocessing_the_membership(): void
-    {
-        /** @var User $invitedUser */
-        $invitedUser = User::factory()->create();
-        $this->project->invite($invitedUser);
-        Sanctum::actingAs($invitedUser);
-
-        $headers = $this->idempotencyHeaders('phase-six-invitation-accept');
-        $route = $this->apiV1ProjectRoute('accept.invitation', $this->project);
-
-        $this->withHeaders($headers)->postJson($route)->assertOk();
-        $this->withHeaders($headers)->postJson($route)->assertOk();
-
-        $this->assertSame(1, $this->project->members()->whereKey($invitedUser->id)->count());
-        $this->assertDatabaseHas('project_members', [
-            'project_id' => $this->project->id,
-            'user_id' => $invitedUser->id,
-            'active' => true,
-        ]);
-    }
-
-    #[Test]
-    public function invitation_reject_replays_without_recreating_the_membership(): void
-    {
-        /** @var User $invitedUser */
-        $invitedUser = User::factory()->create();
-        $this->project->invite($invitedUser);
-        Sanctum::actingAs($invitedUser);
-
-        $headers = $this->idempotencyHeaders('phase-six-invitation-reject');
-        $route = $this->apiV1ProjectRoute('reject.invitation', $this->project);
-
-        $this->withHeaders($headers)->postJson($route)->assertOk();
-        $this->withHeaders($headers)->postJson($route)->assertOk();
-
-        $this->assertDatabaseMissing('project_members', [
-            'project_id' => $this->project->id,
-            'user_id' => $invitedUser->id,
-        ]);
-    }
-
-    #[Test]
     public function project_message_send_replays_without_creating_duplicate_messages(): void
     {
         $this->user->forceFill(['is_admin' => true])->save();
@@ -457,7 +414,10 @@ final class IdempotencyContractTest extends TestCase
 
         $this->assertInstanceOf(LockProvider::class, $store);
 
-        $lock = $store->lock(app(IdempotencyCache::class)->lockKey($storageKey), 10);
+        $lock = $store->lock(
+            app(IdempotencyCache::class)->lockKey($storageKey),
+            config()->integer('idempotency.lock_timeout'),
+        );
 
         $this->assertTrue($lock->get());
 

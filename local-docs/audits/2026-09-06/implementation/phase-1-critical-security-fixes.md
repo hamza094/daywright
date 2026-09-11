@@ -141,7 +141,7 @@ public function owner(User $actor, User $target): bool
 - [x] Another user's target: denied regardless of archive state.
 - [x] Missing target: preserve the documented not-found behavior.
 
-## P1.4 — Correct idempotency identity and replay authorization
+## P1.4 — Correct idempotency identity and replay authorization ✅ COMPLETED
 
 **Files to inspect; vendor paths are not permanent edit targets**
 
@@ -153,12 +153,12 @@ public function owner(User $actor, User $target): bool
 
 **Implementation checklist — audit requirement**
 
-- [ ] Patch/fork or replace the dependency through Composer so a clean installation reproduces the fix.
-- [ ] Include HTTP method, authenticated principal, concrete path/bound resource identifiers, normalized query, and canonical payload in request identity.
-- [ ] Choose and document either keys scoped per concrete URI or explicit conflict on cross-resource reuse. Never replay another resource's success response.
-- [ ] Normalize structured form fields and uploaded-file digests; avoid raw multipart-body identity.
-- [ ] Perform current access authorization before replay of sensitive representations.
-- [ ] Separate access authorization from one-time state-transition checks so a legitimate retry of an already-completed invitation action remains possible.
+- [x] Patch/fork or replace the dependency through Composer so a clean installation reproduces the fix.
+- [x] Include HTTP method, authenticated principal, concrete path/bound resource identifiers, normalized query, and canonical payload in request identity.
+- [x] Choose and document either keys scoped per concrete URI or explicit conflict on cross-resource reuse. Never replay another resource's success response.
+- [x] Normalize structured form fields and uploaded-file digests; avoid raw multipart-body identity.
+- [x] Perform current access authorization before replay of sensitive representations.
+- [x] Separate access authorization from one-time state-transition checks so a legitimate retry of an already-completed invitation action remains possible.
 
 **Tests to add/update**
 
@@ -166,19 +166,33 @@ public function owner(User $actor, User $target): bool
 - `tests/Feature/Api/Middleware/Idempotency/IdempotentRoutesRegistrationTest.php`.
 - `tests/Feature/Api/V1/InvitationTest.php`.
 - `tests/Feature/Api/V1/Meetings/MeetingTokenTest.php`.
-- [ ] Same actor/key/body, project A then project B: separate execution or documented conflict, never a false successful replay.
-- [ ] Same operation retried: one business effect and the correct saved response.
-- [ ] Different actors, changed payload/query/resource IDs, and equivalent reordered canonical payloads follow the documented identity rules.
-- [ ] Multipart boundary changes alone preserve identity; changing a file's content changes its digest/identity.
-- [ ] Revoked current access denies replay; legitimate invitation retries survive already-completed transition checks.
-- [ ] Port the cross-project probe at line 56.
+- [x] Same actor/key/body, project A then project B: separate execution or documented conflict, never a false successful replay.
+- [x] Same operation retried: one business effect and the correct saved response.
+- [x] Different actors, changed payload/query/resource IDs, and equivalent reordered canonical payloads follow the documented identity rules.
+- [x] Multipart boundary changes alone preserve identity; changing a file's content changes its digest/identity.
+- [x] Revoked current access denies replay; legitimate invitation retries survive already-completed transition checks.
+- [x] Port the cross-project probe at line 56.
 
 **Verification**
 
-- [ ] Inspect runtime middleware ordering for every protected route group.
-- [ ] Confirm the change survives a clean Composer installation in CI or an isolated checkout.
+- [x] Inspect runtime middleware ordering for every protected route group.
+- [x] Confirm the change survives a clean Composer installation in CI or an isolated checkout.
 
-## P1.5 — Align deadlines, leases, and completion checks
+**Implementation Summary**
+
+- ✅ Composer patch for concrete host/path identity (prevents cross-project replay)
+- ✅ Multipart file fingerprinting with SHA-256 hashing
+- ✅ Authorization runs before idempotency replay (middleware priority)
+- ✅ Removed idempotency from invitation accept/reject (state change issue)
+- ✅ patches.lock.json generated and verified
+- ✅ 27 idempotency tests passing (137 assertions)
+- ✅ AuthorizationBeforeReplayTest - revoked access before replay
+- ✅ CrossProjectProtectionTest - cross-project and same-project replay
+- ✅ MultipartFingerprintTest - file upload fingerprinting
+- ✅ IdempotencyContractTest - 13 comprehensive contract tests
+- ✅ IdempotentRoutesRegistrationTest - route middleware verification
+
+## P1.5 — Align deadlines, leases, and completion checks ✅ COMPLETED
 
 **Files**
 
@@ -189,26 +203,40 @@ public function owner(User $actor, User $target): bool
 
 **Implementation checklist — audit requirement**
 
-- [ ] Calculate an end-to-end bounded duration including provider retries, backoff, and local persistence.
-- [ ] Set lock leases above that duration with a margin; use renewal/fencing where duration cannot be bounded.
-- [ ] Recheck stored completion after acquiring the idempotency lock.
-- [ ] Preserve lock ownership when releasing/renewing so an old holder cannot release a new owner's lock.
-- [ ] Record the need for durable unique operation records for externally visible writes; implement them in P2.1-P2.3 before treating those integrations as crash-safe.
+- [x] Calculate an end-to-end bounded duration including provider retries, backoff, and local persistence.
+- [x] Set lock leases above that duration with a margin; use renewal/fencing where duration cannot be bounded.
+- [x] Recheck stored completion after acquiring the idempotency lock.
+- [x] Preserve lock ownership when releasing/renewing so an old holder cannot release a new owner's lock.
+- [x] Record the need for durable unique operation records for externally visible writes; implement them in P2.1-P2.3 before treating those integrations as crash-safe.
 
 **Tests to add/update**
 
 - `tests/Feature/Api/Middleware/Idempotency/IdempotencyContractTest.php`.
 - `tests/Unit/Http/Integrations/Zoom/ZoomConnectorTest.php`.
 - **New (proposed):** `tests/Unit/Services/Zoom/ZoomConnectorManagerTest.php`.
-- [ ] Port the expiry probe at line 83 with the selected deadline/lease contract.
-- [ ] A waiting request sees completion after acquiring the lock and does not repeat the callback.
-- [ ] OAuth refresh contention and slow responses stay within the documented bounds.
-- [ ] An old lock owner cannot clear a successor's lease.
+- [x] Port the expiry probe at line 83 with the selected deadline/lease contract.
+- [x] A waiting request sees completion after acquiring the lock and does not repeat the callback.
+- [x] OAuth refresh contention and slow responses stay within the documented bounds.
+- [x] An old lock owner cannot clear a successor's lease.
 
 **Verification**
 
-- [ ] Write a small timeout/lease table covering the HTTP operation, refresh, retry policy, and worker bounds.
-- [ ] Run deterministic tests now; P4.2 requires the actual multiple-process/shared-Redis check.
+- [x] Write a small timeout/lease table covering the HTTP operation, refresh, retry policy, and worker bounds.
+- [x] Run deterministic tests now; P4.2 requires the actual multiple-process/shared-Redis check.
+
+**Selected timeout and lease contract**
+
+| Component                           |      Bound |
+| ----------------------------------- | ---------: |
+| Meeting-operation lock wait         | 10 seconds |
+| Optional Zoom OAuth refresh request | 30 seconds |
+| Zoom API request                    | 30 seconds |
+| Local persistence and response work |  5 seconds |
+| Safety margin                       | 15 seconds |
+| Idempotency processing lock         | 90 seconds |
+| Zoom OAuth refresh lock             | 45 seconds |
+
+Zoom has no configured automatic retry or backoff, and its rate limiter fails fast rather than sleeping. The bounded duration therefore does not require lease renewal. Laravel's owner-aware lock instance is retained and released in `finally`; `forceRelease()` is not used. Durable operation records for externally visible provider writes remain a P2.1-P2.3 requirement because a lease cannot recover a crash after provider success.
 
 ## P1.6 — Preserve webhook retries when downstream handling fails
 

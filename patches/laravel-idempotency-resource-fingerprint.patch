@@ -1,0 +1,219 @@
+diff --git a/src/Http/Middleware/Idempotent.php b/src/Http/Middleware/Idempotent.php
+index 9fbb76b..565ce5b 100644
+--- a/src/Http/Middleware/Idempotent.php
++++ b/src/Http/Middleware/Idempotent.php
+@@ -36,12 +36,14 @@ final readonly class Idempotent
+         ?bool $required = null,
+         ?IdempotencyScope $scope = null,
+         ?string $header = null,
++        ?int $lockTimeout = null,
+     ): string {
+         return self::class . ':' . IdempotencyOptions::resolve(
+             ttl: $ttl,
+             required: $required,
+             scope: $scope,
+             header: $header,
++            lockTimeout: $lockTimeout,
+         )->serialize();
+     }
+ 
+@@ -52,12 +54,19 @@ final readonly class Idempotent
+         null|bool|string $required = null,
+         null|string|IdempotencyScope $scope = null,
+         ?string $header = null,
++        null|int|string $lockTimeout = null,
+     ): SymfonyResponse {
+         if (! $this->isIdempotentMethod($request)) {
+             return $next($request);
+         }
+ 
+-        $options = IdempotencyOptions::resolve($ttl, $required, $scope, $header);
++        $options = IdempotencyOptions::resolve(
++            ttl: $ttl,
++            required: $required,
++            scope: $scope,
++            header: $header,
++            lockTimeout: $lockTimeout,
++        );
+         $clientKey = $request->header($options->header);
+ 
+         if (! is_string($clientKey) || $clientKey === '') {
+@@ -90,16 +99,26 @@ final readonly class Idempotent
+             throw new HttpException(Response::HTTP_INTERNAL_SERVER_ERROR, 'The configured cache store does not support atomic locks.');
+         }
+ 
+-        $lock = $store->lock($this->idempotencyCache->lockKey($storageKey), 10);
++        $lock = $store->lock($this->idempotencyCache->lockKey($storageKey), $options->lockTimeout);
+ 
+         if (! $lock->get()) {
+             throw new HttpException(Response::HTTP_CONFLICT, 'A request with this idempotency key is currently being processed.', null, ['Retry-After' => '1']);
+         }
+ 
+-        $request->attributes->set('idempotent', true);
+-        $request->attributes->set('idempotency-key', $clientKey);
+-
+         try {
++            $stored = $this->idempotencyCache->get($storageKey);
++
++            if ($stored instanceof StoredResponse) {
++                if ($stored->fingerprint !== $fingerprint) {
++                    throw new HttpException(Response::HTTP_UNPROCESSABLE_ENTITY, 'Idempotency key already used with different request parameters.');
++                }
++
++                return $stored->toResponse();
++            }
++
++            $request->attributes->set('idempotent', true);
++            $request->attributes->set('idempotency-key', $clientKey);
++
+             /** @var SymfonyResponse $response */
+             $response = $next($request);
+ 
+diff --git a/src/Support/IdempotencyOptions.php b/src/Support/IdempotencyOptions.php
+index accb5b3..ebc8235 100644
+--- a/src/Support/IdempotencyOptions.php
++++ b/src/Support/IdempotencyOptions.php
+@@ -4,6 +4,7 @@ declare(strict_types=1);
+ 
+ namespace WendellAdriel\Idempotency\Support;
+ 
++use InvalidArgumentException;
+ use WendellAdriel\Idempotency\Enums\IdempotencyScope;
+ 
+ final readonly class IdempotencyOptions
+@@ -13,6 +14,7 @@ final readonly class IdempotencyOptions
+         public bool $required,
+         public IdempotencyScope $scope,
+         public string $header,
++        public int $lockTimeout,
+     ) {}
+ 
+     public static function resolve(
+@@ -20,12 +22,14 @@ final readonly class IdempotencyOptions
+         null|bool|string $required = null,
+         null|string|IdempotencyScope $scope = null,
+         ?string $header = null,
++        null|int|string $lockTimeout = null,
+     ): self {
+         return new self(
+             ttl: self::resolveTtl($ttl),
+             required: self::resolveRequired($required),
+             scope: IdempotencyScope::fromConfig($scope),
+             header: $header ?? config()->string('idempotency.header'),
++            lockTimeout: self::resolveLockTimeout($lockTimeout),
+         );
+     }
+ 
+@@ -36,18 +40,33 @@ final readonly class IdempotencyOptions
+             $this->required ? '1' : '0',
+             $this->scope->value,
+             $this->header,
++            $this->lockTimeout,
+         ]);
+     }
+ 
+     private static function resolveTtl(null|int|string $ttl): int
+     {
+-        if (is_int($ttl)) {
+-            return $ttl;
++        return self::resolvePositiveInt($ttl, 'idempotency.ttl', 'ttl');
++    }
++
++    private static function resolveLockTimeout(null|int|string $lockTimeout): int
++    {
++        return self::resolvePositiveInt($lockTimeout, 'idempotency.lock_timeout', 'lock_timeout');
++    }
++
++    private static function resolvePositiveInt(null|int|string $value, string $configKey, string $option): int
++    {
++        $resolved = match (true) {
++            is_int($value) => $value,
++            $value !== null => (int) $value,
++            default => config()->integer($configKey),
++        };
++
++        if ($resolved < 1) {
++            throw new InvalidArgumentException("The {$option} must be a positive integer (>= 1).");
+         }
+ 
+-        return $ttl !== null
+-            ? (int) $ttl
+-            : config()->integer('idempotency.ttl');
++        return $resolved;
+     }
+ 
+     private static function resolveRequired(null|bool|string $required): bool
+diff --git a/src/Support/RequestFingerprint.php b/src/Support/RequestFingerprint.php
+index f3f8353..c92063b 100644
+--- a/src/Support/RequestFingerprint.php
++++ b/src/Support/RequestFingerprint.php
+@@ -5,7 +5,7 @@ declare(strict_types=1);
+ namespace WendellAdriel\Idempotency\Support;
+ 
+ use Illuminate\Http\Request;
+-use Illuminate\Routing\Route;
++use Illuminate\Http\UploadedFile;
+ 
+ final class RequestFingerprint
+ {
+@@ -33,14 +33,7 @@ final class RequestFingerprint
+ 
+     public function routeIdentity(Request $request): string
+     {
+-        /** @var Route|null $route */
+-        $route = $request->route();
+-
+-        return match (true) {
+-            $route === null => $request->getPathInfo(),
+-            is_string($route->getName()) => $route->getName(),
+-            default => ($route->getDomain() ?? '') . '/' . $route->uri(),
+-        };
++        return mb_strtolower($request->getHost()).'|'.$request->getPathInfo();
+     }
+ 
+     private function hashPayload(Request $request): string
+@@ -55,9 +48,44 @@ final class RequestFingerprint
+             }
+         }
+ 
++        if ($request->files->count() > 0) {
++            $fields = $request->request->all();
++            $files = $this->normalizeFiles($request->allFiles());
++
++            $this->recursiveKeySort($fields);
++            $this->recursiveKeySort($files);
++
++            return hash('xxh128', (string) json_encode([
++                'fields' => $fields,
++                'files' => $files,
++            ]));
++        }
++
+         return hash('xxh128', $request->getContent());
+     }
+ 
++    /**
++     * @param  array<int|string, UploadedFile|array<mixed>>  $files
++     * @return array<int|string, mixed>
++     */
++    private function normalizeFiles(array $files): array
++    {
++        $normalized = [];
++
++        foreach ($files as $key => $file) {
++            $normalized[$key] = is_array($file)
++                ? $this->normalizeFiles($file)
++                : [
++                    'name' => $file->getClientOriginalName(),
++                    'mime_type' => $file->getMimeType(),
++                    'size' => $file->getSize(),
++                    'sha256' => hash('sha256', $file->getContent()),
++                ];
++        }
++
++        return $normalized;
++    }
++
+     /**
+      * @param  array<int|string, mixed>  $array
+      */

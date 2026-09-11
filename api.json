@@ -3,7 +3,7 @@
   "info": {
     "title": "DayWright",
     "version": "0.3.1",
-    "description": "# DayWright API Overview\n\nDayWright exposes a versioned JSON API for authentication, users, projects, tasks, conversations, notifications, subscriptions, and selected integration workflows. Individual endpoint pages describe exact request fields and schemas; this page documents the shared conventions used across the API.\n\n## Introduction\n\n- The public API is currently implemented under `v1`.\n- Resource serialization is handled primarily through Laravel API resources, so most payloads are JSON-first and predictable.\n\n## Base URL\n\n- Relative base path: `/api/v1`\n- Example requests and links below use relative API paths so the published docs stay environment-agnostic.\n\n\n## Authentication\n\n### Bearer token authentication\n\n- API clients authenticate with Laravel Sanctum personal access tokens.\n- Send tokens using the `Authorization` header:\n\n```http\nAuthorization: Bearer YOUR_TOKEN\n```\n\n- Contact your DayWright administrator to obtain API access credentials.\n- Tokens include scope-based permissions for different API operations.\n- User-created API tokens may include an optional `expires_at` value in ISO 8601 format, up to 180 days in the future.\n\n\n\n## Request Format\n\n- Send JSON request bodies unless an endpoint explicitly accepts files.\n- Recommended headers for JSON requests:\n\n```http\nAccept: application/json\nContent-Type: application/json\n```\n\n- File upload endpoints use `multipart/form-data`.\n- Request and response fields use `snake_case`.\n- Where timestamps are accepted, the API expects ISO 8601 timestamps with a timezone offset, for example `2025-12-31T23:59:59+00:00`.\n- Selected filter requests normalize boolean-like query values, but JSON booleans are preferred.\n\n## Query Contract\n\nReleased collection and collection-like read endpoints use a strict query contract unless an endpoint description explicitly documents an exception.\n\n### Filtering\n\n- Use `filter[field]=value` for general collection endpoints.\n- Only documented filter keys are accepted.\n- Unknown filter keys and invalid filter values return `422 Unprocessable Entity`.\n- A valid filter that matches no records still returns `200 OK` with an empty `data` payload.\n\n### Sorting\n\n- Use `sort=field` for ascending order.\n- Use `sort=-field` for descending order.\n- Only documented sort keys are accepted.\n- Endpoints that do not document `sort` reject it with `422 Unprocessable Entity`.\n\n### Includes And Extra Parameters\n\n- `include` is not part of the public contract unless an endpoint explicitly documents it.\n- `fields` and `append` are also rejected unless an endpoint explicitly opts in.\n- Unsupported top-level parameters, including arbitrary extras such as `random=value`, return `422 Unprocessable Entity` instead of being ignored.\n\n### Pagination Categories\n\n- Paginated endpoints use the top-level `data`, `links`, and `meta` structure with `page` and `per_page`.\n- Unless an endpoint documents a narrower limit, `per_page` is validated in the range `1..100`.\n- Empty paginated results still return `data`, `links`, and `meta`.\n- Fixed-size endpoints return a documented server-controlled slice, for example the dashboard projects feed.\n- Intentional bounded exceptions return a non-paginated collection only when the dataset is small and server-controlled, for example pending project invitations and dedicated lookup endpoints.\n\n### Documented Query Exceptions\n\n- Dashboard activity reads use top-level `start_date` and `end_date`.\n- Dashboard chart data uses top-level `year` and optional `month`.\n- Dedicated lookup endpoints may use a top-level `search` parameter instead of the general `filter[...]` grammar.\n\n## Response Format\n\nMost successful responses use one of the following patterns.\n\n### Resource or object response\n\n```json\n{\n    \"data\": {\n        \"id\": 1,\n        \"name\": \"The Dimension\"\n    }\n}\n```\n\n### Collection response\n\n```json\n{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"name\": \"The Dimension\",\n            \"slug\": \"the-dimension\",\n            \"links\": {\n                \"self\": \"/api/v1/projects/the-dimension\"\n            }\n        }\n    ]\n}\n```\n\n### Message-only response\n\n```json\n{\n    \"message\": \"Webhook accepted.\"\n}\n```\n\nNotes:\n\n- When a resource exposes navigational links, they are typically returned as relative API paths inside a `links` object.\n- Some endpoints include endpoint-specific `meta` data alongside `data`.\n- Not every successful response includes a `message` field; for most read and create operations, `data` is the canonical payload.\n\n## Error Handling\n\nAPI errors are normalized into a consistent envelope:\n\n```json\n{\n    \"message\": \"Resource not found.\",\n    \"code\": \"not_found\",\n    \"errors\": {},\n    \"meta\": {}\n}\n```\n\nNotes:\n\n- `message` is safe for client display.\n- `code` is the stable machine-readable error identifier.\n- `errors` contains field-level validation details when available; otherwise it is an empty object.\n- `meta` contains structured context when available; otherwise it is an empty object.\n- Application-authored 4xx messages may be preserved when safe to expose.\n- Generic 5xx responses intentionally avoid leaking internal details.\n\nDayWright also uses domain-specific error codes when appropriate, including examples such as `subscription_required`, `plan_limit_exceeded`, `project_archived`, and `task_archived`.\n\n## Validation Errors\n\nValidation failures return `422 Unprocessable Entity` with the standard error envelope.\n\n```json\n{\n    \"message\": \"Validation failed.\",\n    \"code\": \"validation_error\",\n    \"errors\": {\n        \"email\": [\n            \"The provided credentials are incorrect.\"\n        ]\n    },\n    \"meta\": {}\n}\n```\n\nNotes:\n\n- Form request validation is used extensively across the API.\n- Validation errors are keyed by input name.\n- Query validation errors use the same envelope and surface nested keys in dot notation, for example `filter.state`.\n\n## Pagination\n\nWhen an endpoint is paginated, the response uses Laravel's standard top-level `data`, `links`, and `meta` structure:\n\n```json\n{\n    \"data\": [],\n    \"links\": {\n        \"first\": \"/api/v1/projects?page=1\",\n        \"last\": \"/api/v1/projects?page=5\",\n        \"prev\": null,\n        \"next\": \"/api/v1/projects?page=2\"\n    },\n    \"meta\": {\n        \"current_page\": 1,\n        \"last_page\": 5,\n        \"per_page\": 15,\n        \"total\": 73\n    }\n}\n```\n\nNotes:\n\n- `page` and `per_page` are the common pagination parameters.\n- Many list endpoints validate `per_page` with a maximum of `100`.\n- Some list endpoints intentionally return fixed-size or bounded non-paginated collections; rely on the query-contract section above and each endpoint's description for exact behavior.\n\n## Rate Limiting\n\nThe API uses Laravel rate limiters with route-specific policies.\n\n| Limiter | Typical usage | Limit |\n| --- | --- | --- |\n| `api` | Default API middleware (Safety Net) | `300` requests per minute by IP |\n| `user-ceiling` | User-level rate ceiling | `200` requests per minute by user |\n| `per-token` | Token-specific rate limiting | `30` requests per minute by token |\n| `sensitive-destructive` | Destructive operations (force delete, etc.) | `5` requests per minute by user |\n| `sensitive-upload` | File upload operations | `10` requests per minute by user |\n| `sensitive-token-mgmt` | API token management | `5` requests per minute by user |\n| `sensitive-billing` | Subscription and billing operations | `5` requests per minute by user |\n\n| `invite-actions` | Project invitation actions | `10` requests per minute by user or IP |\n\nRate-limited responses return `429 Too Many Requests`. Integration-specific rate-limit failures may also include `meta.retry_after_seconds` when the upstream exception provides that detail.\n\n\n\n## Versioning\n\n- The API is path-versioned.\n- Current published routes are mounted under `/api/v1`.\n \n\n## Authorization\n\n- Protected routes generally use `auth:sanctum`.\n- Authorization is enforced with Laravel policies via route middleware such as `can:access,...` and controller-level `$this->authorize(...)` checks.\n- Common policy abilities include `access`, `manage`, `owner`, `delete`, and invitation-specific checks.\n- Additional route constraints are enforced through middleware such as `verified`, `subscription`, and Pennant feature checks.\n\n## File Uploads\n\nDayWright currently exposes two public multipart upload patterns.\n\n### User avatars\n\n- Endpoint: `POST /users/{user}/avatar`\n- Request type: `multipart/form-data`\n- Field: `avatar`\n- Accepted types: `jpeg`, `jpg`, `png`\n- Maximum size: `700 KB`\n- Successful responses return the stored avatar URL inside `data.avatar`.\n\n### Conversation attachments\n\n- Endpoint: `POST /projects/{project}/conversations`\n- Request type: `multipart/form-data`\n- Fields:\n    - `message` optional when `file` is present\n    - `file` optional when `message` is present\n- Accepted file types: `jpg`, `png`, `pdf`, `docx`\n- Maximum size: `700 KB`\n- Conversation attachments are stored privately and exposed through a temporary file URL when available.\n- Generated conversation file URLs are short-lived and currently expire after 5 minutes.\n\n## Webhooks\n\nDayWright exposes Zoom meeting webhooks under `/api/v1/webhooks/zoom/meetings/*`.\n\n- Webhook endpoints do not use Sanctum authentication.\n- Each request is verified using Zoom signature headers:\n    - `x-zm-request-id`\n    - `x-zm-signature`\n    - `x-zm-request-timestamp`\n- Invalid webhook signatures return `403 Forbidden`.\n- Missing required webhook headers return `400 Bad Request`.\n- The Zoom request ID is reused as the idempotency key so duplicate deliveries can be safely deduplicated.\n- Accepted webhook deliveries return:\n\n```json\n{\n    \"message\": \"Webhook accepted.\"\n}\n```\n\nWebhook processing is asynchronous after acceptance.\n\n## Caching\n\n- The API does not currently expose a public HTTP caching contract such as `ETag`, `Last-Modified`, or route-level cache headers.\n- Any server-side caching used by the application is an internal implementation detail and should not be relied on by clients.\n\n## Status Codes\n\n| Status | Meaning in DayWright |\n| --- | --- |\n| `200` | Successful read, update, delete, action, or webhook acceptance response |\n| `201` | Resource created successfully |\n| `400` | Invalid request state, invalid signature, or malformed callback data |\n| `401` | Authentication is required |\n| `403` | Authenticated but not authorized, not subscribed, or feature access is restricted |\n| `404` | Resource or route not found |\n| `405` | Method not allowed |\n| `409` | Resource state conflict, including archived resources |\n| `422` | Validation failed |\n| `429` | Too many requests |\n| `500` | Unexpected server or storage error |\n| `503` | Upstream integration unavailable |\n\n## Conventions\n\n- JSON keys use `snake_case`.\n- Path segments use lowercase plural nouns; compound segments often use hyphens, for example `forgot-password`, `task-statuses`, and `api-tokens`.\n- Projects are addressed by slug.\n- Users are addressed by UUID.\n- Nested child resources such as tasks and conversations are typically route-scoped by their parent resource.\n- Timestamps are generally serialized as ISO 8601 strings.\n\n## Important Notes\n\n- Unmatched routes under an API version resolve to a JSON `404` response, not an HTML fallback page.\n\n- Subscription-gated endpoints use the same error envelope as the rest of the API and may include structured `meta` such as upgrade requirements or plan limit details. Premium endpoints return `403 Forbidden` if the user's subscription is inactive or plan limits are exceeded.\n\n- Resources in an \"abandoned\" state use soft-deletes (`deleted_at`) and can be returned via endpoints using `withTrashed()`.\n- Use each endpoint page as the source of truth for request fields, accepted query parameters, and resource schemas."
+    "description": "# DayWright API Overview\r\n\r\nDayWright exposes a versioned JSON API for authentication, users, projects, tasks, conversations, notifications, subscriptions, and selected integration workflows. Individual endpoint pages describe exact request fields and schemas; this page documents the shared conventions used across the API.\r\n\r\n## Introduction\r\n\r\n- The public API is currently implemented under `v1`.\r\n- Resource serialization is handled primarily through Laravel API resources, so most payloads are JSON-first and predictable.\r\n\r\n## Base URL\r\n\r\n- Relative base path: `/api/v1`\r\n- Example requests and links below use relative API paths so the published docs stay environment-agnostic.\r\n\r\n\r\n## Authentication\r\n\r\n### Bearer token authentication\r\n\r\n- API clients authenticate with Laravel Sanctum personal access tokens.\r\n- Send tokens using the `Authorization` header:\r\n\r\n```http\r\nAuthorization: Bearer YOUR_TOKEN\r\n```\r\n\r\n- Contact your DayWright administrator to obtain API access credentials.\r\n- Tokens include scope-based permissions for different API operations.\r\n- User-created API tokens may include an optional `expires_at` value in ISO 8601 format, up to 180 days in the future.\r\n\r\n\r\n\r\n## Request Format\r\n\r\n- Send JSON request bodies unless an endpoint explicitly accepts files.\r\n- Recommended headers for JSON requests:\r\n\r\n```http\r\nAccept: application/json\r\nContent-Type: application/json\r\n```\r\n\r\n- File upload endpoints use `multipart/form-data`.\r\n- Request and response fields use `snake_case`.\r\n- Where timestamps are accepted, the API expects ISO 8601 timestamps with a timezone offset, for example `2025-12-31T23:59:59+00:00`.\r\n- Selected filter requests normalize boolean-like query values, but JSON booleans are preferred.\r\n\r\n## Query Contract\r\n\r\nReleased collection and collection-like read endpoints use a strict query contract unless an endpoint description explicitly documents an exception.\r\n\r\n### Filtering\r\n\r\n- Use `filter[field]=value` for general collection endpoints.\r\n- Only documented filter keys are accepted.\r\n- Unknown filter keys and invalid filter values return `422 Unprocessable Entity`.\r\n- A valid filter that matches no records still returns `200 OK` with an empty `data` payload.\r\n\r\n### Sorting\r\n\r\n- Use `sort=field` for ascending order.\r\n- Use `sort=-field` for descending order.\r\n- Only documented sort keys are accepted.\r\n- Endpoints that do not document `sort` reject it with `422 Unprocessable Entity`.\r\n\r\n### Includes And Extra Parameters\r\n\r\n- `include` is not part of the public contract unless an endpoint explicitly documents it.\r\n- `fields` and `append` are also rejected unless an endpoint explicitly opts in.\r\n- Unsupported top-level parameters, including arbitrary extras such as `random=value`, return `422 Unprocessable Entity` instead of being ignored.\r\n\r\n### Pagination Categories\r\n\r\n- Paginated endpoints use the top-level `data`, `links`, and `meta` structure with `page` and `per_page`.\r\n- Unless an endpoint documents a narrower limit, `per_page` is validated in the range `1..100`.\r\n- Empty paginated results still return `data`, `links`, and `meta`.\r\n- Fixed-size endpoints return a documented server-controlled slice, for example the dashboard projects feed.\r\n- Intentional bounded exceptions return a non-paginated collection only when the dataset is small and server-controlled, for example pending project invitations and dedicated lookup endpoints.\r\n\r\n### Documented Query Exceptions\r\n\r\n- Dashboard activity reads use top-level `start_date` and `end_date`.\r\n- Dashboard chart data uses top-level `year` and optional `month`.\r\n- Dedicated lookup endpoints may use a top-level `search` parameter instead of the general `filter[...]` grammar.\r\n\r\n## Response Format\r\n\r\nMost successful responses use one of the following patterns.\r\n\r\n### Resource or object response\r\n\r\n```json\r\n{\r\n    \"data\": {\r\n        \"id\": 1,\r\n        \"name\": \"The Dimension\"\r\n    }\r\n}\r\n```\r\n\r\n### Collection response\r\n\r\n```json\r\n{\r\n    \"data\": [\r\n        {\r\n            \"id\": 1,\r\n            \"name\": \"The Dimension\",\r\n            \"slug\": \"the-dimension\",\r\n            \"links\": {\r\n                \"self\": \"/api/v1/projects/the-dimension\"\r\n            }\r\n        }\r\n    ]\r\n}\r\n```\r\n\r\n### Message-only response\r\n\r\n```json\r\n{\r\n    \"message\": \"Webhook accepted.\"\r\n}\r\n```\r\n\r\nNotes:\r\n\r\n- When a resource exposes navigational links, they are typically returned as relative API paths inside a `links` object.\r\n- Some endpoints include endpoint-specific `meta` data alongside `data`.\r\n- Not every successful response includes a `message` field; for most read and create operations, `data` is the canonical payload.\r\n\r\n## Error Handling\r\n\r\nAPI errors are normalized into a consistent envelope:\r\n\r\n```json\r\n{\r\n    \"message\": \"Resource not found.\",\r\n    \"code\": \"not_found\",\r\n    \"errors\": {},\r\n    \"meta\": {}\r\n}\r\n```\r\n\r\nNotes:\r\n\r\n- `message` is safe for client display.\r\n- `code` is the stable machine-readable error identifier.\r\n- `errors` contains field-level validation details when available; otherwise it is an empty object.\r\n- `meta` contains structured context when available; otherwise it is an empty object.\r\n- Application-authored 4xx messages may be preserved when safe to expose.\r\n- Generic 5xx responses intentionally avoid leaking internal details.\r\n\r\nDayWright also uses domain-specific error codes when appropriate, including examples such as `subscription_required`, `plan_limit_exceeded`, `project_archived`, and `task_archived`.\r\n\r\n## Validation Errors\r\n\r\nValidation failures return `422 Unprocessable Entity` with the standard error envelope.\r\n\r\n```json\r\n{\r\n    \"message\": \"Validation failed.\",\r\n    \"code\": \"validation_error\",\r\n    \"errors\": {\r\n        \"email\": [\r\n            \"The provided credentials are incorrect.\"\r\n        ]\r\n    },\r\n    \"meta\": {}\r\n}\r\n```\r\n\r\nNotes:\r\n\r\n- Form request validation is used extensively across the API.\r\n- Validation errors are keyed by input name.\r\n- Query validation errors use the same envelope and surface nested keys in dot notation, for example `filter.state`.\r\n\r\n## Pagination\r\n\r\nWhen an endpoint is paginated, the response uses Laravel's standard top-level `data`, `links`, and `meta` structure:\r\n\r\n```json\r\n{\r\n    \"data\": [],\r\n    \"links\": {\r\n        \"first\": \"/api/v1/projects?page=1\",\r\n        \"last\": \"/api/v1/projects?page=5\",\r\n        \"prev\": null,\r\n        \"next\": \"/api/v1/projects?page=2\"\r\n    },\r\n    \"meta\": {\r\n        \"current_page\": 1,\r\n        \"last_page\": 5,\r\n        \"per_page\": 15,\r\n        \"total\": 73\r\n    }\r\n}\r\n```\r\n\r\nNotes:\r\n\r\n- `page` and `per_page` are the common pagination parameters.\r\n- Many list endpoints validate `per_page` with a maximum of `100`.\r\n- Some list endpoints intentionally return fixed-size or bounded non-paginated collections; rely on the query-contract section above and each endpoint's description for exact behavior.\r\n\r\n## Rate Limiting\r\n\r\nThe API uses Laravel rate limiters with route-specific policies.\r\n\r\n| Limiter | Typical usage | Limit |\r\n| --- | --- | --- |\r\n| `api` | Default API middleware (Safety Net) | `300` requests per minute by IP |\r\n| `user-ceiling` | User-level rate ceiling | `200` requests per minute by user |\r\n| `per-token` | Token-specific rate limiting | `30` requests per minute by token |\r\n| `sensitive-destructive` | Destructive operations (force delete, etc.) | `5` requests per minute by user |\r\n| `sensitive-upload` | File upload operations | `10` requests per minute by user |\r\n| `sensitive-token-mgmt` | API token management | `5` requests per minute by user |\r\n| `sensitive-billing` | Subscription and billing operations | `5` requests per minute by user |\r\n\r\n| `invite-actions` | Project invitation actions | `10` requests per minute by user or IP |\r\n\r\nRate-limited responses return `429 Too Many Requests`. Integration-specific rate-limit failures may also include `meta.retry_after_seconds` when the upstream exception provides that detail.\r\n\r\n\r\n\r\n## Versioning\r\n\r\n- The API is path-versioned.\r\n- Current published routes are mounted under `/api/v1`.\r\n \r\n\r\n## Authorization\r\n\r\n- Protected routes generally use `auth:sanctum`.\r\n- Authorization is enforced with Laravel policies via route middleware such as `can:access,...` and controller-level `$this->authorize(...)` checks.\r\n- Common policy abilities include `access`, `manage`, `owner`, `delete`, and invitation-specific checks.\r\n- Additional route constraints are enforced through middleware such as `verified`, `subscription`, and Pennant feature checks.\r\n\r\n## File Uploads\r\n\r\nDayWright currently exposes two public multipart upload patterns.\r\n\r\n### User avatars\r\n\r\n- Endpoint: `POST /users/{user}/avatar`\r\n- Request type: `multipart/form-data`\r\n- Field: `avatar`\r\n- Accepted types: `jpeg`, `jpg`, `png`\r\n- Maximum size: `700 KB`\r\n- Successful responses return the stored avatar URL inside `data.avatar`.\r\n\r\n### Conversation attachments\r\n\r\n- Endpoint: `POST /projects/{project}/conversations`\r\n- Request type: `multipart/form-data`\r\n- Fields:\r\n    - `message` optional when `file` is present\r\n    - `file` optional when `message` is present\r\n- Accepted file types: `jpg`, `png`, `pdf`, `docx`\r\n- Maximum size: `700 KB`\r\n- Conversation attachments are stored privately and exposed through a temporary file URL when available.\r\n- Generated conversation file URLs are short-lived and currently expire after 5 minutes.\r\n\r\n## Webhooks\r\n\r\nDayWright exposes Zoom meeting webhooks under `/api/v1/webhooks/zoom/meetings/*`.\r\n\r\n- Webhook endpoints do not use Sanctum authentication.\r\n- Each request is verified using Zoom signature headers:\r\n    - `x-zm-request-id`\r\n    - `x-zm-signature`\r\n    - `x-zm-request-timestamp`\r\n- Invalid webhook signatures return `403 Forbidden`.\r\n- Missing required webhook headers return `400 Bad Request`.\r\n- The Zoom request ID is reused as the idempotency key so duplicate deliveries can be safely deduplicated.\r\n- Accepted webhook deliveries return:\r\n\r\n```json\r\n{\r\n    \"message\": \"Webhook accepted.\"\r\n}\r\n```\r\n\r\nWebhook processing is asynchronous after acceptance.\r\n\r\n## Caching\r\n\r\n- The API does not currently expose a public HTTP caching contract such as `ETag`, `Last-Modified`, or route-level cache headers.\r\n- Any server-side caching used by the application is an internal implementation detail and should not be relied on by clients.\r\n\r\n## Status Codes\r\n\r\n| Status | Meaning in DayWright |\r\n| --- | --- |\r\n| `200` | Successful read, update, delete, action, or webhook acceptance response |\r\n| `201` | Resource created successfully |\r\n| `400` | Invalid request state, invalid signature, or malformed callback data |\r\n| `401` | Authentication is required |\r\n| `403` | Authenticated but not authorized, not subscribed, or feature access is restricted |\r\n| `404` | Resource or route not found |\r\n| `405` | Method not allowed |\r\n| `409` | Resource state conflict, including archived resources |\r\n| `422` | Validation failed |\r\n| `429` | Too many requests |\r\n| `500` | Unexpected server or storage error |\r\n| `503` | Upstream integration unavailable |\r\n\r\n## Conventions\r\n\r\n- JSON keys use `snake_case`.\r\n- Path segments use lowercase plural nouns; compound segments often use hyphens, for example `forgot-password`, `task-statuses`, and `api-tokens`.\r\n- Projects are addressed by slug.\r\n- Users are addressed by UUID.\r\n- Nested child resources such as tasks and conversations are typically route-scoped by their parent resource.\r\n- Timestamps are generally serialized as ISO 8601 strings.\r\n\r\n## Important Notes\r\n\r\n- Unmatched routes under an API version resolve to a JSON `404` response, not an HTML fallback page.\r\n\r\n- Subscription-gated endpoints use the same error envelope as the rest of the API and may include structured `meta` such as upgrade requirements or plan limit details. Premium endpoints return `403 Forbidden` if the user's subscription is inactive or plan limits are exceeded.\r\n\r\n- Resources in an \"abandoned\" state use soft-deletes (`deleted_at`) and can be returned via endpoints using `withTrashed()`.\r\n- Use each endpoint page as the source of truth for request fields, accepted query parameters, and resource schemas."
   },
   "servers": [
     {
@@ -61,8 +61,7 @@
     "/v1/scopes": {
       "get": {
         "operationId": "apiTokens.scopes",
-        "description": "Returns all available API scopes with their labels and descriptions.\nThis endpoint is public and does not require authentication.",
-        "summary": "List all available API scopes",
+        "summary": "List all available API scopes\r\n\r\nReturns all available API scopes with their labels and descriptions.\r\nThis endpoint is public and does not require authentication",
         "tags": ["API Tokens"],
         "responses": {
           "200": {
@@ -129,8 +128,7 @@
     "/v1/projects/{project}/conversations": {
       "get": {
         "operationId": "conversations.list",
-        "description": "Returns a paginated conversation feed for the specified project.\nDefault `per_page` is 10.",
-        "summary": "List project conversations",
+        "summary": "List project conversations.\r\n\r\nReturns a paginated conversation feed for the specified project.\r\nDefault `per_page` is 10",
         "tags": ["Conversations"],
         "parameters": [
           {
@@ -330,8 +328,7 @@
       },
       "post": {
         "operationId": "conversations.create",
-        "description": "Creates a new project conversation with a message body, an attachment, or both.\n\nThis endpoint supports idempotency via the Idempotency-Key header.",
-        "summary": "Create a project conversation",
+        "summary": "Create a project conversation.\r\n\r\nCreates a new project conversation with a message body, an attachment, or both.\r\n\r\nThis endpoint supports idempotency via the Idempotency-Key header",
         "tags": ["Conversations"],
         "parameters": [
           {
@@ -549,8 +546,7 @@
     "/v1/projects/{project}/conversations/{conversation}": {
       "delete": {
         "operationId": "conversations.destroy",
-        "description": "Permanently removes a conversation that the authenticated user is allowed to delete.",
-        "summary": "Delete a project conversation",
+        "summary": "Delete a project conversation.\r\n\r\nPermanently removes a conversation that the authenticated user is allowed to delete",
         "tags": ["Conversations"],
         "parameters": [
           {
@@ -657,8 +653,7 @@
     "/v1/dashboard/chart-data": {
       "get": {
         "operationId": "dashboard.chartData",
-        "description": "Summarizes active, trashed, member, and total project counts for the selected dashboard time window.\nUses top-level `year` (defaults to current year) and optional `month` parameters for time filtering.",
-        "summary": "Return project portfolio counts for the authenticated user's dashboard",
+        "summary": "Return project portfolio counts for the authenticated user's dashboard.\r\n\r\nSummarizes active, trashed, member, and total project counts for the selected dashboard time window.\r\nUses top-level `year` (defaults to current year) and optional `month` parameters for time filtering",
         "tags": ["Dashboard"],
         "parameters": [
           {
@@ -793,8 +788,7 @@
     "/v1/dashboard/insights": {
       "get": {
         "operationId": "dashboard.kpis",
-        "description": "Combines portfolio metrics and generated insight cards into a single dashboard response.",
-        "summary": "Return KPI cards and actionable insights for the authenticated user's dashboard",
+        "summary": "Return KPI cards and actionable insights for the authenticated user's dashboard.\r\n\r\nCombines portfolio metrics and generated insight cards into a single dashboard response",
         "tags": ["Dashboard"],
         "responses": {
           "200": {
@@ -978,8 +972,7 @@
     "/v1/dashboard/tasks": {
       "get": {
         "operationId": "dashboard.tasks",
-        "description": "Returns the authenticated user's dashboard task list together with the human-readable filters that were applied.\nDefault `per_page` is 15.",
-        "summary": "Return dashboard tasks filtered by ownership, assignment, and status flags",
+        "summary": "Return dashboard tasks filtered by ownership, assignment, and status flags.\r\n\r\nReturns the authenticated user's dashboard task list together with the human-readable filters that were applied.\r\nDefault `per_page` is 15",
         "tags": ["Dashboard"],
         "parameters": [
           {
@@ -1181,8 +1174,7 @@
     "/v1/dashboard/activities": {
       "get": {
         "operationId": "dashboard.activities",
-        "description": "Lists dashboard activity entries between the requested start and end dates.\nUses top-level `start_date` and `end_date` parameters for date filtering.",
-        "summary": "Return the authenticated user's dashboard activity feed for a date range",
+        "summary": "Return the authenticated user's dashboard activity feed for a date range.\r\n\r\nLists dashboard activity entries between the requested start and end dates.\r\nUses top-level `start_date` and `end_date` parameters for date filtering",
         "tags": ["Dashboard"],
         "parameters": [
           {
@@ -1307,8 +1299,7 @@
     "/v1/dashboard/projects": {
       "get": {
         "operationId": "dashboard.projects",
-        "description": "Returns the latest dashboard projects and includes a top-level total count in the response meta.",
-        "summary": "Return recent dashboard projects along with a top-level total count",
+        "summary": "Return recent dashboard projects along with a top-level total count.\r\n\r\nReturns the latest dashboard projects and includes a top-level total count in the response meta",
         "tags": ["Dashboard"],
         "responses": {
           "200": {
@@ -1395,8 +1386,7 @@
     "/v1/users/me/invitations": {
       "get": {
         "operationId": "invitations.userList",
-        "description": "Returns a paginated list of the authenticated user's pending project invitations.",
-        "summary": "List all pending project invitations for the authenticated user",
+        "summary": "List all pending project invitations for the authenticated user.\r\n\r\nReturns a paginated list of the authenticated user's pending project invitations",
         "tags": ["Invitations"],
         "parameters": [
           {
@@ -1604,8 +1594,7 @@
     "/v1/projects/{project}/invitations": {
       "post": {
         "operationId": "invitations.create",
-        "description": "Sends a project invitation to the supplied email address and returns the created invitation resource.\nThe invited user receives an email notification.",
-        "summary": "Invite a user to a project",
+        "summary": "Invite a user to a project.\r\n\r\nSends a project invitation to the supplied email address and returns the created invitation resource.\r\nThe invited user receives an email notification",
         "tags": ["Invitations"],
         "parameters": [
           {
@@ -1822,8 +1811,7 @@
       },
       "get": {
         "operationId": "invitations.list",
-        "description": "Returns the released pending invitation view for a project.\nUse `filter[status]=pending` to retrieve the supported invitation slice.\nThis endpoint intentionally returns a bounded, non-paginated list.",
-        "summary": "List pending project invitations",
+        "summary": "List pending project invitations.\r\n\r\nReturns the released pending invitation view for a project.\r\nUse `filter[status]=pending` to retrieve the supported invitation slice.\r\nThis endpoint intentionally returns a bounded, non-paginated list",
         "tags": ["Invitations"],
         "parameters": [
           {
@@ -1966,8 +1954,7 @@
     "/v1/projects/{project}/invitations/accept": {
       "post": {
         "operationId": "invitations.acceptProject",
-        "description": "Adds the authenticated user to the project through an existing pending invitation.\nAccepting grants full member access immediately.",
-        "summary": "Accept a project invitation",
+        "summary": "Accept a project invitation.\r\n\r\nAdds the authenticated user to the project through an existing pending invitation.\r\nAccepting grants full member access immediately",
         "tags": ["Invitations"],
         "parameters": [
           {
@@ -1978,16 +1965,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "description": "Required unique key used to prevent duplicate requests.",
-            "schema": {
-              "type": "string"
-            },
-            "example": "req_abc123"
           }
         ],
         "responses": {
@@ -2033,14 +2010,6 @@
                     }
                   },
                   "required": ["data", "meta", "links"]
-                }
-              }
-            },
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "Indicates whether this response is a replay of a previous request with the same Idempotency-Key. Set to \"true\" when replaying.",
-                "schema": {
-                  "type": "string"
                 }
               }
             }
@@ -2132,40 +2101,12 @@
               }
             }
           },
-          "400": {
-            "description": "Bad request (bad_request) - the configured idempotency header is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
           "409": {
-            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project is archived (project_archived)",
+            "description": "Conflict - Project is archived (project_archived)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before retrying the request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
               }
             }
@@ -2179,8 +2120,7 @@
     "/v1/projects/{project}/invitations/reject": {
       "post": {
         "operationId": "invitations.rejectProject",
-        "description": "Declines the authenticated user's pending invitation for the project.",
-        "summary": "Reject a project invitation",
+        "summary": "Reject a project invitation.\r\n\r\nDeclines the authenticated user's pending invitation for the project",
         "tags": ["Invitations"],
         "parameters": [
           {
@@ -2191,16 +2131,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "description": "Required unique key used to prevent duplicate requests.",
-            "schema": {
-              "type": "string"
-            },
-            "example": "req_abc123"
           }
         ],
         "responses": {
@@ -2246,14 +2176,6 @@
                     }
                   },
                   "required": ["data", "meta", "links"]
-                }
-              }
-            },
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "Indicates whether this response is a replay of a previous request with the same Idempotency-Key. Set to \"true\" when replaying.",
-                "schema": {
-                  "type": "string"
                 }
               }
             }
@@ -2306,40 +2228,12 @@
               }
             }
           },
-          "400": {
-            "description": "Bad request (bad_request) - the configured idempotency header is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
           "409": {
-            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project is archived (project_archived)",
+            "description": "Conflict - Project is archived (project_archived)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before retrying the request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
               }
             }
@@ -2353,8 +2247,7 @@
     "/v1/projects/{project}/invitations/{user}": {
       "delete": {
         "operationId": "invitations.destroy",
-        "description": "Revokes a pending invitation for the targeted user.",
-        "summary": "Cancel a pending project invitation",
+        "summary": "Cancel a pending project invitation.\r\n\r\nRevokes a pending invitation for the targeted user",
         "tags": ["Invitations"],
         "parameters": [
           {
@@ -2460,8 +2353,7 @@
     "/v1/projects/{project}/members/{user}": {
       "delete": {
         "operationId": "projects.members",
-        "description": "Removes an existing member from the project membership list. When a member is removed,\ntheir existing task assignments and conversations remain intact (they are not automatically revoked or deleted).",
-        "summary": "Remove a project member",
+        "summary": "Remove a project member.\r\n\r\nRemoves an existing member from the project membership list. When a member is removed,\r\ntheir existing task assignments and conversations remain intact (they are not automatically revoked or deleted)",
         "tags": ["Invitations"],
         "parameters": [
           {
@@ -2567,8 +2459,7 @@
     "/v1/notifications": {
       "get": {
         "operationId": "notifications.list",
-        "description": "Returns the notification feed using cursor pagination links and metadata.",
-        "summary": "Display a paginated listing of the authenticated user's notifications",
+        "summary": "Display a paginated listing of the authenticated user's notifications.\r\n\r\nReturns the notification feed using cursor pagination links and metadata",
         "tags": ["Notifications"],
         "parameters": [
           {
@@ -2729,8 +2620,7 @@
     "/v1/notifications/read": {
       "patch": {
         "operationId": "notifications.markAllAsRead",
-        "description": "Marks every notification for the authenticated user as read in a single operation.",
-        "summary": "Mark all notifications as read",
+        "summary": "Mark all notifications as read.\r\n\r\nMarks every notification for the authenticated user as read in a single operation",
         "tags": ["Notifications"],
         "responses": {
           "200": {
@@ -2797,8 +2687,7 @@
     "/v1/notifications/{notification}/status": {
       "patch": {
         "operationId": "notifications.updateStatus",
-        "description": "Changes the read state for a single notification belonging to the authenticated user.",
-        "summary": "Update the status of a notification",
+        "summary": "Update the status of a notification.\r\n\r\nChanges the read state for a single notification belonging to the authenticated user",
         "tags": ["Notifications"],
         "parameters": [
           {
@@ -2917,8 +2806,7 @@
     "/v1/notifications/{notification}": {
       "delete": {
         "operationId": "notifications.destroy",
-        "description": "Deletes one notification belonging to the authenticated user.",
-        "summary": "Remove the specified notification",
+        "summary": "Remove the specified notification.\r\n\r\nDeletes one notification belonging to the authenticated user",
         "tags": ["Notifications"],
         "parameters": [
           {
@@ -2995,8 +2883,7 @@
     "/v1/projects": {
       "get": {
         "operationId": "projects.list",
-        "description": "Returns the released project index with supported filters, sorting, and pagination.\nDefault `per_page` is 6 (from config app.project.items_limit).",
-        "summary": "List the authenticated user's projects",
+        "summary": "List the authenticated user's projects.\r\n\r\nReturns the released project index with supported filters, sorting, and pagination.\r\nDefault `per_page` is 6 (from config app.project.items_limit)",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -3222,8 +3109,7 @@
       },
       "post": {
         "operationId": "projects.create",
-        "description": "This endpoint allows authenticated users to create a new project. The request must include\nthe project's basic details, such as the name, about information, stage, and optional notes and tasks.\nThe creator is automatically added as the project owner. The response will include the newly created\nproject's information along with related resources.",
-        "summary": "Create a new project",
+        "summary": "Create a new project.\r\n\r\nThis endpoint allows authenticated users to create a new project. The request must include\r\nthe project's basic details, such as the name, about information, stage, and optional notes and tasks.\r\nThe creator is automatically added as the project owner. The response will include the newly created\r\nproject's information along with related resources",
         "tags": ["Projects"],
         "requestBody": {
           "required": true,
@@ -3390,8 +3276,7 @@
     "/v1/projects/{project}": {
       "put": {
         "operationId": "projects.update",
-        "description": "This endpoint allows you to update the details of an existing project.\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.",
-        "summary": "Update Project Fields",
+        "summary": "Update Project Fields\r\n\r\nThis endpoint allows you to update the details of an existing project.\r\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\r\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -3564,8 +3449,7 @@
       },
       "patch": {
         "operationId": "projects.update.patch",
-        "description": "This endpoint allows you to update the details of an existing project.\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.",
-        "summary": "Update Project Fields",
+        "summary": "Update Project Fields\r\n\r\nThis endpoint allows you to update the details of an existing project.\r\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\r\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -3738,8 +3622,7 @@
       },
       "delete": {
         "operationId": "projects.destroy",
-        "description": "Marks the project as abandoned using soft-deletes (deleted_at). The project can be restored later\nor permanently deleted. This is a reversible operation.",
-        "summary": "Soft-delete (abandon) a project",
+        "summary": "Soft-delete (abandon) a project.\r\n\r\nMarks the project as abandoned using soft-deletes (deleted_at). The project can be restored later\r\nor permanently deleted. This is a reversible operation",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -3834,8 +3717,7 @@
       },
       "get": {
         "operationId": "projects.show",
-        "description": "Returns detailed information about a project including its members, conversations, and activities.",
-        "summary": "Retrieve a specific project",
+        "summary": "Retrieve a specific project.\r\n\r\nReturns detailed information about a project including its members, conversations, and activities",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -3949,8 +3831,7 @@
     "/v1/projects/{project}/limits": {
       "get": {
         "operationId": "projects.limits",
-        "description": "Returns the current plan limits that apply to the specified project, including task counts and member limits.",
-        "summary": "Retrieve project-scoped subscription limits for the project owner",
+        "summary": "Retrieve project-scoped subscription limits for the project owner.\r\n\r\nReturns the current plan limits that apply to the specified project, including task counts and member limits",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -4057,8 +3938,7 @@
     "/v1/projects/{project}/insights": {
       "get": {
         "operationId": "projects.insights",
-        "description": "What this endpoint does:\n- Aggregates calculated insights for the given project across one or more sections\n  (health, task-health, collaboration, risk, stage).\n- You can filter which sections are returned using the `sections[]` query parameter.\n- If `sections[]` is omitted, all supported sections are returned.",
-        "summary": "Get actionable insights for a project",
+        "summary": "Get actionable insights for a project.\r\n\r\nWhat this endpoint does:\r\n- Aggregates calculated insights for the given project across one or more sections\r\n  (health, task-health, collaboration, risk, stage).\r\n- You can filter which sections are returned using the `sections[]` query parameter.\r\n- If `sections[]` is omitted, all supported sections are returned",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -4199,8 +4079,7 @@
     "/v1/projects/{project}/force": {
       "delete": {
         "operationId": "projects.forceDelete",
-        "description": "This endpoint only applies to abandoned (soft-deleted) projects. It triggers a permanent cascade\ndelete of all associated resources including tasks, conversations, messages, meetings, and member associations.\nThis operation is irreversible.",
-        "summary": "Permanently delete an abandoned project",
+        "summary": "Permanently delete an abandoned project.\r\n\r\nThis endpoint only applies to abandoned (soft-deleted) projects. It triggers a permanent cascade\r\ndelete of all associated resources including tasks, conversations, messages, meetings, and member associations.\r\nThis operation is irreversible",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -4327,8 +4206,7 @@
     "/v1/projects/{project}/restore": {
       "patch": {
         "operationId": "projects.restore",
-        "description": "This endpoint only applies to abandoned (soft-deleted) projects. It re-activates the project\nand makes it accessible again to members.",
-        "summary": "Restore a soft-deleted (abandoned) project",
+        "summary": "Restore a soft-deleted (abandoned) project.\r\n\r\nThis endpoint only applies to abandoned (soft-deleted) projects. It re-activates the project\r\nand makes it accessible again to members",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -4415,8 +4293,7 @@
     "/v1/projects/{project}/activities": {
       "get": {
         "operationId": "projects.activities",
-        "description": "Returns the released project activity feed with filter and pagination support.",
-        "summary": "List project activity entries",
+        "summary": "List project activity entries.\r\n\r\nReturns the released project activity feed with filter and pagination support",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -4655,8 +4532,7 @@
     "/v1/projects/{project}/stage": {
       "patch": {
         "operationId": "projects.updateStage",
-        "description": "Updates the stage of a specified project. The new stage is provided in the request payload.\nStage changes trigger notifications to all project members.",
-        "summary": "Update Project Stage",
+        "summary": "Update Project Stage.\r\n\r\nUpdates the stage of a specified project. The new stage is provided in the request payload.\r\nStage changes trigger notifications to all project members",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -4814,8 +4690,7 @@
     "/v1/projects/{project}/users/search": {
       "get": {
         "operationId": "invitations.searchUsers",
-        "description": "Returns users who can be invited to the specified project,\nexcluding the project owner and existing members.",
-        "summary": "Search users for invitation flows",
+        "summary": "Search users for invitation flows.\r\n\r\nReturns users who can be invited to the specified project,\r\nexcluding the project owner and existing members",
         "tags": ["Projects"],
         "parameters": [
           {
@@ -4947,8 +4822,7 @@
     "/v1/stages": {
       "get": {
         "operationId": "stages.list",
-        "description": "Fetch and return all stages that a project can be assigned to.",
-        "summary": "Display a listing of the stages",
+        "summary": "Display a listing of the stages.\r\n\r\nFetch and return all stages that a project can be assigned to",
         "tags": ["Stages"],
         "responses": {
           "200": {
@@ -5017,8 +4891,7 @@
     "/v1/users/me/subscription": {
       "get": {
         "operationId": "subscription.status",
-        "description": "Returns the current subscription snapshot for the authenticated user.",
-        "summary": "Get the authenticated user's subscription details",
+        "summary": "Get the authenticated user's subscription details.\r\n\r\nReturns the current subscription snapshot for the authenticated user",
         "tags": ["Subscription"],
         "responses": {
           "200": {
@@ -5111,8 +4984,7 @@
     "/v1/task-statuses": {
       "get": {
         "operationId": "taskStatuses.list",
-        "description": "Returns the released task status reference data used by public task workflows.\nIncludes TaskDueNotifies enum values for due notification configuration.",
-        "summary": "List task statuses and due-notification options",
+        "summary": "List task statuses and due-notification options.\r\n\r\nReturns the released task status reference data used by public task workflows.\r\nIncludes TaskDueNotifies enum values for due notification configuration",
         "tags": ["Tasks"],
         "responses": {
           "200": {
@@ -5197,8 +5069,7 @@
     "/v1/projects/{project}/tasks": {
       "get": {
         "operationId": "tasks.list",
-        "description": "This endpoint fetches a paginated task list for a specific project.\nDefault `per_page` is 20 (from config tasks.limit).\n\nUse `filter[state]=archived` to page through archived tasks on the same route.",
-        "summary": "Retrieve Project Tasks",
+        "summary": "Retrieve Project Tasks.\r\n\r\nThis endpoint fetches a paginated task list for a specific project.\r\nDefault `per_page` is 20 (from config tasks.limit).\r\n\r\nUse `filter[state]=archived` to page through archived tasks on the same route",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -5425,8 +5296,7 @@
       },
       "post": {
         "operationId": "tasks.create",
-        "description": "This endpoint allows creating a new task related to a specific project.",
-        "summary": "Create a New Task",
+        "summary": "Create a New Task.\r\n\r\nThis endpoint allows creating a new task related to a specific project",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -5726,8 +5596,7 @@
       },
       "put": {
         "operationId": "tasks.update",
-        "description": "This endpoint allows you to update the details of a specific task associated with a given project.\nThe user must have proper authorization to access and modify the task.",
-        "summary": "Update a Task",
+        "summary": "Update a Task\r\n\r\nThis endpoint allows you to update the details of a specific task associated with a given project.\r\nThe user must have proper authorization to access and modify the task",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -5891,8 +5760,7 @@
       },
       "patch": {
         "operationId": "tasks.update.patch",
-        "description": "This endpoint allows you to update the details of a specific task associated with a given project.\nThe user must have proper authorization to access and modify the task.",
-        "summary": "Update a Task",
+        "summary": "Update a Task\r\n\r\nThis endpoint allows you to update the details of a specific task associated with a given project.\r\nThe user must have proper authorization to access and modify the task",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -6056,8 +5924,7 @@
       },
       "delete": {
         "operationId": "tasks.destroy",
-        "description": "Permanently removes a task that the authenticated user is allowed to manage.",
-        "summary": "Delete a task",
+        "summary": "Delete a task.\r\n\r\nPermanently removes a task that the authenticated user is allowed to manage",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -6193,8 +6060,7 @@
     "/v1/projects/{project}/tasks/{task}/assign": {
       "patch": {
         "operationId": "tasks.assignMembers",
-        "description": "Assigns one or more project members to the specified task. This triggers a TaskAssigned email notification\nto the assigned members. Only the task owner or project owner can assign members.",
-        "summary": "Assign members to a task",
+        "summary": "Assign members to a task.\r\n\r\nAssigns one or more project members to the specified task. This triggers a TaskAssigned email notification\r\nto the assigned members. Only the task owner or project owner can assign members",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -6375,8 +6241,7 @@
     "/v1/projects/{project}/tasks/{task}/unassign": {
       "patch": {
         "operationId": "tasks.unassignMember",
-        "description": "Removes one assigned project member from the specified task.",
-        "summary": "Unassign a member from a task",
+        "summary": "Unassign a member from a task.\r\n\r\nRemoves one assigned project member from the specified task",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -6557,8 +6422,7 @@
     "/v1/projects/{project}/tasks/{task}/archive": {
       "patch": {
         "operationId": "tasks.archive",
-        "description": "Moves the task into the archived state without deleting its history.",
-        "summary": "Archive a task",
+        "summary": "Archive a task.\r\n\r\nMoves the task into the archived state without deleting its history",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -6665,8 +6529,7 @@
     "/v1/projects/{project}/tasks/{task}/restore": {
       "patch": {
         "operationId": "tasks.restore",
-        "description": "Returns an archived task to the active task list.",
-        "summary": "Restore an archived task",
+        "summary": "Restore an archived task.\r\n\r\nReturns an archived task to the active task list",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -6802,8 +6665,7 @@
     "/v1/projects/{project}/tasks/{task}/members/search": {
       "get": {
         "operationId": "tasks.searchMembers",
-        "description": "Returns project members that match the provided search term for assignment workflows.",
-        "summary": "Search assignable task members",
+        "summary": "Search assignable task members.\r\n\r\nReturns project members that match the provided search term for assignment workflows",
         "tags": ["Tasks"],
         "parameters": [
           {
@@ -6944,8 +6806,7 @@
     "/v1/users/me": {
       "get": {
         "operationId": "users.current",
-        "description": "Returns the full current-user payload used by the public product.",
-        "summary": "Get the currently authenticated user",
+        "summary": "Get the currently authenticated user.\r\n\r\nReturns the full current-user payload used by the public product",
         "tags": ["Users"],
         "responses": {
           "200": {
@@ -7030,8 +6891,7 @@
     "/v1/users/{user}": {
       "get": {
         "operationId": "users.show",
-        "description": "Get detailed information for a specific user.\nOnly accessible to users who share a project or team membership with the target user.",
-        "summary": "Show user details",
+        "summary": "Show user details\r\n\r\nGet detailed information for a specific user.\r\nOnly accessible to users who share a project or team membership with the target user",
         "tags": ["Users"],
         "parameters": [
           {
@@ -7116,8 +6976,7 @@
       },
       "put": {
         "operationId": "users.update",
-        "description": "Update the specified user's profile information (name, email, etc.).\nPassword changes are handled separately via PasswordUpdateController.\nOnly the owner can update their data.",
-        "summary": "Update user",
+        "summary": "Update user\r\n\r\nUpdate the specified user's profile information (name, email, etc.).\r\nPassword changes are handled separately via PasswordUpdateController.\r\nOnly the owner can update their data",
         "tags": ["Users"],
         "parameters": [
           {
@@ -7262,8 +7121,7 @@
       },
       "patch": {
         "operationId": "users.update.patch",
-        "description": "Update the specified user's profile information (name, email, etc.).\nPassword changes are handled separately via PasswordUpdateController.\nOnly the owner can update their data.",
-        "summary": "Update user",
+        "summary": "Update user\r\n\r\nUpdate the specified user's profile information (name, email, etc.).\r\nPassword changes are handled separately via PasswordUpdateController.\r\nOnly the owner can update their data",
         "tags": ["Users"],
         "parameters": [
           {
@@ -7408,8 +7266,7 @@
       },
       "delete": {
         "operationId": "users.destroy",
-        "description": "Soft delete the specified user. Only the owner can delete their account. This will also soft delete\nall projects owned by the user. Tasks, conversations, and messages within those projects are not\nautomatically deleted but become inaccessible when the parent project is abandoned.",
-        "summary": "Soft delete user",
+        "summary": "Soft delete user.\r\n\r\nSoft delete the specified user. Only the owner can delete their account. This will also soft delete\r\nall projects owned by the user. Tasks, conversations, and messages within those projects are not\r\nautomatically deleted but become inaccessible when the parent project is abandoned",
         "tags": ["Users"],
         "parameters": [
           {
@@ -7529,6 +7386,16 @@
               }
             }
           },
+          "409": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
           "403": {
             "description": "Forbidden - insufficient permissions",
             "content": {
@@ -7586,8 +7453,7 @@
     "/v1/users/{user}/avatar": {
       "delete": {
         "operationId": "users.removeAvatar",
-        "description": "Deletes the stored avatar for the targeted user.",
-        "summary": "Removes the user's avatar and returns a JSON response",
+        "summary": "Removes the user's avatar and returns a JSON response.\r\n\r\nDeletes the stored avatar for the targeted user",
         "tags": ["Users"],
         "parameters": [
           {
@@ -7673,8 +7539,7 @@
       },
       "post": {
         "operationId": "users.uploadAvatar",
-        "description": "Stores a new avatar image for the targeted user and returns the stored avatar path.\nReplaces any existing avatar.",
-        "summary": "Uploads and updates the user's avatar",
+        "summary": "Uploads and updates the user's avatar.\r\n\r\nStores a new avatar image for the targeted user and returns the stored avatar path.\r\nReplaces any existing avatar",
         "tags": ["Users"],
         "parameters": [
           {
@@ -10112,18 +9977,15 @@
             "examples": ["John Doe"],
             "maxLength": 30
           },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Updated primary email address.",
-            "examples": ["john.doe@example.com"],
-            "maxLength": 100
-          },
           "username": {
             "type": "string",
             "description": "Updated public username.",
             "examples": ["john_doe"],
             "maxLength": 30
+          },
+          "email": {
+            "type": "string",
+            "description": "Email field is explicitly prohibited for security reasons.\nEmail serves as a permanent account identifier to prevent account takeover attacks."
           },
           "mobile": {
             "type": ["string", "null"],

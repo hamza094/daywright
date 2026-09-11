@@ -28,7 +28,7 @@ final readonly class ZoomConnectorManager
 
     private const string REFRESH_LOCK_KEY_PREFIX = 'lock:zoom:oauth-refresh:user:';
 
-    private const int REFRESH_LOCK_SECONDS = 15;
+    private const int REFRESH_LOCK_SECONDS = 45;
 
     private const int REFRESH_LOCK_WAIT_SECONDS = 5;
 

@@ -349,9 +349,14 @@ class ScrambleDocsTest extends TestCase
         // POST /v1/projects/{project}/conversations should have idempotency headers and error responses
         $conversationPost = $paths['/v1/projects/{project}/conversations']['post'] ?? [];
 
-        // The operation description remains business context, while the header is generated from middleware.
-        $this->assertStringContainsString('Idempotency-Key', $conversationPost['description'] ?? '',
-            'Idempotency-Key should be documented in description');
+        // Scramble may place controller documentation in either summary or description.
+        $operationDocumentation = implode("\n", array_filter([
+            $conversationPost['summary'] ?? null,
+            $conversationPost['description'] ?? null,
+        ], is_string(...)));
+
+        $this->assertStringContainsString('Idempotency-Key', $operationDocumentation,
+            'Idempotency-Key should be documented in the operation summary or description');
 
         $idempotencyHeaders = array_values(array_filter(
             $conversationPost['parameters'] ?? [],

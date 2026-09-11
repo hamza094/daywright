@@ -9,7 +9,9 @@ use App\Http\Integrations\Zoom\Requests\CreateMeeting;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use App\Models\User;
 use App\Services\Zoom\ZoomService;
+use Illuminate\Cache\ArrayStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Override;
 use Safe\DateTimeImmutable;
 use Saloon\Enums\Method;
@@ -173,13 +175,25 @@ class ZoomMeetingCreateTest extends TestCase
     {
         $this->freezeSecond();
         $expiredUser = $this->createZoomUser(now()->subWeek());
+        $refreshRequests = 0;
 
         Saloon::fake([
-            GetRefreshTokenRequest::class => ZoomResponseFactory::tokenResponse([
-                'access_token' => 'new-access-token',
-                'refresh_token' => 'new-refresh-token',
-                'expires_in' => 3600,
-            ]),
+            GetRefreshTokenRequest::class => function () use ($expiredUser, &$refreshRequests): MockResponse {
+                $refreshRequests++;
+
+                $store = Cache::getStore();
+                $lockKey = 'lock:zoom:oauth-refresh:user:'.$expiredUser->getKey();
+
+                $this->assertInstanceOf(ArrayStore::class, $store);
+                $this->assertArrayHasKey($lockKey, $store->locks);
+                $this->assertSame(45, (int) now()->diffInSeconds($store->locks[$lockKey]['expiresAt']));
+
+                return ZoomResponseFactory::tokenResponse([
+                    'access_token' => 'new-access-token',
+                    'refresh_token' => 'new-refresh-token',
+                    'expires_in' => 3600,
+                ]);
+            },
             'users/me/meetings' => ZoomResponseFactory::validMeetingResponse([
                 'topic' => $this->meetingData['topic'],
                 'agenda' => $this->meetingData['agenda'],
@@ -191,16 +205,13 @@ class ZoomMeetingCreateTest extends TestCase
             ]),
         ]);
 
-        // Simulate concurrent requests
         $results = [];
         for ($i = 0; $i < 2; $i++) {
             $results[] = app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser);
         }
 
-        // Should only send one refresh request despite multiple concurrent calls
-        Saloon::assertSent(GetRefreshTokenRequest::class);
+        $this->assertSame(1, $refreshRequests);
 
-        // All requests should succeed with the new token
         foreach ($results as $result) {
             $this->assertNotNull($result);
         }
