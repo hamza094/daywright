@@ -289,10 +289,10 @@ The interim repair addresses the immediate high-severity issue where queue dispa
 
 **Implementation checklist — audit requirement**
 
-- [ ] Refresh the dependency audit and update `mtdowling/jmespath.php`, `paragonie/sodium_compat`, `phpoffice/phpspreadsheet`, and `phpseclib/phpseclib` with necessary transitive dependencies.
-- [ ] Treat JMESPath 2.9.1 and sodium_compat 2.5.1 as the source audit's minimum floors. Select compatible releases covering the full current advisory set.
-- [ ] Add a required CI step that fails on the production dependency audit command.
-- [ ] Record reachability investigation separately from dependency presence; do not claim application RCE solely from an installed version.
+- [x] Refresh the dependency audit and update `mtdowling/jmespath.php`, `paragonie/sodium_compat`, `phpoffice/phpspreadsheet`, and `phpseclib/phpseclib` with necessary transitive dependencies.
+- [x] Treat JMESPath 2.9.1 and sodium_compat 2.5.1 as the source audit's minimum floors. Select compatible releases covering the full current advisory set.
+- [x] Add a required CI step that fails on the production dependency audit command.
+- [x] Record reachability investigation separately from dependency presence; do not claim application RCE solely from an installed version.
 
 Audit command:
 
@@ -306,11 +306,19 @@ Implementation elaboration: a targeted update command to evaluate after checking
 composer update mtdowling/jmespath.php paragonie/sodium_compat phpoffice/phpspreadsheet phpseclib/phpseclib --with-all-dependencies
 ```
 
+**Implementation notes**
+
+- The refreshed production audit reports no advisories. The lockfile already contains the newest releases allowed by the parent-package constraints: `mtdowling/jmespath.php` 2.9.2 through `aws/aws-sdk-php`, `paragonie/sodium_compat` 2.5.2 through `pusher/pusher-php-server`, `phpoffice/phpspreadsheet` 1.30.6 through `maatwebsite/excel` 3.1, and `phpseclib/phpseclib` 3.0.57 through `laravel/socialite` 5.
+- A targeted update dry run confirmed that none of the four packages or their transitive dependencies require another lockfile change. PhpSpreadsheet 5 and phpseclib 4 are outside their parent packages' current major-version constraints and are not required to resolve this finding.
+- Reachability was assessed independently. DayWright contains no direct JMESPath calls, compiler-runtime configuration, sodium_compat calls, phpseclib X.509 parsing, or certificate-signature validation. Socialite is used for OAuth, but the affected phpseclib certificate-validation path is not called by application code. PhpSpreadsheet is reached through `Excel::download` to generate an XLS export from database data; the application does not expose spreadsheet import or attacker-controlled workbook parsing paths. Native `ext-sodium` is loaded in the inspected runtime. These findings reduce observed reachability but do not replace the dependency updates or CI audit.
+- The audit runs immediately after checkout in the primary Laravel CI job. Composer returns a non-zero exit status when matching advisories are present, and the step has no failure suppression, so the job stops before dependency installation and tests.
+- The broader development-dependency audit is tracked separately: `composer audit --locked` currently reports one high-severity advisory in `squizlabs/php_codesniffer` 3.13.5 and three low-severity advisories in `symfony/yaml` 7.4.8. They are excluded from this production-only gate by the audit's required `--no-dev` command and are not deployed with `composer install --no-dev`.
+
 **Tests and verification**
 
-- [ ] Run the full existing PHPUnit suite and configured static analysis after dependency changes.
-- [ ] Exercise existing spreadsheet/export and integration paths affected by resolved transitive changes.
-- [ ] Confirm CI treats an audit failure as a failed required check; preserve the Composer lockfile.
+- [x] Run the full existing PHPUnit suite and configured static analysis after dependency changes.
+- [x] Exercise existing spreadsheet/export and integration paths affected by resolved transitive changes.
+- [x] Confirm CI treats an audit failure as a failed required check; preserve the Composer lockfile.
 
 ## P1.8 — Define collaborator field visibility
 
