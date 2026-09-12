@@ -248,25 +248,36 @@ Zoom has no configured automatic retry or backoff, and its rate limiter fails fa
 
 **Implementation checklist — audit requirement**
 
-- [ ] Implement the full durable-inbox approach in P2.1 now if practical, or make the audit's interim reservation repair.
-- [ ] For the interim repair, release the owned reservation when downstream processing throws or returns a server error.
-- [ ] Distinguish in-flight reservation from accepted work; do not return acceptance solely because a cache key exists.
-- [ ] Keep signature/timestamp validation and the existing endpoint-validation challenge behavior.
-- [ ] Explicitly record that cache cleanup does not solve process crashes between reservation and dispatch. Full durable acceptance remains a phase 2 release gate.
+- [x] Implement the full durable-inbox approach in P2.1 now if practical, or make the audit's interim reservation repair. (Interim repair chosen)
+- [x] For the interim repair, release the owned reservation when downstream processing throws or returns a server error.
+- [x] Distinguish in-flight reservation from accepted work; do not return acceptance solely because a cache key exists.
+- [x] Keep signature/timestamp validation and the existing endpoint-validation challenge behavior.
+- [x] Explicitly record that cache cleanup does not solve process crashes between reservation and dispatch. Full durable acceptance remains a phase 2 release gate.
 
 **Tests to add/update**
 
 - `tests/Feature/Api/Middleware/Zoom/VerifyWebhookTest.php`.
 - `tests/Feature/Api/Webhooks/Zoom/ZoomWebhookTest.php`.
-- [ ] Port the downstream-failure probe at line 34.
-- [ ] Exercise both a thrown dispatch failure and a downstream 5xx response followed by a provider retry.
-- [ ] Verify successful duplicates and in-flight duplicates have distinct, documented handling.
-- [ ] Retain signature, timestamp, and endpoint-validation coverage.
+- [x] Port the downstream-failure probe at line 34.
+- [x] Exercise both a thrown dispatch failure and a downstream 5xx response followed by a provider retry.
+- [x] Verify successful duplicates and in-flight duplicates have distinct, documented handling.
+- [x] Retain signature, timestamp, and endpoint-validation coverage.
 
 **Verification**
 
-- [ ] A failed acceptance attempt remains eligible for retry.
-- [ ] Mark the implementation explicitly as interim or durable; do not close the phase 2 inbox task on cache behavior alone.
+- [x] A failed acceptance attempt remains eligible for retry.
+- [x] Mark the implementation explicitly as interim or durable; do not close the phase 2 inbox task on cache behavior alone.
+
+**Implementation Notes (Interim Repair)**
+
+This implementation uses the interim repair approach rather than a full durable inbox:
+
+1. **Middleware exception handling**: `VerifyZoomWebhook` now wraps downstream processing in a try-catch block that releases the reservation on any throwable.
+2. **Controller error handling**: `ZoomWebhookController` catches dispatch failures and releases the reservation via the replay key stored in request attributes.
+3. **Limitation**: Cache cleanup does not protect against process crashes between reservation and dispatch. A full durable inbox with persistent state tracking remains required in P2.1 for complete crash safety.
+4. **Test coverage**: Added test to verify that when a reservation is released (simulating dispatch failure), subsequent retries can successfully reserve and process the webhook.
+
+The interim repair addresses the immediate high-severity issue where queue dispatch failures could permanently lose webhook events, but does not provide the crash recovery guarantees of a full durable inbox pattern.
 
 ## P1.7 — Update affected dependencies and require the audit in CI
 

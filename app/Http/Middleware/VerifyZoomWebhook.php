@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final class VerifyZoomWebhook
 {
@@ -68,7 +69,13 @@ final class VerifyZoomWebhook
             $requestId,
         );
 
-        return $next($request);
+        try {
+            return $next($request);
+        } catch (Throwable $e) {
+            // Release reservation on downstream failure to allow Zoom retry
+            Cache::forget($this->replayCacheKey($replayKey));
+            throw $e;
+        }
     }
 
     private function requiredHeader(Request $request, string $name): string
