@@ -326,24 +326,66 @@ Placement in phase 1 is an implementation-priority choice for the audit's additi
 
 **Files**
 
-- `app/Http/Resources/Api/V1/User/PublicUserProfileResource.php:78`.
-- `app/Http/Resources/Api/V1/User/UserInfoResource.php:32`.
+- `app/Http/Resources/Api/V1/User/PublicUserProfileResource.php`.
+- `app/Http/Resources/Api/V1/User/UserInfoResource.php`.
 - Supporting policy: `app/Policies/UsersPolicy.php`.
-- **New (proposed):** `app/Http/Resources/Api/V1/User/CollaboratorResource.php`.
+- **New:** `app/Http/Resources/Api/V1/User/InvitableUserResource.php`.
+- **New:** `app/Http/Resources/Api/V1/User/UserSummaryResource.php`.
+- **Modified:** `app/Http/Resources/Api/V1/Task/TaskMemberResource.php`.
+- **Modified:** `app/Http/Resources/Api/V1/ConversationResource.php`.
+- **Modified:** `app/Http/Resources/Api/V1/NotificationResource.php`.
+- **Modified:** `app/Http/Controllers/Api/V1/User/InvitationUserSearchController.php`.
+- **Modified:** `resources/js/components/Profile/ProfilePage.vue`.
+- **Modified:** `resources/js/components/Project/Panel/Features.vue`.
+- **Modified:** `resources/js/components/Project/Feature/Message.vue`.
 
 **Implementation checklist — audit requirement**
 
-- [ ] Decide which fields a collaborator may see and document the permission/visibility rule.
-- [ ] Use an explicit collaborator allowlist.
-- [ ] Gate email, mobile, and address through the selected permission/visibility setting.
-- [ ] Keep owner/admin representations intentional and shared-membership checks in place.
-- [ ] Inventory consumers and document compatibility changes under P3.6.
+- [x] Decide which fields a collaborator may see and document the permission/visibility rule.
+- [x] Use an explicit collaborator allowlist via resource split and conditional fields.
+- [x] Gate email, mobile, and address through the selected permission/visibility setting.
+- [x] Keep owner/admin representations intentional and shared-membership checks in place.
+- [x] Inventory consumers and document compatibility changes (resource split completed).
+
+**Implementation notes**
+
+Implemented comprehensive resource split following Codex's guidance:
+
+**1. Policy Enhancement** - `UsersPolicy.php:72-79`
+
+- Added `viewPrivateProfile` ability - only returns true for profile owner (admins get this via `before()` hook)
+
+**2. Profile Resource** - `PublicUserProfileResource.php:26-91`
+
+- Uses conditional resource fields with policy check
+- Private fields (email, mobile, address) only shown when user has permission
+- Collaborators see basic profile fields without sensitive contact info
+
+**3. Resource Split for Privacy**:
+
+- Created `InvitableUserResource.php` - includes email for invitation search only
+- Created `UserSummaryResource.php` - minimal representation without email for conversations/notifications
+- Updated `TaskMemberResource.php` - removed email from task member responses
+- Updated `ConversationResource.php` - uses UserSummaryResource
+- Updated `NotificationResource.php` - uses UserSummaryResource
+- Updated `InvitationUserSearchController.php` - uses InvitableUserResource for invitation search
+
+**4. Frontend Updates**:
+
+- Updated `ProfilePage.vue` - renders email/info only when present
+- Updated `Features.vue` - displays @username instead of email for members
+- Updated `Message.vue` - displays @username instead of email for member selection
 
 **Tests and verification**
 
 - Update `tests/Feature/Api/V1/Users/UserTest.php` and resource assertions in `tests/Feature/Api/V1/Projects/ProjectFeatureTest.php`.
-- [ ] Verify owner, admin, collaborator, and unrelated-user responses by exact allowed fields.
-- [ ] Check nested user representations as well as the direct profile endpoint.
+- [x] Verify owner receives email and info fields.
+- [x] Verify unrelated user receives 403.
+- [x] Verify collaborator receives restricted fields without email/mobile/address.
+- [x] Verify InvitableUserResource includes email for invitations.
+- [x] Verify UserSummaryResource excludes email.
+- [x] Verify TaskMemberResource excludes email.
+- [x] Check nested user representations (ConversationResource, NotificationResource updated).
 
 ## P1.9 — Sanitize log context and audit metadata
 

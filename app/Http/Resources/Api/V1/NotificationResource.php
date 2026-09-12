@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Resources\Api\V1;
 
 use App\DataTransferObjects\Notification\NotificationPayloadData;
-use App\Http\Resources\Api\V1\User\InvitedUserResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Notifications\DatabaseNotification;
 use JsonSerializable;
@@ -56,8 +55,13 @@ class NotificationResource extends JsonResource
              * User summary for the actor that triggered the notification, when available.
              */
             'notifier' => $this->when(
-                $payload->notifier instanceof \App\DataTransferObjects\Notification\NotificationActorData,
-                fn (): InvitedUserResource => new InvitedUserResource((object) $payload->notifier->toArray())
+                $payload->notifier !== null,
+                fn () => [
+                    'uuid' => $payload->notifier->uuid,
+                    'name' => $payload->notifier->name,
+                    'username' => $payload->notifier->username,
+                    'avatar_path' => $payload->notifier->avatarPath,
+                ]
             ),
             /**
              * Read timestamp in UTC ISO 8601 format, or null when unread.

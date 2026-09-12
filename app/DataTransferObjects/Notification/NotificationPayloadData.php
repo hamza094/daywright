@@ -25,7 +25,7 @@ final readonly class NotificationPayloadData
     }
 
     /**
-     * @return array{message: string, notifier: array{uuid: string, name: string, username: string|null, avatar_path: string|null, email: string}|null, link: string}
+     * @return array{message: string, notifier: array{uuid: string, name: string, username: string|null, avatar_path: string|null}|null, link: string}
      */
     public function toArray(): array
     {
@@ -48,9 +48,8 @@ final readonly class NotificationPayloadData
 
         $uuid = $notifier['uuid'] ?? null;
         $name = $notifier['name'] ?? null;
-        $email = $notifier['email'] ?? null;
 
-        if (! is_string($uuid) || ! is_string($name) || ! is_string($email)) {
+        if (! is_string($uuid) || ! is_string($name)) {
             return null;
         }
 
@@ -62,7 +61,6 @@ final readonly class NotificationPayloadData
             name: $name,
             username: is_string($username) ? $username : null,
             avatarPath: is_string($avatarPath) ? $avatarPath : null,
-            email: $email,
         );
     }
 }

@@ -68,4 +68,13 @@ class UsersPolicy
             ->whereIn('projects.id', $authProjectIds)
             ->exists();
     }
+
+    /**
+     * Determine if the authenticated user can view private profile fields (email, mobile, address).
+     * Only allowed for the profile owner or administrators.
+     */
+    public function viewPrivateProfile(User $actor, User $target): bool
+    {
+        return $actor->is($target);
+    }
 }

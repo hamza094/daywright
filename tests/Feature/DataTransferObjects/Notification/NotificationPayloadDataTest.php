@@ -21,7 +21,6 @@ final class NotificationPayloadDataTest extends TestCase
                 name: 'Hamza',
                 username: 'hamza',
                 avatarPath: 'avatars/hamza.png',
-                email: 'hamza@example.com',
             ),
             link: '/api/v1/projects/daywright',
         );

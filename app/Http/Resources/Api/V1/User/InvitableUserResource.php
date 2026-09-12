@@ -12,13 +12,13 @@ use Override;
 /**
  * @mixin \App\Models\User
  */
-#[SchemaName('UserSummary')]
-class UserSummaryResource extends JsonResource
+#[SchemaName('InvitableUser')]
+class InvitableUserResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
-     * This resource provides a minimal user representation without email or private info.
-     * Used for conversations, notifications, project owners, and ordinary members.
+     * This resource is used for invitation search and includes email for sending invitations.
+     * Should only be used by InvitationUserSearchController.
      *
      * @return array<string, mixed>
      */
@@ -60,6 +60,14 @@ class UserSummaryResource extends JsonResource
              * @example https://daywright.test/storage/avatars/berry.png
              */
             'avatar' => $this->when($this->avatar, fn () => $this->avatar_path),
+            /**
+             * Primary email address (included for invitation sending).
+             *
+             * @format email
+             *
+             * @example berry@example.com
+             */
+            'email' => $this->email,
         ];
     }
 }

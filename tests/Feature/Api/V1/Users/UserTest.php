@@ -6,6 +6,9 @@ namespace Tests\Feature\Api\V1\Users;
 
 use App\Actions\PurgeDeletedUsersAction;
 use App\DataTransferObjects\User\PasswordUpdateData;
+use App\Http\Resources\Api\V1\Task\TaskMemberResource;
+use App\Http\Resources\Api\V1\User\InvitableUserResource;
+use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use App\Mail\PasswordUpdate;
 use App\Models\Project;
 use App\Models\User;
@@ -254,6 +257,133 @@ class UserTest extends TestCase
             'id' => $this->user->id,
             'email' => $originalEmail,
         ]);
+    }
+
+    #[Test]
+    public function profile_owner_sees_all_fields_including_sensitive_contact_info(): void
+    {
+        UserInfo::factory()->for($this->user)->create([
+            'mobile' => '1234567890',
+            'address' => '123 Main St, City, Country',
+        ]);
+
+        $response = $this->getJson($this->apiV1Route('users.show', ['user' => $this->user]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.email', $this->user->email)
+            ->assertJsonPath('data.info.mobile', '1234567890')
+            ->assertJsonPath('data.info.address', '123 Main St, City, Country');
+    }
+
+    #[Test]
+    public function admin_sees_all_fields_including_sensitive_contact_info(): void
+    {
+        $targetUser = User::factory()->create();
+        UserInfo::factory()->for($targetUser)->create([
+            'mobile' => '9876543210',
+            'address' => '456 Oak Ave, Town, Country',
+        ]);
+
+        // Make the authenticated user an admin
+        $this->user->is_admin = true;
+        $this->user->save();
+
+        $response = $this->getJson($this->apiV1Route('users.show', ['user' => $targetUser]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.email', $targetUser->email)
+            ->assertJsonPath('data.info.mobile', '9876543210')
+            ->assertJsonPath('data.info.address', '456 Oak Ave, Town, Country');
+    }
+
+    #[Test]
+    public function unrelated_user_cannot_view_profile(): void
+    {
+        $unrelatedUser = User::factory()->create();
+        UserInfo::factory()->for($unrelatedUser)->create();
+
+        // Authenticate as the original user and try to view unrelated user's profile
+        $this->actingAs($this->user);
+
+        $response = $this->getJson($this->apiV1Route('users.show', ['user' => $unrelatedUser]));
+
+        $response->assertForbidden();
+    }
+
+    #[Test]
+    public function collaborator_can_view_shared_project_member_profile(): void
+    {
+        $collaborator = User::factory()->create();
+        UserInfo::factory()->for($collaborator)->create([
+            'mobile' => '9876543210',
+            'address' => '456 Oak Ave, Town, Country',
+            'company' => 'Tech Corp',
+            'position' => 'Developer',
+        ]);
+
+        // Add collaborator to the same project
+        $this->project->members()->attach($collaborator->id, ['active' => true]);
+
+        // Refresh the project to ensure the relationship is loaded
+        $this->project->refresh();
+
+        // Authenticate as the original user and view collaborator's profile
+        $this->actingAs($this->user);
+
+        $response = $this->getJson($this->apiV1Route('users.show', ['user' => $collaborator]));
+
+        $response->assertOk()
+            ->assertJsonMissingPath('data.email') // Email is hidden for collaborators
+            ->assertJsonMissingPath('data.info') // All info is hidden (includes mobile/address)
+            ->assertJsonPath('data.id', $collaborator->id) // Basic fields are still visible
+            ->assertJsonPath('data.name', $collaborator->name) // Basic fields are still visible
+            ->assertJsonPath('data.username', $collaborator->username); // Basic fields are still visible
+    }
+
+    #[Test]
+    public function invitable_user_resource_includes_email(): void
+    {
+        $user = User::factory()->create();
+
+        $resource = new InvitableUserResource($user);
+        $array = $resource->toArray(request());
+
+        $this->assertArrayHasKey('email', $array); // Email should be present for invitations
+        $this->assertEquals($user->email, $array['email']);
+        $this->assertArrayHasKey('id', $array);
+        $this->assertArrayHasKey('uuid', $array);
+        $this->assertArrayHasKey('name', $array);
+        $this->assertArrayHasKey('username', $array);
+    }
+
+    #[Test]
+    public function user_summary_resource_excludes_email(): void
+    {
+        $user = User::factory()->create();
+
+        $resource = new UserSummaryResource($user);
+        $array = $resource->toArray(request());
+
+        $this->assertArrayNotHasKey('email', $array); // Email should be excluded
+        $this->assertArrayHasKey('id', $array);
+        $this->assertArrayHasKey('uuid', $array);
+        $this->assertArrayHasKey('name', $array);
+        $this->assertArrayHasKey('username', $array);
+    }
+
+    #[Test]
+    public function task_member_resource_excludes_email(): void
+    {
+        $user = User::factory()->create();
+
+        $resource = new TaskMemberResource($user);
+        $array = $resource->toArray(request());
+
+        $this->assertArrayNotHasKey('email', $array); // Email should be excluded
+        $this->assertArrayHasKey('id', $array);
+        $this->assertArrayHasKey('uuid', $array);
+        $this->assertArrayHasKey('name', $array);
+        $this->assertArrayHasKey('username', $array);
     }
 
     #[Test]
