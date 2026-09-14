@@ -67,7 +67,8 @@ final readonly class CreateProjectMeeting
             Log::error('Zoom API meeting creation failed, marking local state as Failed', [
                 'meeting_id' => $meeting->id,
                 'user_id' => $user->id,
-                'exception' => $exception,
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
             ]);
             $this->markMeetingAsFailed($meeting, $exception);
             throw $exception;

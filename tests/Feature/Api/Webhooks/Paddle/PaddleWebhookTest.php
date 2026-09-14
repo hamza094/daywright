@@ -42,6 +42,7 @@ final class PaddleWebhookTest extends TestCase
         $this->postJson('/paddle/webhook', [
             'alert_name' => 'subscription_created',
             'subscription_id' => 'sub_123',
+            'alert_id' => 'evt_abc123',
             'email' => 'user@example.com',
         ])->assertStatus(200);
 
@@ -56,8 +57,11 @@ final class PaddleWebhookTest extends TestCase
         $this->assertNotNull($log);
         $this->assertSame('subscription_created', $log->new_values['paddle_event']);
         $this->assertSame('sub_123', $log->new_values['subscription_id']);
-        $this->assertSame('user@example.com', $log->new_values['user_email']);
-        $this->assertNotNull($log->metadata['paddle_payload']);
+        $this->assertSame('paddle', $log->metadata['provider']);
+        $this->assertSame('evt_abc123', $log->metadata['provider_event_id']);
+        $this->assertArrayNotHasKey('user_email', $log->new_values);
+        $this->assertArrayNotHasKey('alert_name', $log->new_values);
+        $this->assertArrayNotHasKey('paddle_payload', $log->metadata);
         $this->assertNotNull($log->created_at);
     }
 
@@ -69,6 +73,7 @@ final class PaddleWebhookTest extends TestCase
         $this->postJson('/paddle/webhook', [
             'alert_name' => 'subscription_updated',
             'subscription_id' => 'sub_789',
+            'alert_id' => 'evt_def456',
             'email' => 'user@example.com',
         ])->assertStatus(200);
 
@@ -83,8 +88,11 @@ final class PaddleWebhookTest extends TestCase
         $this->assertNotNull($log);
         $this->assertSame('subscription_updated', $log->new_values['paddle_event']);
         $this->assertSame('sub_789', $log->new_values['subscription_id']);
-        $this->assertSame('user@example.com', $log->new_values['user_email']);
-        $this->assertNotNull($log->metadata['paddle_payload']);
+        $this->assertSame('paddle', $log->metadata['provider']);
+        $this->assertSame('evt_def456', $log->metadata['provider_event_id']);
+        $this->assertArrayNotHasKey('user_email', $log->new_values);
+        $this->assertArrayNotHasKey('alert_name', $log->new_values);
+        $this->assertArrayNotHasKey('paddle_payload', $log->metadata);
         $this->assertNotNull($log->created_at);
     }
 
@@ -96,6 +104,7 @@ final class PaddleWebhookTest extends TestCase
         $this->postJson('/paddle/webhook', [
             'alert_name' => 'subscription_cancelled',
             'subscription_id' => 'sub_789',
+            'alert_id' => 'evt_ghi789',
             'email' => 'user@example.com',
         ])->assertStatus(200);
 
@@ -110,8 +119,34 @@ final class PaddleWebhookTest extends TestCase
         $this->assertNotNull($log);
         $this->assertSame('subscription_cancelled', $log->new_values['paddle_event']);
         $this->assertSame('sub_789', $log->new_values['subscription_id']);
-        $this->assertSame('user@example.com', $log->new_values['user_email']);
-        $this->assertNotNull($log->metadata['paddle_payload']);
+        $this->assertSame('paddle', $log->metadata['provider']);
+        $this->assertSame('evt_ghi789', $log->metadata['provider_event_id']);
+        $this->assertArrayNotHasKey('user_email', $log->new_values);
+        $this->assertArrayNotHasKey('alert_name', $log->new_values);
+        $this->assertArrayNotHasKey('paddle_payload', $log->metadata);
         $this->assertNotNull($log->created_at);
+    }
+
+    #[Test]
+    public function webhook_with_sensitive_data_sanitizes_before_audit(): void
+    {
+        Config::set('cashier.public_key');
+
+        $this->postJson('/paddle/webhook', [
+            'alert_name' => 'subscription_created',
+            'subscription_id' => 'sub_secret123',
+            'alert_id' => 'evt_secret_abc',
+            'email' => 'secret-user@example.com',
+            'customer_auth_code' => 'secret-auth-code',
+            'passthrough' => 'secret-passthrough-data',
+        ])->assertStatus(200);
+
+        $log = AuditLog::where('event', 'billing.subscription_created')->first();
+
+        $this->assertNotNull($log);
+        $this->assertArrayNotHasKey('user_email', $log->new_values);
+        $this->assertArrayNotHasKey('paddle_payload', $log->metadata);
+        $this->assertStringNotContainsString('secret-auth-code', json_encode($log->new_values));
+        $this->assertStringNotContainsString('secret-passthrough-data', json_encode($log->metadata));
     }
 }

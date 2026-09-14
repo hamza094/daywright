@@ -65,7 +65,8 @@ class QueuedPasswordResetJob implements ShouldQueue
         Log::error('QueuedPasswordResetJob failed', [
             'user_id' => $this->userId,
             'user_uuid' => $user?->uuid,
-            'exception' => $exception,
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
         ]);
     }
 }

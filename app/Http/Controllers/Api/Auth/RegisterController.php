@@ -42,7 +42,10 @@ class RegisterController extends ApiController
 
             return $this->respondCreated(new AuthenticatedUserResource($user));
         } catch (TransportExceptionInterface $e) {
-            Log::error('User registration failed', ['exception' => $e]);
+            Log::error('User registration failed', [
+                'exception_class' => $e::class,
+                'exception_code' => $e->getCode(),
+            ]);
 
             throw new ExternalServiceUnavailableException('User registration failed.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);
         }

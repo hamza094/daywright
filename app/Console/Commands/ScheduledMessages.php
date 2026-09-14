@@ -48,7 +48,8 @@ class ScheduledMessages extends Command
                         Log::error('ScheduledMessages command: failed to send message', [
                             'message_id' => $message->id,
                             'project_id' => $project->id,
-                            'exception' => $e,
+                            'exception_class' => $e::class,
+                            'exception_code' => $e->getCode(),
                         ]);
                     }
                 }

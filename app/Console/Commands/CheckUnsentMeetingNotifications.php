@@ -86,8 +86,8 @@ final class CheckUnsentMeetingNotifications extends Command
                 Log::error('Failed to re-dispatch stuck meeting started notification', [
                     'meeting_id' => $meeting->id,
                     'project_id' => $meeting->project_id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'exception_class' => $e::class,
+                    'exception_code' => $e->getCode(),
                 ]);
             }
         }
@@ -124,8 +124,8 @@ final class CheckUnsentMeetingNotifications extends Command
                 Log::error('Failed to re-dispatch stuck meeting ended notification', [
                     'meeting_id' => $meeting->id,
                     'project_id' => $meeting->project_id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'exception_class' => $e::class,
+                    'exception_code' => $e->getCode(),
                 ]);
             }
         }

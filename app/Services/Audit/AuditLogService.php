@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Audit;
 
+use App\Logging\ScrubSensitiveData;
 use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,10 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 final readonly class AuditLogService
 {
+    public function __construct(
+        private ScrubSensitiveData $sanitizer,
+    ) {}
+
     /**
      * @param  array<string, mixed>|null  $oldValues
      * @param  array<string, mixed>|null  $newValues
@@ -30,6 +35,17 @@ final readonly class AuditLogService
             'ip_address' => app()->runningInConsole() ? '127.0.0.1' : Request::ip(),
             'user_agent' => app()->runningInConsole() ? 'CLI/Queue' : Request::userAgent(),
         ], $metadata);
+
+        // Sanitize all caller-controlled data before persistence
+        $oldValues = $oldValues !== null
+            ? $this->sanitizer->sanitize($oldValues)
+            : null;
+
+        $newValues = $newValues !== null
+            ? $this->sanitizer->sanitize($newValues)
+            : null;
+
+        $metadata = $this->sanitizer->sanitize($metadata);
 
         return AuditLog::create([
             'actor_type' => $context['actor_type'],

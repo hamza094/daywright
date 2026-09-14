@@ -66,7 +66,8 @@ final readonly class UpdateProjectMeeting
                 'meeting_id' => $meeting->id,
                 'zoom_meeting_id' => $meeting->meeting_id,
                 'user_id' => $user->id,
-                'exception' => $exception,
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
             ]);
             throw $exception;
         }

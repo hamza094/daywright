@@ -34,7 +34,8 @@ final class SubscriptionService implements Paddle
                 Log::error('Paddle API Exception during subscribe', [
                     'user_id' => $lockedUser->id,
                     'plan' => $plan,
-                    'exception' => $e,
+                    'exception_class' => $e::class,
+                    'exception_code' => $e->getCode(),
                 ]);
                 throw $e;
             }
@@ -76,7 +77,8 @@ final class SubscriptionService implements Paddle
                 Log::error('Paddle API Exception during swap', [
                     'user_id' => $lockedUser->id,
                     'plan' => $plan,
-                    'exception' => $e,
+                    'exception_class' => $e::class,
+                    'exception_code' => $e->getCode(),
                 ]);
                 throw $e;
             }
@@ -115,7 +117,8 @@ final class SubscriptionService implements Paddle
                 Log::error('Paddle API Exception during cancel', [
                     'user_id' => $lockedUser->id,
                     'plan' => $plan,
-                    'exception' => $e,
+                    'exception_class' => $e::class,
+                    'exception_code' => $e->getCode(),
                 ]);
                 throw $e;
             }

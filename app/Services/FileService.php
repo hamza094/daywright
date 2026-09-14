@@ -68,7 +68,8 @@ class FileService
                 } catch (Exception $exception) {
                     Log::error('S3 file deletion failed', [
                         'file_path' => $filePath,
-                        'exception' => $exception,
+                        'exception_class' => $exception::class,
+                        'exception_code' => $exception->getCode(),
                     ]);
                     report($exception);
                 }
@@ -120,7 +121,8 @@ class FileService
             Log::error('S3 file upload failed', [
                 'folder' => $folderName,
                 'file_name' => $fileName,
-                'exception' => $e,
+                'exception_class' => $e::class,
+                'exception_code' => $e->getCode(),
             ]);
             report($e);
             throw ValidationException::withMessages([
