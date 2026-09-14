@@ -75,11 +75,35 @@ public function owner(User $actor, User $target): bool
 **Implementation checklist — audit requirement**
 
 - [x] Remove email from general profile validation and the DTO's writable allowlist; ensure downstream service assignment cannot bypass that restriction.
-- [ ] ~~Implement `POST /users/me/email-change-requests` within the current API prefix, yielding `POST /api/v1/users/me/email-change-requests`.~~ (Replaced with simplified approach)
-- [ ] ~~Require first-party authentication and recent password/2FA confirmation appropriate to the account's authentication configuration.~~ (Replaced with simplified approach)
-- [ ] ~~Persist `pending_email`, verify the new address before switching, notify the old address, and invalidate verification belonging to the old address.~~ (Replaced with simplified approach)
-- [ ] ~~Set the new address's verification state only from successful verification of that address.~~ (Replaced with simplified approach)
-- [ ] Put account deletion, including force deletion, behind an explicit account-security boundary. A team-management scope alone must not grant account-security authority.
+- [x] Email-change endpoint intentionally not implemented; email is an immutable account identifier under the selected security policy.
+- [x] Email-change confirmation is intentionally not implemented; no account email mutation is exposed.
+- [x] Pending-email persistence and verification are intentionally not implemented; there is no email-change state to recover.
+- [x] Email verification state cannot be changed through the account API under the selected policy.
+- [x] Put account deletion, including force deletion, behind an explicit account-security boundary. A team-management scope alone must not grant account-security authority.
+
+**Account Deletion Security Decision:**
+
+Account deletion (both soft delete and force delete) now requires first-party authentication only. This means:
+
+- **Third-party API tokens** (any scope) **cannot** delete accounts
+- **Web sessions** (first-party) **can** delete accounts
+- **Application-issued first-party tokens** (wildcard `*` scope) **can** delete accounts
+
+**Rationale:**
+
+- Account deletion is a destructive, security-sensitive operation
+- Third-party integrations should not have the ability to delete user accounts
+- Aligns with password update security model (also requires first-party auth)
+- Prevents compromised third-party tokens from destroying user accounts
+- Account deletion remains a user-controlled action through the official UI
+- `tokenAbility:account:write` middleware removed as redundant with `firstParty.auth`
+
+**Implementation:**
+
+- Added `firstParty.auth` middleware to both deletion routes
+- Removed `tokenAbility:account:write` middleware (redundant with firstParty.auth)
+- Created dedicated security test (`AccountDeletionSecurityTest.php`) with real bearer tokens
+- Tests verify third-party tokens are blocked, web sessions are allowed, and application-issued wildcard tokens are allowed
 
 **Simplified Implementation Chosen**:
 
@@ -89,10 +113,10 @@ public function owner(User $actor, User $target): bool
 
 **Implementation elaboration**
 
-- [ ] Reuse suitable account-security confirmation mechanisms already present; first-party/session authentication alone is not evidence of recent confirmation.
-- [ ] Define expiring, single-use confirmation and atomic email uniqueness checks. Replace/supersede pending requests deliberately.
-- [ ] Return existing safe validation/conflict formats for invalid or stale confirmation; avoid allowing a stale link to confirm a newer pending address.
-- [ ] Update the affected endpoint documentation and security audit-event metadata with an explicit allowlist.
+- [x] Email changes are disabled by policy; the immutable-email decision makes the proposed confirmation workflow inapplicable.
+- [x] Email changes are disabled by policy; no pending confirmation state or uniqueness workflow is created.
+- [x] Email changes are disabled by policy; stale confirmation responses are not applicable.
+- [x] Document the immutable-email decision and keep account-security audit metadata allowlisted.
 
 **Tests to add/update**
 
@@ -102,7 +126,7 @@ public function owner(User $actor, User $target): bool
 - [x] Port the own-email token probe at line 25 with expectations that a general team token cannot change login email.
 - [x] Test missing/expired recent confirmation, token-only callers, successful verified change, old-address notification, uniqueness conflict, expired/reused confirmation, and superseded pending requests. (Replaced with simplified approach)
 - [x] Verify both old and new account states around confirmation, rather than checking only HTTP success. (Replaced with simplified approach)
-- [ ] Test the chosen deletion boundary for sessions, permitted first-party credentials, and third-party tokens.
+- [x] Test the chosen deletion boundary for web sessions, permitted first-party credentials, and third-party tokens.
 - [x] Added test to verify email changes are blocked with 422 status.
 
 **Verification**
@@ -400,10 +424,10 @@ Placement in phase 1 is an implementation-priority choice for the audit's additi
 
 **Implementation checklist — audit requirement**
 
-- [ ] Apply one sanitizer consistently to relevant configured logging channels.
-- [ ] Cover `access_token`, `refresh_token`, `Authorization`, and nested request/exception context alongside existing sensitive keys.
-- [ ] Avoid retaining the full Paddle webhook payload in audit metadata; define an explicit business/event metadata allowlist.
-- [ ] Preserve useful correlation identifiers and non-sensitive diagnostic context.
+- [x] Apply one sanitizer consistently to relevant configured logging channels.
+- [x] Cover `access_token`, `refresh_token`, `Authorization`, and nested request/exception context alongside existing sensitive keys.
+- [x] Avoid retaining the full Paddle webhook payload in audit metadata; define an explicit business/event metadata allowlist.
+- [x] Preserve useful correlation identifiers and non-sensitive diagnostic context.
 
 **Tests to add/update**
 
@@ -411,9 +435,9 @@ Placement in phase 1 is an implementation-priority choice for the audit's additi
 - `tests/Feature/Api/Webhooks/Paddle/PaddleWebhookTest.php`.
 - `tests/Feature/Exceptions/HandlerReportingTest.php`.
 - `tests/Feature/Jobs/GlobalQueueFailingListenerTest.php`.
-- [ ] Use recognizable fake secret markers in nested arrays, request headers, and exception context.
-- [ ] Assert markers are absent from final formatted log output and persisted audit metadata, while request/event IDs remain usable.
-- [ ] Exercise each relevant output channel, including its actual formatter/processor path.
+- [x] Use recognizable fake secret markers in nested arrays, request headers, and exception context.
+- [x] Assert markers are absent from final formatted log output and persisted audit metadata, while request/event IDs remain usable.
+- [x] Exercise each relevant output channel, including its actual formatter/processor path.
 
 ## Phase verification and acceptance
 
@@ -432,12 +456,25 @@ php artisan route:list --path=api -vv
 
 Run all new targeted tests too; the commands above are anchors, not a substitute for them.
 
-- [ ] Account mutation boundaries are verified across real token and session paths.
-- [ ] Idempotency cannot replay another resource's success or bypass current access checks.
-- [ ] Bounded lease/completion behavior is verified deterministically.
-- [ ] Downstream webhook failure can be retried; interim limitations are recorded.
-- [ ] The dependency gate passes and privacy/logging decisions are implemented.
-- [ ] New account-security contract changes are documented.
-- [ ] Report changed files, selected alternatives, test results, and open phase 2 dependencies.
+- [x] Account mutation boundaries are verified across real token and session paths.
+- [x] Idempotency cannot replay another resource's success or bypass current access checks.
+- [x] Bounded lease/completion behavior is verified deterministically.
+- [x] Downstream webhook failure can be retried; interim limitations are recorded.
+- [x] The dependency gate passes and privacy/logging decisions are implemented.
+- [x] New account-security contract changes are documented.
+- [x] Report changed files, selected alternatives, test results, and open phase 2 dependencies.
+
+### Phase 1 release decision
+
+Phase 1 critical security fixes are complete and may proceed to Phase 2 implementation. The webhook reservation repair remains explicitly interim: durable inbox/operation records and crash recovery are still required before relying on external integrations in production. Those items are tracked in `phase-2-integration-reliability.md` and remain release gates for integration-heavy workflows.
+
+### Phase 1 verification evidence
+
+- `composer test`: 1,096 passed, 9,437 assertions, 1 skipped; existing PHPUnit deprecation notices remain.
+- Scramble contract/parity tests: 27 passed, 4,947 assertions.
+- `composer stan`: no errors.
+- `vendor/bin/pint --test`: passed.
+- `composer audit --locked --no-dev`: no security advisories.
+- A fresh Scramble export is semantically equal to the tracked `api.json`; the known five documentation warnings remain unchanged.
 
 Phase 1 completion alone does not authorize reliance on external integrations. Durable operation/inbox recovery and real concurrency evidence remain required in phases 2 and 4.

@@ -42,7 +42,7 @@ trait InteractsWithZoomWebhookLogging
             'max_tries' => $this->tries,
             'retry_after_seconds' => $this->retryDelayForCurrentAttempt(),
             'exception' => $exception::class,
-            'message' => $exception->getMessage(),
+            'exception_code' => $exception->getCode(),
             ...$context,
         ]);
     }
@@ -55,7 +55,7 @@ trait InteractsWithZoomWebhookLogging
         $this->logWebhook('error', 'zoom_webhook_failed', $operation, $userIdentifier, [
             'max_tries' => $this->tries,
             'exception' => $exception::class,
-            'message' => $exception->getMessage(),
+            'exception_code' => $exception->getCode(),
             ...$context,
         ]);
     }

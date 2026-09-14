@@ -18,6 +18,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Response;
@@ -155,6 +156,7 @@ class UserTest extends TestCase
     #[Test]
     public function user_can_delete_his_profile(): void
     {
+        $this->authenticateAsFirstParty();
         $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $this->user]));
 
         $this->assertSoftDeleted($this->user);
@@ -221,6 +223,7 @@ class UserTest extends TestCase
     #[Test]
     public function user_cannot_delete_another_users_account_even_with_shared_project(): void
     {
+        $this->authenticateAsFirstParty();
         $otherUser = User::factory()->create();
 
         // Add other user to the same project
@@ -389,6 +392,7 @@ class UserTest extends TestCase
     #[Test]
     public function cannot_force_delete_active_user_enforces_archive_first(): void
     {
+        $this->authenticateAsFirstParty();
         // Try to force delete an active user (not soft-deleted)
         $response = $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $this->user]));
 
@@ -405,6 +409,7 @@ class UserTest extends TestCase
     #[Test]
     public function can_force_delete_soft_deleted_user(): void
     {
+        $this->authenticateAsFirstParty();
         // First soft delete the user
         $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $this->user]))->assertOk();
 
@@ -421,6 +426,7 @@ class UserTest extends TestCase
     #[Test]
     public function cannot_force_delete_another_users_soft_deleted_account(): void
     {
+        $this->authenticateAsFirstParty();
         $otherUser = User::factory()->create();
 
         // Soft delete the other user
@@ -438,6 +444,7 @@ class UserTest extends TestCase
     #[Test]
     public function force_delete_missing_user_returns_not_found(): void
     {
+        $this->authenticateAsFirstParty();
         // Create a user and then permanently delete them
         $user = User::factory()->create();
         $uuid = $user->uuid;
@@ -469,5 +476,10 @@ class UserTest extends TestCase
         // Since admin bypasses the policy, they can force delete other users' soft-deleted accounts
         // (this is the intended admin behavior - they have full authority over soft-deleted accounts)
         // But even admins must follow archive-first workflow for active accounts
+    }
+
+    private function authenticateAsFirstParty(): void
+    {
+        Sanctum::actingAs($this->user, ['*']);
     }
 }

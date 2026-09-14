@@ -279,13 +279,11 @@ class StartMeetingWebhookTest extends TestCase
                     isset($context['request_id']) &&
                     $context['request_id'] === 'zoom-failed-sanitize' &&
                     isset($context['exception']) &&
-                    isset($context['message']) &&
-                    // Ensure no sensitive data is present
-                    ! str_contains((string) $context['message'], 'access_token') &&
-                    ! str_contains((string) $context['message'], 'refresh_token') &&
-                    ! str_contains((string) $context['message'], 'zak') &&
-                    ! str_contains((string) $context['message'], 'password') &&
-                    ! str_contains((string) $context['message'], 'secret')
+                    $context['exception'] === RuntimeException::class &&
+                    isset($context['exception_code']) &&
+                    $context['exception_code'] === 0 &&
+                    // Ensure message field is absent (no exception message logged)
+                    ! array_key_exists('message', $context)
                 )
             );
 

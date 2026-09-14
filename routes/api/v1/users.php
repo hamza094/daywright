@@ -36,10 +36,10 @@ Route::apiResource('/users', UserController::class)
     ->except(['index', 'store'])
     ->middlewareFor(['show'], 'tokenAbility:team:read')
     ->middlewareFor(['update'], 'tokenAbility:account:write')
-    ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'tokenAbility:account:write']);
+    ->middlewareFor(['destroy'], ['firstParty.auth', 'throttle:sensitive-destructive']);
 
 Route::delete('/users/{user}/force', ForceDeleteUserController::class)
-    ->middleware(['throttle:sensitive-destructive', 'tokenAbility:account:write'])
+    ->middleware(['firstParty.auth', 'throttle:sensitive-destructive'])
     ->name('users.forceDestroy')
     ->withTrashed();
 

@@ -624,11 +624,13 @@ Ensure the application is 100% "2 AM Debuggable". When production breaks, system
 
 ### Guidelines
 
-- ✅ **Preserve Stack Traces**: Always pass the full `$exception` object to Monolog (e.g., `Log::error('msg', ['exception' => $e])`), NEVER serialize it as strings via `$e->getMessage()` or `$e->getTraceAsString()`.
+- ✅ **Preserve Reportable Failures**: Send unexpected exceptions through Laravel's exception reporter (`report($exception)` or the application handler) so the configured error reporter can retain the stack trace. Structured operational logs should record the exception class, code, operation, and correlation identifiers instead of the raw exception object, message, or trace.
 - ✅ **Wrap External Boundaries**: All third-party API SDK calls (e.g., Vonage, Paddle) must be wrapped in `try/catch`. Log the failure with context before re-throwing. Do not let SDK exceptions bubble up silently.
 - ✅ **Protect Loops in Commands**: When processing chunks in Console Commands, wrap the inner loop logic in a `try/catch`. A single corrupt row must never crash the entire cron job silently. Log the error and `continue`.
 - ✅ **Log Silent Early Returns**: In queue jobs, if a required model is missing (e.g., deleted before job runs), log a warning/error before `return;`. Do not fail silently. (Exception: pure idempotency checks).
-- ✅ **Redact Sensitive Data**: Use `ScrubSensitiveData` taps to prevent passwords and PII from leaking into logs. **Warning:** Do not log raw SQL bindings (e.g. `$query->bindings`), as they are indexed arrays and bypass key-based scrubbers.
+- ✅ **Redact Sensitive Data Everywhere**: Attach `ScrubSensitiveData` to every first-party log channel and configure Bugsnag's native `redacted_keys`. Apply the same redaction in every environment. Never log credentials, authorization/cookie headers, OAuth codes, provider payloads, or raw SQL bindings.
+- ✅ **Allowlist Audit Metadata**: Pass only identifiers required for investigation to `AuditLogService`. Provider webhook bodies, request objects, headers, and third-party responses must not be persisted. The service-level sanitizer is a final safety boundary, not a substitute for caller allowlists.
+- ✅ **Preserve Correlation Data**: Keep safe identifiers such as request ID, provider event ID, actor ID, resource ID, operation, status, and attempt count so sanitized failures remain diagnosable.
 - ✅ **Use JSON Formatting**: Always use `JsonFormatter` in production log channels (e.g., `daily`) to ensure structured, queryable logs.
 - ❌ **No Happy Path Noise**: Do not log successful CRUD state changes or audit trails in the system operational logs. Keep system logs focused strictly on errors, failures, and system state anomalies.
 
@@ -730,6 +732,7 @@ abstract class TestCase extends BaseTestCase
 - ✅ Create setup traits for common test configuration
 - ✅ Move repeated test-only setup into shared helpers instead of copying it across files
 - ✅ Use `Http::preventStrayRequests()` to catch unmocked HTTP calls
+- ✅ Keep authentication and authorization middleware enabled in security-boundary tests. Exercise real session, first-party token, and developer-token paths rather than disabling the middleware being verified.
 - ❌ Do not group feature tests by controller or service implementation folder when the real boundary is a domain or endpoint
 
 ---
@@ -838,13 +841,15 @@ Certain application boundaries MUST be strictly isolated from third-party develo
 - **Billing & Subscriptions**: Upgrading/downgrading plans, viewing invoices, managing payment methods.
 - **Account Deletion**: Deleting the entire workspace or user account.
 
+Account deletion and permanent account deletion use `firstParty.auth`. Web sessions and application-issued wildcard tokens may execute them; developer tokens with explicit scopes may not. User-created developer-token validation must continue to reject the wildcard `*` ability.
+
 ### Scope Enforcement (Principle of Least Privilege)
 
 DayWright uses a predefined, strict list of domain-specific scopes (e.g., `projects:read`, `team:write`). When routing, strictly adhere to the following rules:
 
 - ✅ **No Over-Privileging**: A `GET` (read-only) route MUST NOT demand a `:write` scope. If a user only needs to read data, their read-only token must work.
 - ✅ **No Domain Bleeding**: A route must only require the scope for the specific data domain it touches (e.g., a dashboard endpoint returning tasks must require `projects:read`, not `account:read`).
-- ✅ **Strict Mutation Protection**: Every `POST`, `PUT`, `PATCH`, and `DELETE` route MUST be guarded by a `:write` scope to prevent read-only tokens from mutating data.
+- ✅ **Strict Mutation Protection**: Every mutation exposed to developer tokens MUST require the appropriate `:write` scope. First-party-only mutations MUST instead use `session.auth` or `firstParty.auth`, with policy authorization and a sensitive-operation throttle where appropriate.
 - ✅ **Prevent Privilege Escalation**: API keys (PATs) that create other API keys MUST only be allowed to grant a subset of their own scopes. Only SPA sessions (`TransientToken`) or tokens with wildcard `*` abilities can freely assign scopes.
 - ✅ **Use custom middleware**: Always use the custom `tokenAbility:` middleware for scope checks. It gracefully bypasses scope checks for SPA session requests while enforcing them strictly for API keys.
 - ✅ **API Resources**: Use `->middlewareFor()` when declaring `Route::apiResource()` to independently scope `index`/`show` (read) vs `store`/`update`/`destroy` (write).
@@ -914,9 +919,10 @@ use App\Repository\ProjectRepository;
 
 ## Version History
 
-| Version | Date       | Changes                                    |
-| ------- | ---------- | ------------------------------------------ |
-| 1.0.0   | 2026-01-22 | Initial guidelines extracted from codebase |
+| Version | Date       | Changes                                                     |
+| ------- | ---------- | ----------------------------------------------------------- |
+| 1.1.0   | 2026-09-14 | Added account-deletion and sanitized logging security rules |
+| 1.0.0   | 2026-01-22 | Initial guidelines extracted from codebase                  |
 
 ---
 

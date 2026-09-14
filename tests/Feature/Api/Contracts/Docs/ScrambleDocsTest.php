@@ -312,7 +312,7 @@ class ScrambleDocsTest extends TestCase
             '/v1/projects/{project}' => ['get', 'put', 'delete'],
             '/v1/projects/{project}/tasks' => ['get', 'post'],
             '/v1/users/me' => ['get'],
-            '/v1/users/{user}' => ['get', 'put', 'delete'],
+            '/v1/users/{user}' => ['get', 'put'], // DELETE requires firstParty.auth
         ];
 
         foreach ($authSanctumRoutes as $path => $methods) {
@@ -322,6 +322,10 @@ class ScrambleDocsTest extends TestCase
                     "Missing 401 response for auth:sanctum route {$httpMethod} {$path}");
             }
         }
+
+        // First-party-only destructive routes are intentionally omitted from the public contract.
+        $this->assertArrayNotHasKey('delete', $paths['/v1/users/{user}'] ?? []);
+        $this->assertArrayNotHasKey('/v1/users/{user}/force', $paths);
     }
 
     public function test_docs_json_middleware_derived_error_responses(): void
