@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Tests\Unit\DataTransferObjects\Zoom;
 
 use App\DataTransferObjects\Zoom\MeetingStartedWebhookData;
+use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class MeetingStartedWebhookDataTest extends TestCase
 {
-    /** @test */
+    #[Test]
     public function dto_serialization_round_trips_without_losing_types(): void
     {
         $original = new MeetingStartedWebhookData(
@@ -26,7 +27,7 @@ class MeetingStartedWebhookDataTest extends TestCase
         $this->assertEquals($original->requestId, $reconstructed->requestId);
     }
 
-    /** @test */
+    #[Test]
     public function from_array_handles_nullable_fields(): void
     {
         $data = [

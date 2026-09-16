@@ -8,9 +8,6 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('webhook_inboxes', function (Blueprint $table) {
@@ -37,13 +34,5 @@ return new class extends Migration
             $table->index(['state', 'available_at']);
             $table->index(['state', 'claim_expires_at']);
         });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('webhook_inboxes');
     }
 };
