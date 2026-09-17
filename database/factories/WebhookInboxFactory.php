@@ -54,15 +54,52 @@ final class WebhookInboxFactory extends Factory
                 ],
                 'meeting.started' => [
                     'meetingId' => $this->faker->numberBetween(1000000000, 9999999999),
+                    'startTime' => $this->faker->dateTimeThisYear()->format('Y-m-d\TH:i:s\Z'),
                     'requestId' => $this->faker->uuid(),
                 ],
                 'meeting.ended' => [
                     'meetingId' => $this->faker->numberBetween(1000000000, 9999999999),
+                    'startTime' => $this->faker->dateTimeThisYear()->format('Y-m-d\TH:i:s\Z'),
+                    'endTime' => $this->faker->dateTimeThisYear()->format('Y-m-d\TH:i:s\Z'),
                     'requestId' => $this->faker->uuid(),
                 ],
             },
             'state' => WebhookInboxState::Received,
             'attempts' => 0,
         ];
+    }
+
+    /**
+     * Set a specific event type.
+     */
+    public function forEventType(string $eventType): self
+    {
+        return $this->state(fn (array $attributes) => [
+            'event_type' => $eventType,
+            'payload' => match ($eventType) {
+                'meeting.updated' => [
+                    'meetingId' => $this->faker->numberBetween(1000000000, 9999999999),
+                    'changes' => [
+                        'topic' => $this->faker->sentence(4),
+                        'duration' => $this->faker->randomElement([15, 30, 45, 60]),
+                    ],
+                ],
+                'meeting.deleted' => [
+                    'meetingId' => $this->faker->numberBetween(1000000000, 9999999999),
+                    'requestId' => $this->faker->uuid(),
+                ],
+                'meeting.started' => [
+                    'meetingId' => $this->faker->numberBetween(1000000000, 9999999999),
+                    'startTime' => $this->faker->dateTimeThisYear()->format('Y-m-d\TH:i:s\Z'),
+                    'requestId' => $this->faker->uuid(),
+                ],
+                'meeting.ended' => [
+                    'meetingId' => $this->faker->numberBetween(1000000000, 9999999999),
+                    'startTime' => $this->faker->dateTimeThisYear()->format('Y-m-d\TH:i:s\Z'),
+                    'endTime' => $this->faker->dateTimeThisYear()->format('Y-m-d\TH:i:s\Z'),
+                    'requestId' => $this->faker->uuid(),
+                ],
+            },
+        ]);
     }
 }

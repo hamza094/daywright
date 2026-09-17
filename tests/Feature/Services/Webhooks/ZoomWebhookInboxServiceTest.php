@@ -10,9 +10,12 @@ use App\Jobs\Webhooks\ProcessZoomWebhookInbox;
 use App\Models\WebhookInbox;
 use App\Services\Webhooks\ZoomWebhookInboxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use InvalidArgumentException;
+use Mockery;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Tests\TestCase;
 
 class ZoomWebhookInboxServiceTest extends TestCase
@@ -54,9 +57,7 @@ class ZoomWebhookInboxServiceTest extends TestCase
         $this->assertEquals(WebhookInboxState::Received, $inbox->state);
         $this->assertEquals(0, $inbox->attempts);
 
-        Queue::assertPushed(ProcessZoomWebhookInbox::class, function ($job) use ($inbox) {
-            return $job->webhookInboxId === $inbox->id;
-        });
+        Queue::assertPushed(ProcessZoomWebhookInbox::class, fn ($job): bool => $job->webhookInboxId === $inbox->id);
     }
 
     #[Test]
@@ -89,7 +90,86 @@ class ZoomWebhookInboxServiceTest extends TestCase
         $this->assertEquals($firstInbox->id, $secondInbox->id);
         $this->assertFalse($secondInbox->wasRecentlyCreated);
 
-        Queue::assertPushed(ProcessZoomWebhookInbox::class, 1);
+        Queue::assertPushed(ProcessZoomWebhookInbox::class, 2);
+    }
+
+    #[Test]
+    public function duplicate_acceptance_does_not_dispatch_a_completed_row(): void
+    {
+        Queue::fake();
+        $inbox = WebhookInbox::factory()->create([
+            'provider' => 'zoom',
+            'event_key' => 'completed-duplicate-key',
+            'event_type' => 'meeting.updated',
+            'state' => WebhookInboxState::Completed,
+        ]);
+
+        $accepted = $this->service->accept(
+            eventKey: $inbox->event_key,
+            eventType: $inbox->event_type,
+            requestId: 'req-duplicate',
+            occurredAt: 1234567890,
+            data: new MeetingUpdatedWebhookData(123456789, ['topic' => 'Updated Topic'], 'req-duplicate'),
+        );
+
+        $this->assertSame($inbox->id, $accepted->id);
+        Queue::assertNothingPushed();
+    }
+
+    #[Test]
+    public function queue_failure_keeps_the_accepted_row_available_for_recovery(): void
+    {
+        $queueManager = $this->app->make('queue');
+        $queueConnection = Mockery::mock($queueManager->connection())->makePartial();
+        $queueConnection->shouldReceive('push')
+            ->once()
+            ->andThrow(new RuntimeException('Queue unavailable'));
+        $queueManagerMock = Mockery::mock($queueManager)->makePartial();
+        $queueManagerMock->shouldReceive('connection')->andReturn($queueConnection);
+        Log::spy();
+        Queue::swap($queueManagerMock);
+
+        $inbox = $this->service->accept(
+            eventKey: 'queue-failure-key',
+            eventType: 'meeting.updated',
+            requestId: 'req-queue-failure',
+            occurredAt: null,
+            data: new MeetingUpdatedWebhookData(123456789, ['topic' => 'Updated Topic'], 'req-queue-failure'),
+        );
+
+        $this->assertSame(WebhookInboxState::Received, $inbox->fresh()->state);
+        $this->assertSame(0, $inbox->fresh()->attempts);
+        $this->assertTrue(
+            WebhookInbox::query()
+                ->whereKey($inbox->id)
+                ->claimableAt(now(), 5)
+                ->exists(),
+        );
+        Log::shouldHaveReceived('warning')->once();
+    }
+
+    #[Test]
+    public function duplicate_acceptance_does_not_dispatch_a_delayed_retry(): void
+    {
+        Queue::fake();
+        $inbox = WebhookInbox::factory()->create([
+            'provider' => 'zoom',
+            'event_key' => 'delayed-duplicate-key',
+            'event_type' => 'meeting.updated',
+            'state' => WebhookInboxState::Received,
+            'available_at' => now()->addMinute(),
+        ]);
+
+        $accepted = $this->service->accept(
+            eventKey: $inbox->event_key,
+            eventType: $inbox->event_type,
+            requestId: 'req-delayed-duplicate',
+            occurredAt: 1234567890,
+            data: new MeetingUpdatedWebhookData(123456789, ['topic' => 'Updated Topic'], 'req-delayed-duplicate'),
+        );
+
+        $this->assertSame($inbox->id, $accepted->id);
+        Queue::assertNothingPushed();
     }
 
     #[Test]
@@ -203,6 +283,59 @@ class ZoomWebhookInboxServiceTest extends TestCase
     }
 
     #[Test]
+    public function only_one_worker_claims_an_expired_row_and_old_tokens_cannot_update_it(): void
+    {
+        $oldClaimToken = 'old-worker-token';
+        $firstClaimToken = (string) str()->uuid();
+        $secondClaimToken = (string) str()->uuid();
+        $inbox = WebhookInbox::factory()->create([
+            'state' => WebhookInboxState::Processing,
+            'attempts' => 1,
+            'claim_token' => $oldClaimToken,
+            'claim_expires_at' => now()->subSecond(),
+        ]);
+
+        $firstClaim = WebhookInbox::query()
+            ->whereKey($inbox->id)
+            ->claimableAt(now(), 5)
+            ->increment('attempts', 1, [
+                'state' => WebhookInboxState::Processing,
+                'claim_token' => $firstClaimToken,
+                'claimed_at' => now(),
+                'claim_expires_at' => now()->addMinutes(5),
+            ]);
+
+        $secondClaim = WebhookInbox::query()
+            ->whereKey($inbox->id)
+            ->claimableAt(now(), 5)
+            ->increment('attempts', 1, [
+                'state' => WebhookInboxState::Processing,
+                'claim_token' => $secondClaimToken,
+                'claimed_at' => now(),
+                'claim_expires_at' => now()->addMinutes(5),
+            ]);
+
+        $oldWorkerUpdate = WebhookInbox::query()
+            ->whereKey($inbox->id)
+            ->unexpiredClaimOwnedBy($oldClaimToken, now())
+            ->update(['state' => WebhookInboxState::Completed]);
+        $oldWorkerFailure = WebhookInbox::query()
+            ->whereKey($inbox->id)
+            ->unexpiredClaimOwnedBy($oldClaimToken, now())
+            ->update(['state' => WebhookInboxState::Failed]);
+
+        $inbox->refresh();
+
+        $this->assertSame(1, $firstClaim);
+        $this->assertSame(0, $secondClaim);
+        $this->assertSame(0, $oldWorkerUpdate);
+        $this->assertSame(0, $oldWorkerFailure);
+        $this->assertSame(2, $inbox->attempts);
+        $this->assertSame($firstClaimToken, $inbox->claim_token);
+        $this->assertSame(WebhookInboxState::Processing, $inbox->state);
+    }
+
+    #[Test]
     public function completed_and_failed_rows_are_no_ops(): void
     {
         $completedInbox = WebhookInbox::factory()->create([
@@ -224,7 +357,7 @@ class ZoomWebhookInboxServiceTest extends TestCase
     }
 
     #[Test]
-    public function redispatch_recoverable_finds_due_received_rows(): void
+    public function dispatch_recoverable_finds_due_received_rows(): void
     {
         Queue::fake();
 
@@ -247,16 +380,18 @@ class ZoomWebhookInboxServiceTest extends TestCase
             'state' => WebhookInboxState::Completed,
         ]);
 
-        $result = $this->service->redispatchRecoverable(10);
+        $result = $this->service->dispatchRecoverable(10);
 
+        $this->assertEquals(2, $result['selected']);
         $this->assertEquals(2, $result['dispatched']);
+        $this->assertEquals(0, $result['skipped']);
         $this->assertEquals(0, $result['failed']);
 
         Queue::assertPushed(ProcessZoomWebhookInbox::class, 2);
     }
 
     #[Test]
-    public function redispatch_recoverable_finds_expired_processing_rows(): void
+    public function dispatch_recoverable_finds_expired_processing_rows(): void
     {
         Queue::fake();
 
@@ -274,16 +409,18 @@ class ZoomWebhookInboxServiceTest extends TestCase
             'state' => WebhookInboxState::Failed,
         ]);
 
-        $result = $this->service->redispatchRecoverable(10);
+        $result = $this->service->dispatchRecoverable(10);
 
+        $this->assertEquals(1, $result['selected']);
         $this->assertEquals(1, $result['dispatched']);
+        $this->assertEquals(0, $result['skipped']);
         $this->assertEquals(0, $result['failed']);
 
         Queue::assertPushed(ProcessZoomWebhookInbox::class, 1);
     }
 
     #[Test]
-    public function redispatch_recoverable_fails_expired_rows_that_exhausted_attempts(): void
+    public function dispatch_recoverable_fails_expired_rows_that_exhausted_attempts(): void
     {
         Queue::fake();
 
@@ -295,9 +432,12 @@ class ZoomWebhookInboxServiceTest extends TestCase
             'claim_expires_at' => now()->subMinute(),
         ]);
 
-        $result = $this->service->redispatchRecoverable(10);
+        $result = $this->service->dispatchRecoverable(10);
 
-        $this->assertEquals(['dispatched' => 0, 'failed' => 0], $result);
+        $this->assertEquals(0, $result['selected']);
+        $this->assertEquals(0, $result['dispatched']);
+        $this->assertEquals(0, $result['skipped']);
+        $this->assertEquals(0, $result['failed']);
         $inbox->refresh();
         $this->assertEquals(WebhookInboxState::Failed, $inbox->state);
         $this->assertNull($inbox->claim_token);
@@ -306,7 +446,7 @@ class ZoomWebhookInboxServiceTest extends TestCase
     }
 
     #[Test]
-    public function redispatch_recoverable_respects_limit(): void
+    public function dispatch_recoverable_respects_limit(): void
     {
         Queue::fake();
 
@@ -315,9 +455,11 @@ class ZoomWebhookInboxServiceTest extends TestCase
             'available_at' => null,
         ]);
 
-        $result = $this->service->redispatchRecoverable(10);
+        $result = $this->service->dispatchRecoverable(10);
 
+        $this->assertEquals(10, $result['selected']);
         $this->assertEquals(10, $result['dispatched']);
+        $this->assertEquals(0, $result['skipped']);
         $this->assertEquals(0, $result['failed']);
 
         Queue::assertPushed(ProcessZoomWebhookInbox::class, 10);

@@ -55,8 +55,8 @@ class NotificationResource extends JsonResource
              * User summary for the actor that triggered the notification, when available.
              */
             'notifier' => $this->when(
-                $payload->notifier !== null,
-                fn () => [
+                $payload->notifier instanceof \App\DataTransferObjects\Notification\NotificationActorData,
+                fn (): array => [
                     'uuid' => $payload->notifier->uuid,
                     'name' => $payload->notifier->name,
                     'username' => $payload->notifier->username,

@@ -4,7 +4,7 @@
 
 Implement one phase per SWE 1.6 prompt. Keep each phase green before continuing.
 
-The final design adds only one model, enum, service, job, recovery command, migration, and factory. It preserves the existing routes, signatures, DTOs, business actions, `webhooks` queue, and response body.
+The final design adds one inbox model, enum, service, processing job, recovery command, migration, and factory, plus one focused action that restores the persisted Zoom DTO and selects its existing business handler. It preserves the existing routes, signatures, DTOs, business actions, `webhooks` queue, and response body until the planned ingress cutover.
 
 Public behavior changes only for duplicates: every durably accepted delivery returns the existing `200 {"message":"Webhook accepted."}` instead of the interim `202` response.
 
@@ -83,7 +83,7 @@ Gate: migration and focused model/DTO tests pass on SQLite.
 
 ## Phase 2 — Implement inbox acceptance and processing
 
-Create one `final readonly ZoomWebhookInboxService`. Do not add repositories, interfaces, query builders, or separate inbox actions.
+Create one `final readonly ZoomWebhookInboxService`. Do not add repositories, interfaces, or custom query builders. Keep acceptance, claiming, retries, completion, and recovery in the service. Use the focused `HandlePersistedZoomWebhookAction` only to restore the stored DTO and select the existing Zoom business handler.
 
 The service owns:
 
@@ -109,11 +109,11 @@ Acceptance behavior:
 - Use `createOrFirst()` with `(provider, event_key)`.
 - Only the expected unique collision counts as a duplicate.
 - Dispatch after the insert transaction completes.
-- Dispatch new or currently recoverable rows.
+- Dispatch new rows and duplicate deliveries whose existing inbox row is currently recoverable.
 - Never redispatch completed, failed, or live-claimed rows.
 - If queue dispatch fails, call `report()`, log only safe identifiers, retain `received`, and return the durable row.
 
-Create `ProcessWebhookInbox`:
+Create `ProcessZoomWebhookInbox`:
 
 - Accept only an integer inbox ID.
 - Use standard queue traits.
@@ -130,13 +130,12 @@ Processing behavior:
 2. Generate a new UUID claim token.
 3. Increment durable attempts.
 4. Set a five-minute claim lease.
-5. Reconstruct the DTO from the encrypted payload.
-6. Call the matching existing `HandleMeeting*Webhook` action directly.
-7. Mark completed only through `WHERE id/state/claim_token`.
-8. On an ordinary exception, report it and conditionally:
+5. Pass the claimed row to `HandlePersistedZoomWebhookAction` to reconstruct its DTO and call the matching existing `HandleMeeting*Webhook` action.
+6. Mark completed only through the current processing state, matching claim token, and unexpired claim.
+7. On an ordinary exception, report it and conditionally:
    - return to `received` with backoff when attempts remain;
    - move to `failed` on attempt five.
-9. Clear previous error fields after successful completion.
+8. Clear previous error fields after successful completion.
 
 Backoff by durable attempt:
 
@@ -148,22 +147,23 @@ Backoff by durable attempt:
 5 → terminal failure
 ```
 
-Do not enqueue the legacy webhook jobs from `ProcessWebhookInbox`.
+Do not enqueue the legacy webhook jobs from `ProcessZoomWebhookInbox`.
 
 Tests:
 
 - Acceptance creates exactly one durable row.
-- Queue failure leaves recoverable accepted work.
-- Only one competing worker obtains a claim.
+- Duplicate acceptance redispatches recoverable rows, but ignores delayed, live-claimed, completed, and failed rows.
+- Queue failure leaves accepted work in a recoverable `received` state.
+- Only one competing worker obtains a claim through the conditional update.
 - A live claim cannot be reclaimed.
-- An expired claim receives a new token.
+- An expired claim receives a new token and increments attempts once.
 - An old token cannot complete or fail a newer claim.
 - Successful processing marks completed.
 - Exceptions schedule retry and record only class/code.
 - Attempt five becomes failed.
 - Completed and failed rows are no-ops.
 
-Gate: service and job lifecycle tests pass.
+Gate: service and job lifecycle tests pass, including queue failure, duplicate recovery dispatch, claim ownership, lease expiry, attempt backoff, and stale-token fencing.
 
 ## Phase 3 — Verify at-least-once business safety
 
@@ -194,7 +194,7 @@ webhooks:recover-pending {--limit=100}
 Behavior:
 
 - Select due `received` rows and expired `processing` rows.
-- Dispatch `ProcessWebhookInbox` by integer ID.
+- Dispatch `ProcessZoomWebhookInbox` by integer ID.
 - Do not claim or reset rows in the command.
 - Protect each dispatch with `try/catch`; one corrupt row or queue error must not stop the loop.
 - Report unexpected exceptions.

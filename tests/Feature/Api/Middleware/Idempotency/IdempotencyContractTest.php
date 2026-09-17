@@ -6,7 +6,6 @@ namespace Tests\Feature\Api\Middleware\Idempotency;
 
 use App\Interfaces\Paddle;
 use App\Interfaces\Zoom;
-use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
 use App\Models\Meeting;
 use App\Models\Message;
 use App\Models\User;
@@ -15,9 +14,6 @@ use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Str;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -347,38 +343,6 @@ final class IdempotencyContractTest extends TestCase
         ]);
     }
 
-    #[Test]
-    public function zoom_webhook_update_replays_without_queuing_the_job_twice(): void
-    {
-        config(['services.zoom.webhook_secret' => 'secret']);
-
-        Queue::fake([
-            UpdateMeetingWebhook::class,
-        ]);
-
-        Meeting::factory()->create(['meeting_id' => 813]);
-
-        $payload = File::json(
-            path: base_path('tests/Fixtures/Webhooks/Zoom/meeting_update.json'),
-            flags: JSON_THROW_ON_ERROR,
-        );
-
-        $headers = $this->zoomWebhookHeaders($payload, 'phase-seven-zoom-update-'.Str::uuid());
-
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $payload, $headers)
-            ->assertOk();
-
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $payload, $headers)
-            ->assertAccepted()
-            ->assertExactJson(['message' => 'Webhook accepted']);
-
-        $object = $payload['payload']['object'];
-        $meetingId = $object['id'];
-
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === $meetingId);
-        Queue::assertPushed(UpdateMeetingWebhook::class, 1);
-    }
-
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -438,28 +402,5 @@ final class IdempotencyContractTest extends TestCase
             'start_time' => Carbon::now()->addWeek()->toIso8601String(),
             'timezone' => 'UTC',
         ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, string>
-     */
-    private function zoomWebhookHeaders(array $payload, string $requestId): array
-    {
-        $timestamp = (string) time();
-        $rawPayload = json_encode($payload);
-
-        return [
-            'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $this->buildSignature($timestamp, $rawPayload),
-            'x-zm-request-id' => $requestId,
-        ];
-    }
-
-    private function buildSignature(string $timestamp, string $payload): string
-    {
-        $message = 'v0:'.$timestamp.':'.$payload;
-
-        return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
     }
 }

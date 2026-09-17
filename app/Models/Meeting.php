@@ -39,6 +39,8 @@ class Meeting extends Model
         'synced_at' => 'datetime',
         'started_notification_sent_at' => 'datetime',
         'ended_notification_sent_at' => 'datetime',
+        'started_notification_pending_at' => 'datetime',
+        'ended_notification_pending_at' => 'datetime',
     ];
 
     /**

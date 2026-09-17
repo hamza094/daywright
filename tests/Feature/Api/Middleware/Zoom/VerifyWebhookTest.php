@@ -4,25 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Middleware\Zoom;
 
-use App\Http\Middleware\VerifyZoomWebhook;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Testing\TestResponse;
 use Override;
 use Route;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\Zoom\ZoomWebhookSigner;
 use Tests\TestCase;
-use WendellAdriel\Idempotency\Enums\IdempotencyScope;
-use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
 use function Safe\json_encode;
 
 class VerifyWebhookTest extends TestCase
 {
     private const string WEBHOOK_TEST_PATH = '/_test/webhook';
-
-    private const string IDEMPOTENT_WEBHOOK_TEST_PATH = '/_test/idempotent-webhook';
 
     public $payload;
 
@@ -33,21 +26,10 @@ class VerifyWebhookTest extends TestCase
     {
         parent::setUp();
 
-        // Clear replay and idempotency cache between tests
-        Cache::flush();
-
         // Ensure the webhook secret is set for signature generation in tests
         config(['services.zoom.webhook_secret' => 'secret']);
 
         Route::middleware('zoom.webhook')->any(self::WEBHOOK_TEST_PATH, fn (): string => 'OK');
-
-        Route::middleware([
-            VerifyZoomWebhook::class,
-            Idempotent::using(scope: IdempotencyScope::Global),
-        ])->any(
-            self::IDEMPOTENT_WEBHOOK_TEST_PATH,
-            fn (Request $request): string => (string) $request->header((string) config('idempotency.header')),
-        );
 
         $this->payload = [
             'event' => 'meeting.started',
@@ -136,18 +118,6 @@ JSON;
     }
 
     /** @test */
-    public function it_maps_the_zoom_request_id_to_the_idempotency_header(): void
-    {
-        $zoomRequestId = '6009d653_d487_445d_8406_42b654974899';
-        $headers = ZoomWebhookSigner::signPayload($this->payload, $zoomRequestId);
-
-        $response = $this->postJson(self::IDEMPOTENT_WEBHOOK_TEST_PATH, $this->payload, $headers);
-
-        $response->assertOk();
-        $this->assertSame($zoomRequestId, $response->getContent());
-    }
-
-    /** @test */
     public function it_returns_the_zoom_endpoint_validation_payload(): void
     {
         $plainToken = 'zoom-plain-token';
@@ -190,7 +160,7 @@ JSON;
                 'encryptedToken' => hash_hmac('sha256', $plainToken, 'secret'),
             ]);
 
-        // Second request with same payload (should still work, not affected by replay protection)
+        // Second request with same payload (should still work, not affected by fingerprint logic)
         $response2 = $this->postJson(self::WEBHOOK_TEST_PATH, $payload, $headers);
         $response2->assertOk()
             ->assertExactJson([

@@ -51,6 +51,23 @@ class CheckUnsentMeetingNotificationsTest extends TestCase
         Bus::assertDispatched(SendMeetingEndedNotification::class, fn (SendMeetingEndedNotification $job): bool => $job->meetingId === $meeting->id);
     }
 
+    public function re_dispatches_started_intent_after_status_changes(): void
+    {
+        Bus::fake();
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 814,
+            'status' => MeetingState::ENDS->value,
+            'started_notification_pending_at' => now()->subMinutes(15),
+            'started_notification_sent_at' => null,
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('meetings:check-unsent-notifications')->assertSuccessful();
+
+        Bus::assertDispatched(SendMeetingStartedNotification::class, fn (SendMeetingStartedNotification $job): bool => $job->meetingId === $meeting->id);
+    }
+
     /** @test */
     public function skips_recent_meetings_within_10_minute_window(): void
     {

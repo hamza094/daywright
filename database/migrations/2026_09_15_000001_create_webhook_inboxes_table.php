@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('provider', 32);
             $table->char('event_key', 64);
             $table->string('event_type', 100);
-            $table->string('provider_request_id', 255)->nullable();
+            $table->string('provider_request_id', 255);
             $table->unsignedBigInteger('provider_occurred_at')->nullable();
             $table->longText('payload');
             $table->string('state', 20)->default('received');

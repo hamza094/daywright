@@ -144,4 +144,18 @@ class KernelScheduleTest extends TestCase
         $this->assertTrue($recalculateHealth->withoutOverlapping);
         $this->assertTrue($recalculateHealth->onOneServer);
     }
+
+    /** @test */
+    public function recover_pending_webhooks_command_has_proper_configuration(): void
+    {
+        $schedule = app(Schedule::class);
+        $events = $schedule->events();
+
+        $recoverPending = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'webhooks:recover-pending'));
+
+        $this->assertNotNull($recoverPending, 'webhooks:recover-pending command not found in schedule');
+        $this->assertTrue($recoverPending->withoutOverlapping);
+        $this->assertTrue($recoverPending->onOneServer);
+        $this->assertNotNull($recoverPending->output);
+    }
 }

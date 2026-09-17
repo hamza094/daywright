@@ -56,7 +56,12 @@ final readonly class ZoomWebhookInboxService
             ],
         );
 
-        if ($inbox->wasRecentlyCreated) {
+        $isRecoverable = WebhookInbox::query()
+            ->whereKey($inbox->id)
+            ->claimableAt(now(), self::MAX_ATTEMPTS)
+            ->exists();
+
+        if ($inbox->wasRecentlyCreated || $isRecoverable) {
             $this->dispatchProcessingJob($inbox);
         }
 
@@ -71,7 +76,7 @@ final readonly class ZoomWebhookInboxService
         $claimToken = Str::uuid()->toString();
         $claimed = $this->claimForProcessing($webhookInboxId, $claimToken);
 
-        if ($claimed === null) {
+        if (! $claimed instanceof WebhookInbox) {
             return;
         }
 
@@ -86,9 +91,9 @@ final readonly class ZoomWebhookInboxService
     /**
      * Requeues due or lease-expired webhooks and closes exhausted claims.
      *
-     * @return array{dispatched: int, failed: int}
+     * @return array{selected: int, dispatched: int, skipped: int, failed: int}
      */
-    public function redispatchRecoverable(int $limit): array
+    public function dispatchRecoverable(int $limit): array
     {
         $now = now();
         $this->failExpiredExhaustedClaims($now);
@@ -110,7 +115,9 @@ final readonly class ZoomWebhookInboxService
         }
 
         return [
+            'selected' => $recoverableWebhooks->count(),
             'dispatched' => $dispatched,
+            'skipped' => 0,
             'failed' => $failed,
         ];
     }

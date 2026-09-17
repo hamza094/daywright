@@ -29,6 +29,7 @@
 21. [Testing](#21-testing)
 22. [API Response Standards](#22-api-response-standards)
 23. [API Security & Authorization](#23-api-security--authorization)
+24. [Durable Webhooks & Integrations](#24-durable-webhooks--integrations)
 
 ---
 
@@ -205,7 +206,7 @@ Services orchestrate one application use case or read workflow, coordinating bet
 - ✅ Use `final readonly` for immutable services
 - ✅ Name services by workflow or responsibility; avoid vague names such as `FeatureService`, `HelperService`, or `ManagerService`
 - ✅ Own one use case boundary or one read/listing/composition workflow boundary
-- ✅ Wrap multi-step operations in `DB::transaction()`
+- ✅ Wrap multi-step operations in `DB::transaction()` when the steps share one database consistency boundary
 - ✅ Use PHPDoc for array parameter types: `@param array<string, mixed>`
 - ✅ Accept models, scalars, or strongly typed DTOs for complex payloads; avoid untyped arrays. Pass the acting user explicitly when needed
 - ✅ Coordinate actions, repositories, transactions, notifications, domain events, and external integrations
@@ -218,6 +219,8 @@ Services orchestrate one application use case or read workflow, coordinating bet
 - ❌ Do not accept Form Request objects in non-auth/session services
 - ❌ Do not call `request()`, `auth()`, or `Auth::user()` in non-auth/session services
 - ❌ Do not return HTTP responses
+
+For durable webhook acceptance, persist the inbox record and commit the database transaction before dispatching asynchronous processing. Do not hold a transaction open while dispatching a job or calling a third-party API.
 
 Auth or session oriented services are the narrow exception. They may touch request or auth state only when that coupling is their actual job.
 
@@ -466,6 +469,8 @@ Jobs encapsulate work to be queued and processed asynchronously.
 - ✅ Use primitive IDs instead of models (avoids serialization issues)
 - ✅ Log failures with context
 
+When a durable webhook inbox owns retry scheduling, the job must make one processing attempt and the inbox state machine owns attempts, backoff, and recovery. Do not add an independent queue retry policy that can conflict with the inbox retry policy.
+
 ---
 
 ## 13. Policies
@@ -629,7 +634,7 @@ Ensure the application is 100% "2 AM Debuggable". When production breaks, system
 - ✅ **Protect Loops in Commands**: When processing chunks in Console Commands, wrap the inner loop logic in a `try/catch`. A single corrupt row must never crash the entire cron job silently. Log the error and `continue`.
 - ✅ **Log Silent Early Returns**: In queue jobs, if a required model is missing (e.g., deleted before job runs), log a warning/error before `return;`. Do not fail silently. (Exception: pure idempotency checks).
 - ✅ **Redact Sensitive Data Everywhere**: Attach `ScrubSensitiveData` to every first-party log channel and configure Bugsnag's native `redacted_keys`. Apply the same redaction in every environment. Never log credentials, authorization/cookie headers, OAuth codes, provider payloads, or raw SQL bindings.
-- ✅ **Allowlist Audit Metadata**: Pass only identifiers required for investigation to `AuditLogService`. Provider webhook bodies, request objects, headers, and third-party responses must not be persisted. The service-level sanitizer is a final safety boundary, not a substitute for caller allowlists.
+- ✅ **Allowlist Audit Metadata**: Pass only identifiers required for investigation to `AuditLogService`. Do not persist raw provider requests, headers, signatures, or third-party responses in logs or audit records. A durable webhook inbox may persist the minimum normalized metadata and encrypted payload required for recovery. The service-level sanitizer is a final safety boundary, not a substitute for caller allowlists.
 - ✅ **Preserve Correlation Data**: Keep safe identifiers such as request ID, provider event ID, actor ID, resource ID, operation, status, and attempt count so sanitized failures remain diagnosable.
 - ✅ **Use JSON Formatting**: Always use `JsonFormatter` in production log channels (e.g., `daily`) to ensure structured, queryable logs.
 - ❌ **No Happy Path Noise**: Do not log successful CRUD state changes or audit trails in the system operational logs. Keep system logs focused strictly on errors, failures, and system state anomalies.
@@ -865,6 +870,40 @@ To protect against abuse and resource starvation, enforce Portkey-style multi-la
 
 ---
 
+## 24. Durable Webhooks & Integrations
+
+### Purpose
+
+Define the shared reliability rules for third-party webhooks without forcing providers with different security and delivery semantics into one implementation.
+
+### Shared Reliability Rules
+
+- Authenticate the provider request before accepting it.
+- Derive a deterministic event key and enforce uniqueness in the database.
+- Treat the database constraint as the final deduplication authority; cache or middleware checks are optimizations only.
+- Persist the minimum normalized metadata and encrypted payload before acknowledging the provider.
+- Use at-least-once semantics. Business handlers must be safe to run again after a worker crash or expired lease.
+- Use an atomic claim and lease when concurrent workers can process the same row.
+- Keep retry ownership in one place. If the inbox owns retries, the queue job performs one attempt.
+- Commit database state before queue dispatch or external API calls.
+- Keep provider verification and payload parsing at the provider boundary.
+- Keep business actions independent of HTTP requests and provider-specific request classes.
+- Do not log raw payloads, signatures, credentials, tokens, or exception messages.
+
+### Provider Boundary
+
+Each provider may define its own verifier, request validation, DTOs, event-key rules, event mapping, and business handlers. Do not introduce a shared interface or registry until a second provider demonstrates a repeated need for it.
+
+The shared inbox may own persistence, state transitions, claims, leases, retries, and recovery. Provider code must supply the normalized event metadata and select the provider-specific handler.
+
+### Required Tests
+
+Every provider webhook must test signature rejection, malformed payloads, duplicate delivery, database-acceptance failure, queue-dispatch failure, worker crash or expired lease, retry exhaustion, and replay-safe business handling.
+
+See `docs/WEBHOOK_INBOX.md` for the common lifecycle and `docs/WEBHOOK_PROVIDER_ONBOARDING.md` for the provider implementation checklist.
+
+---
+
 ## Quick Reference Card
 
 ### File Naming Patterns
@@ -919,10 +958,11 @@ use App\Repository\ProjectRepository;
 
 ## Version History
 
-| Version | Date       | Changes                                                     |
-| ------- | ---------- | ----------------------------------------------------------- |
-| 1.1.0   | 2026-09-14 | Added account-deletion and sanitized logging security rules |
-| 1.0.0   | 2026-01-22 | Initial guidelines extracted from codebase                  |
+| Version | Date       | Changes                                                      |
+| ------- | ---------- | ------------------------------------------------------------ |
+| 1.2.0   | 2026-09-17 | Added durable webhook and third-party integration guidelines |
+| 1.1.0   | 2026-09-14 | Added account-deletion and sanitized logging security rules  |
+| 1.0.0   | 2026-01-22 | Initial guidelines extracted from codebase                   |
 
 ---
 

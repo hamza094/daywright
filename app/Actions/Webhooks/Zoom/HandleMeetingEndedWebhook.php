@@ -44,6 +44,7 @@ final readonly class HandleMeetingEndedWebhook
             ->where('status', '!=', MeetingState::ENDS->value)
             ->update([
                 'status' => MeetingState::ENDS->value,
+                'ended_notification_pending_at' => now(),
             ]);
 
         if ($updated === 0) {

@@ -123,7 +123,7 @@ class UserAvatarTest extends TestCase
     public function user_cannot_modify_another_users_avatar_even_with_shared_project(): void
     {
         $otherUser = User::factory()->create();
-        $authUser = User::first();
+        User::first();
         $originalAvatarPath = $otherUser->avatar_path;
 
         Storage::fake('s3');
@@ -145,7 +145,7 @@ class UserAvatarTest extends TestCase
     public function user_cannot_delete_another_users_avatar(): void
     {
         $otherUser = User::factory()->create();
-        $authUser = User::first();
+        User::first();
 
         Storage::fake('s3');
 

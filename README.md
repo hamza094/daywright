@@ -43,7 +43,7 @@ Whether you're managing personal projects or leading a team, DayWright offers a 
 - Project stages with built-in activity tracking and historical records
 - Centralized project dashboard with analytics and insights
 - Team collaboration with member invitations and role management
-- Built-in meetings with Zoom video call integration
+- Built-in meetings with Zoom video call integration with durable webhook processing
 - Real-time group chat scoped to projects
 - Notes and file uploads (documents and images) attached to projects
 - Real-time and scheduled notifications (email and SMS)
@@ -149,6 +149,7 @@ The Laravel scheduler must be configured to run every minute via cron:
 ```
 
 The scheduler handles:
+
 - Scheduled message dispatching
 - Failed job pruning
 - Other periodic tasks
@@ -164,7 +165,7 @@ php artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --t
 # Metrics queue (analytics and reporting)
 php artisan queue:work database --queue=metrics --sleep=3 --tries=2 --timeout=120 --max-time=3600
 
-# Webhooks queue (Zoom webhook processing)
+# Webhooks queue (Zoom webhook processing with durable inbox and recovery)
 php artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=120 --max-time=3600
 ```
 

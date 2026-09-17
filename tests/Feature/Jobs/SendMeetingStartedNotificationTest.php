@@ -63,6 +63,7 @@ class SendMeetingStartedNotificationTest extends TestCase
             'meeting_id' => 813,
             'status' => 'started',
             'started_notification_sent_at' => null,
+            'started_notification_pending_at' => now(),
         ]);
 
         $job = new SendMeetingStartedNotification(
@@ -82,7 +83,9 @@ class SendMeetingStartedNotificationTest extends TestCase
         $job->handle();
 
         Notification::assertSentTo($assignee, MeetingStarted::class);
-        $this->assertNotNull($meeting->fresh()->started_notification_sent_at);
+        $meeting = $meeting->fresh();
+        $this->assertNotNull($meeting->started_notification_sent_at);
+        $this->assertNull($meeting->started_notification_pending_at);
     }
 
     /** @test */

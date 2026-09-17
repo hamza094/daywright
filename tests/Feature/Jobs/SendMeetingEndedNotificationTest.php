@@ -63,6 +63,7 @@ class SendMeetingEndedNotificationTest extends TestCase
             'meeting_id' => 813,
             'status' => 'ended',
             'ended_notification_sent_at' => null,
+            'ended_notification_pending_at' => now(),
         ]);
 
         $job = new SendMeetingEndedNotification(
@@ -82,7 +83,9 @@ class SendMeetingEndedNotificationTest extends TestCase
         $job->handle();
 
         Notification::assertSentTo($assignee, MeetingEnded::class);
-        $this->assertNotNull($meeting->fresh()->ended_notification_sent_at);
+        $meeting = $meeting->fresh();
+        $this->assertNotNull($meeting->ended_notification_sent_at);
+        $this->assertNull($meeting->ended_notification_pending_at);
     }
 
     /** @test */

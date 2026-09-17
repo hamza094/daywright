@@ -114,13 +114,11 @@ final class ZoomWebhookLoggerTest extends TestCase
             ->once()
             ->with(
                 'zoom_webhook_retry_scheduled',
-                Mockery::on(function (array $context): bool {
-                    return isset($context['exception'])
-                        && $context['exception'] === RuntimeException::class
-                        && isset($context['exception_code'])
-                        && $context['exception_code'] === 123
-                        && ! array_key_exists('message', $context);
-                })
+                Mockery::on(fn (array $context): bool => isset($context['exception'])
+                    && $context['exception'] === RuntimeException::class
+                    && isset($context['exception_code'])
+                    && $context['exception_code'] === 123
+                    && ! array_key_exists('message', $context))
             );
 
         $logger->logWebhookRetryScheduled(
@@ -143,13 +141,11 @@ final class ZoomWebhookLoggerTest extends TestCase
             ->once()
             ->with(
                 'zoom_webhook_failed',
-                Mockery::on(function (array $context): bool {
-                    return isset($context['exception'])
-                        && $context['exception'] === RuntimeException::class
-                        && isset($context['exception_code'])
-                        && $context['exception_code'] === 456
-                        && ! array_key_exists('message', $context);
-                })
+                Mockery::on(fn (array $context): bool => isset($context['exception'])
+                    && $context['exception'] === RuntimeException::class
+                    && isset($context['exception_code'])
+                    && $context['exception_code'] === 456
+                    && ! array_key_exists('message', $context))
             );
 
         $logger->logWebhookFailed(

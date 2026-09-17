@@ -7,9 +7,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 final class VerifyZoomWebhook
 {
@@ -25,7 +23,7 @@ final class VerifyZoomWebhook
 
     public function handle(Request $request, Closure $next): Response
     {
-        $requestId = $this->requiredHeader(
+        $this->requiredHeader(
             $request,
             self::REQUEST_ID_HEADER,
         );
@@ -50,32 +48,18 @@ final class VerifyZoomWebhook
             );
         }
 
-        // Handle endpoint.url_validation before replay-cache logic
+        // Handle endpoint.url_validation before fingerprint logic
         if ($request->input('event') === self::ENDPOINT_VALIDATION_EVENT) {
             return response()->json(
                 $this->endpointValidationPayload($request),
             );
         }
 
-        // Replay protection only for real event webhooks
-        $replayKey = $this->computeReplayKey($signature, $timestamp, $request->getContent());
+        // Calculate fingerprint for durable inbox deduplication
+        $fingerprint = $this->computeFingerprint($signature, $timestamp, $request->getContent());
+        $request->attributes->set('zoom_webhook_fingerprint', $fingerprint);
 
-        if (! $this->reserveReplayKey($replayKey)) {
-            return response()->json(['message' => 'Webhook accepted'], Response::HTTP_ACCEPTED);
-        }
-
-        $request->headers->set(
-            $this->idempotencyHeader(),
-            $requestId,
-        );
-
-        try {
-            return $next($request);
-        } catch (Throwable $e) {
-            // Release reservation on downstream failure to allow Zoom retry
-            Cache::forget($this->replayCacheKey($replayKey));
-            throw $e;
-        }
+        return $next($request);
     }
 
     private function requiredHeader(Request $request, string $name): string
@@ -160,36 +144,8 @@ final class VerifyZoomWebhook
         return $secret;
     }
 
-    private function idempotencyHeader(): string
-    {
-        $header = config('idempotency.header');
-
-        if (! is_string($header) || trim($header) === '') {
-            abort(
-                Response::HTTP_INTERNAL_SERVER_ERROR,
-                'Idempotency header is not configured.',
-            );
-        }
-
-        return $header;
-    }
-
-    private function computeReplayKey(string $signature, string $timestamp, string $body): string
+    private function computeFingerprint(string $signature, string $timestamp, string $body): string
     {
         return hash('sha256', "{$signature}:{$timestamp}:{$body}");
-    }
-
-    private function reserveReplayKey(string $replayKey): bool
-    {
-        return Cache::add(
-            $this->replayCacheKey($replayKey),
-            true,
-            self::TIMESTAMP_TOLERANCE_SECONDS,
-        );
-    }
-
-    private function replayCacheKey(string $replayKey): string
-    {
-        return "zoom_webhook_replay:{$replayKey}";
     }
 }

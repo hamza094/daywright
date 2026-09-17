@@ -86,7 +86,7 @@ class PublicUserProfileResource extends JsonResource
              */
             'info' => $this->when(
                 $canViewPrivateProfile,
-                fn () => new UserInfoResource($this->info),
+                fn (): UserInfoResource => new UserInfoResource($this->info),
             ),
             /**
              * Profile creation timestamp in UTC ISO 8601 format.

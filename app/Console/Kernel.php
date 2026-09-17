@@ -99,6 +99,13 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->everyThirtyMinutes()
             ->appendOutputTo($this->schedulerLogPath());
+
+        $schedule->command('webhooks:recover-pending')
+            ->name('recover-pending-webhooks')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->everyMinute()
+            ->appendOutputTo($this->schedulerLogPath());
     }
 
     /**

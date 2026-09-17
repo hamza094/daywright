@@ -10,6 +10,7 @@ use Illuminate\Cache\Repository;
 use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Override;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 use WendellAdriel\Idempotency\Enums\IdempotencyScope;
@@ -168,6 +169,7 @@ final class CompletionOnAcquireArrayStore extends ArrayStore
 
     public int $requestedLockSeconds = 0;
 
+    #[Override]
     public function lock($name, $seconds = 0, $owner = null)
     {
         $this->requestedLockSeconds = (int) $seconds;

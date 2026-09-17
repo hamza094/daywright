@@ -29,7 +29,10 @@ final class SendMeetingEndedNotification extends SendMeetingNotificationJob
     {
         Meeting::query()
             ->where('id', $this->meetingId)
-            ->update(['ended_notification_sent_at' => now()]);
+            ->update([
+                'ended_notification_sent_at' => now(),
+                'ended_notification_pending_at' => null,
+            ]);
     }
 
     protected function failedLogMessage(): string
