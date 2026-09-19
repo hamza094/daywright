@@ -18,6 +18,8 @@ use Saloon\Enums\Method;
 use Saloon\Helpers\OAuth2\OAuthConfig;
 use Tests\TestCase;
 
+use function config;
+
 class ZoomRequestsTest extends TestCase
 {
     #[Test]
@@ -31,11 +33,12 @@ class ZoomRequestsTest extends TestCase
             'join_before_host' => false,
             'start_time' => (new DateTimeImmutable('2024-06-18T18:00:07Z'))->format('Y-m-d\TH:i:s\Z'),
             'timezone' => 'UTC',
-        ], 'zoom:user:42');
+        ], 'test-operation-id', 'zoom:user:42');
 
         $this->assertSame('/users/me/meetings', $request->resolveEndpoint());
         $this->assertSame(Method::POST, $request->getMethod());
         $this->assertSame([
+            'type' => 2,
             'topic' => 'Demo',
             'agenda' => 'Agenda',
             'duration' => 30,
@@ -43,6 +46,12 @@ class ZoomRequestsTest extends TestCase
             'join_before_host' => false,
             'start_time' => '2024-06-18T18:00:07Z',
             'timezone' => 'UTC',
+            'tracking_fields' => [
+                [
+                    'field' => config('services.zoom.meeting_operation_tracking_field'),
+                    'value' => 'test-operation-id',
+                ],
+            ],
         ], $request->body()->all());
         $this->assertSame('CreateMeeting:'.ZoomLimiter::forUserId(42), $this->limiterPrefix($request));
     }

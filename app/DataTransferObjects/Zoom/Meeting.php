@@ -25,6 +25,8 @@ final readonly class Meeting
         public string $timezone,
         public string $password,
         public bool $join_before_host,
+        /** @var array<string, string> */
+        public array $tracking_fields = [],
     ) {}
 
     /**
@@ -45,6 +47,7 @@ final readonly class Meeting
             timezone: self::requiredString($response, 'timezone'),
             password: self::optionalString($response, 'password'),
             join_before_host: self::optionalBool($response, 'join_before_host'),
+            tracking_fields: self::trackingFields($response),
         );
     }
 
@@ -115,6 +118,36 @@ final readonly class Meeting
 
         // Default to false if not found
         return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $response
+     * @return array<string, string>
+     */
+    private static function trackingFields(array $response): array
+    {
+        $trackingFields = $response['tracking_fields'] ?? [];
+
+        if (! is_array($trackingFields)) {
+            return [];
+        }
+
+        $normalized = [];
+
+        foreach ($trackingFields as $trackingField) {
+            if (! is_array($trackingField)) {
+                continue;
+            }
+
+            $field = $trackingField['field'] ?? null;
+            $value = $trackingField['value'] ?? null;
+
+            if (is_string($field) && is_string($value)) {
+                $normalized[$field] = $value;
+            }
+        }
+
+        return $normalized;
     }
 
     /**

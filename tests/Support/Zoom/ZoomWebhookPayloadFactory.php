@@ -6,6 +6,38 @@ namespace Tests\Support\Zoom;
 
 class ZoomWebhookPayloadFactory
 {
+    public static function meetingCreatedPayload(array $overrides = []): array
+    {
+        $defaultPayload = [
+            'event' => 'meeting.created',
+            'payload' => [
+                'account_id' => 'HsTKzp8YTIWubRtgF7L_2w',
+                'operator' => 'test_operator@example.com',
+                'operator_id' => 'tWcCtVTiTum7Ctdx1p0GWQ',
+                'object' => [
+                    'uuid' => 'aAcZTflfSPqz6TsDJ/lDKA==',
+                    'id' => 813,
+                    'topic' => 'Test Meeting',
+                    'start_time' => '2024-06-24T12:00:00Z',
+                    'timezone' => 'UTC',
+                    'duration' => 30,
+                    'type' => 2,
+                    'creation_source' => 'open_api',
+                    'tracking_fields' => [
+                        [
+                            'field' => 'Daywright Operation ID',
+                            'value' => 'test-operation-id',
+                        ],
+                    ],
+                ],
+                'time_stamp' => 1719229788513,
+            ],
+            'event_ts' => 1719229788513,
+        ];
+
+        return self::mergeOverrides($defaultPayload, $overrides);
+    }
+
     public static function meetingStartedPayload(array $overrides = []): array
     {
         $defaultPayload = [

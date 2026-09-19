@@ -9,6 +9,8 @@ use App\DataTransferObjects\Zoom\Meeting as ZoomMeeting;
 use App\DataTransferObjects\Zoom\MeetingStoreData;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Enums\Subscription\PlanLimitType;
+use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Project;
@@ -18,6 +20,7 @@ use App\Services\Project\MeetingSyncErrorFormatter;
 use App\Services\Subscription\PlanLimitService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 final readonly class CreateProjectMeeting
@@ -38,39 +41,51 @@ final readonly class CreateProjectMeeting
             conflictMessage: 'A meeting is already being created for this user. Please retry.',
             callback: function () use ($project, $user, $data, $zoom): Meeting {
                 $lockedUser = $this->assertCanCreateMeeting($user);
-                $projectMeeting = $this->createPendingMeeting($project, $lockedUser, $data);
-                $this->syncWithZoom($projectMeeting, $data, $lockedUser, $zoom);
+                $operationId = Str::uuid()->toString();
+                $projectMeeting = $this->createMeetingWithOperation($project, $lockedUser, $data, $operationId);
+                $this->syncWithZoom($projectMeeting, $data, $lockedUser, $zoom, $operationId);
 
                 return $projectMeeting->refresh();
             },
         );
     }
 
-    private function createPendingMeeting(Project $project, User $user, MeetingStoreData $data): Meeting
+    private function createMeetingWithOperation(Project $project, User $user, MeetingStoreData $data, string $operationId): Meeting
     {
         return DB::transaction(
             fn (): Meeting => $project->meetings()->create([
                 ...$data->toArray(),
                 'user_id' => $user->id,
-                'sync_status' => MeetingSyncStatus::Pending,
+                'sync_operation_id' => $operationId,
+                'sync_status' => MeetingSyncStatus::Creating,
+                'sync_started_at' => now(),
+                'sync_lease_expires_at' => now()->addMinutes(5),
             ]),
             attempts: $this->transactionRetryAttempts,
         );
     }
 
-    private function syncWithZoom(Meeting $meeting, MeetingStoreData $data, User $user, Zoom $zoom): void
+    private function syncWithZoom(Meeting $meeting, MeetingStoreData $data, User $user, Zoom $zoom, string $operationId): void
     {
         try {
-            $zoomMeeting = $zoom->createMeeting($data->toArray(), $user);
+            $zoomMeeting = $zoom->createMeeting($data->toArray(), $user, $operationId);
             $this->markMeetingAsSynced($meeting, $zoomMeeting);
-        } catch (Throwable $exception) {
-            Log::error('Zoom API meeting creation failed, marking local state as Failed', [
+        } catch (ZoomMeetingCreationUnknownException $exception) {
+            $this->markMeetingAsCreateUnknown($meeting, $exception);
+        } catch (ZoomException $exception) {
+            Log::warning('Zoom API meeting creation rejected', [
                 'meeting_id' => $meeting->id,
                 'user_id' => $user->id,
                 'exception_class' => $exception::class,
                 'exception_code' => $exception->getCode(),
             ]);
+
             $this->markMeetingAsFailed($meeting, $exception);
+
+            throw $exception;
+        } catch (Throwable $exception) {
+            report($exception);
+
             throw $exception;
         }
     }
@@ -79,6 +94,28 @@ final readonly class CreateProjectMeeting
     {
         DB::transaction(function () use ($meeting, $zoomMeeting): void {
             $lockedMeeting = $this->lockMeeting($meeting);
+
+            if ($lockedMeeting->meeting_id !== null && (string) $lockedMeeting->meeting_id !== (string) $zoomMeeting->meeting_id) {
+                if ($lockedMeeting->sync_status === MeetingSyncStatus::Creating) {
+                    $lockedMeeting->transitionTo(MeetingSyncStatus::CreateUnknown, 'sync_status');
+                }
+
+                $lockedMeeting->update([
+                    'sync_error' => 'remote_meeting_id_conflict',
+                    'sync_claim_token' => null,
+                    'sync_lease_expires_at' => null,
+                    'sync_available_at' => null,
+                ]);
+
+                Log::warning('Zoom meeting creation response conflicts with webhook meeting ID', [
+                    'meeting_id' => $lockedMeeting->id,
+                    'stored_zoom_meeting_id' => $lockedMeeting->meeting_id,
+                    'response_zoom_meeting_id' => $zoomMeeting->meeting_id,
+                ]);
+
+                return;
+            }
+
             $lockedMeeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
             $lockedMeeting->update([
                 'meeting_id' => $zoomMeeting->meeting_id,
@@ -86,6 +123,9 @@ final readonly class CreateProjectMeeting
                 'join_url' => $zoomMeeting->join_url,
                 'status' => $zoomMeeting->status,
                 'sync_error' => null,
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+                'sync_available_at' => null,
                 'synced_at' => now(),
             ]);
         }, attempts: $this->transactionRetryAttempts);
@@ -98,9 +138,29 @@ final readonly class CreateProjectMeeting
             $lockedMeeting->transitionTo(MeetingSyncStatus::Failed, 'sync_status');
             $lockedMeeting->update([
                 'sync_error' => $this->errorFormatter->format($exception),
-                'sync_attempts' => DB::raw('sync_attempts + 1'),
+                'sync_attempts' => $lockedMeeting->sync_attempts + 1,
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+                'sync_available_at' => null,
             ]);
         }, attempts: $this->transactionRetryAttempts);
+    }
+
+    private function markMeetingAsCreateUnknown(Meeting $meeting, Throwable $exception): void
+    {
+        DB::transaction(function () use ($meeting, $exception): void {
+            $lockedMeeting = $this->lockMeeting($meeting);
+            $lockedMeeting->transitionTo(MeetingSyncStatus::CreateUnknown, 'sync_status');
+            $lockedMeeting->update([
+                'sync_error' => $this->errorFormatter->format($exception),
+                'sync_attempts' => $lockedMeeting->sync_attempts + 1,
+                'sync_available_at' => now()->addMinute(),
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+            ]);
+        }, attempts: $this->transactionRetryAttempts);
+
+        report($exception);
     }
 
     private function assertCanCreateMeeting(User $user): User

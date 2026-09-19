@@ -158,4 +158,18 @@ class KernelScheduleTest extends TestCase
         $this->assertTrue($recoverPending->onOneServer);
         $this->assertNotNull($recoverPending->output);
     }
+
+    /** @test */
+    public function recover_ambiguous_zoom_meetings_command_has_proper_configuration(): void
+    {
+        $schedule = app(Schedule::class);
+        $events = $schedule->events();
+
+        $recoverAmbiguous = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'meetings:recover-ambiguous'));
+
+        $this->assertNotNull($recoverAmbiguous, 'meetings:recover-ambiguous command not found in schedule');
+        $this->assertTrue($recoverAmbiguous->withoutOverlapping);
+        $this->assertTrue($recoverAmbiguous->onOneServer);
+        $this->assertNotNull($recoverAmbiguous->output);
+    }
 }

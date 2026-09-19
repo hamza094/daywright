@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\Project;
 
+use App\Enums\Meeting\MeetingSyncStatus;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\Zoom\MeetingIndexRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingStoreRequest;
@@ -44,6 +45,10 @@ class MeetingsController extends ApiController
             $request->toDto(),
             $zoom,
         );
+
+        if ($projectMeeting->sync_status === MeetingSyncStatus::CreateUnknown) {
+            return (new MeetingResource($projectMeeting))->response()->setStatusCode(202);
+        }
 
         return $this->respondCreated(new MeetingResource($projectMeeting));
     }

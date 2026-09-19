@@ -11,6 +11,8 @@ Route::controller(ZoomWebhookController::class)
     ->prefix('webhooks/zoom/meetings')
     ->as('webhooks.meetings.')
     ->group(function (): void {
+        Route::post('created', 'created')->name('created');
+
         Route::post('update', 'update')->name('update');
 
         Route::post('delete', 'delete')->name('delete');

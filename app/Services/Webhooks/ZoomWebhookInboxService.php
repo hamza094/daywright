@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Webhooks;
 
 use App\Actions\Webhooks\Zoom\HandlePersistedZoomWebhookAction;
+use App\DataTransferObjects\Zoom\MeetingCreatedWebhookData;
 use App\DataTransferObjects\Zoom\MeetingDeletedWebhookData;
 use App\DataTransferObjects\Zoom\MeetingEndedWebhookData;
 use App\DataTransferObjects\Zoom\MeetingStartedWebhookData;
@@ -40,7 +41,7 @@ final readonly class ZoomWebhookInboxService
         string $eventType,
         string $requestId,
         ?int $occurredAt,
-        MeetingUpdatedWebhookData|MeetingStartedWebhookData|MeetingEndedWebhookData|MeetingDeletedWebhookData $data,
+        MeetingCreatedWebhookData|MeetingUpdatedWebhookData|MeetingStartedWebhookData|MeetingEndedWebhookData|MeetingDeletedWebhookData $data,
     ): WebhookInbox {
         $inbox = WebhookInbox::query()->createOrFirst(
             [

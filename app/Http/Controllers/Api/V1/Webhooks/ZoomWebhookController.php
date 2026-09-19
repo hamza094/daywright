@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1\Webhooks;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\Zoom\MeetingCreatedWebhookRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingDeletedWebhookRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingEndedWebhookRequest;
 use App\Http\Requests\Api\V1\Zoom\MeetingStartedWebhookRequest;
@@ -15,6 +16,19 @@ use Illuminate\Http\JsonResponse;
 class ZoomWebhookController extends ApiController
 {
     private const string WEBHOOK_ACCEPTED_MESSAGE = 'Webhook accepted.';
+
+    public function created(MeetingCreatedWebhookRequest $request, ZoomWebhookInboxService $webhookInboxService): JsonResponse
+    {
+        $webhookInboxService->accept(
+            eventKey: $request->attributes->get('zoom_webhook_fingerprint'),
+            eventType: 'meeting.created',
+            requestId: $request->header('x-zm-request-id'),
+            occurredAt: $request->input('event_ts'),
+            data: $request->toDto(),
+        );
+
+        return $this->respondWithMessage(self::WEBHOOK_ACCEPTED_MESSAGE);
+    }
 
     public function update(MeetingUpdatedWebhookRequest $request, ZoomWebhookInboxService $webhookInboxService): JsonResponse
     {

@@ -106,6 +106,13 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->everyMinute()
             ->appendOutputTo($this->schedulerLogPath());
+
+        $schedule->command('meetings:recover-ambiguous --limit=25')
+            ->name('recover-ambiguous-zoom-meetings')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->everyMinute()
+            ->appendOutputTo($this->schedulerLogPath());
     }
 
     /**

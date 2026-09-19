@@ -29,7 +29,7 @@
 21. [Testing](#21-testing)
 22. [API Response Standards](#22-api-response-standards)
 23. [API Security & Authorization](#23-api-security--authorization)
-24. [Durable Webhooks & Integrations](#24-durable-webhooks--integrations)
+24. [Durable Webhooks & Third-Party Integrations](#24-durable-webhooks--third-party-integrations)
 
 ---
 
@@ -870,13 +870,13 @@ To protect against abuse and resource starvation, enforce Portkey-style multi-la
 
 ---
 
-## 24. Durable Webhooks & Integrations
+## 24. Durable Webhooks & Third-Party Integrations
 
 ### Purpose
 
-Define the shared reliability rules for third-party webhooks without forcing providers with different security and delivery semantics into one implementation.
+Define reliability rules for inbound webhooks and outbound provider writes without forcing different providers or operations into one generic implementation.
 
-### Shared Reliability Rules
+### Inbound Webhook Reliability
 
 - Authenticate the provider request before accepting it.
 - Derive a deterministic event key and enforce uniqueness in the database.
@@ -896,9 +896,30 @@ Each provider may define its own verifier, request validation, DTOs, event-key r
 
 The shared inbox may own persistence, state transitions, claims, leases, retries, and recovery. Provider code must supply the normalized event metadata and select the provider-specific handler.
 
-### Required Tests
+### Outbound Provider Writes
+
+For non-idempotent provider writes such as creating a remote resource:
+
+- Persist a stable local operation identity and an in-progress state before calling the provider.
+- Commit local state before the external request. Never hold a database transaction open during provider I/O.
+- Classify outcomes as success, definite rejection, or ambiguous. A timeout, connection loss, provider 5xx, malformed success response, or process crash may be ambiguous.
+- Never automatically repeat an ambiguous non-idempotent write. Reconcile the original operation first.
+- Use a provider-supported unique correlation value. Do not correlate automatically using weak fields such as names, topics, timestamps, or email addresses.
+- Use provider webhooks as an optional fast recovery path, not the only recovery mechanism.
+- Add scheduled reconciliation using safe reads when webhooks or responses may be lost.
+- Use an atomic claim and expiring lease when multiple recovery workers can select the same local operation.
+- Guard final updates with the claim token so a stale worker cannot overwrite newer work.
+- Keep retry ownership in one place and use bounded backoff. Exhausted ambiguity must remain visible for manual review rather than being marked as a definite failure.
+- Manual resolution must use an internal audited command or administrative workflow, verify exact provider correlation, and never silently repeat the original write.
+- Reuse the domain model as the durable operation record when it naturally owns the workflow. Do not add a generic outbox or integration-operation table without a demonstrated second use case.
+
+### Required Webhook Tests
 
 Every provider webhook must test signature rejection, malformed payloads, duplicate delivery, database-acceptance failure, queue-dispatch failure, worker crash or expired lease, retry exhaustion, and replay-safe business handling.
+
+### Required Outbound Recovery Tests
+
+Every recoverable non-idempotent provider write must test success, definite rejection, ambiguous transport failure, provider 5xx, malformed success response, process crash or expired lease, concurrent claims, stale claim rejection, bounded retry exhaustion, exact correlation, harmless repeated reconciliation, manual resolution, and proof that recovery never repeats the original write.
 
 See `docs/WEBHOOK_INBOX.md` for the common lifecycle and `docs/WEBHOOK_PROVIDER_ONBOARDING.md` for the provider implementation checklist.
 
@@ -958,11 +979,12 @@ use App\Repository\ProjectRepository;
 
 ## Version History
 
-| Version | Date       | Changes                                                      |
-| ------- | ---------- | ------------------------------------------------------------ |
-| 1.2.0   | 2026-09-17 | Added durable webhook and third-party integration guidelines |
-| 1.1.0   | 2026-09-14 | Added account-deletion and sanitized logging security rules  |
-| 1.0.0   | 2026-01-22 | Initial guidelines extracted from codebase                   |
+| Version | Date       | Changes                                                          |
+| ------- | ---------- | ---------------------------------------------------------------- |
+| 1.3.0   | 2026-09-19 | Added durable outbound-write and ambiguous-result recovery rules |
+| 1.2.0   | 2026-09-17 | Added durable webhook and third-party integration guidelines     |
+| 1.1.0   | 2026-09-14 | Added account-deletion and sanitized logging security rules      |
+| 1.0.0   | 2026-01-22 | Initial guidelines extracted from codebase                       |
 
 ---
 

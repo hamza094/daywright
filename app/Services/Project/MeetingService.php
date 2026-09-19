@@ -42,9 +42,9 @@ class MeetingService
 
     public function createMeetingForProject(Project $project, User $user, MeetingStoreData $data, Zoom $zoom): Meeting
     {
-        return $this->loadForResponse(
-            $this->createProjectMeeting->handle($project, $user, $data, $zoom)
-        );
+        $meeting = $this->createProjectMeeting->handle($project, $user, $data, $zoom);
+
+        return $this->loadForResponse($meeting);
     }
 
     public function updateProjectMeeting(Meeting $meeting, User $user, MeetingUpdateData $data, Zoom $zoom): Meeting

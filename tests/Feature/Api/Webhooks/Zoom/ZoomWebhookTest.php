@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Webhooks\Zoom;
 
+use App\Enums\Meeting\MeetingSyncStatus;
 use App\Jobs\Webhooks\ProcessZoomWebhookInbox;
 use App\Models\Meeting;
 use Carbon\Carbon;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Override;
+use Tests\Support\Zoom\ZoomWebhookPayloadFactory;
 use Tests\Support\Zoom\ZoomWebhookSigner;
 use Tests\TestCase;
 
@@ -54,6 +56,28 @@ class ZoomWebhookTest extends TestCase
             ->assertOk()
             ->assertExactJson(['message' => 'Webhook accepted.']);
 
+        Queue::assertPushed(ProcessZoomWebhookInbox::class);
+    }
+
+    /** @test */
+    public function meeting_created_is_accepted_once_by_the_durable_inbox(): void
+    {
+        Meeting::factory()->create([
+            'meeting_id' => null,
+            'sync_status' => MeetingSyncStatus::Creating,
+            'sync_operation_id' => 'test-operation-id',
+        ]);
+        $postBody = ZoomWebhookPayloadFactory::meetingCreatedPayload();
+        $headers = ZoomWebhookSigner::signPayload($postBody, 'zoom-created-813');
+
+        $this->postJson(route('api.v1.webhooks.meetings.created'), $postBody, $headers)
+            ->assertOk()
+            ->assertExactJson(['message' => 'Webhook accepted.']);
+        $this->postJson(route('api.v1.webhooks.meetings.created'), $postBody, $headers)
+            ->assertOk();
+
+        $this->assertDatabaseCount('webhook_inboxes', 1);
+        $this->assertDatabaseHas('webhook_inboxes', ['event_type' => 'meeting.created']);
         Queue::assertPushed(ProcessZoomWebhookInbox::class);
     }
 
