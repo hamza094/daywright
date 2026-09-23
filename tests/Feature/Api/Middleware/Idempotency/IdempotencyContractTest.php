@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Middleware\Idempotency;
 
+use App\DataTransferObjects\Subscription\SubscriptionOperationResult;
 use App\Interfaces\Paddle;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\Message;
+use App\Models\SubscriptionOperation;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Cache\Lock;
@@ -116,21 +118,25 @@ final class IdempotencyContractTest extends TestCase
         {
             public int $subscribeCalls = 0;
 
-            public function subscribe(User $user, string $plan): mixed
+            public function subscribe(User $user, string $plan): string
             {
                 $this->subscribeCalls++;
 
                 return 'https://phase-seven-paylink.test';
             }
 
-            public function swap(User $user, string $plan): array
+            public function swap(User $user, string $plan, string $idempotencyKey): SubscriptionOperationResult
             {
-                return ['message' => 'unused'];
+                return new SubscriptionOperationResult(
+                    operation: SubscriptionOperation::factory()->swap()->make(),
+                );
             }
 
-            public function cancel(User $user, string $plan): array
+            public function cancel(User $user, string $plan, string $idempotencyKey): SubscriptionOperationResult
             {
-                return ['message' => 'unused'];
+                return new SubscriptionOperationResult(
+                    operation: SubscriptionOperation::factory()->cancel()->make(),
+                );
             }
         };
 
@@ -148,47 +154,6 @@ final class IdempotencyContractTest extends TestCase
             ->assertOk();
 
         $this->assertSame(1, $provider->subscribeCalls);
-    }
-
-    #[Test]
-    public function subscription_update_replays_without_calling_the_provider_twice(): void
-    {
-        $provider = new class implements Paddle
-        {
-            public int $swapCalls = 0;
-
-            public function subscribe(User $user, string $plan): mixed
-            {
-                return 'unused';
-            }
-
-            public function swap(User $user, string $plan): array
-            {
-                $this->swapCalls++;
-
-                return ['message' => 'unused'];
-            }
-
-            public function cancel(User $user, string $plan): array
-            {
-                return ['message' => 'unused'];
-            }
-        };
-
-        $this->swap(Paddle::class, $provider);
-
-        $headers = $this->idempotencyHeaders('phase-six-subscription-update');
-        $payload = ['plan' => 'yearly'];
-
-        $this->withHeaders($headers)
-            ->patchJson($this->apiV1Route('users.me.subscription.update'), $payload)
-            ->assertOk();
-
-        $this->withHeaders($headers)
-            ->patchJson($this->apiV1Route('users.me.subscription.update'), $payload)
-            ->assertOk();
-
-        $this->assertSame(1, $provider->swapCalls);
     }
 
     #[Test]

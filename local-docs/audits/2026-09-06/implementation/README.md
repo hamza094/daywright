@@ -2,9 +2,9 @@
 
 Source: [rest-production-audit.md](../rest-production-audit.md), dated 6 September 2026.
 
-This package extracts the audit's implementation guidance into five sequential, independently usable SWE 1.6 handoffs. Application code has not been changed by creating these documents. Every checkbox starts unchecked; the audit's historical test results are not evidence that these tasks are complete.
+These phase handoffs translate the audit into release work. Phases 2-5 have been updated for the current implementation and distinguish completed, remaining, and deferred work. Verify each status against the working tree and record actual test or staging evidence before marking it complete.
 
-The [findings reference](findings-reference.md) contains descriptions, severity assessments, and reproduction evidence. The phase documents contain implementation work, code excerpts, tests, and acceptance checks.
+The [findings reference](findings-reference.md) contains the original descriptions, severity assessments, and reproduction evidence. The phase documents are shorter implementation handoffs.
 
 ## Phase documents
 
@@ -22,7 +22,7 @@ The phase 1 title follows the requested roadmap. Its scope also includes the ide
 
 Open one phase document in the repository and provide this instruction:
 
-> Implement the checklist in this phase document. Read its referenced files and applicable repository instructions first. Work through the implementation and tests, preserve unrelated working-tree changes, and record verification results. Treat proposed filenames as suggestions and reuse existing equivalents when suitable. Report unresolved design choices and any unmet acceptance criteria. Complete this phase before starting the next phase.
+> Implement only the remaining release work in this phase document. Check the current code and applicable repository guidelines first. Preserve unrelated changes, run focused tests for changed behavior, and record real verification results. Report any unmet release condition. Do not recreate a completed Zoom or Paddle subsystem.
 
 Each phase repeats the context and acceptance rules it needs. Sequential prerequisites remain explicit: self-contained instructions do not imply that later phases can ignore earlier security or reliability work.
 

@@ -113,6 +113,13 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->everyMinute()
             ->appendOutputTo($this->schedulerLogPath());
+
+        $schedule->command('subscriptions:recover-operations --limit=25')
+            ->name('recover-subscription-operations')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->everyMinute()
+            ->appendOutputTo($this->schedulerLogPath());
     }
 
     /**

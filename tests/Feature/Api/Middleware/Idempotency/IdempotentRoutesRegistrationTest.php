@@ -23,7 +23,6 @@ class IdempotentRoutesRegistrationTest extends TestCase
         foreach ([
             'api.v1.api-tokens.store',
             'api.v1.users.me.subscription.store',
-            'api.v1.users.me.subscription.update',
             'api.v1.projects.messages.store',
             'api.v1.send.invitation',
             'api.v1.task.assign',
@@ -43,13 +42,21 @@ class IdempotentRoutesRegistrationTest extends TestCase
     }
 
     #[Test]
-    public function subscription_cancel_route_does_not_have_idempotency_middleware(): void
+    public function subscription_mutation_routes_use_database_idempotency_instead_of_http_response_replay(): void
     {
-        $route = app('router')->getRoutes()->getByName('api.v1.users.me.subscription.destroy');
+        foreach ([
+            'api.v1.users.me.subscription.update',
+            'api.v1.users.me.subscription.destroy',
+        ] as $routeName) {
+            $route = app('router')->getRoutes()->getByName($routeName);
 
-        $this->assertNotNull($route);
-        $this->assertContains('DELETE', $route->methods());
-        $this->assertNotContains(Idempotent::using(scope: IdempotencyScope::User), $route->gatherMiddleware());
+            $this->assertNotNull($route);
+            $this->assertNotContains(
+                Idempotent::using(scope: IdempotencyScope::User),
+                $route->gatherMiddleware(),
+                "Route [{$routeName}] must not replay a stale HTTP response.",
+            );
+        }
     }
 
     #[Test]

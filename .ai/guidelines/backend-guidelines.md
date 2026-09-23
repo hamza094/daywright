@@ -878,6 +878,8 @@ Define reliability rules for inbound webhooks and outbound provider writes witho
 
 ### Inbound Webhook Reliability
 
+These inbox rules apply when Daywright owns webhook acceptance and processing, as it does for Zoom. Paddle Classic currently uses the installed Cashier 1.x webhook route, signature verifier, and subscription/receipt handlers. Do not add a second Paddle inbox unless a demonstrated billing failure requires one. Verify its route, production public key and URL, and a real sandbox billing flow. Document Cashier's missing-local-subscription and out-of-order update limitations.
+
 - Authenticate the provider request before accepting it.
 - Derive a deterministic event key and enforce uniqueness in the database.
 - Treat the database constraint as the final deduplication authority; cache or middleware checks are optimizations only.
@@ -915,7 +917,7 @@ For non-idempotent provider writes such as creating a remote resource:
 
 ### Required Webhook Tests
 
-Every provider webhook must test signature rejection, malformed payloads, duplicate delivery, database-acceptance failure, queue-dispatch failure, worker crash or expired lease, retry exhaustion, and replay-safe business handling.
+For application-owned durable webhook inboxes, test signature rejection, malformed payloads, duplicate delivery, database-acceptance failure, queue-dispatch failure, worker crash or expired lease, retry exhaustion, and replay-safe business handling. For the Cashier Classic exception above, test Daywright's route/configuration and application-specific listeners; verify the vendor-managed billing behavior in the Paddle sandbox rather than duplicating Cashier's full test suite.
 
 ### Required Outbound Recovery Tests
 

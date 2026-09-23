@@ -13,10 +13,10 @@ final class RecoverPendingWebhooks extends Command
 {
     protected $signature = 'webhooks:recover-pending {--limit=100}';
 
-    protected $description = 'Recover pending and expired webhook inbox rows';
+    protected $description = 'Recover pending and expired Zoom webhook inbox rows';
 
     public function __construct(
-        private readonly ZoomWebhookInboxService $webhookInboxService,
+        private readonly ZoomWebhookInboxService $zoomWebhookInboxService,
     ) {
         parent::__construct();
     }
@@ -28,7 +28,7 @@ final class RecoverPendingWebhooks extends Command
         $this->info("Recovering pending webhooks (limit: {$limit})...");
 
         try {
-            $result = $this->webhookInboxService->dispatchRecoverable($limit);
+            $result = $this->zoomWebhookInboxService->dispatchRecoverable($limit);
 
             $this->info("Selected: {$result['selected']}");
             $this->info("Dispatched: {$result['dispatched']}");

@@ -51,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(Paddle::class, SubscriptionService::class);
+        $this->app->bind(Paddle\CashierGatewayInterface::class, \App\Services\Paddle\CashierGateway::class);
 
         $this->app->bind(PaddleApi::class, PaddleService::class);
 
