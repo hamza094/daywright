@@ -112,19 +112,28 @@ class ProjectService
     public function updateStageStatus(Project $project, ProjectStageUpdateData $data): Project
     {
         return DB::transaction(function () use ($project, $data): Project {
+            // Re-fetch with lock to ensure fresh state and prevent race conditions
+            $freshProject = Project::query()
+                ->whereKey($project->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
             // Handle stage transition using state machine
             $newStage = $data->stage();
-            $project->transitionTo($newStage, 'stage_id');
+            $freshProject->transitionTo($newStage, 'stage_id');
+
+            // Reload stage relationship after state change to ensure fresh data
+            $freshProject->load('stage');
 
             // Update other stage-related fields
-            $project->update([
-                'postponed_reason' => $this->getPostponedReason($project, $data),
+            $freshProject->update([
+                'postponed_reason' => $this->getPostponedReason($freshProject, $data),
                 'stage_updated_at' => now(),
             ]);
 
-            $project->load('stage');
+            $freshProject->load('stage');
 
-            return $project;
+            return $freshProject;
         });
     }
 

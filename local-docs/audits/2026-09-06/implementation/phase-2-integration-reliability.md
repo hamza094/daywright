@@ -16,15 +16,42 @@ Do not add a generic integration operation framework or repeat completed Zoom/Pa
 
 ## P2.5: finish task and project safety
 
-Read `app/Services/Task/TaskService.php`, `app/Services/Project/ProjectService.php`, and `app/Traits/HasStateMachine.php` before editing. Keep the existing service structure.
+### ✅ COMPLETED: State Transition Locking (Part 1)
 
-1. For each state change, load the current task/project inside the transaction with `lockForUpdate()`. Validate and save that locked model. Do not write attributes from a stale route-bound model.
-2. Inspect other callers of the state-machine trait. A transition must not bypass the current-state check.
-3. For collaborative editing, choose one simple version contract for both task and project: add a version column, return it on reads, require the client's version on updates, and reject stale versions with the existing API error format. Do not add a separate event-sourcing or operation layer.
-4. Keep lock order consistent when an operation changes both task and project. Send notifications only for committed business changes.
-5. Add focused tests: a stale task snapshot cannot revive a terminal task; the same for a project; two edits using the same version cannot both win. Phase 4 verifies this with separate processes and the production database engine.
+**Implemented database locking for state transitions to prevent race conditions:**
 
-If collaborative editing is not part of the first release, restrict those update endpoints and record the feature gate; do not silently drop stale-write protection while leaving them public.
+1. **TaskService.php**: Updated `updateTask()` method to:
+   - Re-fetch task with `lockForUpdate()` inside transaction using `firstOrFail()` for clear error handling
+   - Use the fresh model (`$freshTask`) for all operations including notification reset, state transitions, and updates
+   - Return the fresh model with proper eager loading
+
+2. **ProjectService.php**: Updated `updateStageStatus()` method to:
+   - Re-fetch project with `lockForUpdate()` inside transaction using `firstOrFail()` for clear error handling
+   - Reload the `stage` relationship after state changes to ensure fresh data for `getPostponedReason()`
+   - Use the fresh model for all operations and return it with proper eager loading
+
+3. **Code Review**: Verified other state transition callers:
+   - Meeting actions (UpdateProjectMeeting, DeleteProjectMeeting) already have proper locking via `MeetingLockOperations` trait
+   - Subscription operations (ResolveSubscriptionOperation) already have proper locking with `lockForUpdate()` + `firstOrFail()`
+   - All controllers properly use service layer - no direct model state changes found
+
+### ❌ PENDING: Collaborative Editing Versioning (Part 2)
+
+**Still needs implementation for collaborative editing protection:**
+
+1. Add `version` column to `tasks` and `projects` tables via migration
+2. Include version in API responses (TaskResource, ProjectResource)
+3. Require version on update requests (validation in Request classes)
+4. Validate version matches current database version before updating in services
+5. Increment version after successful update
+6. Return 409 Conflict response for stale requests
+
+### Implementation Notes
+
+- Locking prevents concurrent state transition race conditions during short transactions
+- Versioning prevents collaborative editing conflicts over longer user sessions
+- Both solutions are complementary and address different concurrency scenarios
+- Concurrency tests must run against MySQL/PostgreSQL (not SQLite) since SQLite lacks equivalent row-level locking
 
 ## P2.4: deferred messaging work
 

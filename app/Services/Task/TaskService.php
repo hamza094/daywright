@@ -83,27 +83,33 @@ class TaskService
         }
 
         return DB::transaction(function () use ($task, $data): Task {
-            $payload = $this->resetTaskNotificationAction->execute($task, $data);
+            // Re-fetch with lock to ensure fresh state and prevent race conditions
+            $freshTask = Task::query()
+                ->whereKey($task->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $payload = $this->resetTaskNotificationAction->execute($freshTask, $data);
 
             // Handle status transition separately using state machine
             if ($data->hasStatusUpdate() && $data->statusId() !== null) {
                 $newStatus = TaskSystemStatus::from($data->statusId());
-                $task->transitionTo($newStatus, 'status_id');
+                $freshTask->transitionTo($newStatus, 'status_id');
             }
 
             // Update other attributes (excluding status_id)
             $nonStatusAttributes = $payload->attributesWithoutStatus();
             if ($nonStatusAttributes !== []) {
-                $task->update($nonStatusAttributes);
+                $freshTask->update($nonStatusAttributes);
             }
 
-            $task->loadMissing('project:id,slug');
+            $freshTask->loadMissing('project:id,slug');
 
             if ($data->hasStatusUpdate()) {
-                $task->load('status');
+                $freshTask->load('status');
             }
 
-            return $task;
+            return $freshTask;
         });
     }
 
