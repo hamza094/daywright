@@ -245,19 +245,21 @@ class ProjectFeatureTest extends TestCase
     }
 
     /** @test */
-    public function it_does_not_update_field_with_same_data(): void
+    public function resubmitting_current_project_values_is_accepted(): void
     {
         $project = Project::factory()->create(['name' => 'Xepra Tech']);
+        $originalName = $project->name;
 
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $project]),
             [
-                'name' => $project->name,
+                'name' => $originalName,
                 'version' => $project->fresh()->version,
-            ])->assertStatus(422);
+            ])->assertStatus(200);
 
-        $response->assertJsonValidationErrors([
-            'name' => 'The name must be different from the current name.',
-        ]);
+        // Project name should remain the same, but version should increment
+        $project->refresh();
+        $this->assertEquals($originalName, $project->name);
+        $this->assertGreaterThan(1, $project->version);
     }
 
     /** @test */

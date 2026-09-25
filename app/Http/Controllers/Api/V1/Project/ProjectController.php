@@ -86,8 +86,9 @@ class ProjectController extends ApiController
      * Update Project Fields
      *
      * This endpoint allows you to update the details of an existing project using PATCH.
-     * It requires the project's slug and the updated fields (name, about, notes) when they are present
-     * in the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.
+     * It supports partial updates - only the fields provided in the request body will be updated.
+     * Re-submitting current values is accepted for idempotency (e.g., network retries).
+     * The version field is required for optimistic concurrency control.
      */
     #[Endpoint(operationId: 'projects.update')]
     #[ApiError(ErrorCode::EDIT_CONFLICT)]

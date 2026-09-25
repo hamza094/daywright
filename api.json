@@ -3394,7 +3394,7 @@
       },
       "patch": {
         "operationId": "projects.update",
-        "description": "This endpoint allows you to update the details of an existing project using PATCH.\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.",
+        "description": "This endpoint allows you to update the details of an existing project using PATCH.\nIt supports partial updates - only the fields provided in the request body will be updated.\nRe-submitting current values is accepted for idempotency (e.g., network retries).\nThe version field is required for optimistic concurrency control.",
         "summary": "Update Project Fields",
         "tags": ["Projects"],
         "parameters": [
@@ -8137,20 +8137,20 @@
           },
           "name": {
             "type": "string",
-            "description": "Updated project name. Must be different from the current name.",
+            "description": "Updated project name.",
             "examples": ["Website Redesign v2"],
             "minLength": 4,
             "maxLength": 150
           },
           "about": {
             "type": "string",
-            "description": "Updated project description. Must be different from the current about description.",
+            "description": "Updated project description.",
             "examples": ["Complete redesign of the company website with new branding and improved UX."],
             "minLength": 15
           },
           "notes": {
             "type": "string",
-            "description": "Updated project notes. Must be different from the current project notes.",
+            "description": "Updated project notes.",
             "examples": ["Focus on mobile-first design approach"],
             "maxLength": 250
           }
