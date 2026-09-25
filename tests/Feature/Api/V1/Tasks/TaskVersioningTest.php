@@ -31,7 +31,7 @@ class TaskVersioningTest extends TestCase
         $task = $this->project->addTask('Test Task');
 
         // Missing version fails validation
-        $this->putJson(route('api.v1.tasks.update', [
+        $this->patchJson(route('api.v1.tasks.update', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), [
@@ -40,7 +40,7 @@ class TaskVersioningTest extends TestCase
             ->assertJsonValidationErrors('version');
 
         // Invalid version fails validation
-        $this->putJson(route('api.v1.tasks.update', [
+        $this->patchJson(route('api.v1.tasks.update', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), [
@@ -56,7 +56,7 @@ class TaskVersioningTest extends TestCase
         $task = $this->project->addTask('Test Task');
 
         // Simulate stale version conflict
-        $this->putJson(route('api.v1.tasks.update', [
+        $this->patchJson(route('api.v1.tasks.update', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), [
@@ -84,7 +84,7 @@ class TaskVersioningTest extends TestCase
         $this->assertEquals(1, $task->version);
 
         // Update with correct version
-        $response = $this->putJson(route('api.v1.tasks.update', [
+        $response = $this->patchJson(route('api.v1.tasks.update', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), [

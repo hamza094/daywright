@@ -14,8 +14,14 @@ use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 Route::middleware(['can:access,project'])->group(function (): void {
     Route::apiResource('/tasks', TaskController::class)
         ->middlewareFor(['index', 'show'], 'tokenAbility:projects:read')
-        ->middlewareFor(['store', 'update', 'destroy'], 'tokenAbility:projects:write')
-        ->withTrashed(['show', 'index', 'destroy']);
+        ->middlewareFor(['store', 'destroy'], 'tokenAbility:projects:write')
+        ->withTrashed(['show', 'index', 'destroy'])
+        ->except(['update']);
+
+    // Manual PATCH route for task update (partial update semantics)
+    Route::patch('/tasks/{task}', [TaskController::class, 'update'])
+        ->middleware('tokenAbility:projects:write')
+        ->name('tasks.update');
 });
 
 Route::name('task.')

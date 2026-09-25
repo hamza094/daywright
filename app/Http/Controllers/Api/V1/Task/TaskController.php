@@ -76,7 +76,7 @@ class TaskController extends ApiController
     /**
      * Update a Task
      *
-     * This endpoint allows you to update the details of a specific task associated with a given project.
+     * This endpoint allows you to update the details of a specific task associated with a given project using PATCH.
      * The user must have proper authorization to access and modify the task.
      */
     #[Endpoint(operationId: 'tasks.update')]

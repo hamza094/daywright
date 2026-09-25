@@ -243,7 +243,7 @@ class TaskTest extends TestCase
 
         $task->delete();
 
-        $this->putJson(route('api.v1.tasks.update', [
+        $this->patchJson(route('api.v1.tasks.update', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), [
@@ -264,7 +264,7 @@ class TaskTest extends TestCase
 
         $status2 = TaskStatus::factory()->create(['id' => 2]);
 
-        $this->withoutExceptionHandling()->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
+        $this->withoutExceptionHandling()->patchJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'title' => $updatedTitle,
             'description' => $updatedDescription,
             'status_id' => $status2->id,
@@ -290,7 +290,7 @@ class TaskTest extends TestCase
 
         Sanctum::actingAs($member);
 
-        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
+        $this->patchJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'title' => 'Unauthorized update',
             'version' => $task->fresh()->version,
         ])->assertForbidden()
@@ -310,7 +310,7 @@ class TaskTest extends TestCase
 
         $this->project->delete();
 
-        $this->putJson(route('api.v1.tasks.update', [
+        $this->patchJson(route('api.v1.tasks.update', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]), [
@@ -337,7 +337,7 @@ class TaskTest extends TestCase
 
         $task = $this->project->addTask('test task');
 
-        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
+        $this->patchJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'due_at' => $dueAt,
             'version' => $task->fresh()->version,
         ])->assertOk();
@@ -352,7 +352,7 @@ class TaskTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
+        $this->patchJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'due_at' => '2024-12-04T15:00:00',
             'version' => $task->fresh()->version,
         ])->assertUnprocessable()
@@ -387,7 +387,7 @@ class TaskTest extends TestCase
             'notify_sent' => true,
         ]);
 
-        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
+        $this->patchJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'due_at' => now()->addDays(3)->toIso8601String(),
             'version' => $task->fresh()->version,
         ])->assertOk();
@@ -406,7 +406,7 @@ class TaskTest extends TestCase
             'notify_sent' => true,
         ]);
 
-        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
+        $this->patchJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'notified' => '5 Minutes Before',
             'due_at' => $task->due_at->toIso8601String(),
             'version' => $task->fresh()->version,

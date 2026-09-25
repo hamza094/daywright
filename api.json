@@ -3296,396 +3296,6 @@
       }
     },
     "/v1/projects/{project}": {
-      "put": {
-        "operationId": "projects.update",
-        "description": "This endpoint allows you to update the details of an existing project.\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.",
-        "summary": "Update Project Fields",
-        "tags": ["Projects"],
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "The project slug",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectUpdateRequestData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "anyOf": [
-                        {
-                          "allOf": [
-                            {
-                              "$ref": "#/components/schemas/PublicProject"
-                            },
-                            {
-                              "type": "object",
-                              "required": ["ownerNotAuthorized", "user", "stage", "members", "activities"]
-                            }
-                          ]
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          }
-                        }
-                      ]
-                    },
-                    "meta": {
-                      "type": "string"
-                    },
-                    "links": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["data", "meta", "links"]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "An error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "invalid_state_transition": {
-                "message": "Invalid state transition.",
-                "code": "invalid_state_transition",
-                "errors": [],
-                "meta": {
-                  "model": "Task",
-                  "current_state": "completed",
-                  "attempted_state": "in_progress"
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "Invalid state transition.",
-              "code": "invalid_state_transition",
-              "errors": [],
-              "meta": {
-                "model": "Task",
-                "current_state": "completed",
-                "attempted_state": "in_progress"
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - Project is archived (project_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "edit_conflict": {
-                "message": "The resource was modified by another user.",
-                "code": "edit_conflict",
-                "errors": [],
-                "meta": {
-                  "expected_version": 5,
-                  "current_version": 6
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "The resource was modified by another user.",
-              "code": "edit_conflict",
-              "errors": [],
-              "meta": {
-                "expected_version": 5,
-                "current_version": 6
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
-      },
-      "patch": {
-        "operationId": "projects.update.patch",
-        "description": "This endpoint allows you to update the details of an existing project.\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.",
-        "summary": "Update Project Fields",
-        "tags": ["Projects"],
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "The project slug",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectUpdateRequestData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "anyOf": [
-                        {
-                          "allOf": [
-                            {
-                              "$ref": "#/components/schemas/PublicProject"
-                            },
-                            {
-                              "type": "object",
-                              "required": ["ownerNotAuthorized", "user", "stage", "members", "activities"]
-                            }
-                          ]
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          }
-                        }
-                      ]
-                    },
-                    "meta": {
-                      "type": "string"
-                    },
-                    "links": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["data", "meta", "links"]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "An error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "invalid_state_transition": {
-                "message": "Invalid state transition.",
-                "code": "invalid_state_transition",
-                "errors": [],
-                "meta": {
-                  "model": "Task",
-                  "current_state": "completed",
-                  "attempted_state": "in_progress"
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "Invalid state transition.",
-              "code": "invalid_state_transition",
-              "errors": [],
-              "meta": {
-                "model": "Task",
-                "current_state": "completed",
-                "attempted_state": "in_progress"
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - Project is archived (project_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "edit_conflict": {
-                "message": "The resource was modified by another user.",
-                "code": "edit_conflict",
-                "errors": [],
-                "meta": {
-                  "expected_version": 5,
-                  "current_version": 6
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "The resource was modified by another user.",
-              "code": "edit_conflict",
-              "errors": [],
-              "meta": {
-                "expected_version": 5,
-                "current_version": 6
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
-      },
       "delete": {
         "operationId": "projects.destroy",
         "description": "Marks the project as abandoned using soft-deletes (deleted_at). The project can be restored later\nor permanently deleted. This is a reversible operation.",
@@ -3774,6 +3384,201 @@
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "projects.update",
+        "description": "This endpoint allows you to update the details of an existing project using PATCH.\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.",
+        "summary": "Update Project Fields",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/PublicProject"
+                            },
+                            {
+                              "type": "object",
+                              "required": ["ownerNotAuthorized", "user", "stage", "members", "activities"]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
               }
             }
           },
@@ -5702,398 +5507,6 @@
           }
         }
       },
-      "put": {
-        "operationId": "tasks.update",
-        "description": "This endpoint allows you to update the details of a specific task associated with a given project.\nThe user must have proper authorization to access and modify the task.",
-        "summary": "Update a Task",
-        "tags": ["Tasks"],
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "The project slug",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "task",
-            "in": "path",
-            "required": true,
-            "description": "The task ID",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TaskUpdateRequestData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/PublicTask"
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          }
-                        }
-                      ]
-                    },
-                    "meta": {
-                      "type": "string"
-                    },
-                    "links": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["data", "meta", "links"]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "An error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "invalid_state_transition": {
-                "message": "Invalid state transition.",
-                "code": "invalid_state_transition",
-                "errors": [],
-                "meta": {
-                  "model": "Task",
-                  "current_state": "completed",
-                  "attempted_state": "in_progress"
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "Invalid state transition.",
-              "code": "invalid_state_transition",
-              "errors": [],
-              "meta": {
-                "model": "Task",
-                "current_state": "completed",
-                "attempted_state": "in_progress"
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - Project or task is archived (project_archived or task_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "edit_conflict": {
-                "message": "The resource was modified by another user.",
-                "code": "edit_conflict",
-                "errors": [],
-                "meta": {
-                  "expected_version": 5,
-                  "current_version": 6
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "The resource was modified by another user.",
-              "code": "edit_conflict",
-              "errors": [],
-              "meta": {
-                "expected_version": 5,
-                "current_version": 6
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
-      },
-      "patch": {
-        "operationId": "tasks.update.patch",
-        "description": "This endpoint allows you to update the details of a specific task associated with a given project.\nThe user must have proper authorization to access and modify the task.",
-        "summary": "Update a Task",
-        "tags": ["Tasks"],
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "The project slug",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "task",
-            "in": "path",
-            "required": true,
-            "description": "The task ID",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TaskUpdateRequestData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/PublicTask"
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          }
-                        }
-                      ]
-                    },
-                    "meta": {
-                      "type": "string"
-                    },
-                    "links": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["data", "meta", "links"]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "An error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "invalid_state_transition": {
-                "message": "Invalid state transition.",
-                "code": "invalid_state_transition",
-                "errors": [],
-                "meta": {
-                  "model": "Task",
-                  "current_state": "completed",
-                  "attempted_state": "in_progress"
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "Invalid state transition.",
-              "code": "invalid_state_transition",
-              "errors": [],
-              "meta": {
-                "model": "Task",
-                "current_state": "completed",
-                "attempted_state": "in_progress"
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - Project or task is archived (project_archived or task_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "edit_conflict": {
-                "message": "The resource was modified by another user.",
-                "code": "edit_conflict",
-                "errors": [],
-                "meta": {
-                  "expected_version": 5,
-                  "current_version": 6
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "The resource was modified by another user.",
-              "code": "edit_conflict",
-              "errors": [],
-              "meta": {
-                "expected_version": 5,
-                "current_version": 6
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
-      },
       "delete": {
         "operationId": "tasks.destroy",
         "description": "Permanently removes a task that the authenticated user is allowed to manage.",
@@ -6221,6 +5634,202 @@
                 "schema": {
                   "type": "integer"
                 }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "tasks.update",
+        "description": "This endpoint allows you to update the details of a specific task associated with a given project using PATCH.\nThe user must have proper authorization to access and modify the task.",
+        "summary": "Update a Task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicTask"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project or task is archived (project_archived or task_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
               }
             }
           },

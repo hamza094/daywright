@@ -75,7 +75,7 @@ export default {
         return this.$vToastify.warning('No changes made.');
       }
       axios
-        .put(
+        .patch(
           url(this.slug, id),
           { description: this.form.description, version: this.task.version },
           { useProgress: true },

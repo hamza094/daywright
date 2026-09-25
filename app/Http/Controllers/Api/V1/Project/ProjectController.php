@@ -85,7 +85,7 @@ class ProjectController extends ApiController
     /**
      * Update Project Fields
      *
-     * This endpoint allows you to update the details of an existing project.
+     * This endpoint allows you to update the details of an existing project using PATCH.
      * It requires the project's slug and the updated fields (name, about, notes) when they are present
      * in the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.
      */

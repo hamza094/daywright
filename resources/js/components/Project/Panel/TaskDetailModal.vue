@@ -241,7 +241,7 @@ export default {
 
     changeStatus(statusId, id) {
       axios
-        .put(url(this.slug, id), { status_id: statusId, version: this.task.version }, { useProgress: true })
+        .patch(url(this.slug, id), { status_id: statusId, version: this.task.version }, { useProgress: true })
         .then((response) => {
           const taskData = getObjectData(response);
 
@@ -264,7 +264,7 @@ export default {
 
     taskDue(id) {
       axios
-        .put(
+        .patch(
           url(this.slug, id),
           { due_at: this.form.due_at, notified: this.form.notified, version: this.task.version },
           { useProgress: true },
