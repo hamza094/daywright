@@ -33,6 +33,12 @@ class TaskResource extends JsonResource
              */
             'id' => $this->id,
             /**
+             * Task version for optimistic concurrency control.
+             *
+             * @example 5
+             */
+            'version' => $this->version,
+            /**
              * Task title.
              *
              * @example The rise of plant

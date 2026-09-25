@@ -54,7 +54,7 @@ final class SubscriptionServiceTest extends TestCase
 
         $this->cashier->shouldReceive('generatePayLink')
             ->once()
-            ->with(Mockery::on(fn (User $u) => $u->id === $user->id), 123, 'https://daywright.test/subscriptions')
+            ->with(Mockery::on(fn (User $u): bool => $u->id === $user->id), 123, 'https://daywright.test/subscriptions')
             ->andReturn('https://checkout.paddle.com/pay/12345');
 
         $url = $this->service->subscribe($user, 'monthly');

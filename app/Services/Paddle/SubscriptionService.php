@@ -22,11 +22,11 @@ use Laravel\Paddle\Exceptions\PaddleException;
 use Override;
 use Throwable;
 
-final class SubscriptionService implements Paddle
+final readonly class SubscriptionService implements Paddle
 {
     private const int CLAIM_LEASE_MINUTES = 5;
 
-    public function __construct(private readonly CashierGatewayInterface $cashier) {}
+    public function __construct(private CashierGatewayInterface $cashier) {}
 
     #[Override]
     public function subscribe(User $user, string $plan): string
@@ -59,7 +59,7 @@ final class SubscriptionService implements Paddle
 
         $operation = $this->findExistingOperation($user, SubscriptionOperationType::Swap, $plan, $idempotencyKey);
 
-        if ($operation !== null) {
+        if ($operation instanceof SubscriptionOperation) {
             return $this->returnExistingOperation($operation, SubscriptionOperationType::Swap, $plan);
         }
 
@@ -86,7 +86,7 @@ final class SubscriptionService implements Paddle
 
         $operation = $this->findExistingOperation($user, SubscriptionOperationType::Cancel, $plan, $idempotencyKey);
 
-        if ($operation !== null) {
+        if ($operation instanceof SubscriptionOperation) {
             return $this->returnExistingOperation($operation, SubscriptionOperationType::Cancel, $plan);
         }
 
@@ -120,11 +120,9 @@ final class SubscriptionService implements Paddle
             ->where('idempotency_key_hash', $idempotencyKeyHash)
             ->first();
 
-        if ($existing !== null) {
-            // Compare fingerprints - different action or plan is a mismatch
-            if ($existing->request_fingerprint !== $fingerprint) {
-                throw new IdempotencyMismatchException;
-            }
+        // Compare fingerprints - different action or plan is a mismatch
+        if ($existing !== null && $existing->request_fingerprint !== $fingerprint) {
+            throw new IdempotencyMismatchException;
         }
 
         return $existing;

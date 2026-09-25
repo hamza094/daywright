@@ -90,13 +90,15 @@ class ProjectController extends ApiController
      * in the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.
      */
     #[Endpoint(operationId: 'projects.update')]
+    #[ApiError(ErrorCode::EDIT_CONFLICT)]
     public function update(Project $project, ProjectUpdateRequest $request): JsonResponse
     {
         $this->authorize('access', $project);
 
         $data = $request->toDto();
 
-        if ($data->isEmpty()) {
+        // Version-only payload is not an edit
+        if ($data->isVersionOnly()) {
             abort(Response::HTTP_BAD_REQUEST, "You haven't changed anything.");
         }
 

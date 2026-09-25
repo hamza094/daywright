@@ -53,6 +53,8 @@ final class ErrorCode
 
     public const string INVALID_STATE_TRANSITION = 'invalid_state_transition';
 
+    public const string EDIT_CONFLICT = 'edit_conflict';
+
     // Note: Idempotency uses generic error codes (bad_request, conflict, validation_error)
     // as per Phase 3 minimal approach, since the package throws generic HTTP exceptions
 
@@ -314,6 +316,18 @@ final class ErrorCode
                 'code' => 'invalid_state_transition',
                 'errors' => [],
                 'meta' => ['model' => 'Task', 'current_state' => 'completed', 'attempted_state' => 'in_progress'],
+            ],
+        ],
+        self::EDIT_CONFLICT => [
+            'status' => 409,
+            'message' => 'The resource was modified by another user.',
+            'description' => 'The resource was modified by another user since it was last read. Please refresh and try again.',
+            'meta_schema' => ['expected_version' => 'int', 'current_version' => 'int'],
+            'example' => [
+                'message' => 'The resource was modified by another user.',
+                'code' => 'edit_conflict',
+                'errors' => [],
+                'meta' => ['expected_version' => 5, 'current_version' => 6],
             ],
         ],
 

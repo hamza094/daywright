@@ -11,12 +11,14 @@ use App\DataTransferObjects\Project\ProjectStageUpdateData;
 use App\DataTransferObjects\Project\ProjectUpdateData;
 use App\Enums\StageStatus;
 use App\Enums\Subscription\PlanLimitType;
+use App\Exceptions\EditConflictException;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Subscription\PlanLimitService;
 use App\Services\Subscription\SubscriptionUsageService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProjectService
 {
@@ -89,11 +91,39 @@ class ProjectService
 
     public function updateProject(Project $project, ProjectUpdateData $data, User $actor): Project
     {
-        $project->update($data->attributes());
+        if ($data->version() === null) {
+            throw ValidationException::withMessages([
+                'version' => ['The version field is required.'],
+            ]);
+        }
 
-        $this->sendNotification($project, $actor);
+        $updatedProject = DB::transaction(function () use ($project, $data): Project {
+            // Re-fetch with lock to ensure fresh state and prevent race conditions
+            $freshProject = Project::query()
+                ->whereKey($project->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        return $this->loadForResponse($project);
+            // Version check for optimistic concurrency control
+            if ($freshProject->version !== $data->version()) {
+                throw new EditConflictException(
+                    expectedVersion: $data->version(),
+                    currentVersion: $freshProject->version,
+                );
+            }
+
+            // Update with version increment
+            $freshProject->update(array_merge($data->attributes(), [
+                'version' => $freshProject->version + 1,
+            ]));
+
+            return $this->loadForResponse($freshProject);
+        });
+
+        // Send notification after transaction commits
+        $this->sendNotification($updatedProject, $actor);
+
+        return $updatedProject;
     }
 
     public function deleteProject(Project $project): void
@@ -111,12 +141,26 @@ class ProjectService
      */
     public function updateStageStatus(Project $project, ProjectStageUpdateData $data): Project
     {
+        if ($data->version() === null) {
+            throw ValidationException::withMessages([
+                'version' => ['The version field is required.'],
+            ]);
+        }
+
         return DB::transaction(function () use ($project, $data): Project {
             // Re-fetch with lock to ensure fresh state and prevent race conditions
             $freshProject = Project::query()
                 ->whereKey($project->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            // Version check for optimistic concurrency control
+            if ($freshProject->version !== $data->version()) {
+                throw new EditConflictException(
+                    expectedVersion: $data->version(),
+                    currentVersion: $freshProject->version,
+                );
+            }
 
             // Handle stage transition using state machine
             $newStage = $data->stage();
@@ -125,10 +169,11 @@ class ProjectService
             // Reload stage relationship after state change to ensure fresh data
             $freshProject->load('stage');
 
-            // Update other stage-related fields
+            // Update other stage-related fields with version increment
             $freshProject->update([
                 'postponed_reason' => $this->getPostponedReason($freshProject, $data),
                 'stage_updated_at' => now(),
+                'version' => $freshProject->version + 1,
             ]);
 
             $freshProject->load('stage');

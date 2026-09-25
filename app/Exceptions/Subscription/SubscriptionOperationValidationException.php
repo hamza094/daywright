@@ -8,15 +8,10 @@ use Exception;
 
 final class SubscriptionOperationValidationException extends Exception
 {
-    /** @var array<string, mixed> */
-    private array $context = [];
-
     /** @param array<string, mixed> $context */
-    public function __construct(string $message, array $context = [])
+    public function __construct(string $message, private readonly array $context = [])
     {
-        parent::__construct($message, 0, null);
-
-        $this->context = $context;
+        parent::__construct($message);
     }
 
     /** @return array<string, mixed> */

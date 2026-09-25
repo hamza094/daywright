@@ -38,7 +38,7 @@ final readonly class ResolveSubscriptionOperation
             throw new LogicException('Cannot mark completed: Paddle could not be read.', 0, $e);
         }
 
-        if ($remoteSub === null) {
+        if (! $remoteSub instanceof \App\DataTransferObjects\Paddle\PaddleSubscriptionSnapshot) {
             throw new LogicException("Cannot mark completed: Subscription {$operation->paddle_subscription_id} not found in Paddle.");
         }
 

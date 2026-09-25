@@ -228,13 +228,20 @@ export default {
   methods: {
     ...mapMutations('task', ['removeTaskFromState', 'pushArchivedTask', 'removeArchivedTask', 'updateTask']),
 
-    ...mapMutations('SingleTask', ['setErrors', 'updateTaskStatus', 'updateTaskDue', 'updateTaskMembers', 'setForm']),
+    ...mapMutations('SingleTask', [
+      'setErrors',
+      'updateTaskStatus',
+      'updateTaskDue',
+      'updateTaskMembers',
+      'setForm',
+      'updateTaskVersion',
+    ]),
 
     ...mapActions({ fetchTasks: 'task/fetchTasks', refreshLimits: 'project/refreshLimits' }),
 
     changeStatus(statusId, id) {
       axios
-        .put(url(this.slug, id), { status_id: statusId }, { useProgress: true })
+        .put(url(this.slug, id), { status_id: statusId, version: this.task.version }, { useProgress: true })
         .then((response) => {
           const taskData = getObjectData(response);
 
@@ -242,17 +249,26 @@ export default {
           this.setErrors({});
           this.updateTaskStatus(taskData.status);
           this.updateTask(taskData);
+          this.updateTaskVersion(taskData.version);
           this.refreshLimits(this.slug);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
           this.setErrors(parseApiError(error).errors);
+          // Handle version conflict (409)
+          if (error.response?.status === 409) {
+            this.$vToastify.error('Task was modified by another user. Please refresh and try again.');
+          }
         });
     },
 
     taskDue(id) {
       axios
-        .put(url(this.slug, id), { due_at: this.form.due_at, notified: this.form.notified }, { useProgress: true })
+        .put(
+          url(this.slug, id),
+          { due_at: this.form.due_at, notified: this.form.notified, version: this.task.version },
+          { useProgress: true },
+        )
         .then((response) => {
           const taskData = getObjectData(response);
 
@@ -263,11 +279,16 @@ export default {
             notified: taskData.notified,
           });
           this.updateTask(taskData);
+          this.updateTaskVersion(taskData.version);
           this.cancelDue();
         })
         .catch((error) => {
           this.handleErrorResponse(error);
           this.setErrors(parseApiError(error).errors);
+          // Handle version conflict (409)
+          if (error.response?.status === 409) {
+            this.$vToastify.error('Task was modified by another user. Please refresh and try again.');
+          }
         });
     },
 

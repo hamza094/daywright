@@ -248,6 +248,7 @@ class TaskTest extends TestCase
             'task' => $task->id,
         ]), [
             'title' => 'Updated title',
+            'version' => $task->fresh()->version,
         ])->assertConflict()
             ->assertJsonPath('message', 'Task is archived. Restore it before performing this action.')
             ->assertJsonPath('code', 'task_archived');
@@ -267,6 +268,7 @@ class TaskTest extends TestCase
             'title' => $updatedTitle,
             'description' => $updatedDescription,
             'status_id' => $status2->id,
+            'version' => $task->fresh()->version,
         ])->assertJsonPath('data.title', $updatedTitle);
 
         $task->refresh();
@@ -290,6 +292,7 @@ class TaskTest extends TestCase
 
         $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'title' => 'Unauthorized update',
+            'version' => $task->fresh()->version,
         ])->assertForbidden()
             ->assertJsonPath('message', "Only Project's owner and task owner are allowed to access this feature.")
             ->assertJsonPath('code', 'forbidden');
@@ -312,6 +315,7 @@ class TaskTest extends TestCase
             'task' => $task->id,
         ]), [
             'title' => 'Task title updated',
+            'version' => $task->fresh()->version,
         ])->assertConflict()
             ->assertJsonPath('message', 'Project is archived. Restore it before performing this action.')
             ->assertJsonPath('code', 'project_archived');
@@ -335,6 +339,7 @@ class TaskTest extends TestCase
 
         $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'due_at' => $dueAt,
+            'version' => $task->fresh()->version,
         ])->assertOk();
 
         $expectedDueAt = Carbon::parse($dueAt)->setTimezone('UTC');
@@ -349,6 +354,7 @@ class TaskTest extends TestCase
 
         $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'due_at' => '2024-12-04T15:00:00',
+            'version' => $task->fresh()->version,
         ])->assertUnprocessable()
             ->assertJsonValidationErrors('due_at');
     }
@@ -383,6 +389,7 @@ class TaskTest extends TestCase
 
         $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'due_at' => now()->addDays(3)->toIso8601String(),
+            'version' => $task->fresh()->version,
         ])->assertOk();
 
         $this->assertEquals(0, (int) $task->fresh()->notify_sent);
@@ -402,6 +409,7 @@ class TaskTest extends TestCase
         $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
             'notified' => '5 Minutes Before',
             'due_at' => $task->due_at->toIso8601String(),
+            'version' => $task->fresh()->version,
         ])->assertOk();
 
         $this->assertEquals(0, (int) $task->fresh()->notify_sent);

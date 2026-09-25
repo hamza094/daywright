@@ -90,7 +90,7 @@ export default {
     this.loadStages();
   },
   methods: {
-    ...mapMutations('project', ['updateStage']),
+    ...mapMutations('project', ['updateStage', 'updateProjectVersion']),
 
     getStageClass(stage) {
       if (this.getStage === stage.id) {
@@ -115,8 +115,11 @@ export default {
         return;
       }
       this.$Progress.start();
+      // Get current project version from store
+      const projectVersion = this.$store.state.project.project.version || 1;
+
       axios
-        .patch(`/projects/${this.slug}/stage`, data)
+        .put(`/projects/${this.slug}/stage`, { ...data, version: projectVersion })
 
         .then((response) => {
           this.$Progress.finish();
@@ -127,13 +130,19 @@ export default {
             stage_updated: project.stage_updated_at,
             postponed_reason: project.postponed_reason || null,
             getStage: project.stage ? project.stage.id : 0,
+            version: project.version,
           };
           this.updateStage(eventData);
+          this.updateProjectVersion(project.version);
           this.$vToastify.success('Successfully update');
         })
         .catch((error) => {
           this.$Progress.fail();
           this.handleErrorResponse(error);
+          // Handle version conflict (409)
+          if (error.response?.status === 409) {
+            this.$vToastify.error('Project was modified by another user. Please refresh and try again.');
+          }
         });
       this.selectedStage = 0;
     },

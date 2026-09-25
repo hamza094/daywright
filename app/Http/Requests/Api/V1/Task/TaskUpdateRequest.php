@@ -44,6 +44,17 @@ class TaskUpdateRequest extends FormRequest
 
         return [
             /**
+             * Current task version for optimistic concurrency control.
+             * Required to prevent silent overwrites from concurrent edits.
+             *
+             * @example 5
+             */
+            'version' => [
+                'required',
+                'integer',
+                'min:1',
+            ],
+            /**
              * Updated task title. Titles must remain unique within the project.
              *
              * @example Draft QA checklist

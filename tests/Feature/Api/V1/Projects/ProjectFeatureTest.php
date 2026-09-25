@@ -189,7 +189,7 @@ class ProjectFeatureTest extends TestCase
         $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
 
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]),
-            ['name' => $name, 'notes' => $notes]);
+            ['name' => $name, 'notes' => $notes, 'version' => $this->project->fresh()->version]);
 
         $this->assertDatabaseHas('projects', ['id' => $this->project->id,
             'name' => $name]);
@@ -218,6 +218,7 @@ class ProjectFeatureTest extends TestCase
 
         $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]), [
             'name' => 'Updated By Member',
+            'version' => $this->project->fresh()->version,
         ])
             ->assertOk()
             ->assertJsonPath('data.name', 'Updated By Member')
@@ -228,7 +229,7 @@ class ProjectFeatureTest extends TestCase
     public function updated_project_requires_a_name(): void
     {
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]),
-            ['name' => null])->assertUnprocessable();
+            ['name' => null, 'version' => $this->project->fresh()->version])->assertUnprocessable();
 
         $response->assertJsonMissingValidationErrors('project.name');
     }
@@ -237,7 +238,7 @@ class ProjectFeatureTest extends TestCase
     public function it_does_not_update_with_invalid_fields(): void
     {
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]),
-            ['invalid_field' => 'Some value'])
+            ['invalid_field' => 'Some value', 'version' => $this->project->fresh()->version])
             ->assertStatus(400);
 
         $response->assertJsonPath('message', "You haven't changed anything.");
@@ -251,6 +252,7 @@ class ProjectFeatureTest extends TestCase
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $project]),
             [
                 'name' => $project->name,
+                'version' => $project->fresh()->version,
             ])->assertStatus(422);
 
         $response->assertJsonValidationErrors([

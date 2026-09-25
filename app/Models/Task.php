@@ -29,6 +29,7 @@ class Task extends Model
 
     protected $casts = [
         'due_at' => 'datetime',
+        'version' => 'integer',
     ];
 
     /**

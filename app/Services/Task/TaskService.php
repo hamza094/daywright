@@ -18,6 +18,7 @@ use App\DataTransferObjects\Task\TaskUpdateData;
 use App\DataTransferObjects\Task\UnassignTaskMemberData;
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\TaskSystemStatus;
+use App\Exceptions\EditConflictException;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Project;
 use App\Models\Task;
@@ -82,12 +83,26 @@ class TaskService
             ]);
         }
 
+        if ($data->version() === null) {
+            throw ValidationException::withMessages([
+                'version' => ['The version field is required.'],
+            ]);
+        }
+
         return DB::transaction(function () use ($task, $data): Task {
             // Re-fetch with lock to ensure fresh state and prevent race conditions
             $freshTask = Task::query()
                 ->whereKey($task->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            // Version check for optimistic concurrency control
+            if ($freshTask->version !== $data->version()) {
+                throw new EditConflictException(
+                    expectedVersion: $data->version(),
+                    currentVersion: $freshTask->version,
+                );
+            }
 
             $payload = $this->resetTaskNotificationAction->execute($freshTask, $data);
 
@@ -97,10 +112,15 @@ class TaskService
                 $freshTask->transitionTo($newStatus, 'status_id');
             }
 
-            // Update other attributes (excluding status_id)
+            // Update other attributes (excluding status_id) and increment version
             $nonStatusAttributes = $payload->attributesWithoutStatus();
             if ($nonStatusAttributes !== []) {
-                $freshTask->update($nonStatusAttributes);
+                $freshTask->update(array_merge($nonStatusAttributes, [
+                    'version' => $freshTask->version + 1,
+                ]));
+            } elseif ($data->hasStatusUpdate()) {
+                // If only status changed, still increment version
+                $freshTask->update(['version' => $freshTask->version + 1]);
             }
 
             $freshTask->loadMissing('project:id,slug');

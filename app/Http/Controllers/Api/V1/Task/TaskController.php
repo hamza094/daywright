@@ -19,6 +19,7 @@ use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Symfony\Component\HttpFoundation\Response;
 
 class TaskController extends ApiController
 {
@@ -80,11 +81,19 @@ class TaskController extends ApiController
      */
     #[Endpoint(operationId: 'tasks.update')]
     #[ApiError(ErrorCode::INVALID_STATE_TRANSITION)]
+    #[ApiError(ErrorCode::EDIT_CONFLICT)]
     public function update(Project $project, Task $task, TaskUpdateRequest $request, TaskService $taskService): JsonResponse
     {
         $this->authorize('manage', $task);
 
-        $task = $taskService->updateTask($task, $request->toDto());
+        $data = $request->toDto();
+
+        // Version-only payload is not an edit
+        if ($data->isVersionOnly()) {
+            abort(Response::HTTP_BAD_REQUEST, "You haven't changed anything.");
+        }
+
+        $task = $taskService->updateTask($task, $data);
 
         return $this->respondUpdated(new TaskResource($task));
     }

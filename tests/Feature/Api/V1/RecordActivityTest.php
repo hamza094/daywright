@@ -103,7 +103,10 @@ class RecordActivityTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), ['title' => 'changed']);
+        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
+            'title' => 'changed',
+            'version' => $task->fresh()->version,
+        ]);
 
         /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();

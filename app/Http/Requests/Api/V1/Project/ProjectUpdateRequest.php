@@ -37,6 +37,17 @@ class ProjectUpdateRequest extends FormRequest
 
         return [
             /**
+             * Current project version for optimistic concurrency control.
+             * Required to prevent silent overwrites from concurrent edits.
+             *
+             * @example 5
+             */
+            'version' => [
+                'required',
+                'integer',
+                'min:1',
+            ],
+            /**
              * Updated project name. Must be different from the current name.
              *
              * @example Website Redesign v2

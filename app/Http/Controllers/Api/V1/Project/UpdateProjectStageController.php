@@ -24,6 +24,7 @@ final class UpdateProjectStageController extends ApiController
      */
     #[Endpoint(operationId: 'projects.updateStage')]
     #[ApiError(ErrorCode::INVALID_STATE_TRANSITION)]
+    #[ApiError(ErrorCode::EDIT_CONFLICT)]
     public function __invoke(Project $project, StageRequest $request, ProjectService $projectService): JsonResponse
     {
         $project = $projectService->updateStageStatus($project, $request->projectStageUpdateData());

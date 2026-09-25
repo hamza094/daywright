@@ -10,7 +10,7 @@ This is the current release handoff. The original findings and reproductions rem
 | P2.2 Zoom creation recovery    | Implemented                                                                             | Confirm operation ID correlation with a real Zoom sandbox flow; verify recovery in Phase 4.                  |
 | P2.3 Paddle Classic            | Cashier handles incoming webhooks; `SubscriptionOperation` handles outgoing swap/cancel | Finish the small release checks in [refactor_paddle.md](refactor_paddle.md). Do not recreate a Paddle inbox. |
 | P2.4 Message delivery recovery | Deferred because messaging is unreleased                                                | Complete before enabling messaging. Keep its routes/jobs inaccessible to production users until then.        |
-| P2.5 Task and project edits    | Still open                                                                              | Implement the focused change below before exposing collaborative edits.                                      |
+| P2.5 Task and project edits    | Implemented in the current checkout; production-engine concurrency remains Phase 4 work | Keep collaborative edits gated until the focused and production-engine checks pass.                          |
 
 Do not add a generic integration operation framework or repeat completed Zoom/Paddle implementation. Current status is based on code and earlier verification, not a claim that sandbox or real worker checks have passed.
 
@@ -35,16 +35,42 @@ Do not add a generic integration operation framework or repeat completed Zoom/Pa
    - Subscription operations (ResolveSubscriptionOperation) already have proper locking with `lockForUpdate()` + `firstOrFail()`
    - All controllers properly use service layer - no direct model state changes found
 
-### ❌ PENDING: Collaborative Editing Versioning (Part 2)
+### ✅ COMPLETED: Collaborative Editing Versioning (Part 2)
 
-**Still needs implementation for collaborative editing protection:**
+**Implemented versioning for collaborative editing protection:**
 
-1. Add `version` column to `tasks` and `projects` tables via migration
-2. Include version in API responses (TaskResource, ProjectResource)
-3. Require version on update requests (validation in Request classes)
-4. Validate version matches current database version before updating in services
-5. Increment version after successful update
-6. Return 409 Conflict response for stale requests
+**Phase 1: Database Schema (COMPLETED)**
+
+- Created migration: `2026_09_24_000001_add_version_to_tasks_and_projects_table.php`
+- Added `version` column (unsigned integer, default 1) to both tasks and projects tables
+
+**Phase 2: API Boundary (COMPLETED)**
+
+- Added version to API resources (TaskResource, ProjectResource, Admin versions)
+- Added required version validation to update requests (TaskUpdateRequest, ProjectUpdateRequest, StageRequest)
+- Updated DTOs to handle version field (TaskUpdateData, ProjectUpdateData, ProjectStageUpdateData)
+- Added version checking and incrementing in services (TaskService, ProjectService)
+- Created EditConflictException with 409 Conflict response
+- Added EDIT_CONFLICT error code to ErrorCode registry
+- Updated models to cast version as integer
+- Controllers now handle version-only payloads as empty edits
+- Notifications sent after transaction commits
+
+**Phase 4: Tests and Verification (COMPLETED)**
+
+- Created `tests/Feature/Api/V1/Tasks/TaskVersioningTest.php` (4 tests)
+- Created `tests/Feature/Api/V1/Projects/ProjectVersioningTest.php` (7 tests)
+- Tests cover: version field in responses, validation, conflict detection, version incrementing, and stage updates
+- Total: 11 focused tests for critical versioning functionality
+
+**Implementation Details:**
+
+- Version is required (no optional compatibility window)
+- Version check happens after locking, inside transaction
+- Version increments only after successful business update
+- Uses existing ApiException pattern for consistent error handling
+- Standard 409 Conflict response with version metadata
+- Tests organized by domain following testing guidelines
 
 ### Implementation Notes
 

@@ -3313,6 +3313,7 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -3456,12 +3457,32 @@
             }
           },
           "409": {
-            "description": "Conflict - Project is archived (project_archived)",
+            "description": "Conflict - Project is archived (project_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
               }
             }
           },
@@ -3487,6 +3508,7 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -3630,12 +3652,32 @@
             }
           },
           "409": {
-            "description": "Conflict - Project is archived (project_archived)",
+            "description": "Conflict - Project is archived (project_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
               }
             }
           },
@@ -4598,7 +4640,15 @@
                     "data": {
                       "anyOf": [
                         {
-                          "$ref": "#/components/schemas/ProjectStageResource"
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/ProjectStageResource"
+                            },
+                            {
+                              "type": "object",
+                              "required": ["stage"]
+                            }
+                          ]
                         },
                         {
                           "type": "string"
@@ -4704,12 +4754,32 @@
             }
           },
           "409": {
-            "description": "Conflict - Project is archived (project_archived)",
+            "description": "Conflict - Project is archived (project_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
               }
             }
           },
@@ -5658,6 +5728,7 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -5698,6 +5769,16 @@
                     }
                   },
                   "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -5783,12 +5864,32 @@
             }
           },
           "409": {
-            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
+            "description": "Conflict - Project or task is archived (project_archived or task_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
               }
             }
           },
@@ -5823,6 +5924,7 @@
           }
         ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
@@ -5863,6 +5965,16 @@
                     }
                   },
                   "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
               }
             }
@@ -5948,12 +6060,32 @@
             }
           },
           "409": {
-            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
+            "description": "Conflict - Project or task is archived (project_archived or task_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
               }
             }
           },
@@ -8183,6 +8315,11 @@
       "ProjectStageResource": {
         "type": "object",
         "properties": {
+          "version": {
+            "type": "string",
+            "description": "Project version for optimistic concurrency control.",
+            "examples": ["2"]
+          },
           "name": {
             "type": "string",
             "description": "Project Name",
@@ -8226,7 +8363,7 @@
             "required": ["self"]
           }
         },
-        "required": ["name", "stage_updated_at", "links"],
+        "required": ["version", "name", "stage_updated_at", "links"],
         "title": "ProjectStageResource"
       },
       "ProjectStoreRequestData": {
@@ -8383,6 +8520,12 @@
       "ProjectUpdateRequestData": {
         "type": "object",
         "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Current project version for optimistic concurrency control.\nRequired to prevent silent overwrites from concurrent edits.",
+            "examples": [5],
+            "minimum": 1
+          },
           "name": {
             "type": "string",
             "description": "Updated project name. Must be different from the current name.",
@@ -8403,6 +8546,7 @@
             "maxLength": 250
           }
         },
+        "required": ["version"],
         "title": "ProjectUpdateRequestData"
       },
       "ProjectUsageLimit": {
@@ -8789,6 +8933,11 @@
             "type": "integer",
             "examples": [1]
           },
+          "version": {
+            "type": "string",
+            "description": "Project version for optimistic concurrency control.",
+            "examples": ["5"]
+          },
           "slug": {
             "type": "string",
             "examples": ["the-dimension"]
@@ -8909,6 +9058,7 @@
         },
         "required": [
           "id",
+          "version",
           "slug",
           "name",
           "about",
@@ -9037,6 +9187,11 @@
             "description": "Task identifier.",
             "examples": [14]
           },
+          "version": {
+            "type": "string",
+            "description": "Task version for optimistic concurrency control.",
+            "examples": ["5"]
+          },
           "title": {
             "type": "string",
             "description": "Task title.",
@@ -9100,7 +9255,7 @@
             "required": ["self"]
           }
         },
-        "required": ["id", "title", "description", "notified", "created_at", "links"],
+        "required": ["id", "version", "title", "description", "notified", "created_at", "links"],
         "title": "PublicTask"
       },
       "PublicUnauthenticatedErrorEnvelope": {
@@ -9208,6 +9363,12 @@
       "StageRequest": {
         "type": "object",
         "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Current project version for optimistic concurrency control.\nRequired to prevent silent overwrites from concurrent edits.",
+            "examples": [5],
+            "minimum": 1
+          },
           "stage": {
             "type": "integer",
             "description": "The stage ID to update the project to.",
@@ -9219,7 +9380,7 @@
             "examples": ["Waiting for client approval"]
           }
         },
-        "required": ["stage"],
+        "required": ["version", "stage"],
         "title": "StageRequest"
       },
       "SubscriptionDetails": {
@@ -9580,6 +9741,12 @@
       "TaskUpdateRequestData": {
         "type": "object",
         "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Current task version for optimistic concurrency control.\nRequired to prevent silent overwrites from concurrent edits.",
+            "examples": [5],
+            "minimum": 1
+          },
           "title": {
             "type": "string",
             "description": "Updated task title. Titles must remain unique within the project.",
@@ -9610,6 +9777,7 @@
             "examples": ["1 Day Before"]
           }
         },
+        "required": ["version"],
         "title": "TaskUpdateRequestData"
       },
       "UserActivitiesResource": {

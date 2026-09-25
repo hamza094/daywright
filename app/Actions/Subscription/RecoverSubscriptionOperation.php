@@ -50,7 +50,7 @@ final readonly class RecoverSubscriptionOperation
 
         $remoteSnapshot = $this->readRemoteSnapshot($operation);
 
-        if ($remoteSnapshot === null || ! $this->provesOperationSucceeded($operation, $remoteSnapshot)) {
+        if (! $remoteSnapshot instanceof PaddleSubscriptionSnapshot || ! $this->provesOperationSucceeded($operation, $remoteSnapshot)) {
             return $this->rescheduleAfterFailedRead($operation, $claimToken);
         }
 
@@ -141,7 +141,7 @@ final readonly class RecoverSubscriptionOperation
         return DB::transaction(function () use ($operation, $claimToken, $remoteSnapshot): SubscriptionOperationRecoveryOutcome {
             $claimedOperation = $this->lockLiveClaim($operation, $claimToken);
 
-            if ($claimedOperation === null) {
+            if (! $claimedOperation instanceof SubscriptionOperation) {
                 return SubscriptionOperationRecoveryOutcome::Skipped;
             }
 
@@ -199,7 +199,7 @@ final readonly class RecoverSubscriptionOperation
         return DB::transaction(function () use ($operation, $claimToken): SubscriptionOperationRecoveryOutcome {
             $claimedOperation = $this->lockLiveClaim($operation, $claimToken);
 
-            if ($claimedOperation === null) {
+            if (! $claimedOperation instanceof SubscriptionOperation) {
                 return SubscriptionOperationRecoveryOutcome::Skipped;
             }
 

@@ -24,9 +24,9 @@ final class ConfigValidator
 
         if (blank(config('cashier.webhook'))) {
             $errors[] = 'CASHIER_WEBHOOK (cashier.webhook)';
-        } elseif (! str_starts_with(config('cashier.webhook'), 'https://')) {
+        } elseif (! str_starts_with((string) config('cashier.webhook'), 'https://')) {
             $errors[] = 'CASHIER_WEBHOOK must be HTTPS';
-        } elseif (! str_ends_with(config('cashier.webhook'), '/paddle/webhook')) {
+        } elseif (! str_ends_with((string) config('cashier.webhook'), '/paddle/webhook')) {
             $errors[] = 'CASHIER_WEBHOOK must end with /paddle/webhook';
         }
 
