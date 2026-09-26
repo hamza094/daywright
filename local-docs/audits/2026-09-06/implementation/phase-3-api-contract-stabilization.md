@@ -34,22 +34,117 @@ Through HTTP feature tests, prove:
 
 ## P3.2: Keep error bodies and protocol headers consistent
 
-### Why this matters
+### Plain-language objective
 
-Clients use the status, JSON body, and HTTP headers to decide whether to correct input, authenticate, retry, or use a different method. Dropping a header or changing `{}` to `[]` can break that handling.
+Make every public API error easy for the frontend to understand. The JSON body must use the application's standard shape, and HTTP instructions such as `Allow` and `Retry-After` must not be lost while converting an exception into JSON.
 
-### Inspect and change
+Do not redesign the exception system. Make the smallest changes in the existing handlers and preserve current status codes, error codes, authentication boundaries, and rate-limit behavior.
 
-1. Inspect `app/Exceptions/Traits/HandlesApiExceptions.php`, `ApiErrorFormatter`, authentication middleware responses, and existing exception tests.
-2. For a `405 Method Not Allowed`, preserve the exception's `Allow` header when formatting the JSON error.
-3. Preserve `Retry-After` and the current response behavior for rate-limited requests (`429`). Preserve headers from other HTTP exceptions when applicable.
-4. Format authentication-boundary errors through `ApiErrorFormatter` so they use the same `{message, code, errors, meta}` envelope as other API errors.
-5. When empty, `errors` and `meta` must serialize as JSON objects (`{}`), not arrays (`[]`). Check the raw JSON or decoded object type; ordinary path assertions may not catch this distinction.
-6. A server-side failure must have a safe public message. Do not include stack traces, SQL, filesystem paths, credentials, or raw provider responses.
+### Exact files to inspect
 
-### Tests
+- `app/Exceptions/Traits/HandlesApiExceptions.php`
+- `app/Exceptions/Support/ApiErrorFormatter.php`
+- `app/Providers/RouteServiceProvider.php`
+- Existing tests under `tests/Feature/Exceptions/` and `tests/Feature/Api/`
 
-Extend existing HTTP tests to prove a real unsupported-method request returns `405` with `Allow`, a rate-limit response retains `Retry-After`, empty `errors`/`meta` serialize as objects, and a forced server error has a safe body.
+### Required implementation
+
+1. Keep `ApiErrorFormatter` responsible for the JSON body. Do not create separate JSON formats inside individual exception handlers.
+
+2. Update the `MethodNotAllowedHttpException` handler in `HandlesApiExceptions.php`. It currently calls `ApiErrorFormatter::response(...)` but discards the exception headers. Change it to:
+
+   ```php
+   return ApiErrorFormatter::response(
+       'Method not allowed.',
+       Response::HTTP_METHOD_NOT_ALLOWED,
+       'method_not_allowed',
+   )->withHeaders($exception->getHeaders());
+   ```
+
+   Use the actual handler variable name if it is `$e` instead of `$exception`. The important requirement is to call `getHeaders()` and attach those headers to the formatted response.
+
+3. Update the generic `HttpException` handler. It currently formats the body but discards headers. Attach `$exception->getHeaders()` to the formatted response:
+
+   ```php
+   return ApiErrorFormatter::response(
+       $message,
+       $status,
+       ApiErrorFormatter::defaultCodeForStatus($status),
+   )->withHeaders($exception->getHeaders());
+   ```
+
+   Use the existing exception variable name. Do not copy headers from arbitrary `Throwable` objects.
+
+4. Leave the existing `ThrottleRequestsException` handler's header logic in place. It already reads `$e->getHeaders()` and returns `$response->withHeaders($headers)`. Do not remove this behavior. It must continue returning the existing `429` body and `Retry-After` header.
+
+5. Inspect the `RateLimitReachedException` handler. If this exception is returned directly to public API clients and it provides a retry duration, preserve the existing `meta.retry_after_seconds` and also add the standard header:
+
+   ```php
+   $retryAfter = $e->getLimit()->getRemainingSeconds();
+
+   return ApiErrorFormatter::response(
+       'Too many requests. Please try again later.',
+       Response::HTTP_TOO_MANY_REQUESTS,
+       'rate_limited',
+       meta: ['retry_after_seconds' => $retryAfter],
+   )->withHeader('Retry-After', (string) $retryAfter);
+   ```
+
+   Only add this if that handler is part of a public API response path. Do not invent a `getHeaders()` call if the exception does not have that method.
+
+6. Keep the following handlers using `ApiErrorFormatter` without adding arbitrary headers: authentication (`401`), authorization (`403`), not found (`404`), validation (`422`), database errors, storage errors, and unexpected production errors. These exceptions normally have no client instruction header.
+
+7. Do not change `ApiErrorFormatter` so that it automatically copies headers. The formatter receives only message/status/code/errors/meta and should remain a body-formatting helper. Header preservation belongs in the handler because only the handler knows whether headers are present and safe to expose.
+
+8. Confirm that empty values remain JSON objects, not arrays. `ApiErrorFormatter` should continue producing:
+
+   ```json
+   { "errors": {}, "meta": {} }
+   ```
+
+   Do not change this to `[]`.
+
+9. Keep production error messages safe. Do not expose stack traces, SQL, filesystem paths, credentials, or raw provider responses.
+
+### Required tests
+
+Add or extend focused HTTP tests. Do not create a separate test class for every exception.
+
+1. Send an unsupported method to a real API route. Assert:
+   - HTTP status is `405`.
+   - The `Allow` response header exists and contains the actually supported method.
+   - The JSON body has `message`, `code`, `errors`, and `meta`.
+   - `code` is `method_not_allowed`.
+
+2. Exercise the normal Laravel throttle path. Assert:
+   - HTTP status is `429`.
+   - The `Retry-After` response header is preserved.
+   - `meta.retry_after_seconds` is present when the source exception provides it.
+
+3. If the `RateLimitReachedException` handler is publicly reachable, test that path too and assert the same `Retry-After` header plus JSON metadata.
+
+4. Assert the raw decoded JSON types for an error with no details:
+
+   ```php
+   $this->assertIsObject($response->json('errors'));
+   $this->assertIsObject($response->json('meta'));
+   ```
+
+   If the test framework returns associative arrays for decoded objects, inspect the raw JSON or use an equivalent assertion that distinguishes `{}` from `[]`.
+
+5. Assert that a production-style `500` response contains the safe public message and does not contain exception text, SQL, stack traces, credentials, or local file paths.
+
+### Do not do these things
+
+- Do not attach arbitrary values from ordinary exceptions as headers.
+- Do not change `401`, `403`, `404`, or `422` into different status codes.
+- Do not remove `Retry-After` from the existing throttle response.
+- Do not hand-build a second error JSON format.
+- Do not modify unrelated services, routes, or provider integrations.
+
+### P3.2 completion condition
+
+P3.2 is complete only when the changed handlers preserve safe headers, all public error bodies use the standard formatter, focused tests pass, and the existing exception, authorization, throttling, and production-safe error behavior remains intact.
 
 ## P3.3: Preserve validated pagination settings in links
 

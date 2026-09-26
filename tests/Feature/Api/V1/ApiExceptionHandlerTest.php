@@ -98,6 +98,30 @@ class ApiExceptionHandlerTest extends TestCase
             Route::get('/http/server-error', function (): never {
                 throw new HttpException(500, 'Connection timed out');
             });
+
+            Route::get('/http/with-headers', function (): never {
+                $exception = new HttpException(400, 'Invalid request data');
+                $exception->setHeaders(['X-Custom-Header' => 'test-value']);
+                throw $exception;
+            });
+
+            Route::get('/http/test-headers', function (): never {
+                $exception = new HttpException(400, 'Test');
+                $exception->setHeaders([
+                    'X-Custom-Header' => 'safe-value',
+                    'X-Internal-Debug' => 'should-be-removed',
+                    'Retry-After' => '60',
+                ]);
+                throw $exception;
+            });
+
+            Route::get('/zoom/rate-limit', function (): never {
+                $exception = new ZoomExternalFailureException(
+                    'Zoom meeting creation was rate limited.',
+                    429,
+                );
+                throw $exception->withContext(['retry_after_seconds' => 60]);
+            });
         });
     }
 
@@ -171,13 +195,19 @@ class ApiExceptionHandlerTest extends TestCase
     #[Test]
     public function method_not_allowed_responses_use_the_standard_api_payload(): void
     {
-        $this->getJson('/api/v1/_exception-handler-test/method-not-allowed')
+        $response = $this->getJson('/api/v1/_exception-handler-test/method-not-allowed');
+
+        $response
             ->assertStatus(405)
             ->assertJsonStructure(['message', 'code', 'errors', 'meta'])
             ->assertJsonPath('message', 'Method not allowed.')
             ->assertJsonPath('code', 'method_not_allowed')
             ->assertJsonPath('errors', [])
             ->assertJsonPath('meta', []);
+
+        // Assert the Allow header is preserved and passes through the filter
+        $this->assertTrue($response->headers->has('Allow'));
+        $this->assertStringContainsString('POST', $response->headers->get('Allow'));
     }
 
     #[Test]
@@ -291,6 +321,66 @@ class ApiExceptionHandlerTest extends TestCase
             ->assertJsonMissing(['message' => 'Connection timed out'])
             ->assertJsonPath('errors', [])
             ->assertJsonPath('meta', []);
+    }
+
+    #[Test]
+    public function http_exception_headers_are_preserved(): void
+    {
+        $response = $this->getJson('/api/v1/_exception-handler-test/http/with-headers');
+
+        $response
+            ->assertStatus(400)
+            ->assertJsonStructure(['message', 'code', 'errors', 'meta'])
+            ->assertJsonPath('message', 'Invalid request data')
+            ->assertJsonPath('code', 'bad_request')
+            ->assertJsonPath('errors', [])
+            ->assertJsonPath('meta', []);
+
+        // Custom headers should be filtered out (not in whitelist)
+        $this->assertFalse($response->headers->has('X-Custom-Header'));
+    }
+
+    #[Test]
+    public function error_response_empty_fields_are_json_objects_not_arrays(): void
+    {
+        $response = $this->getJson('/api/v1/_exception-handler-test/method-not-allowed');
+
+        // Check the raw JSON response to ensure empty fields are objects, not arrays
+        $content = $response->getContent();
+        $this->assertStringContainsString('"errors":{}', $content);
+        $this->assertStringContainsString('"meta":{}', $content);
+    }
+
+    #[Test]
+    public function only_safe_headers_are_allowed_through_filter(): void
+    {
+        $response = $this->getJson('/api/v1/_exception-handler-test/http/test-headers');
+
+        // Only Retry-After should be present (safe header)
+        $this->assertTrue($response->headers->has('Retry-After'));
+        $this->assertSame('60', $response->headers->get('Retry-After'));
+
+        // Custom headers should be filtered out
+        $this->assertFalse($response->headers->has('X-Custom-Header'));
+        $this->assertFalse($response->headers->has('X-Internal-Debug'));
+    }
+
+    #[Test]
+    public function zoom_rate_limit_includes_retry_after_header_and_metadata(): void
+    {
+        $response = $this->getJson('/api/v1/_exception-handler-test/zoom/rate-limit');
+
+        $response
+            ->assertStatus(503)
+            ->assertJsonStructure(['message', 'code', 'errors', 'meta'])
+            ->assertJsonPath('message', 'Zoom service is temporarily unavailable.')
+            ->assertJsonPath('code', 'zoom_unavailable')
+            ->assertJsonPath('meta.provider', 'zoom')
+            ->assertJsonPath('meta.retry_after_seconds', 60);
+
+        // Assert the Retry-After header is present
+        $this->assertTrue($response->headers->has('Retry-After'));
+        $this->assertSame('60', $response->headers->get('Retry-After'));
     }
 
     #[Test]

@@ -179,12 +179,17 @@ class ZoomMeetingCreateTest extends TestCase
     public function rate_limit_is_a_definite_rejection_for_creation(): void
     {
         Saloon::fake([
-            'users/me/meetings' => ZoomResponseFactory::rateLimitResponse(),
+            'users/me/meetings' => ZoomResponseFactory::rateLimitResponse(60),
         ]);
 
-        $this->expectException(ZoomExternalFailureException::class);
-
-        app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
+        try {
+            app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
+            $this->fail('Expected ZoomExternalFailureException was not thrown.');
+        } catch (ZoomExternalFailureException $exception) {
+            $this->assertSame(429, $exception->getCode());
+            $this->assertSame(60, $exception->context()['retry_after_seconds']);
+            $this->assertSame(['Retry-After' => '60'], $exception->headers());
+        }
     }
 
     /** @test */

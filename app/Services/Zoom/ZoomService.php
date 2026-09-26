@@ -59,11 +59,15 @@ final readonly class ZoomService implements Zoom
 
             return $response->dto();
         } catch (RateLimitReachedException $exception) {
-            throw new ZoomExternalFailureException(
+            $retryAfter = $exception->getLimit()->getRemainingSeconds();
+
+            $zoomException = new ZoomExternalFailureException(
                 'Zoom meeting creation was rate limited.',
                 429,
                 previous: $exception,
             );
+
+            throw $zoomException->withContext(['retry_after_seconds' => $retryAfter]);
         } catch (ZoomExternalFailureException|FatalRequestException $exception) {
             if ($this->isUncertainOutcome($exception)) {
                 throw new ZoomMeetingCreationUnknownException(
