@@ -107,21 +107,32 @@ class TaskService
             $payload = $this->resetTaskNotificationAction->execute($freshTask, $data);
 
             // Handle status transition separately using state machine
+            $statusChanged = false;
             if ($data->hasStatusUpdate() && $data->statusId() !== null) {
                 $newStatus = TaskSystemStatus::from($data->statusId());
-                $freshTask->transitionTo($newStatus, 'status_id');
+                $currentStatus = $freshTask->status_id;
+
+                // Check for no-op state transition (setting to current state)
+                if ($newStatus->value !== $currentStatus) {
+                    // Perform actual state transition
+                    $freshTask->transitionTo($newStatus, 'status_id');
+                    $statusChanged = true;
+                }
+                // If status is same, skip state transition and side effects
             }
 
             // Update other attributes (excluding status_id) and increment version
             $nonStatusAttributes = $payload->attributesWithoutStatus();
             if ($nonStatusAttributes !== []) {
+                // Other fields changed, increment version
                 $freshTask->update(array_merge($nonStatusAttributes, [
                     'version' => $freshTask->version + 1,
                 ]));
-            } elseif ($data->hasStatusUpdate()) {
-                // If only status changed, still increment version
+            } elseif ($statusChanged) {
+                // Only status changed, increment version
                 $freshTask->update(['version' => $freshTask->version + 1]);
             }
+            // If nothing changed (no-op), don't increment version
 
             $freshTask->loadMissing('project:id,slug');
 

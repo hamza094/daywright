@@ -138,4 +138,27 @@ class ProjectVersioningTest extends TestCase
         $this->assertEquals(2, $this->project->version);
         $response->assertJsonPath('data.version', 2);
     }
+
+    /** @test */
+    public function setting_stage_to_current_state_succeeds_without_side_effects(): void
+    {
+        $this->project->refresh();
+        $currentStage = $this->project->stage_id;
+        $originalVersion = $this->project->version;
+
+        // Set stage to current state (no-op transition)
+        $response = $this->patchJson(route('api.v1.projects.stage.update', ['project' => $this->project]), [
+            'stage' => $currentStage,
+            'version' => $originalVersion,
+        ])->assertOk();
+
+        // Version should NOT increment for no-op transitions
+        $this->project->refresh();
+        $this->assertEquals($originalVersion, $this->project->version);
+        $this->assertEquals($currentStage, $this->project->stage_id);
+
+        // Stage should remain the same
+        $response->assertJsonPath('data.stage.id', $currentStage);
+        $response->assertJsonPath('data.version', $originalVersion);
+    }
 }

@@ -119,7 +119,7 @@ export default {
       const projectVersion = this.$store.state.project.project.version || 1;
 
       axios
-        .put(`/projects/${this.slug}/stage`, { ...data, version: projectVersion })
+        .patch(`/projects/${this.slug}/stage`, { ...data, version: projectVersion })
 
         .then((response) => {
           this.$Progress.finish();
@@ -149,9 +149,9 @@ export default {
 
     stageChange(stageId) {
       if (stageId === this.getStage) {
-        return this.$vToastify.error('Stage already selected');
+        this.$vToastify.info('Stage already selected');
+        // Still proceed with request for idempotency and network retries
       }
-
       this.updateProject({ stage: stageId });
     },
 

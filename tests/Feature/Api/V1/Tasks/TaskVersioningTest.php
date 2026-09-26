@@ -97,4 +97,61 @@ class TaskVersioningTest extends TestCase
         $this->assertEquals(2, $task->version);
         $response->assertJsonPath('data.version', 2);
     }
+
+    /** @test */
+    public function setting_task_status_to_current_state_succeeds_without_side_effects(): void
+    {
+        $task = $this->project->addTask('Test Task');
+        $task->refresh();
+        $currentStatus = $task->status_id;
+        $originalVersion = $task->version;
+
+        // Set status to current state (no-op transition)
+        $response = $this->patchJson(route('api.v1.tasks.update', [
+            'project' => $this->project->slug,
+            'task' => $task->id,
+        ]), [
+            'status_id' => $currentStatus,
+            'version' => $originalVersion,
+        ])->assertOk();
+
+        // Version should NOT increment for no-op transitions
+        $task->refresh();
+        $this->assertEquals($originalVersion, $task->version);
+        $this->assertEquals($currentStatus, $task->status_id);
+
+        // Status should remain the same
+        $response->assertJsonPath('data.status.id', $currentStatus);
+        $response->assertJsonPath('data.version', $originalVersion);
+    }
+
+    /** @test */
+    public function setting_task_status_to_current_state_with_other_field_changes_increments_version(): void
+    {
+        $task = $this->project->addTask('Test Task');
+        $task->refresh();
+        $currentStatus = $task->status_id;
+        $originalVersion = $task->version;
+
+        // Set status to current state but change another field
+        $response = $this->patchJson(route('api.v1.tasks.update', [
+            'project' => $this->project->slug,
+            'task' => $task->id,
+        ]), [
+            'status_id' => $currentStatus,
+            'title' => 'Updated Title',
+            'version' => $originalVersion,
+        ])->assertOk();
+
+        // Version should increment because title changed
+        $task->refresh();
+        $this->assertEquals($originalVersion + 1, $task->version);
+        $this->assertEquals($currentStatus, $task->status_id);
+        $this->assertEquals('Updated Title', $task->title);
+
+        // Response should reflect the changes
+        $response->assertJsonPath('data.status.id', $currentStatus);
+        $response->assertJsonPath('data.version', $originalVersion + 1);
+        $response->assertJsonPath('data.title', 'Updated Title');
+    }
 }

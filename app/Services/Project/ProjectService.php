@@ -164,6 +164,18 @@ class ProjectService
 
             // Handle stage transition using state machine
             $newStage = $data->stage();
+            $currentStage = $freshProject->stage_id;
+
+            // Check for no-op state transition (setting to current state)
+            if ($newStage->value === $currentStage) {
+                // Allow the request but skip state transition and side effects
+                // Do not increment version since nothing changed
+                $freshProject->load('stage');
+
+                return $freshProject;
+            }
+
+            // Perform actual state transition
             $freshProject->transitionTo($newStage, 'stage_id');
 
             // Reload stage relationship after state change to ensure fresh data
@@ -177,6 +189,9 @@ class ProjectService
             ]);
 
             $freshProject->load('stage');
+
+            // Send notification only when stage actually changed
+            $this->sendNotification($freshProject, $this->authenticatedUser());
 
             return $freshProject;
         });
