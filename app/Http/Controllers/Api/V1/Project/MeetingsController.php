@@ -27,6 +27,7 @@ class MeetingsController extends ApiController
             $isPrevious,
             $request->perPage(),
             $request->pageNumber(),
+            $request->validatedPaginationQuery(),
         );
 
         return MeetingResource::collection($meetings)->response();

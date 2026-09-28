@@ -11,25 +11,26 @@
 3. [Services](#3-services)
 4. [Repositories](#4-repositories)
 5. [Data Transfer Objects (DTOs)](#5-data-transfer-objects-dtos)
-6. [Controllers](#6-controllers)
-7. [Form Requests](#7-form-requests)
-8. [API Resources](#8-api-resources)
-9. [Models](#9-models)
-10. [Enums](#10-enums)
-11. [Events & Listeners](#11-events--listeners)
-12. [Jobs](#12-jobs)
-13. [Policies](#13-policies)
-14. [Traits](#14-traits)
-15. [Query Builders](#15-query-builders)
-16. [Validation Rules](#16-validation-rules)
-17. [Notifications](#17-notifications)
-18. [Interfaces](#18-interfaces)
-19. [Exceptions & Error Handling](#19-exceptions--error-handling)
-20. [Logging & Operational Debuggability](#20-logging--operational-debuggability)
-21. [Testing](#21-testing)
-22. [API Response Standards](#22-api-response-standards)
-23. [API Security & Authorization](#23-api-security--authorization)
-24. [Durable Webhooks & Third-Party Integrations](#24-durable-webhooks--third-party-integrations)
+6. [Pagination & Query String Preservation](#6-pagination--query-string-preservation)
+7. [Controllers](#7-controllers)
+8. [Form Requests](#8-form-requests)
+9. [API Resources](#9-api-resources)
+10. [Models](#10-models)
+11. [Enums](#11-enums)
+12. [Events & Listeners](#12-events--listeners)
+13. [Jobs](#13-jobs)
+14. [Policies](#14-policies)
+15. [Traits](#15-traits)
+16. [Query Builders](#16-query-builders)
+17. [Validation Rules](#17-validation-rules)
+18. [Notifications](#18-notifications)
+19. [Interfaces](#19-interfaces)
+20. [Exceptions & Error Handling](#20-exceptions--error-handling)
+21. [Logging & Operational Debuggability](#21-logging--operational-debuggability)
+22. [Testing](#22-testing)
+23. [API Response Standards](#23-api-response-standards)
+24. [API Security & Authorization](#24-api-security--authorization)
+25. [Durable Webhooks & Third-Party Integrations](#25-durable-webhooks--third-party-integrations)
 
 ---
 
@@ -272,7 +273,93 @@ DTOs are immutable value objects for transferring data between layers with type 
 
 ---
 
-## 6. Controllers
+## 6. Pagination & Query String Preservation
+
+### Purpose
+
+Ensure pagination links preserve query context (filters, sort, page size) across page navigation to prevent data leakage and maintain user query state.
+
+### Pattern
+
+Use the `InteractsWithApiQueryPagination` trait in Form Requests and call `validatedPaginationQuery()` to extract validated query parameters for pagination link preservation.
+
+### Implementation
+
+**Form Request Trait:**
+
+```php
+// app/Http/Requests/Api/V1/Concerns/InteractsWithApiQueryPagination.php
+trait InteractsWithApiQueryPagination
+{
+    public function validatedPaginationQuery(): array
+    {
+        return array_filter(
+            Arr::except($this->validated(), ['page']),
+            static fn (mixed $value): bool => $value !== null && $value !== [],
+        );
+    }
+}
+```
+
+**Controller Usage:**
+
+```php
+// Pass validated pagination query to services/repositories
+$paginatedResults = $service->paginate(
+    $filters,
+    $sort,
+    $request->perPage(),
+    $request->pageNumber(),
+    $request->validatedPaginationQuery(), // Extract validated parameters
+);
+```
+
+**Service/Repository Usage:**
+
+```php
+// Append validated parameters to paginator
+return $query->paginate($perPage, ['*'], 'page', $page)
+    ->appends($paginationQuery);
+```
+
+### Guidelines
+
+- ✅ Use `validatedPaginationQuery()` for all paginated endpoints with filters/sort/custom page size
+- ✅ The method automatically excludes `page` (Laravel handles this) and removes null/empty values
+- ✅ Use explicit `appends($paginationQuery)` instead of automatic `withQueryString()` for security
+- ✅ Preserve existing API contracts when updating pagination (e.g., `request=previous` for meetings)
+- ✅ Add regression tests that follow `links.next` and verify filter/sort/page size continuity
+- ❌ Do not use `withQueryString()` blindly (may include unwanted parameters)
+- ❌ Do not manually include `page` in appended parameters (Laravel manages this)
+- ❌ Do not let pagination links lose filter/sort context between pages
+
+### Example
+
+**Request:** `GET /api/v1/projects?filter[search]=Audit&sort=name&per_page=1&page=1`
+
+**Pagination Links (Correct):**
+
+```json
+{
+  "links": {
+    "next": "/api/v1/projects?filter[search]=Audit&sort=name&per_page=1&page=2"
+  }
+}
+```
+
+**Pagination Links (Incorrect - P3.3 Bug):**
+
+```json
+{
+  "links": {
+    "next": "/api/v1/projects?page=2" // Lost filter, sort, per_page
+  }
+}
+```
+
+---
+
+## 7. Controllers
 
 ### Purpose
 
@@ -328,7 +415,7 @@ Controller (base)
 
 ---
 
-## 7. Form Requests
+## 8. Form Requests
 
 ### Purpose
 
@@ -347,10 +434,11 @@ Form Requests handle validation and authorization for incoming HTTP requests.
 - ✅ Use `prepareForValidation()` for pre-validation data manipulation
 - ✅ Access route parameters with `$this->route('param')`
 - ✅ Use array notation for complex rules (easier to read)
+- ✅ For paginated endpoints, use the `InteractsWithApiQueryPagination` trait and call `validatedPaginationQuery()` to extract validated query parameters (excluding `page`) for pagination link preservation
 
 ---
 
-## 8. API Resources
+## 9. API Resources
 
 ### Purpose
 
@@ -373,7 +461,7 @@ Resources transform Eloquent models into standardized JSON API responses.
 
 ---
 
-## 9. Models
+## 10. Models
 
 ### Purpose
 
@@ -410,7 +498,7 @@ Eloquent models represent database tables with relationships, scopes, and domain
 
 ---
 
-## 10. Enums
+## 11. Enums
 
 ### Purpose
 
@@ -429,7 +517,7 @@ Enums define fixed sets of values with associated logic.
 
 ---
 
-## 11. Events & Listeners
+## 12. Events & Listeners
 
 ### Purpose
 
@@ -450,7 +538,7 @@ Events represent domain occurrences; Listeners handle side effects.
 
 ---
 
-## 12. Jobs
+## 13. Jobs
 
 ### Purpose
 
@@ -473,7 +561,7 @@ When a durable webhook inbox owns retry scheduling, the job must make one proces
 
 ---
 
-## 13. Policies
+## 14. Policies
 
 ### Purpose
 
@@ -493,7 +581,7 @@ Policies define authorization logic for model access.
 
 ---
 
-## 14. Traits
+## 15. Traits
 
 ### Purpose
 
@@ -513,7 +601,7 @@ Traits provide reusable functionality across multiple classes.
 
 ---
 
-## 15. Query Builders
+## 16. Query Builders
 
 ### Purpose
 
@@ -533,7 +621,7 @@ Custom Query Builders extend Eloquent's Builder with model-specific query method
 
 ---
 
-## 16. Validation Rules
+## 17. Validation Rules
 
 ### Purpose
 
@@ -552,7 +640,7 @@ Custom validation rules encapsulate complex validation logic.
 
 ---
 
-## 17. Notifications
+## 18. Notifications
 
 ### Purpose
 
@@ -572,7 +660,7 @@ Notifications handle multi-channel user notifications.
 
 ---
 
-## 18. Interfaces
+## 19. Interfaces
 
 ### Purpose
 
@@ -591,7 +679,7 @@ Interfaces define contracts for services and integrations.
 
 ---
 
-## 19. Exceptions & Error Handling
+## 20. Exceptions & Error Handling
 
 ### Purpose
 
@@ -616,7 +704,7 @@ Provide a unified, secure, and developer-friendly approach to throwing and rende
 
 ---
 
-## 20. Logging & Operational Debuggability
+## 21. Logging & Operational Debuggability
 
 ### Purpose
 
@@ -641,7 +729,7 @@ Ensure the application is 100% "2 AM Debuggable". When production breaks, system
 
 ---
 
-## 21. Testing
+## 22. Testing
 
 ### Directory Structure
 
@@ -738,11 +826,12 @@ abstract class TestCase extends BaseTestCase
 - ✅ Move repeated test-only setup into shared helpers instead of copying it across files
 - ✅ Use `Http::preventStrayRequests()` to catch unmocked HTTP calls
 - ✅ Keep authentication and authorization middleware enabled in security-boundary tests. Exercise real session, first-party token, and developer-token paths rather than disabling the middleware being verified.
+- ✅ For paginated endpoints, add regression tests that follow `links.next` and verify filter/sort/page size continuity
 - ❌ Do not group feature tests by controller or service implementation folder when the real boundary is a domain or endpoint
 
 ---
 
-## 22. API Response Standards
+## 23. API Response Standards
 
 ### Success Response Structure
 
@@ -811,7 +900,7 @@ All API errors return a strict JSON payload defined by `ApiErrorFormatter`.
 
 ---
 
-## 23. API Security & Authorization
+## 24. API Security & Authorization
 
 ### Purpose
 
@@ -870,7 +959,7 @@ To protect against abuse and resource starvation, enforce Portkey-style multi-la
 
 ---
 
-## 24. Durable Webhooks & Third-Party Integrations
+## 25. Durable Webhooks & Third-Party Integrations
 
 ### Purpose
 

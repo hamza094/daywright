@@ -17,9 +17,10 @@ class ProjectFiltersRepository
     use EscapesLikeWildcards;
 
     /**
+     * @param  array<string, mixed>  $paginationQuery
      * @return LengthAwarePaginator<int, Project>
      */
-    public function filter(AdminProjectFilters $filters, int $perPage): LengthAwarePaginator
+    public function filter(AdminProjectFilters $filters, int $perPage, array $paginationQuery = []): LengthAwarePaginator
     {
         $query = Project::query()
             ->with('stage', 'user')
@@ -72,7 +73,9 @@ class ProjectFiltersRepository
 
         $this->applySort($query, $filters->sort ?? '-created_at');
 
-        return $query->paginate($perPage);
+        $paginator = $query->paginate($perPage);
+
+        return $paginator->appends($paginationQuery);
     }
 
     /**

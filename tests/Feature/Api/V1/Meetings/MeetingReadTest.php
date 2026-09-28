@@ -92,6 +92,31 @@ class MeetingReadTest extends TestCase
     }
 
     /** @test */
+    public function pagination_links_preserve_previous_meeting_query(): void
+    {
+        $this->actingAs($this->user);
+
+        Meeting::factory()->count(3)->for($this->project)->for($this->user)->create([
+            'start_time' => now()->subDays(1),
+        ]);
+
+        $response = $this->getJson($this->apiV1Route('meetings.index', ['project' => $this->project], [
+            'request' => 'previous',
+            'per_page' => 1,
+        ]))->assertOk();
+
+        $nextUrl = $response->json('links.next');
+        $this->assertNotNull($nextUrl);
+        $this->assertStringContainsString('request=previous', $nextUrl);
+        $this->assertStringContainsString('per_page=1', $nextUrl);
+
+        $this->getJson($nextUrl)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('meta.per_page', 1);
+    }
+
+    /** @test */
     public function it_rejects_unsupported_meeting_query_parameters(): void
     {
         $this->actingAs($this->user);

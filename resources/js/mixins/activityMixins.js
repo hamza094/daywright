@@ -2,22 +2,28 @@ export default {
   data() {
     return {
       activityTypes: [
-        { status: 'all', label: 'All Activities', icon: 'fa-solid fa-layer-group', color: 'main', query: '' },
-        { status: 'my', label: 'My Activities', icon: 'fa-solid fa-user', color: 'purple', query: '?mine=1' },
+        { status: 'all', label: 'All Activities', icon: 'fa-solid fa-layer-group', color: 'main', filter: null },
+        { status: 'my', label: 'My Activities', icon: 'fa-solid fa-user', color: 'purple', filter: { type: 'mine' } },
         {
           status: 'project',
           label: 'Project Activities',
           icon: 'fa-regular fa-star',
           color: 'green',
-          query: '?specifics=1',
+          filter: { type: 'specifics' },
         },
-        { status: 'task', label: 'Task Activities', icon: 'fa-solid fa-tasks', color: 'primary', query: '?tasks=1' },
+        {
+          status: 'task',
+          label: 'Task Activities',
+          icon: 'fa-solid fa-tasks',
+          color: 'primary',
+          filter: { type: 'tasks' },
+        },
         {
           status: 'member',
           label: 'Member Activities',
           icon: 'fa-solid fa-users',
           color: 'danger',
-          query: '?members=1',
+          filter: { type: 'members' },
         },
       ],
       activityData: {

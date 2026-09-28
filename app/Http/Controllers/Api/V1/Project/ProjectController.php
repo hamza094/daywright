@@ -40,7 +40,7 @@ class ProjectController extends ApiController
             $request->sort(),
             $request->perPage(),
             $request->pageNumber(),
-            $request->url(),
+            $request->validatedPaginationQuery(),
         );
 
         return ProjectCollectionResource::collection($paginatedProjects)->response();

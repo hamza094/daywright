@@ -22,7 +22,7 @@ class ProjectController extends ApiController
     ): JsonResponse {
         $filters = $request->filters();
 
-        $projects = $repository->filter($filters, $request->perPage());
+        $projects = $repository->filter($filters, $request->perPage(), $request->validatedPaginationQuery());
         $appliedFilters = $buildAppliedFilters->execute($filters);
 
         $this->authenticatedUser()->load('oauthConnections');
