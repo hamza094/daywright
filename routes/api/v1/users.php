@@ -26,6 +26,7 @@ Route::prefix('users/me')->name('users.me.')->group(function (): void {
 
     Route::singleton('subscription', SubscriptionController::class)
         ->creatable()
+        ->except(['create', 'edit'])
         ->middlewareFor('show', ['tokenAbility:account:read'])
         ->middlewareFor('store', ['session.auth', Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-billing'])
         ->middlewareFor('update', ['session.auth', 'subscription', 'throttle:sensitive-billing'])
