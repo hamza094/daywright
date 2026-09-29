@@ -4410,7 +4410,7 @@
     "/v1/projects/{project}/stage": {
       "patch": {
         "operationId": "projects.updateStage",
-        "description": "Updates the stage of a specified project. The new stage is provided in the request payload.\nStage changes trigger notifications to all project members.",
+        "description": "Updates the stage of a specified project. The new stage is provided in the request payload.\nStage changes trigger notifications to all project members.\nSetting the stage to its current state succeeds without side effects (no notifications) for idempotency.\nVersion increments only when the stage actually changes, not for no-op transitions.",
         "summary": "Update Project Stage",
         "tags": ["Projects"],
         "parameters": [
@@ -5839,9 +5839,9 @@
         }
       }
     },
-    "/v1/projects/{project}/tasks/{task}/assign": {
-      "patch": {
-        "operationId": "tasks.assignMembers",
+    "/v1/projects/{project}/tasks/{task}/assignees": {
+      "post": {
+        "operationId": "tasks.assignees.store",
         "description": "Assigns one or more project members to the specified task. This triggers a TaskAssigned email notification\nto the assigned members. Only the task owner or project owner can assign members.",
         "summary": "Assign members to a task",
         "tags": ["Tasks"],
@@ -6021,9 +6021,9 @@
         }
       }
     },
-    "/v1/projects/{project}/tasks/{task}/unassign": {
-      "patch": {
-        "operationId": "tasks.unassignMember",
+    "/v1/projects/{project}/tasks/{task}/assignees/{user}": {
+      "delete": {
+        "operationId": "tasks.assignees.destroy",
         "description": "Removes one assigned project member from the specified task.",
         "summary": "Unassign a member from a task",
         "tags": ["Tasks"],
@@ -6047,26 +6047,14 @@
             }
           },
           {
-            "name": "Idempotency-Key",
-            "in": "header",
+            "name": "user",
+            "in": "path",
             "required": true,
-            "description": "Required unique key used to prevent duplicate requests.",
             "schema": {
-              "type": "string"
-            },
-            "example": "req_abc123"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TaskMemberUnassignRequestData"
-              }
+              "type": "integer"
             }
           }
-        },
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -6101,14 +6089,6 @@
                   "required": ["data", "meta", "links"]
                 }
               }
-            },
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "Indicates whether this response is a replay of a previous request with the same Idempotency-Key. Set to \"true\" when replaying.",
-                "schema": {
-                  "type": "string"
-                }
-              }
             }
           },
           "404": {
@@ -6141,16 +6121,6 @@
               }
             }
           },
-          "422": {
-            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            }
-          },
           "429": {
             "description": "Too many requests",
             "content": {
@@ -6169,30 +6139,12 @@
               }
             }
           },
-          "400": {
-            "description": "Bad request (bad_request) - the configured idempotency header is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
           "409": {
-            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project or task is archived (project_archived or task_archived)",
+            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before retrying the request.",
-                "schema": {
-                  "type": "integer"
                 }
               }
             }
@@ -9261,31 +9213,19 @@
       "TaskMemberAssignRequestData": {
         "type": "object",
         "properties": {
-          "members": {
+          "user_ids": {
             "type": "array",
-            "description": "Member identifiers to assign to the task.\n- Prevents assigning a task to users who are already assigned.\n- Ensures tasks can only be assigned to active members of the project.",
+            "description": "User identifiers to assign to the task.\n- Prevents assigning a task to users who are already assigned.\n- Ensures tasks can only be assigned to active members of the project.",
             "examples": [[3, 5]],
             "items": {
               "type": "integer",
-              "description": "Individual member identifier.",
+              "description": "Individual user identifier.",
               "examples": [3]
             }
           }
         },
-        "required": ["members"],
+        "required": ["user_ids"],
         "title": "TaskMemberAssignRequestData"
-      },
-      "TaskMemberUnassignRequestData": {
-        "type": "object",
-        "properties": {
-          "member": {
-            "type": "integer",
-            "description": "Assigned member identifier to remove from the task.",
-            "examples": [3]
-          }
-        },
-        "required": ["member"],
-        "title": "TaskMemberUnassignRequestData"
       },
       "TaskStatusIndex": {
         "type": "object",

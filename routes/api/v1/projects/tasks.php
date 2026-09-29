@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Task\ArchiveTaskController;
-use App\Http\Controllers\Api\V1\Task\AssignTaskMembersController;
+use App\Http\Controllers\Api\V1\Task\DestroyTaskAssigneeController;
 use App\Http\Controllers\Api\V1\Task\RestoreTaskController;
+use App\Http\Controllers\Api\V1\Task\StoreTaskAssigneesController;
 use App\Http\Controllers\Api\V1\Task\TaskController;
 use App\Http\Controllers\Api\V1\Task\TaskMemberSearchController;
-use App\Http\Controllers\Api\V1\Task\UnassignTaskMemberController;
 use WendellAdriel\Idempotency\Enums\IdempotencyScope;
 use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
@@ -28,13 +28,15 @@ Route::name('task.')
     ->prefix('tasks/{task}')
     ->group(function (): void {
         Route::middleware(['can:manage,task'])->group(function (): void {
-            Route::patch('assign', AssignTaskMembersController::class)
+            // REST endpoint for assigning task members
+            Route::post('assignees', StoreTaskAssigneesController::class)
                 ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:projects:write'])
-                ->name('assign');
+                ->name('assignees.store');
 
-            Route::patch('unassign', UnassignTaskMemberController::class)
-                ->middleware([Idempotent::using(scope: IdempotencyScope::User), 'tokenAbility:projects:write'])
-                ->name('unassign');
+            // REST endpoint for unassigning a task member
+            Route::delete('assignees/{user}', DestroyTaskAssigneeController::class)
+                ->middleware('tokenAbility:projects:write')
+                ->name('assignees.destroy');
         });
 
         Route::middleware(['can:access,task'])->group(function (): void {

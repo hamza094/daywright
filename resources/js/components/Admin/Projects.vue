@@ -446,8 +446,8 @@ export default {
       this.sweetAlert('Yes, Delete Selected ' + this.selectedProjects.length + ' Projects!').then((result) => {
         if (result.value) {
           axios
-            .delete('/admin/projects/bulk-delete', {
-              data: { project_ids: this.selectedProjects },
+            .delete('/admin/projects', {
+              data: { ids: this.selectedProjects },
             })
             .then((response) => {
               this.$vToastify.success(getResponseMessage(response) || 'Projects deleted successfully.');

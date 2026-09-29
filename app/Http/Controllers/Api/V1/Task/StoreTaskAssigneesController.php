@@ -13,7 +13,7 @@ use App\Services\Task\TaskService;
 use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
-final class AssignTaskMembersController extends ApiController
+final class StoreTaskAssigneesController extends ApiController
 {
     /**
      * Assign members to a task.
@@ -21,7 +21,7 @@ final class AssignTaskMembersController extends ApiController
      * Assigns one or more project members to the specified task. This triggers a TaskAssigned email notification
      * to the assigned members. Only the task owner or project owner can assign members.
      */
-    #[Endpoint(operationId: 'tasks.assignMembers')]
+    #[Endpoint(operationId: 'tasks.assignees.store')]
     public function __invoke(Project $project, Task $task, TaskMembersRequest $request, TaskService $service): JsonResponse
     {
         $task = $service->assignMembers($task, $request->toDto(), $project, $this->authenticatedUser());

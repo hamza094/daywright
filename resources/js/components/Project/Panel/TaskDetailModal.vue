@@ -39,7 +39,7 @@
                 </span>
               </span>
             </p>
-            <span class="text-danger font-italic" v-if="errors?.member" v-text="errors?.member"></span>
+            <span class="text-danger font-italic" v-if="errors?.user" v-text="errors?.user"></span>
 
             <p v-if="task.due_at">
               <small><b>Task due: </b> </small> {{ task.due_at | datetime }} {{ displayTimezone }}
@@ -162,7 +162,6 @@ import { mapMutations, mapActions, mapState } from 'vuex';
 import TopPanel from './Modal/TopArea.vue';
 import TaskDescription from './Modal/TaskDescription.vue';
 import TaskMembers from './Modal/TaskMembers.vue';
-import { createIdempotentRequest } from '../../../services/IdempotencyRequestService';
 import { modalClose } from '../../../mixins/modalClose';
 import { getDisplayTimezone } from '../../../utils/dateTime';
 import { getObjectData, getResponseMessage, parseApiError } from '../../../utils/apiResponse.js';
@@ -211,8 +210,6 @@ export default {
     },
   },
   created() {
-    this.unassignMemberRequest = createIdempotentRequest();
-
     window.addEventListener('beforeunload', this.handleBeforeUnload);
 
     this.$bus.on('close-members-popup', () => {
@@ -221,7 +218,6 @@ export default {
   },
 
   beforeDestroy() {
-    this.unassignMemberRequest?.reset();
     window.removeEventListener('beforeunload', this.handleBeforeUnload);
   },
 
@@ -299,8 +295,8 @@ export default {
       this.setErrors([]);
     },
     unassignMember(taskId, memberId) {
-      this.unassignMemberRequest
-        .patch(url(this.slug, taskId) + '/unassign', { member: memberId }, { useProgress: true })
+      axios
+        .delete(url(this.slug, taskId) + '/assignees/' + memberId, { useProgress: true })
         .then((response) => {
           const taskData = getObjectData(response);
 

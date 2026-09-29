@@ -25,8 +25,7 @@ class IdempotentRoutesRegistrationTest extends TestCase
             'api.v1.users.me.subscription.store',
             'api.v1.projects.messages.store',
             'api.v1.send.invitation',
-            'api.v1.task.assign',
-            'api.v1.task.unassign',
+            'api.v1.task.assignees.store',
             'api.v1.meetings.store',
             'api.v1.meetings.update',
         ] as $routeName) {

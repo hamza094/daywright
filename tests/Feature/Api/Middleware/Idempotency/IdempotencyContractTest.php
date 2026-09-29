@@ -217,14 +217,14 @@ final class IdempotencyContractTest extends TestCase
         ]);
 
         $headers = $this->idempotencyHeaders('phase-six-task-assign');
-        $route = route('api.v1.task.assign', [
+        $route = route('api.v1.task.assignees.store', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]);
-        $payload = ['members' => [$member->id]];
+        $payload = ['user_ids' => [$member->id]];
 
-        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
-        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+        $this->withHeaders($headers)->postJson($route, $payload)->assertOk();
+        $this->withHeaders($headers)->postJson($route, $payload)->assertOk();
 
         $this->assertSame(1, $task->assignee()->whereKey($member->id)->count());
         $this->assertDatabaseHas('task_user', [
@@ -234,20 +234,18 @@ final class IdempotencyContractTest extends TestCase
     }
 
     #[Test]
-    public function task_unassign_replays_without_error_after_the_first_removal(): void
+    public function task_unassign_succeeds_on_first_removal(): void
     {
         $task = $this->project->addTask('phase six task unassign');
         $task->assignee()->attach($this->user);
 
-        $headers = $this->idempotencyHeaders('phase-six-task-unassign');
-        $route = route('api.v1.task.unassign', [
+        $route = route('api.v1.task.assignees.destroy', [
             'project' => $this->project->slug,
             'task' => $task->id,
+            'user' => $this->user->id,
         ]);
-        $payload = ['member' => $this->user->id];
 
-        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
-        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+        $this->deleteJson($route)->assertOk();
 
         $this->assertDatabaseMissing('task_user', [
             'task_id' => $task->id,
