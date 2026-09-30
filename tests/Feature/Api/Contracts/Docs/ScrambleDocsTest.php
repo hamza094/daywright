@@ -309,10 +309,10 @@ class ScrambleDocsTest extends TestCase
         // Routes that use auth:sanctum middleware should have 401 responses
         $authSanctumRoutes = [
             '/v1/projects' => ['get', 'post'],
-            '/v1/projects/{project}' => ['get', 'put', 'delete'],
+            '/v1/projects/{project}' => ['get', 'patch', 'delete'],
             '/v1/projects/{project}/tasks' => ['get', 'post'],
             '/v1/users/me' => ['get'],
-            '/v1/users/{user}' => ['get', 'put'], // DELETE requires firstParty.auth
+            '/v1/users/{user}' => ['get', 'put', 'patch'], // DELETE requires firstParty.auth
         ];
 
         foreach ($authSanctumRoutes as $path => $methods) {
@@ -517,7 +517,7 @@ class ScrambleDocsTest extends TestCase
             ['/v1/projects', 'post', '403', 'plan_limit_exceeded'],
             ['/v1/projects/{project}/stage', 'patch', '422', 'invalid_state_transition'],
             ['/v1/projects/{project}/tasks', 'post', '403', 'plan_limit_exceeded'],
-            ['/v1/projects/{project}/tasks/{task}', 'put', '422', 'invalid_state_transition'],
+            ['/v1/projects/{project}/tasks/{task}', 'patch', '422', 'invalid_state_transition'],
             ['/v1/projects/{project}/tasks/{task}', 'delete', '403', 'task_not_trashed'],
             ['/v1/projects/{project}/tasks/{task}/restore', 'patch', '403', 'task_not_trashed'],
             ['/v1/dashboard/insights', 'get', '403', 'subscription_required'],
@@ -546,13 +546,7 @@ class ScrambleDocsTest extends TestCase
             '/v1/projects/{project}',
             '/v1/projects/{project}/tasks/{task}',
         ] as $path) {
-            $this->assertArrayHasKey('put', $paths[$path] ?? [], "{$path} should document PUT");
             $this->assertArrayHasKey('patch', $paths[$path] ?? [], "{$path} should document PATCH");
-            $this->assertNotSame(
-                $paths[$path]['put']['operationId'] ?? null,
-                $paths[$path]['patch']['operationId'] ?? null,
-                "{$path} PUT and PATCH should have distinct operation IDs"
-            );
         }
     }
 
@@ -586,7 +580,7 @@ class ScrambleDocsTest extends TestCase
             '/v1/projects/{project}/conversations' => 'post', // binds {project}
             '/v1/projects/{project}/activities' => 'get', // binds {project}
             '/v1/projects/{project}/tasks' => 'post', // binds {project}
-            '/v1/projects/{project}/tasks/{task}' => 'put', // Scramble publishes the resource update as PUT
+            '/v1/projects/{project}/tasks/{task}' => 'patch',
         ];
 
         foreach ($nonTrashedRoutes as $path => $method) {
@@ -612,7 +606,7 @@ class ScrambleDocsTest extends TestCase
         $projectDescription = $paths['/v1/projects/{project}/conversations']['post']['responses']['409']['description'] ?? '';
         $this->assertStringContainsString('project_archived', $projectDescription);
 
-        $taskDescription = $paths['/v1/projects/{project}/tasks/{task}']['put']['responses']['409']['description'] ?? '';
+        $taskDescription = $paths['/v1/projects/{project}/tasks/{task}']['patch']['responses']['409']['description'] ?? '';
         $this->assertStringContainsString('project_archived', $taskDescription);
         $this->assertStringContainsString('task_archived', $taskDescription);
 

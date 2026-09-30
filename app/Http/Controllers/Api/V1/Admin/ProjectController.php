@@ -11,6 +11,7 @@ use App\Http\Requests\Api\V1\Admin\ProjectBulkDeleteRequest;
 use App\Http\Requests\Api\V1\Admin\ProjectFilterRequest;
 use App\Http\Resources\Api\V1\Admin\ProjectResource;
 use App\Repository\Admin\ProjectFiltersRepository;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 class ProjectController extends ApiController
@@ -36,6 +37,13 @@ class ProjectController extends ApiController
             ->response();
     }
 
+    /**
+     * Bulk delete projects
+     *
+     * Deletes multiple projects by their IDs. Requires admin privileges and 2FA.
+     * Maximum 200 projects per request.
+     */
+    #[Endpoint(operationId: 'admin.projects.destroyMany')]
     public function bulkDelete(
         ProjectBulkDeleteRequest $request,
         BulkDeleteProjectsAction $bulkDeleteProjectsAction,

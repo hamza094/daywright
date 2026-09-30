@@ -29,7 +29,11 @@ final class UpdateProjectStageController extends ApiController
     #[ApiError(ErrorCode::EDIT_CONFLICT)]
     public function __invoke(Project $project, StageRequest $request, ProjectService $projectService): JsonResponse
     {
-        $project = $projectService->updateStageStatus($project, $request->projectStageUpdateData());
+        $project = $projectService->updateStageStatus(
+            $project,
+            $request->projectStageUpdateData(),
+            $this->authenticatedUser(),
+        );
 
         return $this->respondUpdated(new ProjectStageResource($project));
     }

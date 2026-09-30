@@ -247,7 +247,7 @@ class ProjectFeatureTest extends TestCase
     /** @test */
     public function resubmitting_current_project_values_is_accepted(): void
     {
-        $project = Project::factory()->create(['name' => 'Xepra Tech']);
+        $project = Project::factory()->for($this->user)->create(['name' => 'Xepra Tech']);
         $originalName = $project->name;
 
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $project]),

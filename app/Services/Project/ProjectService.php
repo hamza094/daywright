@@ -139,7 +139,7 @@ class ProjectService
     /**
      * @throws InvalidStateTransitionException
      */
-    public function updateStageStatus(Project $project, ProjectStageUpdateData $data): Project
+    public function updateStageStatus(Project $project, ProjectStageUpdateData $data, User $actor): Project
     {
         if ($data->version() === null) {
             throw ValidationException::withMessages([
@@ -147,7 +147,9 @@ class ProjectService
             ]);
         }
 
-        return DB::transaction(function () use ($project, $data): Project {
+        $stageChanged = false;
+
+        $updatedProject = DB::transaction(function () use ($project, $data, &$stageChanged): Project {
             // Re-fetch with lock to ensure fresh state and prevent race conditions
             $freshProject = Project::query()
                 ->whereKey($project->getKey())
@@ -177,6 +179,7 @@ class ProjectService
 
             // Perform actual state transition
             $freshProject->transitionTo($newStage, 'stage_id');
+            $stageChanged = true;
 
             // Reload stage relationship after state change to ensure fresh data
             $freshProject->load('stage');
@@ -190,11 +193,15 @@ class ProjectService
 
             $freshProject->load('stage');
 
-            // Send notification only when stage actually changed
-            $this->sendNotification($freshProject, $this->authenticatedUser());
-
             return $freshProject;
         });
+
+        // Send notification only after the transaction commits and only when the stage changed.
+        if ($stageChanged) {
+            $this->sendNotification($updatedProject, $actor);
+        }
+
+        return $updatedProject;
     }
 
     public function sendNotification(Project $project, User $actor): void

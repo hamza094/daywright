@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Admin;
 
 use App\DataTransferObjects\Admin\BulkDeleteData;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+#[SchemaName('TaskBulkDeleteRequestData')]
 class TaskBulkDeleteRequest extends FormRequest
 {
     public function authorize(): bool
