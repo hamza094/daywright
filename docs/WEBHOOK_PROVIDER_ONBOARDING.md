@@ -1,169 +1,86 @@
-# Webhook Provider Onboarding
+# Adding an Inbound Webhook Provider
 
-Use this guide when adding a new third-party webhook provider. It keeps provider-specific behavior separate from the shared inbox reliability mechanism.
+Use this guide when connecting an external service that sends event notifications to DayWright. For example, Zoom sends DayWright a webhook when a meeting starts or ends.
 
-## Design Rule
+The webhook inbox is currently used by Zoom. When adding another provider, keep that provider's security checks and payload handling specific to it, and reuse the inbox for saving, processing, and recovering events.
 
-Share the reliability mechanism, not the provider payload logic.
+## How webhook handling works
 
-The shared inbox handles:
+1. The provider sends DayWright an event.
+2. DayWright checks that the request really came from that provider and that its data is valid.
+3. DayWright saves the event before acknowledging it, so it can still be processed if a worker is unavailable.
+4. A background worker applies the change in DayWright.
+5. If processing fails, the scheduled recovery process can try again.
 
-- durable persistence
-- database deduplication
-- state transitions
-- atomic claims
-- claim leases
-- retry scheduling
-- recovery of undispatched or expired rows
+Providers may send the same event more than once, and a worker may start processing an event again after a failure. The integration must recognize duplicates and avoid repeating the same change.
 
-The provider integration handles:
+## Where to look in the code
 
-- request authentication
-- timestamp and replay validation
-- payload validation
-- event identity and event-key construction
-- event-to-handler mapping
-- provider-specific DTOs
-- provider API calls
-- provider acknowledgement requirements
+The Zoom integration is the working example:
 
-Do not introduce a provider registry, generic strategy hierarchy, or shared interface until a second implementation demonstrates that the abstraction is needed.
+- [`routes/api/v1/webhooks.php`](../routes/api/v1/webhooks.php) registers the webhook routes and request checks.
+- [`VerifyZoomWebhook.php`](../app/Http/Middleware/VerifyZoomWebhook.php) verifies Zoom requests.
+- [`ZoomWebhookController.php`](../app/Http/Controllers/Api/V1/Webhooks/ZoomWebhookController.php) accepts supported events.
+- [`ZoomWebhookInboxService.php`](../app/Services/Webhooks/ZoomWebhookInboxService.php) saves events and coordinates processing and recovery.
+- [`ProcessZoomWebhookInbox.php`](../app/Jobs/Webhooks/ProcessZoomWebhookInbox.php) processes an event in a queue worker.
+- [`RecoverPendingWebhooks.php`](../app/Console/Commands/RecoverPendingWebhooks.php) retries events that were not completed.
 
-## Provider Discovery
+Follow this flow when adding a provider, while keeping its request checks and event handling specific to that provider.
 
-Before writing code, document:
+## Steps for a new integration
 
-- signature algorithm and required headers
-- timestamp tolerance and replay rules
-- provider event ID and whether it is globally unique
-- event type field and schema versioning
-- delivery retry behavior
-- ordering guarantees
-- acknowledgement status and response body requirements
-- tenant, account, merchant, or workspace identity
-- payload sensitivity and retention requirements
-- provider API rate limits and timeout behavior
+### 1. Learn the provider's webhook rules
 
-If the provider does not provide a stable event ID, use a deterministic fingerprint of authenticated request data and document its limitations.
+Check the provider's documentation for:
 
-## Implementation Steps
+- how to verify a request (usually a signature and timestamp)
+- which events DayWright needs
+- whether events have a stable unique ID
+- which response tells the provider it can stop retrying
+- how often the provider retries a failed delivery
 
-### 1. Add the provider boundary
+Do not accept an event until its request has been verified. Never log signing secrets or raw credentials.
 
-Create a provider-specific middleware, request, or verifier that:
+### 2. Validate and identify each event
 
-- authenticates the request
-- rejects malformed or stale requests
-- does not persist or log raw secrets
-- computes the provider event key
-- exposes safe correlation data
+Validate the fields DayWright uses, then convert them into the data needed by the relevant application action. Keep provider-specific event formats out of the shared inbox code.
 
-Do not use the generic idempotency middleware as a replacement for webhook inbox deduplication.
+Use the provider's stable event ID to recognize a duplicate when available. If it has none, derive a repeatable key from the verified request data. The database uses the provider name and event key together to prevent saving the same event twice.
 
-### 2. Add typed payload objects
+### 3. Save before acknowledging
 
-Create provider-specific request validation and immutable DTOs for supported event types.
+Save the verified event in the webhook inbox before telling the provider it was received. If saving fails, return an error so the provider can retry. If the event is already saved, respond according to that provider's documented acknowledgement rules.
 
-DTOs should:
+Webhook payloads are stored encrypted. Keep only the data needed to process and investigate supported events.
 
-- contain only validated provider data
-- support `toArray()` and `fromArray()` when persisted in the inbox
-- avoid HTTP concerns
-- avoid business side effects
+### 4. Process events in a background job
 
-### 3. Persist through the inbox
+Create a focused handler for each supported event type and dispatch it through the inbox. A handler must be safe to run again: check current state or use a unique database record so a retry does not repeat the same business change.
 
-Pass normalized metadata to the inbox workflow:
+Do not rely on the original HTTP request being available to the background job.
 
-- provider
-- event key
-- event type
-- encrypted payload
-- provider event ID or safe request ID
-- provider occurrence time when available
+### 5. Use the shared recovery process
 
-The database uniqueness constraint is authoritative. A duplicate must not create a second inbox row.
+The inbox tracks whether an event is waiting, being processed, completed, or has failed. It also tracks attempts and when a failed or interrupted event can be tried again.
 
-Persist and commit before acknowledging the provider. If persistence fails, return a failure so the provider can retry.
+Use the existing inbox recovery command and scheduled task. Keep retry timing in one place: the inbox owns webhook retries, while the queue job makes one processing attempt.
 
-### 4. Add processing handlers
+### 6. Document and test the integration
 
-Map each supported event type to a focused business action. Handlers must be safe to execute again because the inbox guarantees at-least-once delivery, not exactly-once execution.
+Document the webhook endpoint, required provider settings, supported events, and how to investigate or retry a failed event.
 
-Handlers must not depend on the original HTTP request, middleware state, or an unencrypted raw payload.
+Add tests that cover the essential failure cases:
 
-### 5. Configure processing and recovery
-
-Reuse the inbox claim, lease, retry, and recovery behavior unless the provider has a documented reason for a different policy.
-
-Choose one retry owner. If the inbox owns retries, the queue job performs one attempt and the database stores the attempt count and next-available time.
-
-Register a scheduled recovery command and ensure it is safe to run concurrently by using scheduler overlap protection and atomic claims.
-
-### 6. Add operational documentation
-
-Document:
-
-- endpoint and authentication configuration
-- event-key rules
-- supported events
-- retry and lease policy
-- recovery command
-- monitoring fields and alerts
-- failed-event investigation and manual retry procedure
-- payload retention policy
-
-## Required Test Matrix
-
-Every provider must have tests for:
-
-- valid authentication
-- invalid signature or credentials
-- stale timestamp or replay rejection
-- malformed and unsupported payloads
-- deterministic event-key behavior
+- valid and invalid provider signatures
+- missing or malformed event data
 - duplicate delivery
-- database uniqueness enforcement
-- database acceptance failure
-- queue-dispatch failure
-- concurrent worker claims
-- expired claim recovery
-- retry backoff
-- terminal failure
-- handler replay safety
-- provider acknowledgement behavior
+- database or queue failure
+- retry after processing failure
+- ensuring a repeated event does not repeat its business effect
+- the response DayWright returns to the provider
 
-## Common Versus Provider-Specific Decisions
+## Keep the design simple
 
-| Concern         | Shared rule                               | Provider-specific decision           |
-| --------------- | ----------------------------------------- | ------------------------------------ |
-| Persistence     | Store an encrypted, recoverable inbox row | Payload fields and retention needs   |
-| Deduplication   | Enforce a database uniqueness constraint  | Event ID or fingerprint formula      |
-| Processing      | At-least-once with atomic claims          | Event mapping and handler behavior   |
-| Recovery        | Recover undispatched and expired work     | Provider-specific retry expectations |
-| Authentication  | Verify before acceptance                  | Signature algorithm and headers      |
-| Acknowledgement | Acknowledge after durable acceptance      | HTTP status and response body        |
-| Ordering        | Never assume exactly-once execution       | Whether ordering is guaranteed       |
-| Logging         | Use safe identifiers and sanitized errors | Provider correlation fields          |
+Keep provider-specific verification, event formats, and handlers in that provider's integration. Share the existing inbox behavior for saving and recovering events. Add a shared abstraction only when another real integration needs the same behavior and the abstraction makes the code simpler.
 
-## When to Extract Shared Code
-
-Keep the first additional provider explicit and provider-specific. Extract shared contracts or services only when both integrations have the same behavior and the abstraction reduces duplication without hiding provider differences.
-
-Good extraction candidates include:
-
-- common inbox persistence
-- common claim and lease handling
-- common recovery command behavior
-- a small normalized webhook envelope
-
-Avoid extracting:
-
-- one universal signature verifier
-- one DTO hierarchy for unrelated payloads
-- one handler class containing provider conditionals
-- provider-specific retry assumptions into the shared model
-
-## Completion Gate
-
-A provider is ready for production only when its endpoint, inbox acceptance, processing, recovery, handler replay safety, operational documentation, and required tests are complete. Passing unit tests alone is not sufficient; verify the database constraint, queue failure path, and expired-claim recovery path.
+For the current Zoom implementation, see [Webhook Inbox](WEBHOOK_INBOX.md).

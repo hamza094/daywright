@@ -26,14 +26,11 @@ There is no hosted demo currently linked from this repository. Developers can ru
 
 ## Documentation
 
-- [DayWright documentation](https://profresh.gitbook.io/profresh-docs/daywright/more-about-daywright)
-- [GitBook local development guide](https://profresh.gitbook.io/profresh-docs/developers/setup-local-development)
-- [GitBook contribution guide](https://profresh.gitbook.io/profresh-docs/developers/contributing-guide)
-- [API reference (OpenAPI JSON)](api.json) — generated with Laravel Scramble. In a running local app, the interactive docs are available at `/docs/api`.
+- [Product overview](https://profresh.gitbook.io/profresh-docs)
+- [Local development](https://profresh.gitbook.io/profresh-docs/developers/setup-local-development)
+- [Contributing](CONTRIBUTING.md)
+- [API reference](api.json)
 - [Deployment guide](docs/DEPLOYMENT.md)
-- [Webhook inbox and recovery](docs/WEBHOOK_INBOX.md)
-- [Contributing on GitHub](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
 
 ## Application architecture
 
