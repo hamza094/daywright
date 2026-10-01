@@ -26,17 +26,18 @@ There is no hosted demo currently linked from this repository. Developers can ru
 
 ## Documentation
 
+- [DayWright documentation](https://profresh.gitbook.io/profresh-docs/daywright/more-about-daywright)
+- [GitBook local development guide](https://profresh.gitbook.io/profresh-docs/developers/setup-local-development)
+- [GitBook contribution guide](https://profresh.gitbook.io/profresh-docs/developers/contributing-guide)
 - [API reference (OpenAPI JSON)](api.json) — generated with Laravel Scramble. In a running local app, the interactive docs are available at `/docs/api`.
 - [Deployment guide](docs/DEPLOYMENT.md)
-- [Feature flags](docs/FEATURE_FLAGS.md)
 - [Webhook inbox and recovery](docs/WEBHOOK_INBOX.md)
-- [Adding webhook providers](docs/WEBHOOK_PROVIDER_ONBOARDING.md)
-- [Contributing](CONTRIBUTING.md)
+- [Contributing on GitHub](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 
 ## Application architecture
 
-The browser client is a Vue 2 single-page application built and served by Laravel. Laravel exposes a versioned REST API under `/api/v1`, persists application data in a relational database, and uses queues and the scheduler for work that should run outside a web request. Redis is used by the documented production setup for cache, rate limits, and distributed scheduler/queue locks. Pusher provides broadcasting when configured.
+The browser client is a Vue 2 single-page application served by Laravel. Laravel provides the versioned REST API under `/api/v1`, stores application data in a relational database, and uses queues and the scheduler for background work. Production uses a database queue; Redis supports cache, rate limits, and scheduler/queue locks. Pusher broadcasting is available when configured.
 
 ```mermaid
 flowchart LR
@@ -51,14 +52,14 @@ flowchart LR
     API --> Push[Pusher broadcasting]
 ```
 
-The production deployment guide currently documents MySQL or PostgreSQL, Redis, database-backed queue workers, and the Laravel scheduler. CI exercises both SQLite and MySQL 8.4. Configure storage and external services for the environment where you deploy.
+The deployment guide covers MySQL or PostgreSQL, Redis, queue workers, and the scheduler. CI tests SQLite and MySQL 8.4.
 
 ## Reliability and security
 
 - Zoom webhook requests are signature-verified before acceptance. Accepted events enter a durable inbox so duplicate delivery, retries, and recovery can be handled without treating every delivery as a new event.
 - Scheduled recovery jobs handle pending webhook work, ambiguous Zoom meeting operations, and subscription operations. Queue workers are separated by priority and workload.
 - Task and project edits use version checks to detect stale concurrent updates.
-- The API uses Sanctum authentication, scoped personal access tokens, authorization middleware, and route-specific rate limits. Authentication, token management, two-factor flows, and destructive account actions have dedicated tests.
+- The API uses Sanctum authentication, scoped personal access tokens, authorization middleware, and route-specific rate limits.
 - Sensitive values are scrubbed from application logs. Paddle and Zoom integrations use validated webhook flows; external credentials are supplied through environment configuration.
 
 These mechanisms depend on correct production configuration. See the [deployment guide](docs/DEPLOYMENT.md) for worker, scheduler, Redis, and operational details.
@@ -73,7 +74,7 @@ These mechanisms depend on correct production configuration. See the [deployment
 
 ## Run locally
 
-Requirements: PHP 8.3+, Composer, Node.js 20, npm, and a supported database. Redis and third-party credentials are needed to exercise the related integrations and production queue setup.
+Requirements: PHP 8.3+, Composer, Node.js 20, npm, MySQL, and Redis. The example environment uses MySQL and Redis; configure their local connection values before setup. Third-party credentials are only needed to try those integrations.
 
 ```bash
 git clone https://github.com/hamza094/daywright.git
@@ -82,7 +83,7 @@ composer install
 npm ci
 ```
 
-Create `.env` from `.env.example`, then set `APP_URL`, database credentials, and any integration credentials you need. Generate the application key, prepare the database, and start the app and frontend build:
+Create `.env` from `.env.example`, then set `APP_URL` and local database and Redis credentials. The example uses the synchronous queue locally, so a queue worker is not needed for the quick start. Generate the application key, migrate the database, and start Laravel and Vite:
 
 ```bash
 cp .env.example .env
@@ -91,7 +92,7 @@ php artisan migrate
 npm run dev:all
 ```
 
-`npm run dev:all` starts Laravel's development server and Vite. If you configure a database queue instead of the local synchronous queue, run a worker in another terminal with `php artisan queue:work`. The full worker and scheduler setup is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+`npm run dev:all` starts Laravel's development server and Vite. If you switch to a database queue, run a worker in another terminal with `php artisan queue:work`. Production worker and scheduler instructions are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Tests and code quality
 
@@ -117,11 +118,11 @@ GitHub Actions runs PHPUnit against SQLite and MySQL 8.4, PHPStan/Larastan, Pint
 
 ## Deployment
 
-Production operation requires environment-specific database, cache, storage, and integration configuration. For asynchronous delivery and scheduled recovery, configure Redis, database queue workers, and the Laravel scheduler. The detailed requirements, worker commands, Supervisor examples, and recovery procedures are in the [deployment guide](docs/DEPLOYMENT.md).
+For production requirements and the worker and scheduler setup, see the [deployment guide](docs/DEPLOYMENT.md).
 
 ## Contribute
 
-Bug reports, focused fixes, and tests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), review the [Code of Conduct](CODE_OF_CONDUCT.md), and use the [issue tracker](https://github.com/hamza094/daywright/issues) to discuss proposed changes.
+Bug reports, fixes, and tests are welcome. Follow the [GitHub contribution guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md), or use the [issue tracker](https://github.com/hamza094/daywright/issues) to discuss a change.
 
 ## License
 

@@ -164,7 +164,7 @@ Monitor these for patterns indicating systemic issues.
 
 ### Clearing Old Completed Rows
 
-The plan defers completed-row retention until an operational retention policy is chosen. For now, completed rows remain in the database for audit purposes.
+Completed rows remain in the database for audit purposes. No automatic pruning is configured, so define a retention policy and remove old rows when operational requirements call for it.
 
 ### Queue Failures
 
@@ -218,7 +218,7 @@ Duplicate processing is **expected** under at-least-once semantics:
 
 Atomic claiming prevents **simultaneous** processing, not replay after crashes.
 
-Business actions are designed to tolerate repeated execution (see Phase 3 verification).
+Business actions must tolerate repeated execution.
 
 ## Notification Side Effects
 
@@ -248,7 +248,6 @@ If many webhooks fail:
 
 - **Indexes**: `(state, available_at)` and `(state, claim_expires_at)` for efficient recovery queries
 - **Encryption**: Payload encryption adds CPU overhead but is necessary for security
-- **No pruning yet**: Completed rows accumulate (policy TBD)
 
 ### Queue Considerations
 
@@ -282,26 +281,6 @@ php artisan test tests/Feature/Api/Middleware/Zoom/
 php artisan test tests/Unit/Console/KernelScheduleTest.php
 ```
 
-## Migration Notes
-
-This implementation replaced the previous cache-based replay protection with database-backed durability. Key changes:
-
-- **Removed**: Cache replay protection, Idempotent middleware on webhooks
-- **Added**: WebhookInbox table, atomic claiming, recovery scheduler
-- **Changed**: Duplicate webhooks return 200 (not 202)
-- **Simplified**: Single database constraint instead of cache + middleware
-
 ## Adding Another Provider
 
 Do not copy Zoom's verification or event parsing into shared classes. Follow the provider onboarding checklist, keep provider-specific code at the integration boundary, and reuse the inbox reliability behavior only where the provider's delivery semantics allow it.
-
-## Remaining Work
-
-This is Phase 2 (P2.1) of the production readiness plan. Remaining phases:
-
-- P2.2: Recover ambiguous Zoom meeting creation
-- P2.3: Move Paddle mutations outside retryable transactions
-- P2.4: Recover message claims and failed recipients
-- P2.5: Serialize task/project transitions
-
-Real-process crash verification and performance measurement are deferred to Phase 4 production-readiness work.

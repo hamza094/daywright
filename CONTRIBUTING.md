@@ -15,7 +15,7 @@ We very much appreciate any help with [open issues labeled with "help wanted"](h
 - **Feature requests** we're welcoming pull requests for new features (although we might not accept every single one). You can also first discuss new feature requests [through an issue](https://github.com/hamza094/daywright/issues) before sending in a pull request
 - **Bug fixes** should contain regression tests
 - All pull requests should follow the [coding standards](#coding-standards)
-- Pull requests will be merged after being reviewed by [the maintainers](README.md#maintainers)
+- Pull requests are reviewed by the project maintainers before merging.
 - Please be respectful to other contributors and hold to [The Code Manifesto](http://codemanifesto.com/)
 - Please post screenshots if you make any changes to the UI
 
@@ -23,7 +23,7 @@ We very much appreciate any help with [open issues labeled with "help wanted"](h
 
 - It's a good practice to write tests for your contribution
 - Write the full namespace in DocBlocks for `@param`, `@var` or `@return` tags
-- The rest of the coding standards will automatically be fixed by [GitHub Actions](https://github.com/hamza094/daywright/actions)
+- GitHub Actions checks Laravel Pint, PHPStan/Larastan, Rector, PHPUnit, frontend linting, frontend tests, and the production build. Run the relevant checks locally before opening a pull request.
 
 ## Testing
 
