@@ -22,6 +22,8 @@ P2.5 is required before exposing collaborative task/project updates to productio
 
 Deferred work must not hide a security, reliability, data-integrity, backup, alerting, or API-contract failure. Revisit it after release as maintenance work.
 
+Before enabling messaging, persist dispatch intent with the business change, give message claims an expiring owner, recover abandoned claims, and record each recipient's outcome so successful recipients are not resent. Verify a worker crash after claiming work and a mixed success/failure batch. Until this is complete, keep messaging routes and jobs inaccessible to production users.
+
 ## Release decision
 
 Do not call the app production-ready from passing unit and feature tests alone. The release candidate must pass the required Phase 4 and Phase 5 checks in a staging environment that uses the intended database, Redis, queues, scheduler, backups, and alert destination.

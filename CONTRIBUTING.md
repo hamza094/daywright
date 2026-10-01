@@ -1,8 +1,6 @@
-# Contributing Guide
+# Contributing to DayWright
 
-We welcome contributions to the Laravel.io project. Please read the following guide before posting an issue or sending
-in pull requests. Please also read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing or engaging in
-discussions.
+Contributions to DayWright are welcome. Before opening an issue or pull request, please read this guide and our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Issues
 

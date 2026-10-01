@@ -1,72 +1,86 @@
 # Phase 4: Production readiness
 
-This phase proves the release code works with the services it will use. Keep the fast SQLite suite. Reuse the existing MySQL CI setup and deployment tools where suitable; add a separate test harness only when a required scenario cannot be run with them.
+This phase proves the release code works with its intended database, Redis, queue worker, scheduler, and external providers. Complete one ticket at a time, in order. Keep the fast SQLite suite and reuse the existing MySQL 8.4 CI job in `.github/workflows/tests.yml`. Use isolated non-customer data and a separate staging environment for worker and provider exercises.
 
-## P4.1: real services
+## How to hand off one ticket
 
-Run the release candidate against the intended database engine, shared Redis, the chosen queue driver, a real worker, and the scheduler. Confirm the resolved configuration in both the request and worker processes; `sync` queues, array cache, and in-memory SQLite cannot prove these cases. Use isolated non-customer data and committed fixtures visible to both processes. Record the versions and commands used. Make at least the database and Redis checks repeatable in CI; worker exercises may run in staging if CI cannot host them reliably.
+Give the implementer this document and **one** ticket below. Add this instruction:
 
-## P4.2: simultaneous work
+> Inspect the current code and repository guidelines first. Implement only this ticket. Preserve unrelated changes and existing SQLite coverage. Reuse existing services, recovery commands, CI jobs, and deployment tools. Run focused checks for any code change. Record the files changed, exact commands and results, environment, final database state, provider-stub call counts where relevant, and open checks. Do not mark an unrun staging or provider check complete.
 
-Run a few controlled two-process races, using a barrier so they actually overlap:
+Use the ticket's **Done when** as its stopping point. If a ticket reveals a defect, fix that defect and add a regression test for the missing behavior; avoid building a broad new test matrix. Never use synchronous exception tests, SQLite row locks, mocked provider responses, or documentation alone as proof of the corresponding real-process or provider check.
 
-- Same idempotency key for one request: one business effect and the documented replay/in-progress response.
-- Two stale task/project updates: the allowed update wins and the other receives the published conflict response.
-- Two incompatible subscription changes: at most one Paddle mutation attempt for an operation.
-- Two recovery workers claiming the same Zoom inbox or subscription operation: only the owner completes it.
+## Ticket 1 — P4.1a: Confirm real database and Redis configuration
 
-Check final database state and provider-stub call counts. Add a regression only for a failure that the existing focused tests do not cover. Include an OAuth token-refresh race if that path is used in the first release and has not already been verified.
+**Start with:** `.github/workflows/tests.yml`, `phpunit.xml`, `config/database.php`, `config/cache.php`, `config/queue.php`, and `.env.example`.
 
-## P4.3: interruption and recovery
+Check the release candidate against the intended MySQL engine and shared Redis. Make the resolved database, cache, and queue configuration observable in both a request process and a separate worker process without printing credentials. Retain the SQLite CI job and its foreign-key coverage. Reuse the MySQL CI job for repeatable database and Redis checks; add a separate harness only if a required check cannot run there. Use committed fixtures visible to both processes. Record PHP, MySQL, Redis, and queue driver versions and the commands used.
 
-With a real worker and scheduler, prove these release paths recover after a process or dispatch failure:
+**Done when:** the SQLite and MySQL jobs still pass, the database and Redis checks can be rerun, and recorded configuration shows neither in-memory SQLite nor array cache nor a `sync` queue for the real-service exercise.
 
-1. Zoom webhook accepted in the database, initial queue dispatch unavailable, later recovered.
-2. Worker stopped after taking a Zoom inbox claim; another worker resumes after the lease.
-3. Zoom create response lost after the provider accepted it; the local meeting stays unknown until lookup or manual review. No second create is sent.
-4. Paddle swap/cancel response lost; scheduled recovery reads Paddle and does not repeat the mutation.
+## Ticket 2 — P4.1b: Run a real worker and scheduler
 
-Confirm in a real Zoom sandbox that the creation request and webhook carry the same operation ID before relying on webhook recovery. Run a Paddle Classic sandbox checkout/payment, swap, and cancellation before releasing billing. If a provider cannot prove an ambiguous result, verify the operation remains visible for manual review. Message delivery recovery belongs here only when the deferred messaging feature is enabled. Record the worker exit, recovery command, final database state, and any manual-review outcome. A synchronous exception test alone does not prove process recovery.
+**Start with:** `app/Console/Kernel.php`, `config/queue.php`, and the existing Zoom/Paddle recovery commands.
 
-## P4.4: query and response baseline
+In isolated staging, run a worker in a separate process and run the scheduler every minute. Dispatch one controlled job and confirm that the worker processes it. Confirm `webhooks:recover-pending`, `meetings:recover-ambiguous`, and `subscriptions:recover-operations` are scheduled and can execute. Verify that all scheduler nodes share Redis so `onOneServer()` and `withoutOverlapping()` coordinate correctly. Use the deployment platform's existing worker and scheduler facilities where suitable.
 
-For released project/task/meeting listings, use a representative seeded dataset on the intended database. Record query count, slow queries or query plans, bounded page size, and p95 response time for a small repeatable workload. Fix only demonstrated N+1 or index problems, then rerun the same workload. Larger load testing can follow launch once real usage gives a meaningful target.
+**Done when:** the worker process, scheduled invocations, processed job, resolved configuration, and commands are recorded. A successful `schedule:list` by itself is insufficient.
 
-## Phase 4.5 - Production release checks
+## Ticket 3 — P4.2a: Race task and project edits
 
-Complete these checks in staging before production. Local mocks are useful for code tests, but they do not prove provider, worker, scheduler, or network behavior.
+**Start with:** `tests/Feature/Api/V1/Tasks/TaskVersioningTest.php`, `tests/Feature/Api/V1/Projects/ProjectVersioningTest.php`, and the task/project update services.
 
-### Paddle sandbox
+Use two separate processes against the intended MySQL engine. Place a barrier before the competing writes so they overlap. For both a task and a project, submit two updates based on the same version. Confirm that one permitted update succeeds, the stale update receives the published `409 edit_conflict` envelope, and the final row has the correct business fields and version. Test a stage transition if it uses a distinct write path.
 
-- Perform a real subscription creation.
-- Perform a real subscription swap.
-- Perform a real cancellation.
-- Verify a successful payment webhook.
-- Verify a failed payment webhook.
-- Repeat a request with the same idempotency key and confirm one provider mutation.
-- Simulate an uncertain provider response and confirm recovery reads Paddle without sending the mutation again.
-- Capture the actual Paddle Classic cancellation response and verify that `PaddleSubscriptionSnapshot::provesCancelSucceeded()` checks the correct fields.
+**Done when:** the process-level results, response bodies, and final database rows are recorded. Keep the existing request tests passing; add a regression only for an uncovered failure.
 
-### Webhook configuration
+## Ticket 4 — P4.2b: Race duplicate and conflicting operations
 
-- Confirm `/paddle/webhook` is publicly reachable over HTTPS.
-- Set `PADDLE_PUBLIC_KEY` in production.
-- Configure Paddle to send the required events.
-- Confirm Cashier's route and signature handling are active.
+**Start with:** the existing idempotency tests, `SubscriptionOperation`, `SubscriptionService`, `WebhookInbox`, and their recovery actions.
 
-Cashier owns the standard webhook behavior. Paddle webhooks can be delivered more than once or out of order, so the production smoke test must verify that local subscription state remains safe.
+Use controlled two-process overlap on MySQL and shared Redis. Exercise: one request repeated with the same idempotency key; two incompatible subscription changes for one user; and two recovery workers claiming the same Zoom inbox or subscription operation. Check the documented replay or in-progress response, one business effect, at most one Paddle mutation attempt per operation, and only the claim owner completing it. Use a counting provider stub and inspect final database state. Include an OAuth token-refresh race if that path is used in the first release and has not already been verified.
 
-### Workers and scheduler
+**Done when:** responses, business effects, final state, and provider-stub call counts are recorded for each race. Keep the existing `SubscriptionOperation` idempotency and claim safeguards.
 
-- Confirm a queue worker is running.
-- Confirm the scheduler runs every minute.
-- Confirm Redis is available for `onOneServer()` and `withoutOverlapping()`.
-- Confirm failed jobs are monitored.
-- Alert on `unknown` and `manual_review` subscription operations.
+## Ticket 5 — P4.3a: Interrupt and recover Zoom work
 
-### Final quality gates
+**Start with:** `docs/WEBHOOK_INBOX.md`, `app/Console/Commands/RecoverPendingWebhooks.php`, `app/Console/Commands/RecoverAmbiguousZoomMeetings.php`, and the existing crash-recovery tests.
 
-Run:
+With real worker and scheduler processes, demonstrate these failure windows:
+
+1. A Zoom webhook is saved in the database while initial queue dispatch is unavailable; later recovery processes it.
+2. A worker stops after claiming a Zoom inbox row; another worker resumes after the lease expires.
+3. Zoom accepts a meeting create but its response is lost; the local operation stays unknown until provider lookup or manual review, and no second create is sent.
+
+In a real Zoom sandbox, confirm that the creation request and corresponding webhook carry the same operation ID before relying on webhook correlation. If Zoom cannot prove an ambiguous result, keep it visible for manual review. Record the worker exit, recovery command, final database state, and outcome.
+
+**Done when:** all three real-process outcomes and the sandbox operation-ID result have evidence. A synchronous exception test alone does not complete this ticket.
+
+## Ticket 6 — P4.3b: Recover Paddle work and verify Paddle Classic
+
+**Start with:** `app/Actions/Subscription/RecoverSubscriptionOperation.php`, `app/DataTransferObjects/Paddle/PaddleSubscriptionSnapshot.php`, `app/Console/Commands/RecoverSubscriptionOperations.php`, `tests/Feature/Api/Webhooks/Paddle/PaddleWebhookTest.php`, and the existing subscription service tests.
+
+First, interrupt a swap or cancellation after Paddle accepts it but before the response is recorded. Show that scheduled recovery reads Paddle, reconciles the local record only after an exact match, and never blindly repeats the mutation. Keep uncertain results visible as `unknown` or `manual_review`. Preserve claim tokens, leases, row locks, transactions, bounded backoff, and remote verification.
+
+Then use **Paddle Classic sandbox** to check subscription creation, successful and failed payment webhooks, swap, cancellation, duplicate-key behavior, and an uncertain-response recovery where practical. Capture a sanitized real Classic cancellation response and check `PaddleSubscriptionSnapshot::provesCancelSucceeded()` against its actual fields. Verify `/paddle/webhook` is reachable over HTTPS, `PADDLE_PUBLIC_KEY` is set, `CASHIER_WEBHOOK` matches the configured URL, required events are enabled, and Cashier's route and signature handling work. Observe that the local subscription, receipt, and safe audit entry match provider events, including duplicate or out-of-order delivery where the sandbox permits it. Check `php artisan route:list --name=cashier.webhook`.
+
+Cashier owns standard Paddle webhooks; its native route has no durable inbox. Record the known risk that an update or cancellation may arrive before the local subscription and that old and new updates are not ordered. Include this limitation and the manual reconciliation procedure in the Phase 4 sign-off record and deployment documentation. Check unfinished historical Paddle inbox rows without deleting them. Keep the existing service, recovery, route, and URL tests passing; do not build a synthetic signature suite or duplicate every Cashier webhook test.
+
+**Done when:** the real-process recovery and sandbox results are recorded, local billing state is checked, and limitations are documented. If sandbox access is unavailable, leave the sandbox checks open; code tests do not close them.
+
+## Ticket 7 — P4.4: Record a query and response baseline
+
+**Start with:** the released project, task, and meeting listing routes and their query services.
+
+Seed a representative dataset on the intended database. For a small repeatable workload, record query count, slow queries or query plans, bounded page size, and p95 response time. Fix only a demonstrated N+1 or index problem, then rerun the same workload and record the before/after result. Larger-volume load testing can follow launch once real traffic supplies a useful target.
+
+**Done when:** the dataset, workload, baseline numbers, and any measured improvement are recorded, including when no code change is necessary.
+
+## Ticket 8 — Phase 4 sign-off record
+
+**Start with:** the evidence from Tickets 1–7 and the release commit.
+
+Run the focused tests for changed behavior, both CI database jobs, and these final gates:
 
 ```bash
 composer test
@@ -75,22 +89,12 @@ composer pint:test
 composer audit --locked --no-dev
 ```
 
-Prepare a rollback procedure and a manual-resolution procedure for unresolved subscription operations.
+Check `php artisan schedule:list`, the public Cashier webhook route, the running queue worker, the every-minute scheduler, shared Redis locks, failed-job monitoring, and alerts for `unknown` and `manual_review` subscription operations. Confirm `PADDLE_PUBLIC_KEY` and the public HTTPS `CASHIER_WEBHOOK` URL before deployment. Prepare a rollback procedure and a manual-resolution procedure for unresolved subscription operations. Use the platform's existing operational facilities where available.
 
-### Existing code checks
+Save one concise record of the build identifier, environment, commands, outcomes, provider evidence, final states, and unresolved checks. Correct a failing gate before sign-off. Record any known Cashier webhook limitation and the person responsible for manual reconciliation.
 
-- Keep the existing service and recovery tests passing. They now cover an in-progress replay, stale recovery claim, unknown result, exact remote match, and bounded backoff. Do not expand into a large test matrix unless a new failure requires it.
-- Keep the route and configured URL tests. Do not build a synthetic RSA/signature suite or test every Cashier webhook event. That would duplicate package behavior. Verify one real Paddle Classic sandbox checkout/payment and observe that the webhook creates the local subscription, receipt, and safe audit entry. Also exercise a sandbox swap and cancellation, including one ambiguous-response recovery if practical.
-- Run the focused tests, normal CI quality gates, and the production-like database job. Fix any current failure before release. Check `php artisan route:list --name=cashier.webhook` and `php artisan schedule:list`.
-- Before each deployment, confirm `PADDLE_PUBLIC_KEY` is configured and `CASHIER_WEBHOOK` is the public HTTPS `/paddle/webhook` URL configured in Paddle. Check for unfinished historical Paddle inbox rows; do not delete them.
-- The backend guideline now records the narrow Cashier Classic exception. Update `paddle_plan.md` and `paddle_classic_p2_3.md` before release. Record that Cashier can acknowledge an update/cancellation before the local subscription exists and does not order old versus new updates. Monitor and manually reconcile billing mismatches. Do not claim the native route has inbox durability.
+**Done when:** every required Phase 4 check has evidence or is explicitly marked open. Do not call the release production-ready while a required staging, provider, or quality gate remains open.
 
-Release when the code checks pass, the sandbox flow matches the local subscription state, and the known Cashier webhook limitations are documented and accepted. Future enhancements can be considered from production evidence; they are not part of P2.3.
+## Scope and next phase
 
-## Deferred
-
-P4.6 engineering case studies and portfolio write-ups can follow launch. Keep the short command/result records needed for release review now.
-
-## Acceptance
-
-Run the normal tests, static analysis, dependency audit, and the real-service scenarios above. Save one concise evidence record with environment, commands, outcomes, and unresolved failures. Do not label local fakes or unrun sandbox flows as production evidence. Phase 5 still needs deployment, restore, health, and alert checks.
+Message-delivery recovery is required here only if the deferred messaging feature is enabled; otherwise keep that feature inaccessible. Engineering case studies and portfolio write-ups can follow launch, but keep the command/result evidence now. Phase 5 separately covers deployment repeatability, health checks, isolated backup restore, recovery, and delivered alerts. Passing Phase 4 does not complete Phase 5.
