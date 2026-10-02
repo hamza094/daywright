@@ -28,9 +28,9 @@ class UsersPolicy
         return null;
     }
 
-    public function owner(User $user): bool
+    public function owner(User $actor, User $target): bool
     {
-        return $user->is(auth()->user());
+        return $actor->is($target);
     }
 
     /**
@@ -67,5 +67,14 @@ class UsersPolicy
         return $targetUser->members(true)
             ->whereIn('projects.id', $authProjectIds)
             ->exists();
+    }
+
+    /**
+     * Determine if the authenticated user can view private profile fields (email, mobile, address).
+     * Only allowed for the profile owner or administrators.
+     */
+    public function viewPrivateProfile(User $actor, User $target): bool
+    {
+        return $actor->is($target);
     }
 }

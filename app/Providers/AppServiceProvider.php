@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Laravel\Pennant\Feature;
 use Laravel\Pennant\Middleware\EnsureFeaturesAreActive;
 use Opcodes\LogViewer\Facades\LogViewer;
@@ -50,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(Paddle::class, SubscriptionService::class);
+        $this->app->bind(Paddle\CashierGatewayInterface::class, \App\Services\Paddle\CashierGateway::class);
 
         $this->app->bind(PaddleApi::class, PaddleService::class);
 
@@ -95,7 +97,8 @@ class AppServiceProvider extends ServiceProvider
                 'queue' => $event->job->getQueue(),
                 'uuid' => $event->job->uuid(),
                 'attempts' => $event->job->attempts(),
-                'exception' => $event->exception,
+                'exception_class' => $event->exception::class,
+                'exception_code' => $event->exception->getCode(),
                 'tags' => $payload['tags'] ?? [],
             ]);
         });
@@ -116,9 +119,10 @@ class AppServiceProvider extends ServiceProvider
         // 2. Outbound HTTP Failures
         Event::listen(function (ConnectionFailed $event): void {
             Log::error('Outbound HTTP request failed', [
-                'url' => $event->request->url(),
+                'url' => Str::before($event->request->url(), '?'),
                 'method' => $event->request->method(),
-                'exception' => $event->exception,
+                'exception_class' => $event->exception::class,
+                'exception_code' => $event->exception->getCode(),
             ]);
         });
 

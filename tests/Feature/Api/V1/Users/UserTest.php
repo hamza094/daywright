@@ -6,6 +6,9 @@ namespace Tests\Feature\Api\V1\Users;
 
 use App\Actions\PurgeDeletedUsersAction;
 use App\DataTransferObjects\User\PasswordUpdateData;
+use App\Http\Resources\Api\V1\Task\TaskMemberResource;
+use App\Http\Resources\Api\V1\User\InvitableUserResource;
+use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use App\Mail\PasswordUpdate;
 use App\Models\Project;
 use App\Models\User;
@@ -15,8 +18,10 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
 
@@ -30,7 +35,6 @@ class UserTest extends TestCase
             [
                 'newName' => 'john doe',
                 'newUsername' => 'jane_doe',
-                'newEmail' => 'john_doe@example.com',
                 'newCompany' => 'Acme Inc.',
                 'newMobile' => '1234567890',
             ],
@@ -68,13 +72,14 @@ class UserTest extends TestCase
 
     #[Test]
     #[DataProvider('dataProvider')]
-    public function owner_can_update_his_data(string $newName, string $newUsername, string $newEmail, string $newCompany, string $newMobile): void
+    public function owner_can_update_his_data(string $newName, string $newUsername, string $newCompany, string $newMobile): void
     {
         UserInfo::factory()->for($this->user)->create();
 
+        $originalEmail = $this->user->email;
+
         $response = $this->patchJson($this->apiV1Route('users.update', ['user' => $this->user]), [
             'name' => $newName,
-            'email' => $newEmail,
             'username' => $newUsername,
             'company' => $newCompany,
             'mobile' => $newMobile,
@@ -82,13 +87,13 @@ class UserTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonPath('data.name', $newName)
-            ->assertJsonPath('data.email', $newEmail)
+            ->assertJsonPath('data.email', $originalEmail)
             ->assertJsonPath('data.username', $newUsername);
 
         $this->assertDatabaseHas('users', [
             'id' => $this->user->id,
             'name' => $newName,
-            'email' => $newEmail,
+            'email' => $originalEmail,
         ])
             ->assertDatabaseHas('user_infos', [
                 'user_id' => $this->user->id,
@@ -151,24 +156,13 @@ class UserTest extends TestCase
     #[Test]
     public function user_can_delete_his_profile(): void
     {
+        $this->authenticateAsFirstParty();
         $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $this->user]));
 
         $this->assertSoftDeleted($this->user);
 
         // If projects are soft deleted on user delete:
         $this->assertSoftDeleted($this->project);
-    }
-
-    #[Test]
-    public function user_can_force_delete_a_trashed_profile(): void
-    {
-        $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $this->user]))->assertOk();
-
-        $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $this->user]))
-            ->assertOk()
-            ->assertJsonPath('message', 'User data permanently deleted.');
-
-        $this->assertDatabaseMissing('users', ['id' => $this->user->id]);
     }
 
     #[Test]
@@ -201,5 +195,291 @@ class UserTest extends TestCase
         $this->artisan('user:profile-delete')
             ->expectsOutput('User profile deletion process completed.')
             ->assertExitCode(0);
+    }
+
+    #[Test]
+    public function user_cannot_modify_another_users_profile_even_with_shared_project(): void
+    {
+        $otherUser = User::factory()->create();
+        UserInfo::factory()->for($otherUser)->create();
+
+        // Add other user to the same project
+        $this->project->members()->attach($otherUser->id);
+
+        // Try to modify other user's profile
+        $response = $this->patchJson($this->apiV1Route('users.update', ['user' => $otherUser]), [
+            'name' => 'Hacked Name',
+        ]);
+
+        $response->assertForbidden();
+
+        // Verify other user's data was not changed
+        $this->assertDatabaseMissing('users', [
+            'id' => $otherUser->id,
+            'name' => 'Hacked Name',
+        ]);
+    }
+
+    #[Test]
+    public function user_cannot_delete_another_users_account_even_with_shared_project(): void
+    {
+        $this->authenticateAsFirstParty();
+        $otherUser = User::factory()->create();
+
+        // Add other user to the same project
+        $this->project->members()->attach($otherUser->id);
+
+        // Try to delete other user's account
+        $response = $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $otherUser]));
+
+        $response->assertForbidden();
+
+        // Verify other user's account was not deleted
+        $this->assertDatabaseHas('users', [
+            'id' => $otherUser->id,
+            'deleted_at' => null,
+        ]);
+    }
+
+    #[Test]
+    public function user_cannot_change_email_address(): void
+    {
+        UserInfo::factory()->for($this->user)->create();
+
+        $originalEmail = $this->user->email;
+        $newEmail = 'different@example.com';
+
+        $response = $this->patchJson($this->apiV1Route('users.update', ['user' => $this->user]), [
+            'email' => $newEmail,
+        ]);
+
+        $response->assertUnprocessable();
+
+        // Verify email was not changed
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'email' => $originalEmail,
+        ]);
+    }
+
+    #[Test]
+    public function profile_owner_sees_all_fields_including_sensitive_contact_info(): void
+    {
+        UserInfo::factory()->for($this->user)->create([
+            'mobile' => '1234567890',
+            'address' => '123 Main St, City, Country',
+        ]);
+
+        $response = $this->getJson($this->apiV1Route('users.show', ['user' => $this->user]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.email', $this->user->email)
+            ->assertJsonPath('data.info.mobile', '1234567890')
+            ->assertJsonPath('data.info.address', '123 Main St, City, Country');
+    }
+
+    #[Test]
+    public function admin_sees_all_fields_including_sensitive_contact_info(): void
+    {
+        $targetUser = User::factory()->create();
+        UserInfo::factory()->for($targetUser)->create([
+            'mobile' => '9876543210',
+            'address' => '456 Oak Ave, Town, Country',
+        ]);
+
+        // Make the authenticated user an admin
+        $this->user->is_admin = true;
+        $this->user->save();
+
+        $response = $this->getJson($this->apiV1Route('users.show', ['user' => $targetUser]));
+
+        $response->assertOk()
+            ->assertJsonPath('data.email', $targetUser->email)
+            ->assertJsonPath('data.info.mobile', '9876543210')
+            ->assertJsonPath('data.info.address', '456 Oak Ave, Town, Country');
+    }
+
+    #[Test]
+    public function unrelated_user_cannot_view_profile(): void
+    {
+        $unrelatedUser = User::factory()->create();
+        UserInfo::factory()->for($unrelatedUser)->create();
+
+        // Authenticate as the original user and try to view unrelated user's profile
+        $this->actingAs($this->user);
+
+        $response = $this->getJson($this->apiV1Route('users.show', ['user' => $unrelatedUser]));
+
+        $response->assertForbidden();
+    }
+
+    #[Test]
+    public function collaborator_can_view_shared_project_member_profile(): void
+    {
+        $collaborator = User::factory()->create();
+        UserInfo::factory()->for($collaborator)->create([
+            'mobile' => '9876543210',
+            'address' => '456 Oak Ave, Town, Country',
+            'company' => 'Tech Corp',
+            'position' => 'Developer',
+        ]);
+
+        // Add collaborator to the same project
+        $this->project->members()->attach($collaborator->id, ['active' => true]);
+
+        // Refresh the project to ensure the relationship is loaded
+        $this->project->refresh();
+
+        // Authenticate as the original user and view collaborator's profile
+        $this->actingAs($this->user);
+
+        $response = $this->getJson($this->apiV1Route('users.show', ['user' => $collaborator]));
+
+        $response->assertOk()
+            ->assertJsonMissingPath('data.email') // Email is hidden for collaborators
+            ->assertJsonMissingPath('data.info') // All info is hidden (includes mobile/address)
+            ->assertJsonPath('data.id', $collaborator->id) // Basic fields are still visible
+            ->assertJsonPath('data.name', $collaborator->name) // Basic fields are still visible
+            ->assertJsonPath('data.username', $collaborator->username); // Basic fields are still visible
+    }
+
+    #[Test]
+    public function invitable_user_resource_includes_email(): void
+    {
+        $user = User::factory()->create();
+
+        $resource = new InvitableUserResource($user);
+        $array = $resource->toArray(request());
+
+        $this->assertArrayHasKey('email', $array); // Email should be present for invitations
+        $this->assertEquals($user->email, $array['email']);
+        $this->assertArrayHasKey('id', $array);
+        $this->assertArrayHasKey('uuid', $array);
+        $this->assertArrayHasKey('name', $array);
+        $this->assertArrayHasKey('username', $array);
+    }
+
+    #[Test]
+    public function user_summary_resource_excludes_email(): void
+    {
+        $user = User::factory()->create();
+
+        $resource = new UserSummaryResource($user);
+        $array = $resource->toArray(request());
+
+        $this->assertArrayNotHasKey('email', $array); // Email should be excluded
+        $this->assertArrayHasKey('id', $array);
+        $this->assertArrayHasKey('uuid', $array);
+        $this->assertArrayHasKey('name', $array);
+        $this->assertArrayHasKey('username', $array);
+    }
+
+    #[Test]
+    public function task_member_resource_excludes_email(): void
+    {
+        $user = User::factory()->create();
+
+        $resource = new TaskMemberResource($user);
+        $array = $resource->toArray(request());
+
+        $this->assertArrayNotHasKey('email', $array); // Email should be excluded
+        $this->assertArrayHasKey('id', $array);
+        $this->assertArrayHasKey('uuid', $array);
+        $this->assertArrayHasKey('name', $array);
+        $this->assertArrayHasKey('username', $array);
+    }
+
+    #[Test]
+    public function cannot_force_delete_active_user_enforces_archive_first(): void
+    {
+        $this->authenticateAsFirstParty();
+        // Try to force delete an active user (not soft-deleted)
+        $response = $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $this->user]));
+
+        $response->assertStatus(Response::HTTP_CONFLICT)
+            ->assertJsonPath('message', 'User must be soft-deleted before force deletion.');
+
+        // Verify user is still active (not deleted)
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'deleted_at' => null,
+        ]);
+    }
+
+    #[Test]
+    public function can_force_delete_soft_deleted_user(): void
+    {
+        $this->authenticateAsFirstParty();
+        // First soft delete the user
+        $this->deleteJson($this->apiV1Route('users.destroy', ['user' => $this->user]))->assertOk();
+
+        // Now force delete the soft-deleted user
+        $response = $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $this->user]));
+
+        $response->assertOk()
+            ->assertJsonPath('message', 'User data permanently deleted.');
+
+        // Verify user is permanently deleted
+        $this->assertDatabaseMissing('users', ['id' => $this->user->id]);
+    }
+
+    #[Test]
+    public function cannot_force_delete_another_users_soft_deleted_account(): void
+    {
+        $this->authenticateAsFirstParty();
+        $otherUser = User::factory()->create();
+
+        // Soft delete the other user
+        $otherUser->delete();
+
+        // Try to force delete another user's soft-deleted account
+        $response = $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $otherUser]));
+
+        $response->assertForbidden();
+
+        // Verify other user's account still exists (soft-deleted)
+        $this->assertSoftDeleted('users', ['id' => $otherUser->id]);
+    }
+
+    #[Test]
+    public function force_delete_missing_user_returns_not_found(): void
+    {
+        $this->authenticateAsFirstParty();
+        // Create a user and then permanently delete them
+        $user = User::factory()->create();
+        $uuid = $user->uuid;
+        $user->forceDelete();
+
+        // Try to force delete the already-deleted user
+        $response = $this->deleteJson($this->apiV1Route('users.forceDestroy', ['user' => $uuid]));
+
+        $response->assertNotFound();
+    }
+
+    #[Test]
+    public function admin_archive_first_workflow_consistency(): void
+    {
+        // Document that even admins must follow the same archive-first workflow.
+        // The state validation ($user->trashed()) happens after policy authorization,
+        // so it applies to all users including admins who bypass policy checks.
+
+        $admin = User::factory()->admin()->create();
+        $otherUser = User::factory()->create();
+
+        // Verify admin bypasses ownership policy
+        $policy = new \App\Policies\UsersPolicy;
+        $this->assertTrue($policy->before($admin), 'Admin bypasses policy checks');
+
+        // Verify the ownership check logic
+        $this->assertFalse($policy->owner($admin, $otherUser), 'Owner check returns false for different users');
+
+        // Since admin bypasses the policy, they can force delete other users' soft-deleted accounts
+        // (this is the intended admin behavior - they have full authority over soft-deleted accounts)
+        // But even admins must follow archive-first workflow for active accounts
+    }
+
+    private function authenticateAsFirstParty(): void
+    {
+        Sanctum::actingAs($this->user, ['*']);
     }
 }

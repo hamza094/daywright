@@ -50,6 +50,7 @@ setMeetings(state, meetingsPage) {
 const actions = {
   fetchMeetings({ commit }, { slug, page, isPrevious }) {
     const params = isPrevious ? { request: 'previous', page } : { page };
+
     return axios.get(`/projects/${slug}/meetings`, { params })
       .then(response => {
         const meetings = getPaginatedData(response);

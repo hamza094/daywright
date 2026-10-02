@@ -88,7 +88,7 @@ export default {
     },
     async fetch2FAStatus() {
       try {
-        const res = await this.$axios.get('/twofactor/fetch-user');
+        const res = await this.$axios.get('/twofactor/status');
         this.status = parseTwoFactorResponse(res).state;
       } catch {
         this.status = '';

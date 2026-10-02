@@ -11,6 +11,7 @@ use App\Jobs\SendMeetingStartedNotification;
 use App\Models\Meeting;
 use Exception;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 
 final class CheckUnsentMeetingNotifications extends Command
@@ -31,28 +32,49 @@ final class CheckUnsentMeetingNotifications extends Command
 
     private function checkStuckStartedNotifications(): void
     {
-        Meeting::query()
-            ->with(['project.user'])
-            ->where('status', MeetingState::START->value)
-            ->whereNull('started_notification_sent_at')
-            ->where('updated_at', '<', now()->subMinutes(10))
-            ->whereHas('project', function ($query): void {
-                $query->whereNull('deleted_at');
-            })
+        $this->staleNotificationMeetings(
+            pendingColumn: 'started_notification_pending_at',
+            sentColumn: 'started_notification_sent_at',
+            status: MeetingState::START,
+        )
             ->chunkById(50, fn (\Illuminate\Support\Collection $meetings) => $this->redispatchStartedNotifications($meetings));
     }
 
     private function checkStuckEndedNotifications(): void
     {
-        Meeting::query()
-            ->with(['project.user'])
-            ->where('status', MeetingState::ENDS->value)
-            ->whereNull('ended_notification_sent_at')
-            ->where('updated_at', '<', now()->subMinutes(10))
-            ->whereHas('project', function ($query): void {
-                $query->whereNull('deleted_at');
-            })
+        $this->staleNotificationMeetings(
+            pendingColumn: 'ended_notification_pending_at',
+            sentColumn: 'ended_notification_sent_at',
+            status: MeetingState::ENDS,
+        )
             ->chunkById(50, fn (\Illuminate\Support\Collection $meetings) => $this->redispatchEndedNotifications($meetings));
+    }
+
+    /**
+     * @return Builder<Meeting>
+     */
+    private function staleNotificationMeetings(
+        string $pendingColumn,
+        string $sentColumn,
+        MeetingState $status,
+    ): Builder {
+        $cutoff = now()->subMinutes(10);
+
+        return Meeting::query()
+            ->with(['project.user'])
+            ->whereNull($sentColumn)
+            ->where(function (Builder $query) use ($pendingColumn, $status, $cutoff): void {
+                $query->where($pendingColumn, '<', $cutoff)
+                    ->orWhere(function (Builder $fallback) use ($pendingColumn, $status, $cutoff): void {
+                        $fallback
+                            ->whereNull($pendingColumn)
+                            ->where('status', $status->value)
+                            ->where('updated_at', '<', $cutoff);
+                    });
+            })
+            ->whereHas('project', function (Builder $query): void {
+                $query->whereNull('deleted_at');
+            });
     }
 
     /**
@@ -86,8 +108,8 @@ final class CheckUnsentMeetingNotifications extends Command
                 Log::error('Failed to re-dispatch stuck meeting started notification', [
                     'meeting_id' => $meeting->id,
                     'project_id' => $meeting->project_id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'exception_class' => $e::class,
+                    'exception_code' => $e->getCode(),
                 ]);
             }
         }
@@ -124,8 +146,8 @@ final class CheckUnsentMeetingNotifications extends Command
                 Log::error('Failed to re-dispatch stuck meeting ended notification', [
                     'meeting_id' => $meeting->id,
                     'project_id' => $meeting->project_id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'exception_class' => $e::class,
+                    'exception_code' => $e->getCode(),
                 ]);
             }
         }

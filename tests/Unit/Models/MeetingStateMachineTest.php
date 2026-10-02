@@ -7,7 +7,9 @@ namespace Tests\Unit\Models;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Meeting;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\Support\Meeting\MeetingTestHelper;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
@@ -31,8 +33,14 @@ class MeetingStateMachineTest extends TestCase
     public static function validTransitionsProvider(): array
     {
         return [
+            'pending to creating' => ['from' => MeetingSyncStatus::Pending, 'to' => MeetingSyncStatus::Creating],
             'pending to active' => ['from' => MeetingSyncStatus::Pending, 'to' => MeetingSyncStatus::Active],
             'pending to failed' => ['from' => MeetingSyncStatus::Pending, 'to' => MeetingSyncStatus::Failed],
+            'creating to active' => ['from' => MeetingSyncStatus::Creating, 'to' => MeetingSyncStatus::Active],
+            'creating to failed' => ['from' => MeetingSyncStatus::Creating, 'to' => MeetingSyncStatus::Failed],
+            'creating to create_unknown' => ['from' => MeetingSyncStatus::Creating, 'to' => MeetingSyncStatus::CreateUnknown],
+            'create_unknown to active' => ['from' => MeetingSyncStatus::CreateUnknown, 'to' => MeetingSyncStatus::Active],
+            'create_unknown to failed' => ['from' => MeetingSyncStatus::CreateUnknown, 'to' => MeetingSyncStatus::Failed],
             'active to updating' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Updating],
             'active to deleting' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Deleting],
             'active to failed' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Failed],
@@ -59,6 +67,7 @@ class MeetingStateMachineTest extends TestCase
             'active to pending' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Pending],
             'updating to deleting' => ['from' => MeetingSyncStatus::Updating, 'to' => MeetingSyncStatus::Deleting],
             'deleting to updating' => ['from' => MeetingSyncStatus::Deleting, 'to' => MeetingSyncStatus::Updating],
+            'create_unknown to creating' => ['from' => MeetingSyncStatus::CreateUnknown, 'to' => MeetingSyncStatus::Creating],
             'same state' => ['from' => MeetingSyncStatus::Active, 'to' => MeetingSyncStatus::Active],
         ];
     }
@@ -131,5 +140,48 @@ class MeetingStateMachineTest extends TestCase
             $this->assertEquals('Deleted', $meta['current_state']);
             $this->assertEquals('Active', $meta['attempted_state']);
         }
+    }
+
+    /** @test */
+    public function create_unknown_to_creating_is_invalid(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_status' => MeetingSyncStatus::CreateUnknown,
+        ]);
+
+        $this->expectException(InvalidStateTransitionException::class);
+        $this->expectExceptionMessage('Cannot transition from CreateUnknown to Creating');
+
+        $meeting->transitionTo(MeetingSyncStatus::Creating, 'sync_status');
+    }
+
+    /** @test */
+    public function sync_operation_id_is_unique(): void
+    {
+        $operationId = Str::uuid()->toString();
+
+        MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_operation_id' => $operationId,
+        ]);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+
+        MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_operation_id' => $operationId,
+        ]);
+    }
+
+    /** @test */
+    public function recovery_timestamps_are_cast_correctly(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_started_at' => Carbon::now(),
+            'sync_lease_expires_at' => Carbon::now()->addMinutes(5),
+            'sync_available_at' => Carbon::now()->addMinute(),
+        ]);
+
+        $this->assertInstanceOf(Carbon::class, $meeting->sync_started_at);
+        $this->assertInstanceOf(Carbon::class, $meeting->sync_lease_expires_at);
+        $this->assertInstanceOf(Carbon::class, $meeting->sync_available_at);
     }
 }

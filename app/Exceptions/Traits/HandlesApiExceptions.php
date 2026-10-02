@@ -35,13 +35,19 @@ trait HandlesApiExceptions
             $e->meta($request),
         ));
 
-        $this->renderable(fn (ApiException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            $e->publicMessage(),
-            $e->status(),
-            $e->errorCode(),
-            $e->errors(),
-            $e->meta($request),
-        ));
+        $this->renderable(function (ApiException $e, Request $request): \Illuminate\Http\JsonResponse {
+            $response = ApiErrorFormatter::response(
+                $e->publicMessage(),
+                $e->status(),
+                $e->errorCode(),
+                $e->errors(),
+                $e->meta($request),
+            );
+
+            return $response->withHeaders(
+                $this->publicExceptionHeaders($e->headers())
+            );
+        });
 
         $this->renderable(fn (ModelNotFoundException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Resource not found.',
@@ -71,6 +77,8 @@ trait HandlesApiExceptions
             'Method not allowed.',
             Response::HTTP_METHOD_NOT_ALLOWED,
             'method_not_allowed',
+        )->withHeaders(
+            $this->publicExceptionHeaders($e->getHeaders())
         ));
 
         $this->renderable(function (ThrottleRequestsException $e): \Illuminate\Http\JsonResponse {
@@ -104,6 +112,8 @@ trait HandlesApiExceptions
                 $message,
                 $status,
                 ApiErrorFormatter::defaultCodeForStatus($status),
+            )->withHeaders(
+                $this->publicExceptionHeaders($e->getHeaders())
             );
         });
 
@@ -114,14 +124,24 @@ trait HandlesApiExceptions
             $e->errors(),
         ));
 
-        $this->renderable(fn (RateLimitReachedException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            'Too many requests. Please try again later.',
-            Response::HTTP_TOO_MANY_REQUESTS,
-            'rate_limited',
-            meta: [
-                'retry_after_seconds' => $e->getLimit()->getRemainingSeconds(),
-            ],
-        ));
+        $this->renderable(function (RateLimitReachedException $e, $request): \Illuminate\Http\JsonResponse {
+            $retryAfter = $e->getLimit()->getRemainingSeconds();
+
+            $response = ApiErrorFormatter::response(
+                'Too many requests. Please try again later.',
+                Response::HTTP_TOO_MANY_REQUESTS,
+                'rate_limited',
+                meta: array_filter([
+                    'retry_after_seconds' => $retryAfter,
+                ], fn (int $val): bool => $val > 0),
+            );
+
+            $headers = ['Retry-After' => (string) $retryAfter];
+
+            return $response->withHeaders(
+                $this->publicExceptionHeaders($headers)
+            );
+        });
 
         $this->renderable(fn (S3Exception $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Storage request could not be completed.',
@@ -149,5 +169,38 @@ trait HandlesApiExceptions
                 'internal_server_error',
             );
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $headers
+     * @return array<string, string>
+     */
+    private function publicExceptionHeaders(array $headers): array
+    {
+        $allowedHeaders = [
+            'allow' => 'Allow',
+            'retry-after' => 'Retry-After',
+        ];
+
+        $publicHeaders = [];
+
+        foreach ($headers as $name => $value) {
+            $canonicalName = $allowedHeaders[mb_strtolower($name)] ?? null;
+
+            if ($canonicalName === null || ! is_scalar($value)) {
+                continue;
+            }
+
+            $value = (string) $value;
+
+            // Reject header injection.
+            if (str_contains($value, "\r") || str_contains($value, "\n")) {
+                continue;
+            }
+
+            $publicHeaders[$canonicalName] = $value;
+        }
+
+        return $publicHeaders;
     }
 }

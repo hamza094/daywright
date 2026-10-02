@@ -48,9 +48,11 @@ Route::group(['prefix' => 'admin'], function (): void {
 
             Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->name('users.role.update');
 
-            Route::delete('/projects/bulk-delete', [ProjectController::class, 'bulkDelete'])->name('projects.bulk-delete');
+            // REST endpoint for bulk project deletion
+            Route::delete('/projects', [ProjectController::class, 'bulkDelete'])->name('projects.destroyMany');
 
-            Route::delete('/tasks/bulk-delete', [TaskController::class, 'bulkDelete'])->name('tasks.bulk-delete');
+            // REST endpoint for bulk task deletion
+            Route::delete('/tasks', [TaskController::class, 'bulkDelete'])->name('tasks.destroyMany');
         });
 
         Route::get('dashboard/activities', [DashboardController::class, 'activities'])->name('dashboard.activities');

@@ -29,7 +29,6 @@ final class NotificationActorDataTest extends TestCase
             'name' => $user->name,
             'username' => null,
             'avatar_path' => null,
-            'email' => $user->email,
         ], $payload);
     }
 }

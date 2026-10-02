@@ -28,7 +28,7 @@ class TaskMembersRequest extends FormRequest
     {
         return [
             /**
-             * Member identifiers to assign to the task.
+             * User identifiers to assign to the task.
              * - Prevents assigning a task to users who are already assigned.
              * - Ensures tasks can only be assigned to active members of the project.
              *
@@ -36,29 +36,34 @@ class TaskMembersRequest extends FormRequest
              *
              * @example [3, 5]
              */
-            'members' => ['required',
+            'user_ids' => ['required',
                 'array',
                 'min:1',
-                $this->membersValidation(),
+                $this->userIdsValidation(),
                 new ActiveProjectMember($this->task),
             ],
             /**
-             * Individual member identifier.
+             * Individual user identifier.
              *
              * @var int
              *
              * @example 3
              */
-            'members.*' => ['required', 'exists:users,id', 'distinct'],
+            'user_ids.*' => ['required', 'exists:users,id', 'distinct'],
         ];
     }
 
     public function toDto(): AssignTaskMembersData
     {
-        return AssignTaskMembersData::fromValidated($this->validated());
+        $validated = $this->validated();
+
+        // Normalize 'user_ids' to 'members' for the DTO
+        $memberIds = $validated['user_ids'] ?? [];
+
+        return AssignTaskMembersData::fromValidated(['members' => $memberIds]);
     }
 
-    protected function membersValidation(): Closure
+    protected function userIdsValidation(): Closure
     {
         return function (string $attribute, $value, Closure $fail): void {
             // Guard: ensure the input is an array before querying

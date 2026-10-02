@@ -118,4 +118,47 @@ class UserAvatarTest extends TestCase
 
         Storage::disk('s3')->assertExists($uploadedFile);
     }
+
+    /** @test */
+    public function user_cannot_modify_another_users_avatar_even_with_shared_project(): void
+    {
+        $otherUser = User::factory()->create();
+        User::first();
+        $originalAvatarPath = $otherUser->avatar_path;
+
+        Storage::fake('s3');
+
+        $file = UploadedFile::fake()->image('hacked-avatar.jpg');
+
+        // Try to upload avatar to other user's profile
+        $response = $this->postJson(route(self::USER_AVATAR_ROUTE, ['user' => $otherUser]), [
+            'avatar' => $file,
+        ]);
+
+        $response->assertForbidden();
+
+        // Verify other user's avatar was not changed
+        $this->assertEquals($originalAvatarPath, $otherUser->fresh()->avatar_path);
+    }
+
+    /** @test */
+    public function user_cannot_delete_another_users_avatar(): void
+    {
+        $otherUser = User::factory()->create();
+        User::first();
+
+        Storage::fake('s3');
+
+        // Set up an avatar for the other user
+        $file = UploadedFile::fake()->image('original-avatar.jpg');
+        $otherUser->update(['avatar_path' => $file]);
+
+        // Try to delete other user's avatar
+        $response = $this->deleteJson(route(self::USER_AVATAR_REMOVE_ROUTE, ['user' => $otherUser]));
+
+        $response->assertForbidden();
+
+        // Verify other user's avatar was not deleted
+        $this->assertNotNull($otherUser->fresh()->avatar_path);
+    }
 }

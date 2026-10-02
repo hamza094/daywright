@@ -45,6 +45,7 @@ final readonly class HandleMeetingStartedWebhook
             ->where('status', '!=', MeetingState::ENDS->value)
             ->update([
                 'status' => MeetingState::START->value,
+                'started_notification_pending_at' => now(),
             ]);
 
         if ($updated === 0) {

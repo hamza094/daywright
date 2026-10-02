@@ -63,6 +63,7 @@ class SendMeetingStartedNotificationTest extends TestCase
             'meeting_id' => 813,
             'status' => 'started',
             'started_notification_sent_at' => null,
+            'started_notification_pending_at' => now(),
         ]);
 
         $job = new SendMeetingStartedNotification(
@@ -82,7 +83,9 @@ class SendMeetingStartedNotificationTest extends TestCase
         $job->handle();
 
         Notification::assertSentTo($assignee, MeetingStarted::class);
-        $this->assertNotNull($meeting->fresh()->started_notification_sent_at);
+        $meeting = $meeting->fresh();
+        $this->assertNotNull($meeting->started_notification_sent_at);
+        $this->assertNull($meeting->started_notification_pending_at);
     }
 
     /** @test */
@@ -167,10 +170,10 @@ class SendMeetingStartedNotificationTest extends TestCase
             ->once()
             ->with(
                 'Meeting started notification job failed',
-                Mockery::on(fn (array $context): bool => isset($context['meeting_id']) &&
-                    $context['meeting_id'] === 999 &&
-                    isset($context['exception']) &&
-                    $context['exception'] instanceof RuntimeException)
+                Mockery::on(fn (array $context): bool => $context['meeting_id'] === 999 &&
+                    $context['exception_class'] === RuntimeException::class &&
+                    $context['exception_code'] === 0 &&
+                    ! array_key_exists('exception', $context))
             );
 
         $job = new SendMeetingStartedNotification(

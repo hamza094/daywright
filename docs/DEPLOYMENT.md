@@ -19,11 +19,11 @@ This guide provides detailed instructions for deploying DayWright to production 
 
 ### Software Requirements
 
-- **PHP**: 8.2 or higher
+- **PHP**: 8.3 or higher
 - **Database**: MySQL 8.0+ or PostgreSQL 14+
 - **Redis**: 6.0+ (required for cache, queue locks, scheduler locks, rate limiting)
 - **Composer**: 2.x
-- **Node.js**: 18+ and npm 9+
+- **Node.js**: 20+ and npm 10+
 - **Web Server**: Nginx or Apache with mod_rewrite
 - **Supervisor**: For managing queue workers (recommended)
 
@@ -127,8 +127,10 @@ Set up automated backups:
 ```bash
 # Daily backup example (add to cron)
 # Use environment variables or a MySQL defaults file for credentials
-0 2 * * * mysqldump -u $DB_USER -p$DB_PASSWORD $DB_DATABASE > /backups/daywright_$(date +\%Y\%m\%d).sql
+0 2 * * * mysqldump --defaults-extra-file=/etc/daywright/mysql-backup.cnf daywright > "/backups/daywright_$(date +\%Y\%m\%d).sql"
 ```
+
+Replace `daywright` with the database name used by your deployment. Store credentials in the referenced defaults file with owner-only permissions (for example, mode `600`); do not place the password in the command line.
 
 ## Redis Configuration
 
@@ -318,8 +320,9 @@ sudo supervisorctl status
 
    ```bash
    composer install --no-dev --optimize-autoloader
-   npm ci --production
+   npm ci
    npm run build
+   npm prune --omit=dev
    ```
 
 3. **Run migrations**:

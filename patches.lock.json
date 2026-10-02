@@ -1,0 +1,17 @@
+{
+  "_hash": "8a5775c9e4ee3d6bb551f520a46f056bb13cd562c46d02331ff68bf5a941aa3c",
+  "patches": {
+    "wendelladriel/laravel-idempotency": [
+      {
+        "package": "wendelladriel/laravel-idempotency",
+        "description": "Harden request identity and processing locks",
+        "url": "patches/laravel-idempotency-resource-fingerprint.patch",
+        "sha256": "ed1d8a3b78411850383c73610b97afa7a5c4cfd7ba406d6b91aa3c2182cb8b2a",
+        "depth": 1,
+        "extra": {
+          "provenance": "root"
+        }
+      }
+    ]
+  }
+}

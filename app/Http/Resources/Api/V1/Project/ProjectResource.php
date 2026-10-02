@@ -44,6 +44,13 @@ class ProjectResource extends JsonResource
             'id' => $this->id,
 
             /**
+             * Project version for optimistic concurrency control.
+             *
+             * @example 5
+             */
+            'version' => $this->version,
+
+            /**
              * @example the-dimension
              */
             'slug' => $this->slug,

@@ -80,7 +80,8 @@ final class SmsMessage implements ShouldQueue
         Log::error('SmsMessage job failed', [
             'message_id' => $this->messageId,
             'project_id' => $this->projectId,
-            'exception' => $exception,
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
         ]);
     }
 }

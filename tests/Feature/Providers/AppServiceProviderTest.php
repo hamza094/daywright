@@ -38,6 +38,7 @@ final class AppServiceProviderTest extends TestCase
     {
         $this->app->detectEnvironment(fn (): string => 'production');
         Config::set('cashier.public_key', 'paddle_pub_test_key');
+        Config::set('cashier.webhook', 'https://api.example.test/paddle/webhook');
         Config::set('services.paddle.monthly', '12345');
         Config::set('services.paddle.yearly', '67890');
         Config::set('services.paddle.subscription_name', 'DayWright');
@@ -66,7 +67,59 @@ final class AppServiceProviderTest extends TestCase
         ConfigValidator::$overrideConsoleCheckForTests = true;
 
         $this->expectException(LogicException::class);
-        $this->expectExceptionMessage('The following Paddle configuration values are missing in production environment: PADDLE_PUBLIC_KEY, Monthly_Plan (services.paddle.monthly), Yearly_Plan (services.paddle.yearly), PADDLE_SUBSCRIPTION_NAME (services.paddle.subscription_name), PADDLE_VENDOR_ID (services.paddle.vendor_id), PADDLE_VENDOR_AUTH_CODE (services.paddle.vendor_auth_code)');
+        $this->expectExceptionMessage('The following Paddle configuration values are missing in production environment: PADDLE_PUBLIC_KEY, CASHIER_WEBHOOK (cashier.webhook), Monthly_Plan (services.paddle.monthly), Yearly_Plan (services.paddle.yearly), PADDLE_SUBSCRIPTION_NAME (services.paddle.subscription_name), PADDLE_VENDOR_ID (services.paddle.vendor_id), PADDLE_VENDOR_AUTH_CODE (services.paddle.vendor_auth_code)');
+
+        try {
+            $provider->boot(new ConfigValidator);
+        } finally {
+            ConfigValidator::$overrideConsoleCheckForTests = false;
+        }
+    }
+
+    #[Test]
+    public function it_fails_to_boot_in_production_with_non_https_webhook_url(): void
+    {
+        $this->app->detectEnvironment(fn (): string => 'production');
+        Config::set('cashier.public_key', 'paddle_pub_test_key');
+        Config::set('cashier.webhook', 'http://api.example.test/paddle/webhook');
+        Config::set('services.paddle.monthly', '12345');
+        Config::set('services.paddle.yearly', '67890');
+        Config::set('services.paddle.subscription_name', 'DayWright');
+        Config::set('services.paddle.vendor_id', 'vendor_123');
+        Config::set('services.paddle.vendor_auth_code', 'auth_code');
+
+        $provider = new AppServiceProvider($this->app);
+
+        ConfigValidator::$overrideConsoleCheckForTests = true;
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('CASHIER_WEBHOOK must be HTTPS');
+
+        try {
+            $provider->boot(new ConfigValidator);
+        } finally {
+            ConfigValidator::$overrideConsoleCheckForTests = false;
+        }
+    }
+
+    #[Test]
+    public function it_fails_to_boot_in_production_with_webhook_url_not_ending_in_paddle_webhook(): void
+    {
+        $this->app->detectEnvironment(fn (): string => 'production');
+        Config::set('cashier.public_key', 'paddle_pub_test_key');
+        Config::set('cashier.webhook', 'https://api.example.test/api/v1/webhooks/paddle');
+        Config::set('services.paddle.monthly', '12345');
+        Config::set('services.paddle.yearly', '67890');
+        Config::set('services.paddle.subscription_name', 'DayWright');
+        Config::set('services.paddle.vendor_id', 'vendor_123');
+        Config::set('services.paddle.vendor_auth_code', 'auth_code');
+
+        $provider = new AppServiceProvider($this->app);
+
+        ConfigValidator::$overrideConsoleCheckForTests = true;
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('CASHIER_WEBHOOK must end with /paddle/webhook');
 
         try {
             $provider->boot(new ConfigValidator);

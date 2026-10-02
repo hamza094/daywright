@@ -18,6 +18,7 @@ use App\DataTransferObjects\Task\TaskUpdateData;
 use App\DataTransferObjects\Task\UnassignTaskMemberData;
 use App\Enums\Subscription\PlanLimitType;
 use App\Enums\TaskSystemStatus;
+use App\Exceptions\EditConflictException;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Project;
 use App\Models\Task;
@@ -82,28 +83,64 @@ class TaskService
             ]);
         }
 
+        if ($data->version() === null) {
+            throw ValidationException::withMessages([
+                'version' => ['The version field is required.'],
+            ]);
+        }
+
         return DB::transaction(function () use ($task, $data): Task {
-            $payload = $this->resetTaskNotificationAction->execute($task, $data);
+            // Re-fetch with lock to ensure fresh state and prevent race conditions
+            $freshTask = Task::query()
+                ->whereKey($task->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Version check for optimistic concurrency control
+            if ($freshTask->version !== $data->version()) {
+                throw new EditConflictException(
+                    expectedVersion: $data->version(),
+                    currentVersion: $freshTask->version,
+                );
+            }
+
+            $payload = $this->resetTaskNotificationAction->execute($freshTask, $data);
 
             // Handle status transition separately using state machine
+            $statusChanged = false;
             if ($data->hasStatusUpdate() && $data->statusId() !== null) {
                 $newStatus = TaskSystemStatus::from($data->statusId());
-                $task->transitionTo($newStatus, 'status_id');
+                $currentStatus = $freshTask->status_id;
+
+                // Check for no-op state transition (setting to current state)
+                if ($newStatus->value !== $currentStatus) {
+                    // Perform actual state transition
+                    $freshTask->transitionTo($newStatus, 'status_id');
+                    $statusChanged = true;
+                }
+                // If status is same, skip state transition and side effects
             }
 
-            // Update other attributes (excluding status_id)
+            // Update other attributes (excluding status_id) and increment version
             $nonStatusAttributes = $payload->attributesWithoutStatus();
             if ($nonStatusAttributes !== []) {
-                $task->update($nonStatusAttributes);
+                // Other fields changed, increment version
+                $freshTask->update(array_merge($nonStatusAttributes, [
+                    'version' => $freshTask->version + 1,
+                ]));
+            } elseif ($statusChanged) {
+                // Only status changed, increment version
+                $freshTask->update(['version' => $freshTask->version + 1]);
             }
+            // If nothing changed (no-op), don't increment version
 
-            $task->loadMissing('project:id,slug');
+            $freshTask->loadMissing('project:id,slug');
 
             if ($data->hasStatusUpdate()) {
-                $task->load('status');
+                $freshTask->load('status');
             }
 
-            return $task;
+            return $freshTask;
         });
     }
 

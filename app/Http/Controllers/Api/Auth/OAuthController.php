@@ -85,7 +85,8 @@ class OAuthController extends ApiController
         } catch (GuzzleException $e) {
             Log::error('OAuth callback failed', [
                 'provider' => $provider->value,
-                'message' => $e->getMessage(),
+                'exception_class' => $e::class,
+                'exception_code' => $e->getCode(),
             ]);
 
             throw new ExternalServiceUnavailableException('Error processing user data.', Response::HTTP_INTERNAL_SERVER_ERROR, $e);

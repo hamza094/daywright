@@ -27,24 +27,30 @@ class MeetingService
     ) {}
 
     /**
+     * @param  array<string, mixed>  $paginationQuery
      * @return LengthAwarePaginator<int, Meeting>
      */
-    public function getMeetingsData(Project $project, bool $isPrevious, int $perPage = 3, ?int $page = null): LengthAwarePaginator
-    {
+    public function getMeetingsData(
+        Project $project,
+        bool $isPrevious,
+        int $perPage = 3,
+        ?int $page = null,
+        array $paginationQuery = [],
+    ): LengthAwarePaginator {
         $meetingsQuery = $project->meetings()
             ->with(self::MEETING_RESOURCE_RELATIONS)
             ->where('sync_status', '!=', MeetingSyncStatus::Deleted);
 
         $meetingsQuery->when($isPrevious, fn ($query) => $query->previous(), fn ($query) => $query->scheduled());
 
-        return $meetingsQuery->paginate($perPage, ['*'], 'page', $page);
+        return $meetingsQuery->paginate($perPage, ['*'], 'page', $page)->appends($paginationQuery);
     }
 
     public function createMeetingForProject(Project $project, User $user, MeetingStoreData $data, Zoom $zoom): Meeting
     {
-        return $this->loadForResponse(
-            $this->createProjectMeeting->handle($project, $user, $data, $zoom)
-        );
+        $meeting = $this->createProjectMeeting->handle($project, $user, $data, $zoom);
+
+        return $this->loadForResponse($meeting);
     }
 
     public function updateProjectMeeting(Meeting $meeting, User $user, MeetingUpdateData $data, Zoom $zoom): Meeting

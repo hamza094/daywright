@@ -22,6 +22,14 @@ final class ConfigValidator
             $errors[] = 'PADDLE_PUBLIC_KEY';
         }
 
+        if (blank(config('cashier.webhook'))) {
+            $errors[] = 'CASHIER_WEBHOOK (cashier.webhook)';
+        } elseif (! str_starts_with((string) config('cashier.webhook'), 'https://')) {
+            $errors[] = 'CASHIER_WEBHOOK must be HTTPS';
+        } elseif (! str_ends_with((string) config('cashier.webhook'), '/paddle/webhook')) {
+            $errors[] = 'CASHIER_WEBHOOK must end with /paddle/webhook';
+        }
+
         if (blank(config('services.paddle.monthly'))) {
             $errors[] = 'Monthly_Plan (services.paddle.monthly)';
         }

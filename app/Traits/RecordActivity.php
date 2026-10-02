@@ -164,7 +164,13 @@ trait RecordActivity
         $oldAttributes = $this->convertEnumsToValues($this->oldAttributes);
         $currentAttributes = $this->convertEnumsToValues($this->getAttributes());
 
-        $changed = Arr::except($this->getChanges(), 'updated_at');
+        // Version is optimistic-concurrency metadata, not a user-visible
+        // business change. Keep it out of the activity payload so every
+        // successful edit does not appear as a separate field mutation.
+        $changed = Arr::except($this->getChanges(), ['updated_at', 'version']);
+        if ($changed === []) {
+            return null;
+        }
         $changedKeys = array_keys($changed);
 
         return [

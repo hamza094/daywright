@@ -8,13 +8,14 @@ use App\DataTransferObjects\OAuth\OAuthTokens;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
-use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\DataTransferObjects\Zoom\MeetingSummary;
 use App\Interfaces\Zoom;
 use App\Models\User;
 use App\Repository\OAuthConnectionRepository;
 use Illuminate\Support\Collection;
 use Override;
 use PHPUnit\Framework\Assert;
+use Throwable;
 
 /**
  * @template TKey of array-key
@@ -33,7 +34,12 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 
     public string $codeVerifier;
 
-    private ?ZoomException $failureException = null;
+    private ?Throwable $failureException = null;
+
+    private ?Meeting $meetingToFind = null;
+
+    /** @var list<MeetingSummary> */
+    private array $meetingsToList = [];
 
     public function __construct(private readonly OAuthConnectionRepository $oauthRepository)
     {
@@ -56,7 +62,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     public function authorize(
         AuthorizationCallbackDetails $callbackDetails
     ): OAuthTokens {
-        if ($this->failureException instanceof ZoomException) {
+        if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
 
@@ -70,7 +76,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     /**
      * @return self<array-key, array<string, mixed>>
      */
-    public function shouldFailWithException(ZoomException $exception): self
+    public function shouldFailWithException(Throwable $exception): self
     {
         $this->failureException = $exception;
 
@@ -96,12 +102,12 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
      * @param  array<string, mixed>  $validated
      */
     #[Override]
-    public function createMeeting(array $validated, User $user): Meeting
+    public function createMeeting(array $validated, User $user, string $operationId): Meeting
     {
-        if ($this->failureException instanceof ZoomException) {
+        if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
-        $this->meetingsToCreate->push($validated);
+        $this->meetingsToCreate->push([...$validated, 'operation_id' => $operationId]);
 
         return $this->fakeMeeting();
     }
@@ -112,7 +118,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     #[Override]
     public function updateMeeting(array $validated, User $user): void
     {
-        if ($this->failureException instanceof ZoomException) {
+        if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
     }
@@ -120,7 +126,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     #[Override]
     public function deleteMeeting(int $meetingId, User $user): void
     {
-        if ($this->failureException instanceof ZoomException) {
+        if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
     }
@@ -129,6 +135,50 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     public function getZakToken(User $user): string
     {
         return 'zak&token';
+    }
+
+    #[Override]
+    public function getMeeting(int|string $meetingId, User $user): ?Meeting
+    {
+        if ($this->failureException instanceof Throwable) {
+            throw $this->failureException;
+        }
+
+        return $this->meetingToFind;
+    }
+
+    #[Override]
+    /**
+     * @return list<MeetingSummary>
+     */
+    public function listMeetings(User $user): array
+    {
+        if ($this->failureException instanceof Throwable) {
+            throw $this->failureException;
+        }
+
+        return $this->meetingsToList;
+    }
+
+    /**
+     * @return self<array-key, array<string, mixed>>
+     */
+    public function findsMeeting(?Meeting $meeting): self
+    {
+        $this->meetingToFind = $meeting;
+
+        return $this;
+    }
+
+    /**
+     * @param  list<MeetingSummary>  $meetings
+     * @return self<array-key, array<string, mixed>>
+     */
+    public function listsMeetings(array $meetings): self
+    {
+        $this->meetingsToList = $meetings;
+
+        return $this;
     }
 
     public function assertNoMeetingsCreated(): void

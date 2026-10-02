@@ -51,7 +51,7 @@ class TwoFactorAuthenticationTest extends TestCase
     {
         $this->actingAs($this->user, 'web');
 
-        $response = $this->getJson(route('api.v1.twofactor.fetch-user'));
+        $response = $this->getJson(route('api.v1.twofactor.status'));
 
         $response->assertOk()
             ->assertJsonPath('data.two_factor_state', 'disabled');

@@ -4,8 +4,25 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Api\V1\Concerns;
 
+use Illuminate\Support\Arr;
+
 trait InteractsWithApiQueryPagination
 {
+    /**
+     * Return the validated query values that should be carried by paginator links.
+     *
+     * The current page is deliberately excluded because the paginator owns it.
+     *
+     * @return array<string, mixed>
+     */
+    public function validatedPaginationQuery(): array
+    {
+        return array_filter(
+            Arr::except($this->validated(), ['page']),
+            static fn (mixed $value): bool => $value !== null && $value !== [],
+        );
+    }
+
     public function pageNumber(): int
     {
         return (int) $this->validated('page', 1);

@@ -1,232 +1,126 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/0c38768b-748c-4630-9f76-8a804019745a"
-       width="300"
-       alt="DayWright logo" />
+  <img src="public/img/daywrightlogo.png" width="180" alt="DayWright" />
 </p>
 
-<h1 align="center">A Project Management Application </h1>
+<h1 align="center">DayWright</h1>
 
-<div align="center">
-    
-[![License](https://img.shields.io/github/license/hamza094/ProFresh)](LICENSE) 
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=hamza094_ProFresh&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=hamza094_ProFresh)
+<p align="center">Open-source project management and collaboration for teams.</p>
 
-</div>
+<p align="center">
+  <a href="https://github.com/hamza094/daywright/actions/workflows/tests.yml"><img src="https://github.com/hamza094/daywright/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/hamza094/daywright" alt="License"></a>
+  <a href="https://sonarcloud.io/summary/new_code?id=hamza094_ProFresh"><img src="https://sonarcloud.io/api/project_badges/measure?project=hamza094_ProFresh&metric=alert_status" alt="SonarCloud Quality Gate"></a>
+</p>
 
-## DayWright is an open source single page web application designed to simplify project management.
+DayWright brings project planning and team communication into one workspace. Create projects, organize work into stages, assign and track tasks, and keep discussions and activity connected to the work they belong to.
 
-- [Introduction](#introduction)
-  - [Features](#features)
-  - [Demo Links](#demo-links)
-  - [Who is it for?](#who-is-it-for)
-- [Contribute](#contribute)
-  - [Contribute as a community](#contribute-as-a-community)
-  - [Contribute as a developer](#contribute-as-a-developer)
-- [Principles, vision, and goals](#principles-vision-and-goals)
-  - [Principles](#principles)
-  - [Vision](#vision)
-  - [Goals](#goals)
-- [Deployment](#deployment)
-- [Contact](#contact)
-- [Thank you, open source](#thank-you-open-source)
-- [License](#license)
+There is no hosted demo currently linked from this repository. Developers can run the application locally and explore its generated API documentation.
 
-## Introduction
+## What you can do
 
-DayWright is an open source single page web application built with a Laravel API backend and a Vue.js frontend, designed to simplify project management. It brings project planning, task tracking, and team communication together in one place so you can stay organized, work collaboratively, and keep everything in sync.
+- **Plan work:** organize projects into stages, create tasks, assign members, track status and due dates, and review project activity.
+- **Work with a team:** invite project members, manage access, exchange project messages, and use conversations for group discussions.
+- **Keep work visible:** use dashboards, project insights, notifications, and activity history to follow progress.
+- **Meet and share:** schedule Zoom meetings, upload files, and use email and SMS notifications where configured.
+- **Manage accounts:** sign in with supported social providers, enable two-factor authentication, manage API tokens, and handle subscriptions through Paddle.
 
-Whether you're managing personal projects or leading a team, DayWright offers a clean and intuitive interface to help you stay focused, meet deadlines, and reach your goals more efficiently.
+## Documentation
 
-### Features
+- [Product overview](https://profresh.gitbook.io/profresh-docs)
+- [Local development](https://profresh.gitbook.io/profresh-docs/developers/setup-local-development)
+- [Contributing](CONTRIBUTING.md)
+- [API reference](api.json)
+- [Deployment guide](docs/DEPLOYMENT.md)
 
-- Project-based task management with assignment, due dates, reminders, and progress tracking
-- Project stages with built-in activity tracking and historical records
-- Centralized project dashboard with analytics and insights
-- Team collaboration with member invitations and role management
-- Built-in meetings with Zoom video call integration
-- Real-time group chat scoped to projects
-- Notes and file uploads (documents and images) attached to projects
-- Real-time and scheduled notifications (email and SMS)
-- API-first architecture (REST endpoints)
-- User profiles and subscription management
-- Social authentication (Google, Facebook, etc.)
-- Two-factor authentication
+## Application architecture
 
-### Demo Links
+The browser client is a Vue 2 single-page application served by Laravel. Laravel provides the versioned REST API under `/api/v1`, stores application data in a relational database, and uses queues and the scheduler for background work. Production uses a database queue; Redis supports cache, rate limits, and scheduler/queue locks. Pusher broadcasting is available when configured.
 
-A public demo and walkthrough videos will be added once the core features are stable.
+```mermaid
+flowchart LR
+    Browser[Vue application] --> API[Laravel application and REST API]
+    API --> DB[(Relational database)]
+    API --> Redis[(Redis)]
+    API --> Storage[Configured file storage]
+    API --> Providers[Zoom and Paddle]
+    API --> Queue[Database queue]
+    Queue --> Worker[Queue workers]
+    Scheduler[Laravel scheduler] --> Queue
+    API --> Push[Pusher broadcasting]
+```
 
-### Who is it for?
+The deployment guide covers MySQL or PostgreSQL, Redis, queue workers, and the scheduler. CI tests SQLite and MySQL 8.4.
 
-DayWright is designed for anyone who needs a simple, organized way to manage work whether you're working solo or as a part of a team.
-It helps individuals create tasks, track progress, and stay focused on project stages.
+## Reliability and security
 
-But DayWright really shines in team environments:
-you can assign tasks, collaborate on projects, track stages, join meetings, share updates, and stay aligned without losing context.
-If you want a lightweight yet powerful project-tracking tool that keeps everyone on the same page, this project is for you.
+- Zoom webhook requests are signature-verified before acceptance. Accepted events enter a durable inbox so duplicate delivery, retries, and recovery can be handled without treating every delivery as a new event.
+- Scheduled recovery jobs handle pending webhook work, ambiguous Zoom meeting operations, and subscription operations. Queue workers are separated by priority and workload.
+- Task and project edits use version checks to detect stale concurrent updates.
+- The API uses Sanctum authentication, scoped personal access tokens, authorization middleware, and route-specific rate limits.
+- Sensitive values are scrubbed from application logs. Paddle and Zoom integrations use validated webhook flows; external credentials are supplied through environment configuration.
 
-## Contribute
+These mechanisms depend on correct production configuration. See the [deployment guide](docs/DEPLOYMENT.md) for worker, scheduler, Redis, and operational details.
 
-Contributions of all kinds are welcome. Whether you’re reporting issues, improving documentation, sharing feedback, or contributing code, every effort helps move DayWright forward.
-Below are a few ways you can get involved.
+## Technology
 
-### Contribute as a community
+- **Backend:** PHP 8.3+, Laravel 12, Laravel Sanctum, Laravel Scramble
+- **Frontend:** Vue 2, Vite, Laravel Echo
+- **Data and jobs:** MySQL or PostgreSQL for deployment; SQLite and MySQL in CI; Redis and Laravel queues
+- **Integrations:** Zoom Meetings, Paddle, Pusher, Vonage SMS, and S3-compatible storage (when configured)
+- **Quality:** PHPUnit, Larastan/PHPStan, Laravel Pint, Rector, ESLint, Stylelint, and GitHub Actions
 
-- The simplest way to support DayWright is to share it write about it, mention it on social media, or tell other developers and teams who might benefit from it.
-- Engage with the issue tracker by answering questions, offering guidance, or helping others troubleshoot problems. Every contribution helps make the DayWright community stronger and more supportive.
+## Run locally
 
-### Contribute as a developer
+Requirements: PHP 8.3+, Composer, Node.js 20, npm, MySQL, and Redis. The example environment uses MySQL and Redis; configure their local connection values before setup. Third-party credentials are only needed to try those integrations.
 
-- Read our <a href="https://profresh.gitbook.io/profresh-docs/developers/contributing-guide">Contribution Guide</a>.
-- Install <a href="https://profresh.gitbook.io/profresh-docs/developers/setup-local-development">the developer version locally </a> so you can start contributing.
-- Look for <a href="https://github.com/hamza094/daywright/issues?q=state%3Aopen%20label%3Abug">issues labelled ‘Bugs’</a> if you are looking to have an immediate impact on DayWright.
-- Look for <a href="https://github.com/hamza094/daywright/issues?q=state%3Aopen%20label%3A%22help%20wanted%22">issues labelled ‘Help Wanted’</a>. These are issues that you can solve relatively easily.
-- Look for <a href="https://github.com/hamza094/daywright/issues?q=state%3Aopen%20label%3A%22good%20first%20issue%22">issues labelled ’Good First Issue’</a>. These issues are for people who want to contribute, but try to work on a small feature first.
-- If you are an advanced developer, you can try to tackle <a href="https://github.com/hamza094/daywright/issues?q=state%3Aopen%20label%3A%22feature%20request%22">issues labelled ‘Feature Requests’</a>. These are harder to do and will require a lot of back-and-forth with the repository administrator to make sure we are going to the right direction with the product.
+```bash
+git clone https://github.com/hamza094/daywright.git
+cd daywright
+composer install
+npm ci
+```
 
-## Principles, Vision, and Goals
+Create `.env` from `.env.example`, then set `APP_URL` and local database and Redis credentials. The example uses the synchronous queue locally, so a queue worker is not needed for the quick start. Generate the application key, migrate the database, and start Laravel and Vite:
 
-This section outlines the core ideas that guide how DayWright is built and how it evolves over time. These principles shape product decisions, the long-term vision defines where the project is heading, and the goals describe what we aim to deliver in practice.
+```bash
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+npm run dev:all
+```
 
-### Principles
+`npm run dev:all` starts Laravel's development server and Vite. If you switch to a database queue, run a worker in another terminal with `php artisan queue:work`. Production worker and scheduler instructions are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
-- Simplicity over complexity: features should reduce friction, not add it.
-- Transparency by default: activity, progress, and decisions should be visible.
-- Open-source mindset: code should be readable, testable, and easy to contribute to.
-- Pragmatic design: prefer practical solutions over unnecessary abstraction.
+## Tests and code quality
 
-### Vision
+Run the backend test and quality checks with:
 
-To reduce project complexity by bringing tasks, collaboration, and progress into one clear system.
+```bash
+composer test
+composer stan
+composer pint:test
+composer rector:test
+```
 
-### Goals
+Frontend checks used in CI:
 
-DayWright is built with a few clear goals in mind:
+```bash
+npx eslint "resources/**/*.{vue,js}" --max-warnings=0
+npm run stylelint
+npm test
+npm run build
+```
 
-- **Simple by design**: The entire experience should feel clean, intuitive, and effortless. You shouldn’t need a tutorial to get work done.
-- **Open and transparent**: DayWright is open-source because we believe tools should be trustworthy. Anyone can review the code, suggest improvements, or help shape the future of the project.
-- **Friendly for contributors**: We aim to keep the codebase straightforward and easy to navigate. This helps new contributors onboard quickly and ensures long-term maintainability.
-- **Accessible anywhere**: Whether you're working on a laptop, tablet, or phone, DayWright should feel fast and comfortable to use. Our goal is to support a smooth experience across different environments.
-
-## Configuration
-
-The application uses an environment variable called `ADMIN_EMAILS` to identify administrator accounts.
-
-- Format: a comma-separated list of email addresses. Example: `ADMIN_EMAILS=admin@example.com,security@example.com`
-- Recommended place to set it: the project's `.env` file for local development, and `.env.testing` for CI/test runs.
-- Prefer this over `config/admin.local.php` unless you need to execute PHP in a local override. If you do use `admin.local.php`, keep it out of version control and only use trusted contents.
-
-This value is read by `config/admin.php` and used by the application to determine which users are considered admins.
+GitHub Actions runs PHPUnit against SQLite and MySQL 8.4, PHPStan/Larastan, Pint, Rector, frontend linting and tests, and dependency audits. The npm audit step currently allows known findings to pass (`|| true`); it is not a clean-audit guarantee.
 
 ## Deployment
 
-### Requirements
+For production requirements and the worker and scheduler setup, see the [deployment guide](docs/DEPLOYMENT.md).
 
-- **PHP 8.2+**
-- **MySQL 8.0+** or PostgreSQL 14+
-- **Redis** (required for cache, queue locks, scheduler locks, rate limiting, and job overlap prevention)
-- **Composer** for dependency management
-- **Node.js 18+** and **npm** for frontend assets
+## Contribute
 
-### Environment Configuration
-
-Production deployments should use the database queue driver (default). Do not use `QUEUE_CONNECTION=sync` in production.
-
-```env
-QUEUE_CONNECTION=database
-CACHE_DRIVER=redis
-SESSION_DRIVER=redis
-```
-
-See `.env.example` for all required environment variables.
-
-### Scheduler
-
-The Laravel scheduler must be configured to run every minute via cron:
-
-```bash
-* * * * * cd /path/to/daywright && php artisan schedule:run >> /dev/null 2>&1
-```
-
-The scheduler handles:
-- Scheduled message dispatching
-- Failed job pruning
-- Other periodic tasks
-
-### Queue Workers
-
-DayWright uses multiple queues with different priorities. Run the following workers:
-
-```bash
-# Critical and default queues (auth emails, notifications, messages)
-php artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --timeout=120 --max-time=3600
-
-# Metrics queue (analytics and reporting)
-php artisan queue:work database --queue=metrics --sleep=3 --tries=2 --timeout=120 --max-time=3600
-
-# Webhooks queue (Zoom webhook processing)
-php artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=120 --max-time=3600
-```
-
-**Important:** The `--timeout` value must be lower than the queue `retry_after` configuration (150 seconds by default) to prevent jobs from being retried while still running.
-
-### Supervisor Configuration
-
-For production, use Supervisor to keep queue workers running. Example configuration:
-
-```ini
-[program:daywright-worker]
-process_name=%(program_name)s_%(process_num)02d
-command=php /path/to/daywright/artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --timeout=120 --max-time=3600
-autostart=true
-autorestart=true
-user=www-data
-numprocs=2
-redirect_stderr=true
-stdout_logfile=/var/log/daywright-worker.log
-```
-
-### Deployment Steps
-
-1. Deploy code to server
-2. Run `php artisan migrate --force` to run database migrations
-3. Run `php artisan config:cache` to cache configuration
-4. Run `php artisan route:cache` to cache routes
-5. Run `php artisan queue:restart` to restart queue workers (loads new code)
-6. Run `php artisan schedule:interrupt` if needed to stop running scheduler tasks
-
-### Failed Job Management
-
-Monitor failed jobs regularly:
-
-```bash
-# View failed jobs
-php artisan queue:failed
-
-# Retry a specific failed job
-php artisan queue:retry [id]
-
-# Retry all failed jobs
-php artisan queue:retry all
-
-# Flush all failed jobs
-php artisan queue:flush
-```
-
-Failed jobs are automatically pruned after 7 days by the scheduler.
-
-For detailed deployment instructions, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
-## Contact
-
-<a href="https://github.com/hamza094">Hamza Ikram (hamza094)</a>
-
-## Thank you, open source
-
-DayWright is built on the work of many open-source projects, and we are grateful to the communities behind them. By releasing DayWright as a free and open-source tool, we hope to give back and support others in the same way these projects have supported us.
+Bug reports, fixes, and tests are welcome. Follow the [GitHub contribution guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md), or use the [issue tracker](https://github.com/hamza094/daywright/issues) to discuss a change.
 
 ## License
 
-Copyright © 2020–2026
-
-Licensed under the <a href="https://github.com/hamza094/ProFresh/blob/master/LICENSE">AGPL License</a>.
+DayWright is licensed under the [GNU Affero General Public License v3.0](LICENSE).

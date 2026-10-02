@@ -88,7 +88,7 @@
                   <span>{{ member.name }}</span>
                   <span v-if="member.uuid == owner.uuid" class="badge badge-success ml-1">project owner</span>
                 </div>
-                <div class="member-card_sub member-card_time">{{ member.email }}</div>
+                <div class="member-card_sub member-card_time">@{{ member.username }}</div>
               </div>
             </router-link>
 

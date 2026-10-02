@@ -129,9 +129,9 @@ test('createIdempotentRequest reset clears the active key immediately', async ()
 
   const request = createIdempotentRequest(client);
 
-  await request.patch('/projects/demo/tasks/1/assign', { members: [3] });
+  await request.post('/projects/demo/tasks/1/assignees', { user_ids: [3] });
   request.reset();
-  await request.patch('/projects/demo/tasks/1/assign', { members: [3] });
+  await request.post('/projects/demo/tasks/1/assignees', { user_ids: [3] });
 
   assert.equal(calls.length, 2);
   assert.notEqual(calls[0].headers['Idempotency-Key'], calls[1].headers['Idempotency-Key']);

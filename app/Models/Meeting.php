@@ -7,7 +7,7 @@ namespace App\Models;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Traits\HasStateMachine;
 use App\Traits\RecordActivity;
-use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,8 +37,13 @@ class Meeting extends Model
         'start_time' => 'datetime',
         'sync_status' => MeetingSyncStatus::class,
         'synced_at' => 'datetime',
+        'sync_started_at' => 'datetime',
+        'sync_lease_expires_at' => 'datetime',
+        'sync_available_at' => 'datetime',
         'started_notification_sent_at' => 'datetime',
         'ended_notification_sent_at' => 'datetime',
+        'started_notification_pending_at' => 'datetime',
+        'ended_notification_pending_at' => 'datetime',
     ];
 
     /**
@@ -63,7 +68,7 @@ class Meeting extends Model
      */
     public function scopePrevious(Builder $query): Builder
     {
-        return $query->where('start_time', '<', Carbon::now());
+        return $query->where('start_time', '<', now());
     }
 
     /**
@@ -72,7 +77,7 @@ class Meeting extends Model
      */
     public function scopeScheduled(Builder $query): Builder
     {
-        return $query->where('start_time', '>=', Carbon::now());
+        return $query->where('start_time', '>=', now());
     }
 
     /**
@@ -85,12 +90,62 @@ class Meeting extends Model
     }
 
     /**
+     * @param  Builder<Meeting>  $query
+     * @return Builder<Meeting>
+     */
+    public function scopeCreateUnknownDueAt(Builder $query, CarbonInterface $at): Builder
+    {
+        return $query->where('sync_status', MeetingSyncStatus::CreateUnknown)
+            ->where('sync_available_at', '<=', $at);
+    }
+
+    /**
+     * @param  Builder<Meeting>  $query
+     * @return Builder<Meeting>
+     */
+    public function scopeCreatingWithExpiredLeaseAt(Builder $query, CarbonInterface $at): Builder
+    {
+        return $query->where('sync_status', MeetingSyncStatus::Creating)
+            ->where('sync_lease_expires_at', '<=', $at);
+    }
+
+    /**
+     * @param  Builder<Meeting>  $query
+     * @return Builder<Meeting>
+     */
+    public function scopeReadyForZoomRecoveryAt(Builder $query, CarbonInterface $at): Builder
+    {
+        return $query->where(function (Builder $query) use ($at): void {
+            $query->creatingWithExpiredLeaseAt($at)
+                ->orWhere(fn (Builder $query): Builder => $query->createUnknownDueAt($at));
+        });
+    }
+
+    public function awaitsManualZoomRecovery(): bool
+    {
+        return $this->sync_status === MeetingSyncStatus::CreateUnknown
+            && $this->sync_available_at === null
+            && $this->sync_claim_token === null
+            && $this->sync_lease_expires_at === null;
+    }
+
+    /**
      * @return array<string, list<string>>
      */
     protected function validTransitions(): array
     {
         return [
             MeetingSyncStatus::Pending->value => [
+                MeetingSyncStatus::Creating->value,
+                MeetingSyncStatus::Active->value,
+                MeetingSyncStatus::Failed->value,
+            ],
+            MeetingSyncStatus::Creating->value => [
+                MeetingSyncStatus::Active->value,
+                MeetingSyncStatus::Failed->value,
+                MeetingSyncStatus::CreateUnknown->value,
+            ],
+            MeetingSyncStatus::CreateUnknown->value => [
                 MeetingSyncStatus::Active->value,
                 MeetingSyncStatus::Failed->value,
             ],

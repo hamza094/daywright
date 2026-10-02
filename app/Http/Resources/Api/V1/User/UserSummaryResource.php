@@ -17,6 +17,8 @@ class UserSummaryResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
+     * This resource provides a minimal user representation without email or private info.
+     * Used for conversations, notifications, project owners, and ordinary members.
      *
      * @return array<string, mixed>
      */

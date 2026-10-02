@@ -11,24 +11,26 @@
 3. [Services](#3-services)
 4. [Repositories](#4-repositories)
 5. [Data Transfer Objects (DTOs)](#5-data-transfer-objects-dtos)
-6. [Controllers](#6-controllers)
-7. [Form Requests](#7-form-requests)
-8. [API Resources](#8-api-resources)
-9. [Models](#9-models)
-10. [Enums](#10-enums)
-11. [Events & Listeners](#11-events--listeners)
-12. [Jobs](#12-jobs)
-13. [Policies](#13-policies)
-14. [Traits](#14-traits)
-15. [Query Builders](#15-query-builders)
-16. [Validation Rules](#16-validation-rules)
-17. [Notifications](#17-notifications)
-18. [Interfaces](#18-interfaces)
-19. [Exceptions & Error Handling](#19-exceptions--error-handling)
-20. [Logging & Operational Debuggability](#20-logging--operational-debuggability)
-21. [Testing](#21-testing)
-22. [API Response Standards](#22-api-response-standards)
-23. [API Security & Authorization](#23-api-security--authorization)
+6. [Pagination & Query String Preservation](#6-pagination--query-string-preservation)
+7. [Controllers](#7-controllers)
+8. [Form Requests](#8-form-requests)
+9. [API Resources](#9-api-resources)
+10. [Models](#10-models)
+11. [Enums](#11-enums)
+12. [Events & Listeners](#12-events--listeners)
+13. [Jobs](#13-jobs)
+14. [Policies](#14-policies)
+15. [Traits](#15-traits)
+16. [Query Builders](#16-query-builders)
+17. [Validation Rules](#17-validation-rules)
+18. [Notifications](#18-notifications)
+19. [Interfaces](#19-interfaces)
+20. [Exceptions & Error Handling](#20-exceptions--error-handling)
+21. [Logging & Operational Debuggability](#21-logging--operational-debuggability)
+22. [Testing](#22-testing)
+23. [API Response Standards](#23-api-response-standards)
+24. [API Security & Authorization](#24-api-security--authorization)
+25. [Durable Webhooks & Third-Party Integrations](#25-durable-webhooks--third-party-integrations)
 
 ---
 
@@ -205,7 +207,7 @@ Services orchestrate one application use case or read workflow, coordinating bet
 - ✅ Use `final readonly` for immutable services
 - ✅ Name services by workflow or responsibility; avoid vague names such as `FeatureService`, `HelperService`, or `ManagerService`
 - ✅ Own one use case boundary or one read/listing/composition workflow boundary
-- ✅ Wrap multi-step operations in `DB::transaction()`
+- ✅ Wrap multi-step operations in `DB::transaction()` when the steps share one database consistency boundary
 - ✅ Use PHPDoc for array parameter types: `@param array<string, mixed>`
 - ✅ Accept models, scalars, or strongly typed DTOs for complex payloads; avoid untyped arrays. Pass the acting user explicitly when needed
 - ✅ Coordinate actions, repositories, transactions, notifications, domain events, and external integrations
@@ -218,6 +220,8 @@ Services orchestrate one application use case or read workflow, coordinating bet
 - ❌ Do not accept Form Request objects in non-auth/session services
 - ❌ Do not call `request()`, `auth()`, or `Auth::user()` in non-auth/session services
 - ❌ Do not return HTTP responses
+
+For durable webhook acceptance, persist the inbox record and commit the database transaction before dispatching asynchronous processing. Do not hold a transaction open while dispatching a job or calling a third-party API.
 
 Auth or session oriented services are the narrow exception. They may touch request or auth state only when that coupling is their actual job.
 
@@ -269,7 +273,93 @@ DTOs are immutable value objects for transferring data between layers with type 
 
 ---
 
-## 6. Controllers
+## 6. Pagination & Query String Preservation
+
+### Purpose
+
+Ensure pagination links preserve query context (filters, sort, page size) across page navigation to prevent data leakage and maintain user query state.
+
+### Pattern
+
+Use the `InteractsWithApiQueryPagination` trait in Form Requests and call `validatedPaginationQuery()` to extract validated query parameters for pagination link preservation.
+
+### Implementation
+
+**Form Request Trait:**
+
+```php
+// app/Http/Requests/Api/V1/Concerns/InteractsWithApiQueryPagination.php
+trait InteractsWithApiQueryPagination
+{
+    public function validatedPaginationQuery(): array
+    {
+        return array_filter(
+            Arr::except($this->validated(), ['page']),
+            static fn (mixed $value): bool => $value !== null && $value !== [],
+        );
+    }
+}
+```
+
+**Controller Usage:**
+
+```php
+// Pass validated pagination query to services/repositories
+$paginatedResults = $service->paginate(
+    $filters,
+    $sort,
+    $request->perPage(),
+    $request->pageNumber(),
+    $request->validatedPaginationQuery(), // Extract validated parameters
+);
+```
+
+**Service/Repository Usage:**
+
+```php
+// Append validated parameters to paginator
+return $query->paginate($perPage, ['*'], 'page', $page)
+    ->appends($paginationQuery);
+```
+
+### Guidelines
+
+- ✅ Use `validatedPaginationQuery()` for all paginated endpoints with filters/sort/custom page size
+- ✅ The method automatically excludes `page` (Laravel handles this) and removes null/empty values
+- ✅ Use explicit `appends($paginationQuery)` instead of automatic `withQueryString()` for security
+- ✅ Preserve existing API contracts when updating pagination (e.g., `request=previous` for meetings)
+- ✅ Add regression tests that follow `links.next` and verify filter/sort/page size continuity
+- ❌ Do not use `withQueryString()` blindly (may include unwanted parameters)
+- ❌ Do not manually include `page` in appended parameters (Laravel manages this)
+- ❌ Do not let pagination links lose filter/sort context between pages
+
+### Example
+
+**Request:** `GET /api/v1/projects?filter[search]=Audit&sort=name&per_page=1&page=1`
+
+**Pagination Links (Correct):**
+
+```json
+{
+  "links": {
+    "next": "/api/v1/projects?filter[search]=Audit&sort=name&per_page=1&page=2"
+  }
+}
+```
+
+**Pagination Links (Incorrect - P3.3 Bug):**
+
+```json
+{
+  "links": {
+    "next": "/api/v1/projects?page=2" // Lost filter, sort, per_page
+  }
+}
+```
+
+---
+
+## 7. Controllers
 
 ### Purpose
 
@@ -325,7 +415,7 @@ Controller (base)
 
 ---
 
-## 7. Form Requests
+## 8. Form Requests
 
 ### Purpose
 
@@ -344,10 +434,11 @@ Form Requests handle validation and authorization for incoming HTTP requests.
 - ✅ Use `prepareForValidation()` for pre-validation data manipulation
 - ✅ Access route parameters with `$this->route('param')`
 - ✅ Use array notation for complex rules (easier to read)
+- ✅ For paginated endpoints, use the `InteractsWithApiQueryPagination` trait and call `validatedPaginationQuery()` to extract validated query parameters (excluding `page`) for pagination link preservation
 
 ---
 
-## 8. API Resources
+## 9. API Resources
 
 ### Purpose
 
@@ -370,7 +461,7 @@ Resources transform Eloquent models into standardized JSON API responses.
 
 ---
 
-## 9. Models
+## 10. Models
 
 ### Purpose
 
@@ -407,7 +498,7 @@ Eloquent models represent database tables with relationships, scopes, and domain
 
 ---
 
-## 10. Enums
+## 11. Enums
 
 ### Purpose
 
@@ -426,7 +517,7 @@ Enums define fixed sets of values with associated logic.
 
 ---
 
-## 11. Events & Listeners
+## 12. Events & Listeners
 
 ### Purpose
 
@@ -447,7 +538,7 @@ Events represent domain occurrences; Listeners handle side effects.
 
 ---
 
-## 12. Jobs
+## 13. Jobs
 
 ### Purpose
 
@@ -466,9 +557,11 @@ Jobs encapsulate work to be queued and processed asynchronously.
 - ✅ Use primitive IDs instead of models (avoids serialization issues)
 - ✅ Log failures with context
 
+When a durable webhook inbox owns retry scheduling, the job must make one processing attempt and the inbox state machine owns attempts, backoff, and recovery. Do not add an independent queue retry policy that can conflict with the inbox retry policy.
+
 ---
 
-## 13. Policies
+## 14. Policies
 
 ### Purpose
 
@@ -488,7 +581,7 @@ Policies define authorization logic for model access.
 
 ---
 
-## 14. Traits
+## 15. Traits
 
 ### Purpose
 
@@ -508,7 +601,7 @@ Traits provide reusable functionality across multiple classes.
 
 ---
 
-## 15. Query Builders
+## 16. Query Builders
 
 ### Purpose
 
@@ -528,7 +621,7 @@ Custom Query Builders extend Eloquent's Builder with model-specific query method
 
 ---
 
-## 16. Validation Rules
+## 17. Validation Rules
 
 ### Purpose
 
@@ -547,7 +640,7 @@ Custom validation rules encapsulate complex validation logic.
 
 ---
 
-## 17. Notifications
+## 18. Notifications
 
 ### Purpose
 
@@ -567,7 +660,7 @@ Notifications handle multi-channel user notifications.
 
 ---
 
-## 18. Interfaces
+## 19. Interfaces
 
 ### Purpose
 
@@ -586,7 +679,7 @@ Interfaces define contracts for services and integrations.
 
 ---
 
-## 19. Exceptions & Error Handling
+## 20. Exceptions & Error Handling
 
 ### Purpose
 
@@ -611,7 +704,7 @@ Provide a unified, secure, and developer-friendly approach to throwing and rende
 
 ---
 
-## 20. Logging & Operational Debuggability
+## 21. Logging & Operational Debuggability
 
 ### Purpose
 
@@ -624,17 +717,19 @@ Ensure the application is 100% "2 AM Debuggable". When production breaks, system
 
 ### Guidelines
 
-- ✅ **Preserve Stack Traces**: Always pass the full `$exception` object to Monolog (e.g., `Log::error('msg', ['exception' => $e])`), NEVER serialize it as strings via `$e->getMessage()` or `$e->getTraceAsString()`.
+- ✅ **Preserve Reportable Failures**: Send unexpected exceptions through Laravel's exception reporter (`report($exception)` or the application handler) so the configured error reporter can retain the stack trace. Structured operational logs should record the exception class, code, operation, and correlation identifiers instead of the raw exception object, message, or trace.
 - ✅ **Wrap External Boundaries**: All third-party API SDK calls (e.g., Vonage, Paddle) must be wrapped in `try/catch`. Log the failure with context before re-throwing. Do not let SDK exceptions bubble up silently.
 - ✅ **Protect Loops in Commands**: When processing chunks in Console Commands, wrap the inner loop logic in a `try/catch`. A single corrupt row must never crash the entire cron job silently. Log the error and `continue`.
 - ✅ **Log Silent Early Returns**: In queue jobs, if a required model is missing (e.g., deleted before job runs), log a warning/error before `return;`. Do not fail silently. (Exception: pure idempotency checks).
-- ✅ **Redact Sensitive Data**: Use `ScrubSensitiveData` taps to prevent passwords and PII from leaking into logs. **Warning:** Do not log raw SQL bindings (e.g. `$query->bindings`), as they are indexed arrays and bypass key-based scrubbers.
+- ✅ **Redact Sensitive Data Everywhere**: Attach `ScrubSensitiveData` to every first-party log channel and configure Bugsnag's native `redacted_keys`. Apply the same redaction in every environment. Never log credentials, authorization/cookie headers, OAuth codes, provider payloads, or raw SQL bindings.
+- ✅ **Allowlist Audit Metadata**: Pass only identifiers required for investigation to `AuditLogService`. Do not persist raw provider requests, headers, signatures, or third-party responses in logs or audit records. A durable webhook inbox may persist the minimum normalized metadata and encrypted payload required for recovery. The service-level sanitizer is a final safety boundary, not a substitute for caller allowlists.
+- ✅ **Preserve Correlation Data**: Keep safe identifiers such as request ID, provider event ID, actor ID, resource ID, operation, status, and attempt count so sanitized failures remain diagnosable.
 - ✅ **Use JSON Formatting**: Always use `JsonFormatter` in production log channels (e.g., `daily`) to ensure structured, queryable logs.
 - ❌ **No Happy Path Noise**: Do not log successful CRUD state changes or audit trails in the system operational logs. Keep system logs focused strictly on errors, failures, and system state anomalies.
 
 ---
 
-## 21. Testing
+## 22. Testing
 
 ### Directory Structure
 
@@ -730,11 +825,13 @@ abstract class TestCase extends BaseTestCase
 - ✅ Create setup traits for common test configuration
 - ✅ Move repeated test-only setup into shared helpers instead of copying it across files
 - ✅ Use `Http::preventStrayRequests()` to catch unmocked HTTP calls
+- ✅ Keep authentication and authorization middleware enabled in security-boundary tests. Exercise real session, first-party token, and developer-token paths rather than disabling the middleware being verified.
+- ✅ For paginated endpoints, add regression tests that follow `links.next` and verify filter/sort/page size continuity
 - ❌ Do not group feature tests by controller or service implementation folder when the real boundary is a domain or endpoint
 
 ---
 
-## 22. API Response Standards
+## 23. API Response Standards
 
 ### Success Response Structure
 
@@ -803,7 +900,7 @@ All API errors return a strict JSON payload defined by `ApiErrorFormatter`.
 
 ---
 
-## 23. API Security & Authorization
+## 24. API Security & Authorization
 
 ### Purpose
 
@@ -838,13 +935,15 @@ Certain application boundaries MUST be strictly isolated from third-party develo
 - **Billing & Subscriptions**: Upgrading/downgrading plans, viewing invoices, managing payment methods.
 - **Account Deletion**: Deleting the entire workspace or user account.
 
+Account deletion and permanent account deletion use `firstParty.auth`. Web sessions and application-issued wildcard tokens may execute them; developer tokens with explicit scopes may not. User-created developer-token validation must continue to reject the wildcard `*` ability.
+
 ### Scope Enforcement (Principle of Least Privilege)
 
 DayWright uses a predefined, strict list of domain-specific scopes (e.g., `projects:read`, `team:write`). When routing, strictly adhere to the following rules:
 
 - ✅ **No Over-Privileging**: A `GET` (read-only) route MUST NOT demand a `:write` scope. If a user only needs to read data, their read-only token must work.
 - ✅ **No Domain Bleeding**: A route must only require the scope for the specific data domain it touches (e.g., a dashboard endpoint returning tasks must require `projects:read`, not `account:read`).
-- ✅ **Strict Mutation Protection**: Every `POST`, `PUT`, `PATCH`, and `DELETE` route MUST be guarded by a `:write` scope to prevent read-only tokens from mutating data.
+- ✅ **Strict Mutation Protection**: Every mutation exposed to developer tokens MUST require the appropriate `:write` scope. First-party-only mutations MUST instead use `session.auth` or `firstParty.auth`, with policy authorization and a sensitive-operation throttle where appropriate.
 - ✅ **Prevent Privilege Escalation**: API keys (PATs) that create other API keys MUST only be allowed to grant a subset of their own scopes. Only SPA sessions (`TransientToken`) or tokens with wildcard `*` abilities can freely assign scopes.
 - ✅ **Use custom middleware**: Always use the custom `tokenAbility:` middleware for scope checks. It gracefully bypasses scope checks for SPA session requests while enforcing them strictly for API keys.
 - ✅ **API Resources**: Use `->middlewareFor()` when declaring `Route::apiResource()` to independently scope `index`/`show` (read) vs `store`/`update`/`destroy` (write).
@@ -857,6 +956,63 @@ To protect against abuse and resource starvation, enforce Portkey-style multi-la
 - ✅ **Layer 1 (User Ceiling)**: Aggregate limits for a single authenticated user (e.g., `200/min`) across all their devices and tokens. Protects the global application from noisy neighbors.
 - ✅ **Layer 2 (Per-Token Ceiling)**: Sub-limits for individual API keys (e.g., `30/min`). **Crucial invariant:** `(Per-Token Limit × Max Tokens) < User Ceiling` MUST always hold true to guarantee web dashboard headroom for the user. SPA requests (`TransientToken`) bypass this layer.
 - ✅ **Layer 3 (Sensitive Mutations)**: Strict, isolated limits (e.g., `5/min` to `10/min`) on high-value endpoints like token creation/deletion, destructive actions (`DELETE` routes, force-deletes, member removals), and billing operations.
+
+---
+
+## 25. Durable Webhooks & Third-Party Integrations
+
+### Purpose
+
+Define reliability rules for inbound webhooks and outbound provider writes without forcing different providers or operations into one generic implementation.
+
+### Inbound Webhook Reliability
+
+These inbox rules apply when Daywright owns webhook acceptance and processing, as it does for Zoom. Paddle Classic currently uses the installed Cashier 1.x webhook route, signature verifier, and subscription/receipt handlers. Do not add a second Paddle inbox unless a demonstrated billing failure requires one. Verify its route, production public key and URL, and a real sandbox billing flow. Document Cashier's missing-local-subscription and out-of-order update limitations.
+
+- Authenticate the provider request before accepting it.
+- Derive a deterministic event key and enforce uniqueness in the database.
+- Treat the database constraint as the final deduplication authority; cache or middleware checks are optimizations only.
+- Persist the minimum normalized metadata and encrypted payload before acknowledging the provider.
+- Use at-least-once semantics. Business handlers must be safe to run again after a worker crash or expired lease.
+- Use an atomic claim and lease when concurrent workers can process the same row.
+- Keep retry ownership in one place. If the inbox owns retries, the queue job performs one attempt.
+- Commit database state before queue dispatch or external API calls.
+- Keep provider verification and payload parsing at the provider boundary.
+- Keep business actions independent of HTTP requests and provider-specific request classes.
+- Do not log raw payloads, signatures, credentials, tokens, or exception messages.
+
+### Provider Boundary
+
+Each provider may define its own verifier, request validation, DTOs, event-key rules, event mapping, and business handlers. Do not introduce a shared interface or registry until a second provider demonstrates a repeated need for it.
+
+The shared inbox may own persistence, state transitions, claims, leases, retries, and recovery. Provider code must supply the normalized event metadata and select the provider-specific handler.
+
+### Outbound Provider Writes
+
+For non-idempotent provider writes such as creating a remote resource:
+
+- Persist a stable local operation identity and an in-progress state before calling the provider.
+- Commit local state before the external request. Never hold a database transaction open during provider I/O.
+- Classify outcomes as success, definite rejection, or ambiguous. A timeout, connection loss, provider 5xx, malformed success response, or process crash may be ambiguous.
+- Never automatically repeat an ambiguous non-idempotent write. Reconcile the original operation first.
+- Use a provider-supported unique correlation value. Do not correlate automatically using weak fields such as names, topics, timestamps, or email addresses.
+- Use provider webhooks as an optional fast recovery path, not the only recovery mechanism.
+- Add scheduled reconciliation using safe reads when webhooks or responses may be lost.
+- Use an atomic claim and expiring lease when multiple recovery workers can select the same local operation.
+- Guard final updates with the claim token so a stale worker cannot overwrite newer work.
+- Keep retry ownership in one place and use bounded backoff. Exhausted ambiguity must remain visible for manual review rather than being marked as a definite failure.
+- Manual resolution must use an internal audited command or administrative workflow, verify exact provider correlation, and never silently repeat the original write.
+- Reuse the domain model as the durable operation record when it naturally owns the workflow. Do not add a generic outbox or integration-operation table without a demonstrated second use case.
+
+### Required Webhook Tests
+
+For application-owned durable webhook inboxes, test signature rejection, malformed payloads, duplicate delivery, database-acceptance failure, queue-dispatch failure, worker crash or expired lease, retry exhaustion, and replay-safe business handling. For the Cashier Classic exception above, test Daywright's route/configuration and application-specific listeners; verify the vendor-managed billing behavior in the Paddle sandbox rather than duplicating Cashier's full test suite.
+
+### Required Outbound Recovery Tests
+
+Every recoverable non-idempotent provider write must test success, definite rejection, ambiguous transport failure, provider 5xx, malformed success response, process crash or expired lease, concurrent claims, stale claim rejection, bounded retry exhaustion, exact correlation, harmless repeated reconciliation, manual resolution, and proof that recovery never repeats the original write.
+
+See `docs/WEBHOOK_INBOX.md` for the common lifecycle and `docs/WEBHOOK_PROVIDER_ONBOARDING.md` for the provider implementation checklist.
 
 ---
 
@@ -914,9 +1070,12 @@ use App\Repository\ProjectRepository;
 
 ## Version History
 
-| Version | Date       | Changes                                    |
-| ------- | ---------- | ------------------------------------------ |
-| 1.0.0   | 2026-01-22 | Initial guidelines extracted from codebase |
+| Version | Date       | Changes                                                          |
+| ------- | ---------- | ---------------------------------------------------------------- |
+| 1.3.0   | 2026-09-19 | Added durable outbound-write and ambiguous-result recovery rules |
+| 1.2.0   | 2026-09-17 | Added durable webhook and third-party integration guidelines     |
+| 1.1.0   | 2026-09-14 | Added account-deletion and sanitized logging security rules      |
+| 1.0.0   | 2026-01-22 | Initial guidelines extracted from codebase                       |
 
 ---
 

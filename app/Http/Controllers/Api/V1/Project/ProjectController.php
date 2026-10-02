@@ -40,7 +40,7 @@ class ProjectController extends ApiController
             $request->sort(),
             $request->perPage(),
             $request->pageNumber(),
-            $request->url(),
+            $request->validatedPaginationQuery(),
         );
 
         return ProjectCollectionResource::collection($paginatedProjects)->response();
@@ -85,18 +85,21 @@ class ProjectController extends ApiController
     /**
      * Update Project Fields
      *
-     * This endpoint allows you to update the details of an existing project.
-     * It requires the project's slug and the updated fields (name, about, notes) when they are present
-     * in the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.
+     * This endpoint allows you to update the details of an existing project using PATCH.
+     * It supports partial updates - only the fields provided in the request body will be updated.
+     * Re-submitting current values is accepted for idempotency (e.g., network retries).
+     * The version field is required for optimistic concurrency control.
      */
     #[Endpoint(operationId: 'projects.update')]
+    #[ApiError(ErrorCode::EDIT_CONFLICT)]
     public function update(Project $project, ProjectUpdateRequest $request): JsonResponse
     {
         $this->authorize('access', $project);
 
         $data = $request->toDto();
 
-        if ($data->isEmpty()) {
+        // Version-only payload is not an edit
+        if ($data->isVersionOnly()) {
             abort(Response::HTTP_BAD_REQUEST, "You haven't changed anything.");
         }
 

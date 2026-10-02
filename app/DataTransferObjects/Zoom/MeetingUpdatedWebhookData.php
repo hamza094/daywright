@@ -54,6 +54,30 @@ final readonly class MeetingUpdatedWebhookData
     }
 
     /**
+     * @param  array{meetingId: int|string, changes: array<string, mixed>, requestId: ?string}  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            meetingId: $data['meetingId'],
+            changes: $data['changes'],
+            requestId: $data['requestId'] ?? null,
+        );
+    }
+
+    /**
+     * @return array{meetingId: int|string, changes: array<string, mixed>, requestId: ?string}
+     */
+    public function toArray(): array
+    {
+        return [
+            'meetingId' => $this->meetingId,
+            'changes' => $this->changes,
+            'requestId' => $this->requestId,
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $changes
      * @return array<string, mixed>
      */

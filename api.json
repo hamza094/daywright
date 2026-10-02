@@ -3,7 +3,7 @@
   "info": {
     "title": "DayWright",
     "version": "0.3.1",
-    "description": "# DayWright API Overview\n\nDayWright exposes a versioned JSON API for authentication, users, projects, tasks, conversations, notifications, subscriptions, and selected integration workflows. Individual endpoint pages describe exact request fields and schemas; this page documents the shared conventions used across the API.\n\n## Introduction\n\n- The public API is currently implemented under `v1`.\n- Resource serialization is handled primarily through Laravel API resources, so most payloads are JSON-first and predictable.\n\n## Base URL\n\n- Relative base path: `/api/v1`\n- Example requests and links below use relative API paths so the published docs stay environment-agnostic.\n\n\n## Authentication\n\n### Bearer token authentication\n\n- API clients authenticate with Laravel Sanctum personal access tokens.\n- Send tokens using the `Authorization` header:\n\n```http\nAuthorization: Bearer YOUR_TOKEN\n```\n\n- Contact your DayWright administrator to obtain API access credentials.\n- Tokens include scope-based permissions for different API operations.\n- User-created API tokens may include an optional `expires_at` value in ISO 8601 format, up to 180 days in the future.\n\n\n\n## Request Format\n\n- Send JSON request bodies unless an endpoint explicitly accepts files.\n- Recommended headers for JSON requests:\n\n```http\nAccept: application/json\nContent-Type: application/json\n```\n\n- File upload endpoints use `multipart/form-data`.\n- Request and response fields use `snake_case`.\n- Where timestamps are accepted, the API expects ISO 8601 timestamps with a timezone offset, for example `2025-12-31T23:59:59+00:00`.\n- Selected filter requests normalize boolean-like query values, but JSON booleans are preferred.\n\n## Query Contract\n\nReleased collection and collection-like read endpoints use a strict query contract unless an endpoint description explicitly documents an exception.\n\n### Filtering\n\n- Use `filter[field]=value` for general collection endpoints.\n- Only documented filter keys are accepted.\n- Unknown filter keys and invalid filter values return `422 Unprocessable Entity`.\n- A valid filter that matches no records still returns `200 OK` with an empty `data` payload.\n\n### Sorting\n\n- Use `sort=field` for ascending order.\n- Use `sort=-field` for descending order.\n- Only documented sort keys are accepted.\n- Endpoints that do not document `sort` reject it with `422 Unprocessable Entity`.\n\n### Includes And Extra Parameters\n\n- `include` is not part of the public contract unless an endpoint explicitly documents it.\n- `fields` and `append` are also rejected unless an endpoint explicitly opts in.\n- Unsupported top-level parameters, including arbitrary extras such as `random=value`, return `422 Unprocessable Entity` instead of being ignored.\n\n### Pagination Categories\n\n- Paginated endpoints use the top-level `data`, `links`, and `meta` structure with `page` and `per_page`.\n- Unless an endpoint documents a narrower limit, `per_page` is validated in the range `1..100`.\n- Empty paginated results still return `data`, `links`, and `meta`.\n- Fixed-size endpoints return a documented server-controlled slice, for example the dashboard projects feed.\n- Intentional bounded exceptions return a non-paginated collection only when the dataset is small and server-controlled, for example pending project invitations and dedicated lookup endpoints.\n\n### Documented Query Exceptions\n\n- Dashboard activity reads use top-level `start_date` and `end_date`.\n- Dashboard chart data uses top-level `year` and optional `month`.\n- Dedicated lookup endpoints may use a top-level `search` parameter instead of the general `filter[...]` grammar.\n\n## Response Format\n\nMost successful responses use one of the following patterns.\n\n### Resource or object response\n\n```json\n{\n    \"data\": {\n        \"id\": 1,\n        \"name\": \"The Dimension\"\n    }\n}\n```\n\n### Collection response\n\n```json\n{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"name\": \"The Dimension\",\n            \"slug\": \"the-dimension\",\n            \"links\": {\n                \"self\": \"/api/v1/projects/the-dimension\"\n            }\n        }\n    ]\n}\n```\n\n### Message-only response\n\n```json\n{\n    \"message\": \"Webhook accepted.\"\n}\n```\n\nNotes:\n\n- When a resource exposes navigational links, they are typically returned as relative API paths inside a `links` object.\n- Some endpoints include endpoint-specific `meta` data alongside `data`.\n- Not every successful response includes a `message` field; for most read and create operations, `data` is the canonical payload.\n\n## Error Handling\n\nAPI errors are normalized into a consistent envelope:\n\n```json\n{\n    \"message\": \"Resource not found.\",\n    \"code\": \"not_found\",\n    \"errors\": {},\n    \"meta\": {}\n}\n```\n\nNotes:\n\n- `message` is safe for client display.\n- `code` is the stable machine-readable error identifier.\n- `errors` contains field-level validation details when available; otherwise it is an empty object.\n- `meta` contains structured context when available; otherwise it is an empty object.\n- Application-authored 4xx messages may be preserved when safe to expose.\n- Generic 5xx responses intentionally avoid leaking internal details.\n\nDayWright also uses domain-specific error codes when appropriate, including examples such as `subscription_required`, `plan_limit_exceeded`, `project_archived`, and `task_archived`.\n\n## Validation Errors\n\nValidation failures return `422 Unprocessable Entity` with the standard error envelope.\n\n```json\n{\n    \"message\": \"Validation failed.\",\n    \"code\": \"validation_error\",\n    \"errors\": {\n        \"email\": [\n            \"The provided credentials are incorrect.\"\n        ]\n    },\n    \"meta\": {}\n}\n```\n\nNotes:\n\n- Form request validation is used extensively across the API.\n- Validation errors are keyed by input name.\n- Query validation errors use the same envelope and surface nested keys in dot notation, for example `filter.state`.\n\n## Pagination\n\nWhen an endpoint is paginated, the response uses Laravel's standard top-level `data`, `links`, and `meta` structure:\n\n```json\n{\n    \"data\": [],\n    \"links\": {\n        \"first\": \"/api/v1/projects?page=1\",\n        \"last\": \"/api/v1/projects?page=5\",\n        \"prev\": null,\n        \"next\": \"/api/v1/projects?page=2\"\n    },\n    \"meta\": {\n        \"current_page\": 1,\n        \"last_page\": 5,\n        \"per_page\": 15,\n        \"total\": 73\n    }\n}\n```\n\nNotes:\n\n- `page` and `per_page` are the common pagination parameters.\n- Many list endpoints validate `per_page` with a maximum of `100`.\n- Some list endpoints intentionally return fixed-size or bounded non-paginated collections; rely on the query-contract section above and each endpoint's description for exact behavior.\n\n## Rate Limiting\n\nThe API uses Laravel rate limiters with route-specific policies.\n\n| Limiter | Typical usage | Limit |\n| --- | --- | --- |\n| `api` | Default API middleware (Safety Net) | `300` requests per minute by IP |\n| `user-ceiling` | User-level rate ceiling | `200` requests per minute by user |\n| `per-token` | Token-specific rate limiting | `30` requests per minute by token |\n| `sensitive-destructive` | Destructive operations (force delete, etc.) | `5` requests per minute by user |\n| `sensitive-upload` | File upload operations | `10` requests per minute by user |\n| `sensitive-token-mgmt` | API token management | `5` requests per minute by user |\n| `sensitive-billing` | Subscription and billing operations | `5` requests per minute by user |\n\n| `invite-actions` | Project invitation actions | `10` requests per minute by user or IP |\n\nRate-limited responses return `429 Too Many Requests`. Integration-specific rate-limit failures may also include `meta.retry_after_seconds` when the upstream exception provides that detail.\n\n\n\n## Versioning\n\n- The API is path-versioned.\n- Current published routes are mounted under `/api/v1`.\n \n\n## Authorization\n\n- Protected routes generally use `auth:sanctum`.\n- Authorization is enforced with Laravel policies via route middleware such as `can:access,...` and controller-level `$this->authorize(...)` checks.\n- Common policy abilities include `access`, `manage`, `owner`, `delete`, and invitation-specific checks.\n- Additional route constraints are enforced through middleware such as `verified`, `subscription`, and Pennant feature checks.\n\n## File Uploads\n\nDayWright currently exposes two public multipart upload patterns.\n\n### User avatars\n\n- Endpoint: `POST /users/{user}/avatar`\n- Request type: `multipart/form-data`\n- Field: `avatar`\n- Accepted types: `jpeg`, `jpg`, `png`\n- Maximum size: `700 KB`\n- Successful responses return the stored avatar URL inside `data.avatar`.\n\n### Conversation attachments\n\n- Endpoint: `POST /projects/{project}/conversations`\n- Request type: `multipart/form-data`\n- Fields:\n    - `message` optional when `file` is present\n    - `file` optional when `message` is present\n- Accepted file types: `jpg`, `png`, `pdf`, `docx`\n- Maximum size: `700 KB`\n- Conversation attachments are stored privately and exposed through a temporary file URL when available.\n- Generated conversation file URLs are short-lived and currently expire after 5 minutes.\n\n## Webhooks\n\nDayWright exposes Zoom meeting webhooks under `/api/v1/webhooks/zoom/meetings/*`.\n\n- Webhook endpoints do not use Sanctum authentication.\n- Each request is verified using Zoom signature headers:\n    - `x-zm-request-id`\n    - `x-zm-signature`\n    - `x-zm-request-timestamp`\n- Invalid webhook signatures return `403 Forbidden`.\n- Missing required webhook headers return `400 Bad Request`.\n- The Zoom request ID is reused as the idempotency key so duplicate deliveries can be safely deduplicated.\n- Accepted webhook deliveries return:\n\n```json\n{\n    \"message\": \"Webhook accepted.\"\n}\n```\n\nWebhook processing is asynchronous after acceptance.\n\n## Caching\n\n- The API does not currently expose a public HTTP caching contract such as `ETag`, `Last-Modified`, or route-level cache headers.\n- Any server-side caching used by the application is an internal implementation detail and should not be relied on by clients.\n\n## Status Codes\n\n| Status | Meaning in DayWright |\n| --- | --- |\n| `200` | Successful read, update, delete, action, or webhook acceptance response |\n| `201` | Resource created successfully |\n| `400` | Invalid request state, invalid signature, or malformed callback data |\n| `401` | Authentication is required |\n| `403` | Authenticated but not authorized, not subscribed, or feature access is restricted |\n| `404` | Resource or route not found |\n| `405` | Method not allowed |\n| `409` | Resource state conflict, including archived resources |\n| `422` | Validation failed |\n| `429` | Too many requests |\n| `500` | Unexpected server or storage error |\n| `503` | Upstream integration unavailable |\n\n## Conventions\n\n- JSON keys use `snake_case`.\n- Path segments use lowercase plural nouns; compound segments often use hyphens, for example `forgot-password`, `task-statuses`, and `api-tokens`.\n- Projects are addressed by slug.\n- Users are addressed by UUID.\n- Nested child resources such as tasks and conversations are typically route-scoped by their parent resource.\n- Timestamps are generally serialized as ISO 8601 strings.\n\n## Important Notes\n\n- Unmatched routes under an API version resolve to a JSON `404` response, not an HTML fallback page.\n\n- Subscription-gated endpoints use the same error envelope as the rest of the API and may include structured `meta` such as upgrade requirements or plan limit details. Premium endpoints return `403 Forbidden` if the user's subscription is inactive or plan limits are exceeded.\n\n- Resources in an \"abandoned\" state use soft-deletes (`deleted_at`) and can be returned via endpoints using `withTrashed()`.\n- Use each endpoint page as the source of truth for request fields, accepted query parameters, and resource schemas."
+    "description": "# DayWright API Overview\n\nDayWright exposes a versioned JSON API for authentication, users, projects, tasks, conversations, notifications, subscriptions, and selected integration workflows. Individual endpoint pages describe exact request fields and schemas; this page documents the shared conventions used across the API.\n\n## Introduction\n\n- The public API is currently implemented under `v1`.\n- Resource serialization is handled primarily through Laravel API resources, so most payloads are JSON-first and predictable.\n\n## Base URL\n\n- Relative base path: `/api/v1`\n- Example requests and links below use relative API paths so the published docs stay environment-agnostic.\n\n\n## Authentication\n\n### Bearer token authentication\n\n- API clients authenticate with Laravel Sanctum personal access tokens.\n- Send tokens using the `Authorization` header:\n\n```http\nAuthorization: Bearer YOUR_TOKEN\n```\n\n- Contact your DayWright administrator to obtain API access credentials.\n- Tokens include scope-based permissions for different API operations.\n- User-created API tokens may include an optional `expires_at` value in ISO 8601 format, up to 180 days in the future.\n\n\n\n## Request Format\n\n- Send JSON request bodies unless an endpoint explicitly accepts files.\n- Recommended headers for JSON requests:\n\n```http\nAccept: application/json\nContent-Type: application/json\n```\n\n- File upload endpoints use `multipart/form-data`.\n- Request and response fields use `snake_case`.\n- Where timestamps are accepted, the API expects ISO 8601 timestamps with a timezone offset, for example `2025-12-31T23:59:59+00:00`.\n- Selected filter requests normalize boolean-like query values, but JSON booleans are preferred.\n\n## Query Contract\n\nReleased collection and collection-like read endpoints use a strict query contract unless an endpoint description explicitly documents an exception.\n\n### Filtering\n\n- Use `filter[field]=value` for general collection endpoints.\n- Only documented filter keys are accepted.\n- Unknown filter keys and invalid filter values return `422 Unprocessable Entity`.\n- A valid filter that matches no records still returns `200 OK` with an empty `data` payload.\n\n### Sorting\n\n- Use `sort=field` for ascending order.\n- Use `sort=-field` for descending order.\n- Only documented sort keys are accepted.\n- Endpoints that do not document `sort` reject it with `422 Unprocessable Entity`.\n\n### Includes And Extra Parameters\n\n- `include` is not part of the public contract unless an endpoint explicitly documents it.\n- `fields` and `append` are also rejected unless an endpoint explicitly opts in.\n- Unsupported top-level parameters, including arbitrary extras such as `random=value`, return `422 Unprocessable Entity` instead of being ignored.\n\n### Pagination Categories\n\n- Paginated endpoints use the top-level `data`, `links`, and `meta` structure with `page` and `per_page`.\n- Unless an endpoint documents a narrower limit, `per_page` is validated in the range `1..100`.\n- Empty paginated results still return `data`, `links`, and `meta`.\n- Fixed-size endpoints return a documented server-controlled slice, for example the dashboard projects feed.\n- Intentional bounded exceptions return a non-paginated collection only when the dataset is small and server-controlled, for example pending project invitations and dedicated lookup endpoints.\n\n### Documented Query Exceptions\n\n- Dashboard activity reads use top-level `start_date` and `end_date`.\n- Dashboard chart data uses top-level `year` and optional `month`.\n- Dedicated lookup endpoints may use a top-level `search` parameter instead of the general `filter[...]` grammar.\n\n## Response Format\n\nMost successful responses use one of the following patterns.\n\n### Resource or object response\n\n```json\n{\n    \"data\": {\n        \"id\": 1,\n        \"name\": \"The Dimension\"\n    }\n}\n```\n\n### Collection response\n\n```json\n{\n    \"data\": [\n        {\n            \"id\": 1,\n            \"name\": \"The Dimension\",\n            \"slug\": \"the-dimension\",\n            \"links\": {\n                \"self\": \"/api/v1/projects/the-dimension\"\n            }\n        }\n    ]\n}\n```\n\n### Message-only response\n\n```json\n{\n    \"message\": \"Webhook accepted.\"\n}\n```\n\nNotes:\n\n- When a resource exposes navigational links, they are typically returned as relative API paths inside a `links` object.\n- Some endpoints include endpoint-specific `meta` data alongside `data`.\n- Not every successful response includes a `message` field; for most read and create operations, `data` is the canonical payload.\n\n## Error Handling\n\nAPI errors are normalized into a consistent envelope:\n\n```json\n{\n    \"message\": \"Resource not found.\",\n    \"code\": \"not_found\",\n    \"errors\": {},\n    \"meta\": {}\n}\n```\n\nNotes:\n\n- `message` is safe for client display.\n- `code` is the stable machine-readable error identifier.\n- `errors` contains field-level validation details when available; otherwise it is an empty object.\n- `meta` contains structured context when available; otherwise it is an empty object.\n- Application-authored 4xx messages may be preserved when safe to expose.\n- Generic 5xx responses intentionally avoid leaking internal details.\n\nDayWright also uses domain-specific error codes when appropriate, including examples such as `subscription_required`, `plan_limit_exceeded`, `project_archived`, and `task_archived`.\n\n## Validation Errors\n\nValidation failures return `422 Unprocessable Entity` with the standard error envelope.\n\n```json\n{\n    \"message\": \"Validation failed.\",\n    \"code\": \"validation_error\",\n    \"errors\": {\n        \"email\": [\n            \"The provided credentials are incorrect.\"\n        ]\n    },\n    \"meta\": {}\n}\n```\n\nNotes:\n\n- Form request validation is used extensively across the API.\n- Validation errors are keyed by input name.\n- Query validation errors use the same envelope and surface nested keys in dot notation, for example `filter.state`.\n\n## Pagination\n\nWhen an endpoint is paginated, the response uses Laravel's standard top-level `data`, `links`, and `meta` structure:\n\n```json\n{\n    \"data\": [],\n    \"links\": {\n        \"first\": \"/api/v1/projects?page=1\",\n        \"last\": \"/api/v1/projects?page=5\",\n        \"prev\": null,\n        \"next\": \"/api/v1/projects?page=2\"\n    },\n    \"meta\": {\n        \"current_page\": 1,\n        \"last_page\": 5,\n        \"per_page\": 15,\n        \"total\": 73\n    }\n}\n```\n\nNotes:\n\n- `page` and `per_page` are the common pagination parameters.\n- Many list endpoints validate `per_page` with a maximum of `100`.\n- Some list endpoints intentionally return fixed-size or bounded non-paginated collections; rely on the query-contract section above and each endpoint's description for exact behavior.\n\n## Rate Limiting\n\nThe API uses Laravel rate limiters with route-specific policies.\n\n| Limiter | Typical usage | Limit |\n| --- | --- | --- |\n| `api` | Default API middleware (Safety Net) | `300` requests per minute by IP |\n| `user-ceiling` | User-level rate ceiling | `200` requests per minute by user |\n| `per-token` | Token-specific rate limiting | `30` requests per minute by token |\n| `sensitive-destructive` | Destructive operations (force delete, etc.) | `5` requests per minute by user |\n| `sensitive-upload` | File upload operations | `10` requests per minute by user |\n| `sensitive-token-mgmt` | API token management | `5` requests per minute by user |\n| `sensitive-billing` | Subscription and billing operations | `5` requests per minute by user |\n\n| `invite-actions` | Project invitation actions | `10` requests per minute by user or IP |\n\nRate-limited responses return `429 Too Many Requests`. Integration-specific rate-limit failures may also include `meta.retry_after_seconds` when the upstream exception provides that detail.\n\n\n\n## Versioning\n\n- The API is path-versioned.\n- Current published routes are mounted under `/api/v1`.\n \n\n## Authorization\n\n- Protected routes generally use `auth:sanctum`.\n- Authorization is enforced with Laravel policies via route middleware such as `can:access,...` and controller-level `$this->authorize(...)` checks.\n- Common policy abilities include `access`, `manage`, `owner`, `delete`, and invitation-specific checks.\n- Additional route constraints are enforced through middleware such as `verified`, `subscription`, and Pennant feature checks.\n\n## File Uploads\n\nDayWright currently exposes two public multipart upload patterns.\n\n### User avatars\n\n- Endpoint: `POST /users/{user}/avatar`\n- Request type: `multipart/form-data`\n- Field: `avatar`\n- Accepted types: `jpeg`, `jpg`, `png`\n- Maximum size: `700 KB`\n- Successful responses return the stored avatar URL inside `data.avatar`.\n\n### Conversation attachments\n\n- Endpoint: `POST /projects/{project}/conversations`\n- Request type: `multipart/form-data`\n- Fields:\n    - `message` optional when `file` is present\n    - `file` optional when `message` is present\n- Accepted file types: `jpg`, `png`, `pdf`, `docx`\n- Maximum size: `700 KB`\n- Conversation attachments are stored privately and exposed through a temporary file URL when available.\n- Generated conversation file URLs are short-lived and currently expire after 5 minutes.\n\n## Webhooks\n\nDayWright exposes Zoom meeting webhooks under `/api/v1/webhooks/zoom/meetings/*`.\n\n- Webhook endpoints do not use Sanctum authentication.\n- Each request is verified using Zoom signature headers:\n    - `x-zm-request-id`\n    - `x-zm-signature`\n    - `x-zm-request-timestamp`\n- Invalid webhook signatures return `403 Forbidden`.\n- Missing required webhook headers return `400 Bad Request`.\n- A deterministic fingerprint (SHA256 of signature + timestamp + body) is used for deduplication via a database unique constraint.\n- Accepted webhook deliveries return:\n\n```json\n{\n    \"message\": \"Webhook accepted.\"\n}\n```\n\nWebhook processing is asynchronous after acceptance.\n\n## Caching\n\n- The API does not currently expose a public HTTP caching contract such as `ETag`, `Last-Modified`, or route-level cache headers.\n- Any server-side caching used by the application is an internal implementation detail and should not be relied on by clients.\n\n## Status Codes\n\n| Status | Meaning in DayWright |\n| --- | --- |\n| `200` | Successful read, update, delete, action, or webhook acceptance response |\n| `201` | Resource created successfully |\n| `400` | Invalid request state, invalid signature, or malformed callback data |\n| `401` | Authentication is required |\n| `403` | Authenticated but not authorized, not subscribed, or feature access is restricted |\n| `404` | Resource or route not found |\n| `405` | Method not allowed |\n| `409` | Resource state conflict, including archived resources |\n| `422` | Validation failed |\n| `429` | Too many requests |\n| `500` | Unexpected server or storage error |\n| `503` | Upstream integration unavailable |\n\n## Conventions\n\n- JSON keys use `snake_case`.\n- Path segments use lowercase plural nouns; compound segments often use hyphens, for example `forgot-password`, `task-statuses`, and `api-tokens`.\n- Projects are addressed by slug.\n- Users are addressed by UUID.\n- Nested child resources such as tasks and conversations are typically route-scoped by their parent resource.\n- Timestamps are generally serialized as ISO 8601 strings.\n\n## Important Notes\n\n- Unmatched routes under an API version resolve to a JSON `404` response, not an HTML fallback page.\n\n- Subscription-gated endpoints use the same error envelope as the rest of the API and may include structured `meta` such as upgrade requirements or plan limit details. Premium endpoints return `403 Forbidden` if the user's subscription is inactive or plan limits are exceeded.\n\n- Resources in an \"abandoned\" state use soft-deletes (`deleted_at`) and can be returned via endpoints using `withTrashed()`.\n- Use each endpoint page as the source of truth for request fields, accepted query parameters, and resource schemas."
   },
   "servers": [
     {
@@ -1978,16 +1978,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "description": "Required unique key used to prevent duplicate requests.",
-            "schema": {
-              "type": "string"
-            },
-            "example": "req_abc123"
           }
         ],
         "responses": {
@@ -2033,14 +2023,6 @@
                     }
                   },
                   "required": ["data", "meta", "links"]
-                }
-              }
-            },
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "Indicates whether this response is a replay of a previous request with the same Idempotency-Key. Set to \"true\" when replaying.",
-                "schema": {
-                  "type": "string"
                 }
               }
             }
@@ -2132,40 +2114,12 @@
               }
             }
           },
-          "400": {
-            "description": "Bad request (bad_request) - the configured idempotency header is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
           "409": {
-            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project is archived (project_archived)",
+            "description": "Conflict - Project is archived (project_archived)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before retrying the request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
               }
             }
@@ -2191,16 +2145,6 @@
             "schema": {
               "type": "string"
             }
-          },
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": true,
-            "description": "Required unique key used to prevent duplicate requests.",
-            "schema": {
-              "type": "string"
-            },
-            "example": "req_abc123"
           }
         ],
         "responses": {
@@ -2246,14 +2190,6 @@
                     }
                   },
                   "required": ["data", "meta", "links"]
-                }
-              }
-            },
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "Indicates whether this response is a replay of a previous request with the same Idempotency-Key. Set to \"true\" when replaying.",
-                "schema": {
-                  "type": "string"
                 }
               }
             }
@@ -2306,40 +2242,12 @@
               }
             }
           },
-          "400": {
-            "description": "Bad request (bad_request) - the configured idempotency header is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
           "409": {
-            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project is archived (project_archived)",
+            "description": "Conflict - Project is archived (project_archived)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before retrying the request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
                 }
               }
             }
@@ -3388,354 +3296,6 @@
       }
     },
     "/v1/projects/{project}": {
-      "put": {
-        "operationId": "projects.update",
-        "description": "This endpoint allows you to update the details of an existing project.\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.",
-        "summary": "Update Project Fields",
-        "tags": ["Projects"],
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "The project slug",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectUpdateRequestData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "anyOf": [
-                        {
-                          "allOf": [
-                            {
-                              "$ref": "#/components/schemas/PublicProject"
-                            },
-                            {
-                              "type": "object",
-                              "required": ["ownerNotAuthorized", "user", "stage", "members", "activities"]
-                            }
-                          ]
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          }
-                        }
-                      ]
-                    },
-                    "meta": {
-                      "type": "string"
-                    },
-                    "links": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["data", "meta", "links"]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "An error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "invalid_state_transition": {
-                "message": "Invalid state transition.",
-                "code": "invalid_state_transition",
-                "errors": [],
-                "meta": {
-                  "model": "Task",
-                  "current_state": "completed",
-                  "attempted_state": "in_progress"
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "Invalid state transition.",
-              "code": "invalid_state_transition",
-              "errors": [],
-              "meta": {
-                "model": "Task",
-                "current_state": "completed",
-                "attempted_state": "in_progress"
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - Project is archived (project_archived)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
-      },
-      "patch": {
-        "operationId": "projects.update.patch",
-        "description": "This endpoint allows you to update the details of an existing project.\nIt requires the project's slug and the updated fields (name, about, notes) when they are present\nin the request body and returns the updated resource. Sending empty data results in `400 Bad Request`.",
-        "summary": "Update Project Fields",
-        "tags": ["Projects"],
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "The project slug",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectUpdateRequestData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "anyOf": [
-                        {
-                          "allOf": [
-                            {
-                              "$ref": "#/components/schemas/PublicProject"
-                            },
-                            {
-                              "type": "object",
-                              "required": ["ownerNotAuthorized", "user", "stage", "members", "activities"]
-                            }
-                          ]
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          }
-                        }
-                      ]
-                    },
-                    "meta": {
-                      "type": "string"
-                    },
-                    "links": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["data", "meta", "links"]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "An error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "invalid_state_transition": {
-                "message": "Invalid state transition.",
-                "code": "invalid_state_transition",
-                "errors": [],
-                "meta": {
-                  "model": "Task",
-                  "current_state": "completed",
-                  "attempted_state": "in_progress"
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "Invalid state transition.",
-              "code": "invalid_state_transition",
-              "errors": [],
-              "meta": {
-                "model": "Task",
-                "current_state": "completed",
-                "attempted_state": "in_progress"
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - Project is archived (project_archived)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
-      },
       "delete": {
         "operationId": "projects.destroy",
         "description": "Marks the project as abandoned using soft-deletes (deleted_at). The project can be restored later\nor permanently deleted. This is a reversible operation.",
@@ -3824,6 +3384,201 @@
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "projects.update",
+        "description": "This endpoint allows you to update the details of an existing project using PATCH.\nIt supports partial updates - only the fields provided in the request body will be updated.\nRe-submitting current values is accepted for idempotency (e.g., network retries).\nThe version field is required for optimistic concurrency control.",
+        "summary": "Update Project Fields",
+        "tags": ["Projects"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/PublicProject"
+                            },
+                            {
+                              "type": "object",
+                              "required": ["ownerNotAuthorized", "user", "stage", "members", "activities"]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project is archived (project_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
               }
             }
           },
@@ -4655,7 +4410,7 @@
     "/v1/projects/{project}/stage": {
       "patch": {
         "operationId": "projects.updateStage",
-        "description": "Updates the stage of a specified project. The new stage is provided in the request payload.\nStage changes trigger notifications to all project members.",
+        "description": "Updates the stage of a specified project. The new stage is provided in the request payload.\nStage changes trigger notifications to all project members.\nSetting the stage to its current state succeeds without side effects (no notifications) for idempotency.\nVersion increments only when the stage actually changes, not for no-op transitions.",
         "summary": "Update Project Stage",
         "tags": ["Projects"],
         "parameters": [
@@ -4690,7 +4445,15 @@
                     "data": {
                       "anyOf": [
                         {
-                          "$ref": "#/components/schemas/ProjectStageResource"
+                          "allOf": [
+                            {
+                              "$ref": "#/components/schemas/ProjectStageResource"
+                            },
+                            {
+                              "type": "object",
+                              "required": ["stage"]
+                            }
+                          ]
                         },
                         {
                           "type": "string"
@@ -4796,12 +4559,32 @@
             }
           },
           "409": {
-            "description": "Conflict - Project is archived (project_archived)",
+            "description": "Conflict - Project is archived (project_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
                 }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
               }
             }
           },
@@ -4814,7 +4597,7 @@
     "/v1/projects/{project}/users/search": {
       "get": {
         "operationId": "invitations.searchUsers",
-        "description": "Returns users who can be invited to the specified project,\nexcluding the project owner and existing members.",
+        "description": "Returns users who can be invited to the specified project,\nexcluding the project owner and existing members.\nUses InvitableUserResource which includes email for invitation sending.",
         "summary": "Search users for invitation flows",
         "tags": ["Projects"],
         "parameters": [
@@ -4830,7 +4613,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Array of `TaskMember`",
+            "description": "Array of `InvitableUser`",
             "content": {
               "application/json": {
                 "schema": {
@@ -4839,7 +4622,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/TaskMember"
+                        "$ref": "#/components/schemas/InvitableUser"
                       }
                     }
                   },
@@ -5724,336 +5507,6 @@
           }
         }
       },
-      "put": {
-        "operationId": "tasks.update",
-        "description": "This endpoint allows you to update the details of a specific task associated with a given project.\nThe user must have proper authorization to access and modify the task.",
-        "summary": "Update a Task",
-        "tags": ["Tasks"],
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "The project slug",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "task",
-            "in": "path",
-            "required": true,
-            "description": "The task ID",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TaskUpdateRequestData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/PublicTask"
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          }
-                        }
-                      ]
-                    },
-                    "meta": {
-                      "type": "string"
-                    },
-                    "links": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["data", "meta", "links"]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "invalid_state_transition": {
-                "message": "Invalid state transition.",
-                "code": "invalid_state_transition",
-                "errors": [],
-                "meta": {
-                  "model": "Task",
-                  "current_state": "completed",
-                  "attempted_state": "in_progress"
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "Invalid state transition.",
-              "code": "invalid_state_transition",
-              "errors": [],
-              "meta": {
-                "model": "Task",
-                "current_state": "completed",
-                "attempted_state": "in_progress"
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
-      },
-      "patch": {
-        "operationId": "tasks.update.patch",
-        "description": "This endpoint allows you to update the details of a specific task associated with a given project.\nThe user must have proper authorization to access and modify the task.",
-        "summary": "Update a Task",
-        "tags": ["Tasks"],
-        "parameters": [
-          {
-            "name": "project",
-            "in": "path",
-            "required": true,
-            "description": "The project slug",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "task",
-            "in": "path",
-            "required": true,
-            "description": "The task ID",
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TaskUpdateRequestData"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/components/schemas/PublicTask"
-                        },
-                        {
-                          "type": "string"
-                        },
-                        {
-                          "type": "object",
-                          "additionalProperties": {
-                            "type": "string"
-                          }
-                        }
-                      ]
-                    },
-                    "meta": {
-                      "type": "string"
-                    },
-                    "links": {
-                      "type": "string"
-                    }
-                  },
-                  "required": ["data", "meta", "links"]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            },
-            "x-error-examples": {
-              "invalid_state_transition": {
-                "message": "Invalid state transition.",
-                "code": "invalid_state_transition",
-                "errors": [],
-                "meta": {
-                  "model": "Task",
-                  "current_state": "completed",
-                  "attempted_state": "in_progress"
-                }
-              }
-            },
-            "x-error-example": {
-              "message": "Invalid state transition.",
-              "code": "invalid_state_transition",
-              "errors": [],
-              "meta": {
-                "model": "Task",
-                "current_state": "completed",
-                "attempted_state": "in_progress"
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
-      },
       "delete": {
         "operationId": "tasks.destroy",
         "description": "Permanently removes a task that the authenticated user is allowed to manage.",
@@ -6188,11 +5641,207 @@
             "$ref": "#/components/responses/PublicInternalServerError"
           }
         }
+      },
+      "patch": {
+        "operationId": "tasks.update",
+        "description": "This endpoint allows you to update the details of a specific task associated with a given project using PATCH.\nThe user must have proper authorization to access and modify the task.",
+        "summary": "Update a Task",
+        "tags": ["Tasks"],
+        "parameters": [
+          {
+            "name": "project",
+            "in": "path",
+            "required": true,
+            "description": "The project slug",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "task",
+            "in": "path",
+            "required": true,
+            "description": "The task ID",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskUpdateRequestData"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/components/schemas/PublicTask"
+                        },
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      ]
+                    },
+                    "meta": {
+                      "type": "string"
+                    },
+                    "links": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["data", "meta", "links"]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "An error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden - insufficient permissions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthenticated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error. The requested state transition is not valid for the current state. Machine-readable code: invalid_state_transition.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "invalid_state_transition": {
+                "message": "Invalid state transition.",
+                "code": "invalid_state_transition",
+                "errors": [],
+                "meta": {
+                  "model": "Task",
+                  "current_state": "completed",
+                  "attempted_state": "in_progress"
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "Invalid state transition.",
+              "code": "invalid_state_transition",
+              "errors": [],
+              "meta": {
+                "model": "Task",
+                "current_state": "completed",
+                "attempted_state": "in_progress"
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "description": "Number of seconds to wait before making a new request.",
+                "schema": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict - Project or task is archived (project_archived or task_archived). The resource was modified by another user since it was last read. Please refresh and try again. Machine-readable code: edit_conflict.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
+                }
+              }
+            },
+            "x-error-examples": {
+              "edit_conflict": {
+                "message": "The resource was modified by another user.",
+                "code": "edit_conflict",
+                "errors": [],
+                "meta": {
+                  "expected_version": 5,
+                  "current_version": 6
+                }
+              }
+            },
+            "x-error-example": {
+              "message": "The resource was modified by another user.",
+              "code": "edit_conflict",
+              "errors": [],
+              "meta": {
+                "expected_version": 5,
+                "current_version": 6
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/PublicInternalServerError"
+          }
+        }
       }
     },
-    "/v1/projects/{project}/tasks/{task}/assign": {
-      "patch": {
-        "operationId": "tasks.assignMembers",
+    "/v1/projects/{project}/tasks/{task}/assignees": {
+      "post": {
+        "operationId": "tasks.assignees.store",
         "description": "Assigns one or more project members to the specified task. This triggers a TaskAssigned email notification\nto the assigned members. Only the task owner or project owner can assign members.",
         "summary": "Assign members to a task",
         "tags": ["Tasks"],
@@ -6372,9 +6021,9 @@
         }
       }
     },
-    "/v1/projects/{project}/tasks/{task}/unassign": {
-      "patch": {
-        "operationId": "tasks.unassignMember",
+    "/v1/projects/{project}/tasks/{task}/assignees/{user}": {
+      "delete": {
+        "operationId": "tasks.assignees.destroy",
         "description": "Removes one assigned project member from the specified task.",
         "summary": "Unassign a member from a task",
         "tags": ["Tasks"],
@@ -6398,26 +6047,14 @@
             }
           },
           {
-            "name": "Idempotency-Key",
-            "in": "header",
+            "name": "user",
+            "in": "path",
             "required": true,
-            "description": "Required unique key used to prevent duplicate requests.",
             "schema": {
-              "type": "string"
-            },
-            "example": "req_abc123"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TaskMemberUnassignRequestData"
-              }
+              "type": "integer"
             }
           }
-        },
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -6452,14 +6089,6 @@
                   "required": ["data", "meta", "links"]
                 }
               }
-            },
-            "headers": {
-              "Idempotency-Replayed": {
-                "description": "Indicates whether this response is a replay of a previous request with the same Idempotency-Key. Set to \"true\" when replaying.",
-                "schema": {
-                  "type": "string"
-                }
-              }
             }
           },
           "404": {
@@ -6492,16 +6121,6 @@
               }
             }
           },
-          "422": {
-            "description": "Validation error (validation_error) - the idempotency key was reused with different request data.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiValidationErrorEnvelope"
-                }
-              }
-            }
-          },
           "429": {
             "description": "Too many requests",
             "content": {
@@ -6520,30 +6139,12 @@
               }
             }
           },
-          "400": {
-            "description": "Bad request (bad_request) - the configured idempotency header is required.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
           "409": {
-            "description": "Conflict (conflict) - a request with this idempotency key is already being processed. Conflict - Project or task is archived (project_archived or task_archived)",
+            "description": "Conflict - Project or task is archived (project_archived or task_archived)",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before retrying the request.",
-                "schema": {
-                  "type": "integer"
                 }
               }
             }
@@ -7405,182 +7006,6 @@
             "$ref": "#/components/responses/PublicInternalServerError"
           }
         }
-      },
-      "delete": {
-        "operationId": "users.destroy",
-        "description": "Soft delete the specified user. Only the owner can delete their account. This will also soft delete\nall projects owned by the user. Tasks, conversations, and messages within those projects are not\nautomatically deleted but become inaccessible when the parent project is abandoned.",
-        "summary": "Soft delete user",
-        "tags": ["Users"],
-        "parameters": [
-          {
-            "name": "user",
-            "in": "path",
-            "required": true,
-            "description": "The user UUID",
-            "schema": {
-              "type": ["string", "null"]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "const": "User data deleted successfully."
-                    }
-                  },
-                  "required": ["message"]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
-      }
-    },
-    "/v1/users/{user}/force": {
-      "delete": {
-        "operationId": "users.forceDelete",
-        "description": "The user must already be soft-deleted before this endpoint can be used. This operation is irreversible\nand permanently removes the user account along with their notifications. Projects and associated data\nare not automatically force-deleted and must be cleaned up separately.",
-        "summary": "Permanently delete a previously soft-deleted user profile",
-        "tags": ["Users"],
-        "parameters": [
-          {
-            "name": "user",
-            "in": "path",
-            "required": true,
-            "description": "The user UUID",
-            "schema": {
-              "type": ["string", "null"]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "message": {
-                      "type": "string",
-                      "const": "User data permanently deleted."
-                    }
-                  },
-                  "required": ["message"]
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden - insufficient permissions",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthenticated",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicApiErrorEnvelope"
-                }
-              }
-            }
-          },
-          "429": {
-            "description": "Too many requests",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PublicRateLimitErrorEnvelope"
-                }
-              }
-            },
-            "headers": {
-              "Retry-After": {
-                "description": "Number of seconds to wait before making a new request.",
-                "schema": {
-                  "type": "integer"
-                }
-              }
-            }
-          },
-          "500": {
-            "$ref": "#/components/responses/PublicInternalServerError"
-          }
-        }
       }
     },
     "/v1/users/{user}/avatar": {
@@ -8042,6 +7467,46 @@
         "required": ["type", "title", "message", "data"],
         "title": "InsightResource"
       },
+      "InvitableUser": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Internal numeric user identifier.",
+            "examples": [1]
+          },
+          "uuid": {
+            "type": ["string", "null"],
+            "format": "uuid",
+            "description": "Stable public UUID for the user.",
+            "examples": ["9c4cc6f1-11e0-4c42-8f29-2d3d6d3d7412"]
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name shown across the application.",
+            "examples": ["Berry"]
+          },
+          "username": {
+            "type": ["string", "null"],
+            "description": "Public username.",
+            "examples": ["berry"]
+          },
+          "avatar": {
+            "type": ["string", "null"],
+            "format": "uri",
+            "description": "Avatar URL when present.",
+            "examples": ["https://daywright.test/storage/avatars/berry.png"]
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Primary email address (included for invitation sending).",
+            "examples": ["berry@example.com"]
+          }
+        },
+        "required": ["id", "uuid", "name", "username", "email"],
+        "title": "InvitableUser"
+      },
       "InvitationUsersRequest": {
         "type": "object",
         "properties": {
@@ -8079,8 +7544,15 @@
             "examples": ["/api/v1/projects/website-refresh"]
           },
           "notifier": {
+            "type": "object",
             "description": "User summary for the actor that triggered the notification, when available.",
-            "$ref": "#/components/schemas/PendingInvitationUser"
+            "properties": {
+              "uuid": {},
+              "name": {},
+              "username": {},
+              "avatar_path": {}
+            },
+            "required": ["uuid", "name", "username", "avatar_path"]
           },
           "read_at": {
             "type": ["string", "null"],
@@ -8224,7 +7696,7 @@
             "anyOf": [
               {
                 "description": "User who sent the conversation message.",
-                "$ref": "#/components/schemas/PendingInvitationUser"
+                "$ref": "#/components/schemas/UserSummary"
               },
               {
                 "type": "null"
@@ -8404,6 +7876,11 @@
       "ProjectStageResource": {
         "type": "object",
         "properties": {
+          "version": {
+            "type": "string",
+            "description": "Project version for optimistic concurrency control.",
+            "examples": ["2"]
+          },
           "name": {
             "type": "string",
             "description": "Project Name",
@@ -8447,7 +7924,7 @@
             "required": ["self"]
           }
         },
-        "required": ["name", "stage_updated_at", "links"],
+        "required": ["version", "name", "stage_updated_at", "links"],
         "title": "ProjectStageResource"
       },
       "ProjectStoreRequestData": {
@@ -8604,26 +8081,33 @@
       "ProjectUpdateRequestData": {
         "type": "object",
         "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Current project version for optimistic concurrency control.\nRequired to prevent silent overwrites from concurrent edits.",
+            "examples": [5],
+            "minimum": 1
+          },
           "name": {
             "type": "string",
-            "description": "Updated project name. Must be different from the current name.",
+            "description": "Updated project name.",
             "examples": ["Website Redesign v2"],
             "minLength": 4,
             "maxLength": 150
           },
           "about": {
             "type": "string",
-            "description": "Updated project description. Must be different from the current about description.",
+            "description": "Updated project description.",
             "examples": ["Complete redesign of the company website with new branding and improved UX."],
             "minLength": 15
           },
           "notes": {
             "type": "string",
-            "description": "Updated project notes. Must be different from the current project notes.",
+            "description": "Updated project notes.",
             "examples": ["Focus on mobile-first design approach"],
             "maxLength": 250
           }
         },
+        "required": ["version"],
         "title": "ProjectUpdateRequestData"
       },
       "ProjectUsageLimit": {
@@ -9010,6 +8494,11 @@
             "type": "integer",
             "examples": [1]
           },
+          "version": {
+            "type": "string",
+            "description": "Project version for optimistic concurrency control.",
+            "examples": ["5"]
+          },
           "slug": {
             "type": "string",
             "examples": ["the-dimension"]
@@ -9130,6 +8619,7 @@
         },
         "required": [
           "id",
+          "version",
           "slug",
           "name",
           "about",
@@ -9258,6 +8748,11 @@
             "description": "Task identifier.",
             "examples": [14]
           },
+          "version": {
+            "type": "string",
+            "description": "Task version for optimistic concurrency control.",
+            "examples": ["5"]
+          },
           "title": {
             "type": "string",
             "description": "Task title.",
@@ -9321,7 +8816,7 @@
             "required": ["self"]
           }
         },
-        "required": ["id", "title", "description", "notified", "created_at", "links"],
+        "required": ["id", "version", "title", "description", "notified", "created_at", "links"],
         "title": "PublicTask"
       },
       "PublicUnauthenticatedErrorEnvelope": {
@@ -9403,11 +8898,11 @@
           "email": {
             "type": "string",
             "format": "email",
-            "description": "Primary email address.",
+            "description": "Primary email address (private field - only visible to profile owner).",
             "examples": ["berry@example.com"]
           },
           "info": {
-            "description": "Extended profile information (mobile, address, company, position, bio).",
+            "description": "Extended profile information (mobile, address, company, position, bio).\nEntire info object is private and only visible to profile owner.",
             "$ref": "#/components/schemas/UserProfileInfo"
           },
           "created_at": {
@@ -9423,12 +8918,18 @@
             "examples": ["2025-07-08T12:34:56+00:00"]
           }
         },
-        "required": ["id", "uuid", "name", "username", "timezone", "email", "info", "created_at", "updated_at"],
+        "required": ["id", "uuid", "name", "username", "timezone", "created_at", "updated_at"],
         "title": "PublicUserProfile"
       },
       "StageRequest": {
         "type": "object",
         "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Current project version for optimistic concurrency control.\nRequired to prevent silent overwrites from concurrent edits.",
+            "examples": [5],
+            "minimum": 1
+          },
           "stage": {
             "type": "integer",
             "description": "The stage ID to update the project to.",
@@ -9440,7 +8941,7 @@
             "examples": ["Waiting for client approval"]
           }
         },
-        "required": ["stage"],
+        "required": ["version", "stage"],
         "title": "StageRequest"
       },
       "SubscriptionDetails": {
@@ -9699,12 +9200,6 @@
             "description": "Public username.",
             "examples": ["berry"]
           },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Member email address.",
-            "examples": ["user@example.com"]
-          },
           "avatar": {
             "type": ["string", "null"],
             "format": "uri",
@@ -9712,37 +9207,25 @@
             "examples": ["https://eu.ui-avatars.com/api/?name=Berry"]
           }
         },
-        "required": ["id", "uuid", "name", "username", "email"],
+        "required": ["id", "uuid", "name", "username"],
         "title": "TaskMember"
       },
       "TaskMemberAssignRequestData": {
         "type": "object",
         "properties": {
-          "members": {
+          "user_ids": {
             "type": "array",
-            "description": "Member identifiers to assign to the task.\n- Prevents assigning a task to users who are already assigned.\n- Ensures tasks can only be assigned to active members of the project.",
+            "description": "User identifiers to assign to the task.\n- Prevents assigning a task to users who are already assigned.\n- Ensures tasks can only be assigned to active members of the project.",
             "examples": [[3, 5]],
             "items": {
               "type": "integer",
-              "description": "Individual member identifier.",
+              "description": "Individual user identifier.",
               "examples": [3]
             }
           }
         },
-        "required": ["members"],
+        "required": ["user_ids"],
         "title": "TaskMemberAssignRequestData"
-      },
-      "TaskMemberUnassignRequestData": {
-        "type": "object",
-        "properties": {
-          "member": {
-            "type": "integer",
-            "description": "Assigned member identifier to remove from the task.",
-            "examples": [3]
-          }
-        },
-        "required": ["member"],
-        "title": "TaskMemberUnassignRequestData"
       },
       "TaskStatusIndex": {
         "type": "object",
@@ -9807,6 +9290,12 @@
       "TaskUpdateRequestData": {
         "type": "object",
         "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Current task version for optimistic concurrency control.\nRequired to prevent silent overwrites from concurrent edits.",
+            "examples": [5],
+            "minimum": 1
+          },
           "title": {
             "type": "string",
             "description": "Updated task title. Titles must remain unique within the project.",
@@ -9837,6 +9326,7 @@
             "examples": ["1 Day Before"]
           }
         },
+        "required": ["version"],
         "title": "TaskUpdateRequestData"
       },
       "UserActivitiesResource": {
@@ -10112,18 +9602,15 @@
             "examples": ["John Doe"],
             "maxLength": 30
           },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Updated primary email address.",
-            "examples": ["john.doe@example.com"],
-            "maxLength": 100
-          },
           "username": {
             "type": "string",
             "description": "Updated public username.",
             "examples": ["john_doe"],
             "maxLength": 30
+          },
+          "email": {
+            "type": "string",
+            "description": "Email field is explicitly prohibited for security reasons.\nEmail serves as a permanent account identifier to prevent account takeover attacks."
           },
           "mobile": {
             "type": ["string", "null"],

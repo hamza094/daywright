@@ -106,8 +106,8 @@ class HandlerReportingTest extends TestCase
             ->once()
             ->with(
                 'api_exception_metric',
-                Mockery::on(fn (array $context): bool => isset($context['exception'])
-                    && $context['exception'] instanceof SubscriptionRequiredException
+                Mockery::on(fn (array $context): bool => $context['exception_class'] === SubscriptionRequiredException::class
+                    && $context['exception_code'] === 0
                     && $context['code'] === 'subscription_required'
                     && $context['status'] === 403
                     && $context['message'] === 'Access denied. An active subscription is required to perform this action.'
@@ -115,7 +115,9 @@ class HandlerReportingTest extends TestCase
                     && $context['method'] === 'PATCH'
                     && $context['meta'] === [
                         'upgrade_required' => true,
-                    ])
+                    ]
+                    && ! array_key_exists('exception', $context)
+                )
             );
 
         $handler->report(new SubscriptionRequiredException);
@@ -166,13 +168,15 @@ class HandlerReportingTest extends TestCase
             ->once()
             ->with(
                 'api_exception_metric',
-                Mockery::on(fn (array $context): bool => isset($context['exception'])
-                    && $context['exception'] instanceof ZoomUserErrorException
+                Mockery::on(fn (array $context): bool => $context['exception_class'] === ZoomUserErrorException::class
+                    && $context['exception_code'] === 429
                     && $context['code'] === 'zoom_error'
                     && $context['status'] === 400
                     && $context['message'] === 'Zoom request failed.'
                     && $context['path'] === 'api/v1/oauth/zoom/callback'
-                    && $context['method'] === 'GET')
+                    && $context['method'] === 'GET'
+                    && ! array_key_exists('exception', $context)
+                )
             );
 
         $handler->report(
@@ -191,5 +195,40 @@ class HandlerReportingTest extends TestCase
         Log::shouldReceive('info')->never();
 
         $handler->report(new NotFoundHttpException);
+    }
+
+    #[Test]
+    public function exception_metrics_uses_class_and_code_instead_of_raw_exception_object(): void
+    {
+        $handler = $this->app->make(Handler::class);
+
+        $request = Request::create('/api/v1/projects', 'POST');
+        $this->app->instance('request', $request);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('exception_metrics')
+            ->andReturnSelf();
+
+        Log::shouldReceive('info')
+            ->once()
+            ->with(
+                'api_exception_metric',
+                Mockery::on(fn (array $context): bool =>
+                    // Should have exception_class and exception_code
+                    $context['exception_class'] === SubscriptionRequiredException::class
+                    && $context['exception_code'] === 0
+                    // Should NOT have raw exception object
+                    && ! array_key_exists('exception', $context)
+                    // Should still have other safe fields
+                    && isset($context['code'])
+                    && isset($context['status'])
+                    && isset($context['message'])
+                    && isset($context['path'])
+                    && isset($context['method'])
+                )
+            );
+
+        $handler->report(new SubscriptionRequiredException);
     }
 }

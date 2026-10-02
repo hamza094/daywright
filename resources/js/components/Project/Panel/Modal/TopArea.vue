@@ -70,7 +70,7 @@ export default {
       }
 
       axios
-        .put(url(this.slug, id), { title: this.form.title }, { useProgress: true })
+        .patch(url(this.slug, id), { title: this.form.title }, { useProgress: true })
         .then((response) => {
           const taskData = getObjectData(response);
 

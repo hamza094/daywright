@@ -278,7 +278,7 @@ DayWright exposes Zoom meeting webhooks under `/api/v1/webhooks/zoom/meetings/*`
     - `x-zm-request-timestamp`
 - Invalid webhook signatures return `403 Forbidden`.
 - Missing required webhook headers return `400 Bad Request`.
-- The Zoom request ID is reused as the idempotency key so duplicate deliveries can be safely deduplicated.
+- A deterministic fingerprint (SHA256 of signature + timestamp + body) is used for deduplication via a database unique constraint.
 - Accepted webhook deliveries return:
 
 ```json

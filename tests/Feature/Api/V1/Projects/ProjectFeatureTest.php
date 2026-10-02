@@ -189,7 +189,7 @@ class ProjectFeatureTest extends TestCase
         $this->project->members()->attach(User::factory()->count(2)->create(), ['active' => true]);
 
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]),
-            ['name' => $name, 'notes' => $notes]);
+            ['name' => $name, 'notes' => $notes, 'version' => $this->project->fresh()->version]);
 
         $this->assertDatabaseHas('projects', ['id' => $this->project->id,
             'name' => $name]);
@@ -218,6 +218,7 @@ class ProjectFeatureTest extends TestCase
 
         $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]), [
             'name' => 'Updated By Member',
+            'version' => $this->project->fresh()->version,
         ])
             ->assertOk()
             ->assertJsonPath('data.name', 'Updated By Member')
@@ -228,7 +229,7 @@ class ProjectFeatureTest extends TestCase
     public function updated_project_requires_a_name(): void
     {
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]),
-            ['name' => null])->assertUnprocessable();
+            ['name' => null, 'version' => $this->project->fresh()->version])->assertUnprocessable();
 
         $response->assertJsonMissingValidationErrors('project.name');
     }
@@ -237,25 +238,28 @@ class ProjectFeatureTest extends TestCase
     public function it_does_not_update_with_invalid_fields(): void
     {
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $this->project]),
-            ['invalid_field' => 'Some value'])
+            ['invalid_field' => 'Some value', 'version' => $this->project->fresh()->version])
             ->assertStatus(400);
 
         $response->assertJsonPath('message', "You haven't changed anything.");
     }
 
     /** @test */
-    public function it_does_not_update_field_with_same_data(): void
+    public function resubmitting_current_project_values_is_accepted(): void
     {
-        $project = Project::factory()->create(['name' => 'Xepra Tech']);
+        $project = Project::factory()->for($this->user)->create(['name' => 'Xepra Tech']);
+        $originalName = $project->name;
 
         $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $project]),
             [
-                'name' => $project->name,
-            ])->assertStatus(422);
+                'name' => $originalName,
+                'version' => $project->fresh()->version,
+            ])->assertStatus(200);
 
-        $response->assertJsonValidationErrors([
-            'name' => 'The name must be different from the current name.',
-        ]);
+        // Project name should remain the same, but version should increment
+        $project->refresh();
+        $this->assertEquals($originalName, $project->name);
+        $this->assertGreaterThan(1, $project->version);
     }
 
     /** @test */

@@ -23,8 +23,13 @@ final class ForceDeleteUserController extends ApiController
     {
         $this->authorize('owner', $user);
 
-        // The route for this controller is registered with `withTrashed()`,
-        // so `$user` is already the trashed model. Force delete directly.
+        // Explicitly check if user is soft-deleted before allowing force deletion.
+        // withTrashed() allows binding both active and soft-deleted models, so we must
+        // enforce the archive-first contract with explicit state validation.
+        if (! $user->trashed()) {
+            return $this->respondConflict('User must be soft-deleted before force deletion.');
+        }
+
         $user->forceDelete();
 
         return $this->respondWithMessage('User data permanently deleted.');
