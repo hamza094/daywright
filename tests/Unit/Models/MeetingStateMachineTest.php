@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Models;
 
+use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Meeting;
+use App\QueryBuilder\MeetingBuilder;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -183,5 +185,129 @@ class MeetingStateMachineTest extends TestCase
         $this->assertInstanceOf(Carbon::class, $meeting->sync_started_at);
         $this->assertInstanceOf(Carbon::class, $meeting->sync_lease_expires_at);
         $this->assertInstanceOf(Carbon::class, $meeting->sync_available_at);
+    }
+
+    /** @test */
+    public function sync_operation_type_is_persisted(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+        ]);
+
+        $this->assertDatabaseHas('meetings', [
+            'id' => $meeting->id,
+            'sync_operation_type' => MeetingSyncOperationType::Update->value,
+        ]);
+
+        $this->assertEquals(MeetingSyncOperationType::Update, $meeting->sync_operation_type);
+    }
+
+    /** @test */
+    public function sync_payload_is_persisted(): void
+    {
+        $payload = json_encode(['topic' => 'Updated Topic', 'duration' => 45]);
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_payload' => $payload,
+        ]);
+
+        $this->assertDatabaseHas('meetings', [
+            'id' => $meeting->id,
+        ]);
+
+        $this->assertEquals($payload, $meeting->sync_payload);
+    }
+
+    /** @test */
+    public function sync_payload_is_encrypted(): void
+    {
+        $payload = json_encode(['topic' => 'Updated Topic', 'duration' => 45]);
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_payload' => $payload,
+        ]);
+
+        $rawPayload = Meeting::where('id', $meeting->id)->value('sync_payload');
+
+        $this->assertNotEquals($payload, $rawPayload);
+        $this->assertStringNotContainsString('Updated Topic', $rawPayload);
+    }
+
+    /** @test */
+    public function sync_payload_is_restored_correctly_through_model(): void
+    {
+        $payload = json_encode(['topic' => 'Updated Topic', 'duration' => 45]);
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_payload' => $payload,
+        ]);
+
+        $reloadedMeeting = Meeting::find($meeting->id);
+
+        $this->assertEquals($payload, $reloadedMeeting->sync_payload);
+    }
+
+    /** @test */
+    public function is_create_operation_helper_returns_correct_value(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_operation_type' => MeetingSyncOperationType::Create,
+        ]);
+
+        $this->assertTrue($meeting->isCreateOperation());
+        $this->assertFalse($meeting->isUpdateOperation());
+        $this->assertFalse($meeting->isDeleteOperation());
+    }
+
+    /** @test */
+    public function is_update_operation_helper_returns_correct_value(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+        ]);
+
+        $this->assertFalse($meeting->isCreateOperation());
+        $this->assertTrue($meeting->isUpdateOperation());
+        $this->assertFalse($meeting->isDeleteOperation());
+    }
+
+    /** @test */
+    public function is_delete_operation_helper_returns_correct_value(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_operation_type' => MeetingSyncOperationType::Delete,
+        ]);
+
+        $this->assertFalse($meeting->isCreateOperation());
+        $this->assertFalse($meeting->isUpdateOperation());
+        $this->assertTrue($meeting->isDeleteOperation());
+    }
+
+    /** @test */
+    public function operation_helpers_return_false_when_type_is_null(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_operation_type' => null,
+        ]);
+
+        $this->assertFalse($meeting->isCreateOperation());
+        $this->assertFalse($meeting->isUpdateOperation());
+        $this->assertFalse($meeting->isDeleteOperation());
+    }
+
+    /** @test */
+    public function meeting_uses_custom_query_builder(): void
+    {
+        $query = Meeting::query();
+
+        $this->assertInstanceOf(MeetingBuilder::class, $query);
+    }
+
+    /** @test */
+    public function query_builder_has_ready_for_any_recovery_at_method(): void
+    {
+        $query = Meeting::query();
+
+        $this->assertTrue(method_exists($query, 'readyForAnyRecoveryAt'));
     }
 }

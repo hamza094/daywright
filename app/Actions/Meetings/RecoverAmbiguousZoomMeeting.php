@@ -98,7 +98,7 @@ final readonly class RecoverAmbiguousZoomMeeting
     }
 
     /**
-     * @return array{sync_status: string, sync_claim_token: string, sync_lease_expires_at: CarbonInterface}
+     * @return array{sync_status: string, sync_claim_token: string, sync_lease_expires_at: CarbonInterface, sync_available_at: CarbonInterface}
      */
     private function claimValues(string $claimToken, CarbonInterface $now): array
     {
@@ -106,6 +106,7 @@ final readonly class RecoverAmbiguousZoomMeeting
             'sync_status' => MeetingSyncStatus::CreateUnknown->value,
             'sync_claim_token' => $claimToken,
             'sync_lease_expires_at' => $now->copy()->addMinutes(self::LEASE_MINUTES),
+            'sync_available_at' => $now,
         ];
     }
 

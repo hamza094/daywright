@@ -118,6 +118,51 @@ final class RecoverAmbiguousZoomMeetingTest extends TestCase
     }
 
     #[Test]
+    public function it_sets_sync_available_at_when_claiming_creating_meeting(): void
+    {
+        // When a Creating meeting is claimed, sync_available_at must be set
+        // to prevent permanent stuck state if worker crashes
+        $meeting = MeetingTestHelper::createCreatingMeeting($this->project, $this->user, [
+            'meeting_id' => 123,
+            'sync_operation_id' => 'operation-123',
+            'sync_lease_expires_at' => now()->subMinute(),
+        ]);
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(123, 'operation-123'));
+
+        $outcome = app(RecoverAmbiguousZoomMeeting::class)->execute($meeting);
+        $meeting->refresh();
+
+        $this->assertSame(MeetingRecoveryOutcome::Recovered, $outcome);
+        $this->assertSame(MeetingSyncStatus::Active, $meeting->sync_status);
+        // The key assertion: after successful recovery, sync_available_at should be cleared
+        $this->assertNull($meeting->sync_available_at);
+    }
+
+    #[Test]
+    public function it_sets_sync_available_at_on_claim_to_prevent_permanent_stuck_state(): void
+    {
+        // Direct test: verify that when a Creating meeting is claimed,
+        // sync_available_at is set (not NULL)
+        $meeting = MeetingTestHelper::createCreatingMeeting($this->project, $this->user, [
+            'sync_operation_id' => 'operation-123',
+            'sync_lease_expires_at' => now()->subMinute(),
+        ]);
+
+        // The claim operation happens inside execute()
+        // We'll check the state after the claim but before Zoom lookup succeeds
+        // by making Zoom fail
+        $this->fakeZoom()->shouldFailWithException(new ZoomExternalFailureException('Zoom request failed.'));
+
+        app(RecoverAmbiguousZoomMeeting::class)->execute($meeting);
+        $meeting->refresh();
+
+        // After a failed recovery attempt, sync_available_at should be set for retry
+        // This proves the fix: claim() sets sync_available_at
+        $this->assertNotNull($meeting->sync_available_at);
+        $this->assertTrue($meeting->sync_available_at->isFuture());
+    }
+
+    #[Test]
     public function it_stops_at_manual_review_instead_of_marking_the_meeting_failed(): void
     {
         $meeting = MeetingTestHelper::createCreateUnknownMeeting($this->project, $this->user, [

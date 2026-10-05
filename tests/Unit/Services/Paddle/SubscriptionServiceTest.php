@@ -84,19 +84,12 @@ final class SubscriptionServiceTest extends TestCase
     public function it_throws_error_while_swapping_to_the_same_plan(): void
     {
         $user = User::factory()->create();
-
-        /** @var User&MockInterface $userMock */
-        $userMock = Mockery::mock($user);
-        $userMock->shouldReceive('subscriptionName')->andReturn('daywright');
-        $userMock->shouldReceive('subscription')->with('daywright')->andReturn(null);
-        $userMock->shouldReceive('isBillingSubscribed')->andReturn(true);
-        $userMock->shouldReceive('activeBillingPlan')->andReturn('yearly');
-        $userMock->shouldReceive('loadMissing')->andReturnSelf();
+        $this->createProSubscription($user, ['name' => 'daywright', 'paddle_id' => 998877, 'paddle_plan' => 456]);
 
         $this->expectException(SubscriptionException::class);
         $this->expectExceptionMessage('You are already on this plan.');
 
-        $this->service->swap($userMock, 'yearly', (string) Str::uuid());
+        $this->service->swap($user, 'yearly', (string) Str::uuid());
     }
 
     #[Test]
@@ -132,20 +125,12 @@ final class SubscriptionServiceTest extends TestCase
     public function it_throws_exception_for_canceling_a_different_plan(): void
     {
         $user = User::factory()->create();
-
-        /** @var User&MockInterface $userMock */
-        $userMock = Mockery::mock($user);
-        $userMock->shouldReceive('getKey')->andReturn($user->id);
-        $userMock->shouldReceive('subscriptionName')->andReturn('daywright');
-        $userMock->shouldReceive('subscription')->with('daywright')->andReturn(null);
-        $userMock->shouldReceive('isBillingSubscribed')->andReturn(true);
-        $userMock->shouldReceive('activeBillingPlan')->andReturn('monthly');
-        $userMock->shouldReceive('loadMissing')->andReturnSelf();
+        $this->createProSubscription($user, ['name' => 'daywright', 'paddle_id' => 998877, 'paddle_plan' => 123]);
 
         $this->expectException(SubscriptionException::class);
         $this->expectExceptionMessage('You are not subscribed to this plan.');
 
-        $this->service->cancel($userMock, 'yearly', (string) Str::uuid());
+        $this->service->cancel($user, 'yearly', (string) Str::uuid());
     }
 
     #[Test]
@@ -181,17 +166,21 @@ final class SubscriptionServiceTest extends TestCase
 
         $idempotencyKey = (string) Str::uuid();
 
-        $this->expectException(PaddleUnavailableException::class);
-
         try {
             $this->service->swap($user, 'yearly', $idempotencyKey);
-        } finally {
-            $operation = SubscriptionOperation::query()->where('user_id', $user->id)->first();
-            $this->assertNotNull($operation);
-            $this->assertSame(SubscriptionOperationStatus::Failed, $operation->status);
-            $this->assertNotNull($operation->failed_at);
-            $this->assertSame(PaddleException::class, $operation->last_error_class);
+            $this->fail('Expected PaddleUnavailableException was not thrown.');
+        } catch (PaddleUnavailableException $exception) {
+            $this->assertSame(
+                'The subscription operation could not be completed.',
+                $exception->getMessage(),
+            );
         }
+
+        $this->assertDatabaseHas('subscription_operations', [
+            'user_id' => $user->id,
+            'idempotency_key_hash' => hash('sha256', $idempotencyKey),
+            'status' => SubscriptionOperationStatus::Failed->value,
+        ]);
     }
 
     #[Test]
@@ -305,5 +294,138 @@ final class SubscriptionServiceTest extends TestCase
         $this->expectException(ActiveOperationConflictException::class);
 
         $this->service->swap($user, 'yearly', (string) Str::uuid());
+    }
+
+    #[Test]
+    public function it_validates_against_fresh_state_after_acquiring_lock(): void
+    {
+        $user = User::factory()->create();
+        $sub = $this->createProSubscription($user, ['name' => 'daywright', 'paddle_id' => 998877, 'paddle_plan' => 123]);
+
+        $idempotencyKey = (string) Str::uuid();
+
+        // Paddle should only be called if validation passes
+        $this->cashier->shouldReceive('swapAndInvoice')
+            ->once()
+            ->with(Mockery::type(PaddleSubscription::class), 456);
+
+        $result = $this->service->swap($user, 'yearly', $idempotencyKey);
+
+        $this->assertSame(SubscriptionOperationStatus::Completed, $result->operation->status);
+    }
+
+    #[Test]
+    public function it_rejects_swap_during_trial_with_definite_exception(): void
+    {
+        $user = User::factory()->create();
+        $sub = $this->createProSubscription($user, [
+            'name' => 'daywright',
+            'paddle_id' => 998877,
+            'paddle_plan' => 123,
+            'paddle_status' => 'trialing',
+            'trial_ends_at' => now()->addDays(14),
+        ]);
+
+        $this->cashier->shouldNotReceive('swapAndInvoice');
+
+        try {
+            $this->service->swap($user, 'yearly', (string) Str::uuid());
+            $this->fail('Expected SubscriptionException was not thrown.');
+        } catch (SubscriptionException $exception) {
+            $this->assertStringContainsString('Cannot swap plans during trial', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('subscription_operations', 0);
+    }
+
+    #[Test]
+    public function it_rejects_swap_when_trial_date_is_future_even_if_status_is_active(): void
+    {
+        $user = User::factory()->create();
+        $this->createProSubscription($user, [
+            'name' => 'daywright', 'paddle_id' => 998877, 'paddle_plan' => 123,
+            'paddle_status' => 'active', 'trial_ends_at' => now()->addDay(),
+        ]);
+
+        $this->cashier->shouldNotReceive('swapAndInvoice');
+
+        try {
+            $this->service->swap($user, 'yearly', (string) Str::uuid());
+            $this->fail('Expected SubscriptionException was not thrown.');
+        } catch (SubscriptionException $exception) {
+            $this->assertStringContainsString('Cannot swap plans during trial', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('subscription_operations', 0);
+    }
+
+    #[Test]
+    public function it_rejects_swap_during_grace_period_with_definite_exception(): void
+    {
+        $user = User::factory()->create();
+        $sub = $this->createProSubscription($user, [
+            'name' => 'daywright',
+            'paddle_id' => 998877,
+            'paddle_plan' => 123,
+            'paddle_status' => 'active',
+            'ends_at' => now()->addDays(3),
+        ]);
+
+        $this->cashier->shouldNotReceive('swapAndInvoice');
+
+        try {
+            $this->service->swap($user, 'yearly', (string) Str::uuid());
+            $this->fail('Expected SubscriptionException was not thrown.');
+        } catch (SubscriptionException $exception) {
+            $this->assertStringContainsString('Cannot swap plans during grace period', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('subscription_operations', 0);
+    }
+
+    #[Test]
+    public function it_rejects_swap_when_paused_with_definite_exception(): void
+    {
+        $user = User::factory()->create();
+        $sub = $this->createProSubscription($user, [
+            'name' => 'daywright',
+            'paddle_id' => 998877,
+            'paddle_plan' => 123,
+            'paddle_status' => 'paused',
+            'paused_from' => now()->subDay(),
+        ]);
+
+        $this->cashier->shouldNotReceive('swapAndInvoice');
+
+        try {
+            $this->service->swap($user, 'yearly', (string) Str::uuid());
+            $this->fail('Expected SubscriptionException was not thrown.');
+        } catch (SubscriptionException $exception) {
+            $this->assertStringContainsString('Cannot swap plans while subscription is paused', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('subscription_operations', 0);
+    }
+
+    #[Test]
+    public function it_rejects_swap_when_past_due_with_definite_exception(): void
+    {
+        $user = User::factory()->create();
+        $sub = $this->createProSubscription($user, [
+            'name' => 'daywright',
+            'paddle_id' => 998877,
+            'paddle_plan' => 123,
+            'paddle_status' => 'past_due',
+        ]);
+
+        $this->cashier->shouldNotReceive('swapAndInvoice');
+
+        $this->expectException(SubscriptionException::class);
+        $this->expectExceptionMessage('Cannot swap plans while subscription is past due');
+
+        $this->service->swap($user, 'yearly', (string) Str::uuid());
+
+        // No operation should be created
+        $this->assertDatabaseCount('subscription_operations', 0);
     }
 }

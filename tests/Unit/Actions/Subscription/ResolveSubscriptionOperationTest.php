@@ -13,6 +13,7 @@ use App\Models\SubscriptionOperation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
+use Laravel\Paddle\Subscription;
 use LogicException;
 use Mockery;
 use Mockery\MockInterface;
@@ -63,7 +64,7 @@ final class ResolveSubscriptionOperationTest extends TestCase
     public function it_authoritatively_marks_completed_for_verified_swap(): void
     {
         $user = User::factory()->create();
-        $sub = $this->createProSubscription($user, ['paddle_id' => 998877, 'paddle_plan' => 123]);
+        $sub = $this->createProSubscription($user, ['paddle_id' => '998877', 'paddle_plan' => 123]);
 
         $operation = SubscriptionOperation::factory()->swap('yearly')->manualReview()->create([
             'user_id' => $user->id,
@@ -215,6 +216,66 @@ final class ResolveSubscriptionOperationTest extends TestCase
 
         $this->expectException(LogicException::class);
         $this->expectExceptionMessage('is not in manual_review state');
+
+        $this->resolver->markCompleted($operation);
+    }
+
+    #[Test]
+    public function it_requires_matching_paddle_id_for_manual_resolution(): void
+    {
+        $user = User::factory()->create();
+
+        // Original subscription with Paddle ID 998877
+        $originalSub = $this->createProSubscription($user, ['paddle_id' => 998877, 'paddle_plan' => 123]);
+
+        // Operation for the original subscription
+        $operation = SubscriptionOperation::factory()->swap('yearly')->manualReview()->create([
+            'user_id' => $user->id,
+            'subscription_id' => $originalSub->id,
+            'paddle_subscription_id' => '998877',
+        ]);
+
+        $this->cashier->shouldReceive('getSubscription')
+            ->once()
+            ->with('998877')
+            ->andReturn(new PaddleSubscriptionSnapshot(
+                subscription_id: '998877',
+                plan_id: '456',
+                status: 'active',
+            ));
+
+        $resolved = $this->resolver->markCompleted($operation);
+
+        $this->assertSame(SubscriptionOperationStatus::Completed, $resolved->status);
+
+        // Original subscription should be updated
+        $originalSub->refresh();
+        $this->assertSame(456, $originalSub->paddle_plan);
+    }
+
+    #[Test]
+    public function it_fails_when_subscription_with_matching_paddle_id_not_found(): void
+    {
+        $user = User::factory()->create();
+
+        // Operation for a subscription that no longer exists locally
+        $operation = SubscriptionOperation::factory()->swap('yearly')->manualReview()->create([
+            'user_id' => $user->id,
+            'subscription_id' => null,
+            'paddle_subscription_id' => '998877',
+        ]);
+
+        $this->cashier->shouldReceive('getSubscription')
+            ->once()
+            ->with('998877')
+            ->andReturn(new PaddleSubscriptionSnapshot(
+                subscription_id: '998877',
+                plan_id: '456',
+                status: 'active',
+            ));
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Cannot mark completed: local subscription with matching Paddle ID not found');
 
         $this->resolver->markCompleted($operation);
     }

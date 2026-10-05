@@ -14,6 +14,7 @@ use App\Models\SubscriptionOperation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Laravel\Paddle\Subscription;
 use Throwable;
 
 /**
@@ -145,8 +146,18 @@ final readonly class RecoverSubscriptionOperation
                 return SubscriptionOperationRecoveryOutcome::Skipped;
             }
 
-            $localSubscription = $claimedOperation->subscription
-                ?? $claimedOperation->user->subscription($claimedOperation->user->subscriptionName());
+            // The Paddle ID identifies the remote subscription, but the local
+            // billable identity must also match the operation owner.
+            // This prevents malformed operation data from crossing accounts.
+            $billable = $claimedOperation->user;
+            $localSubscription = $billable === null
+                ? null
+                : Subscription::query()
+                    ->where('paddle_id', $claimedOperation->paddle_subscription_id)
+                    ->where('billable_id', (string) $billable->getKey())
+                    ->where('billable_type', $billable->getMorphClass())
+                    ->lockForUpdate()
+                    ->first();
 
             if ($localSubscription === null) {
                 $this->moveToManualReview($claimedOperation);

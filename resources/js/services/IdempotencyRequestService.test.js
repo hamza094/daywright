@@ -67,6 +67,20 @@ test('createIdempotentRequest adds an idempotency key and rotates it after succe
   assert.notEqual(calls[0].headers['Idempotency-Key'], calls[1].headers['Idempotency-Key']);
 });
 
+test('createIdempotentRequest sends delete requests with an idempotency key', async () => {
+  const calls = [];
+  const client = makeSimpleClient(calls);
+
+  const request = createIdempotentRequest(client);
+
+  await request.delete('/users/me/subscription', { plan: 'monthly' });
+
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].method, 'delete');
+  assert.deepEqual(calls[0].data, { plan: 'monthly' });
+  assert.ok(calls[0].headers['Idempotency-Key']);
+});
+
 test('createIdempotentRequest reuses the same key for identical retries after a network failure', async () => {
   const calls = [];
   let shouldFail = true;

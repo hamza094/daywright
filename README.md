@@ -56,6 +56,7 @@ The deployment guide covers MySQL or PostgreSQL, Redis, queue workers, and the s
 - Zoom webhook requests are signature-verified before acceptance. Accepted events enter a durable inbox so duplicate delivery, retries, and recovery can be handled without treating every delivery as a new event.
 - Scheduled recovery jobs handle pending webhook work, ambiguous Zoom meeting operations, and subscription operations. Queue workers are separated by priority and workload.
 - Task and project edits use version checks to detect stale concurrent updates.
+- For task and project updates, clients should read the resource's `version`, send it with the PATCH request, store the returned version, and reload/reconcile before retrying after a `409 edit_conflict` response. This is internal concurrency metadata; it is not the `/api/v1` API version.
 - The API uses Sanctum authentication, scoped personal access tokens, authorization middleware, and route-specific rate limits.
 - Sensitive values are scrubbed from application logs. Paddle and Zoom integrations use validated webhook flows; external credentials are supplied through environment configuration.
 

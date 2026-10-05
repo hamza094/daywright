@@ -28,6 +28,11 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
      */
     public Collection $meetingsToCreate;
 
+    /**
+     * @var Collection<int, array<string, mixed>>
+     */
+    public Collection $meetingsToUpdate;
+
     public string $authorizationUrl;
 
     public string $state;
@@ -46,6 +51,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         $connectorManager = new ZoomConnectorManager($this->oauthRepository);
         parent::__construct($connectorManager);
         $this->meetingsToCreate = new Collection;
+        $this->meetingsToUpdate = new Collection;
     }
 
     #[Override]
@@ -121,6 +127,12 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
+
+        $this->meetingsToUpdate->push($validated);
+
+        if ($this->meetingToFind !== null) {
+            $this->meetingToFind = $this->updatedMeeting($this->meetingToFind, $validated);
+        }
     }
 
     #[Override]
@@ -171,6 +183,16 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     }
 
     /**
+     * @return self<array-key, array<string, mixed>>
+     */
+    public function meetingNotFound(): self
+    {
+        $this->meetingToFind = null;
+
+        return $this;
+    }
+
+    /**
      * @param  list<MeetingSummary>  $meetings
      * @return self<array-key, array<string, mixed>>
      */
@@ -211,6 +233,28 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
             timezone: 'UTC',
             password: 'herpku',
             join_before_host: false,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function updatedMeeting(Meeting $meeting, array $validated): Meeting
+    {
+        return new Meeting(
+            meeting_id: $meeting->meeting_id,
+            topic: $validated['topic'] ?? $meeting->topic,
+            agenda: $validated['agenda'] ?? $meeting->agenda,
+            created_at: $meeting->created_at,
+            duration: $validated['duration'] ?? $meeting->duration,
+            start_time: $validated['start_time'] ?? $meeting->start_time,
+            start_url: $meeting->start_url,
+            join_url: $meeting->join_url,
+            status: $meeting->status,
+            timezone: $validated['timezone'] ?? $meeting->timezone,
+            password: $validated['password'] ?? $meeting->password,
+            join_before_host: $validated['join_before_host'] ?? $meeting->join_before_host,
+            tracking_fields: $meeting->tracking_fields,
         );
     }
 }

@@ -219,7 +219,7 @@ export default {
   },
 
   methods: {
-    ...mapMutations('project', ['updateNotes', 'noteScore', 'updateScore', 'detachMember']),
+    ...mapMutations('project', ['updateNotes', 'updateProjectVersion', 'noteScore', 'updateScore', 'detachMember']),
     ...mapActions('project', ['refreshLimits']),
 
     ProjectNote() {
@@ -232,11 +232,14 @@ export default {
       axios
         .patch('/projects/' + this.slug, {
           notes: this.form.notes,
+          version: this.$store.state.project.project.version,
         })
-        .then(({ data }) => {
-          const { project, message } = data;
+        .then((response) => {
+          const project = getObjectData(response);
+          const message = getResponseMessage(response) || 'Project note updated.';
           this.$Progress.finish();
           this.updateNotes(project.notes);
+          this.updateProjectVersion(project.version);
           this.$vToastify.success(message);
           this.noteScore(project.score);
         })
@@ -244,6 +247,9 @@ export default {
           this.$Progress.fail();
           this.form.notes = this.notes;
           this.handleErrorResponse(error);
+          if (error.response?.status === 409) {
+            this.$vToastify.error('Project was modified by another user. Please refresh and try again.');
+          }
         })
         .finally(() => {
           const focusTarget = document.getElementById('focus-target');

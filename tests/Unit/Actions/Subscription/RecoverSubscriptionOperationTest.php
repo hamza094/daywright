@@ -15,6 +15,7 @@ use App\Models\User;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Laravel\Paddle\Subscription;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -278,6 +279,77 @@ final class RecoverSubscriptionOperationTest extends TestCase
             ->andReturn(new PaddleSubscriptionSnapshot('998877', '456', 'active'));
 
         $this->assertSame(SubscriptionOperationRecoveryOutcome::ManualReview, $this->action->execute($operation));
+        $this->assertSame(SubscriptionOperationStatus::ManualReview, $operation->fresh()->status);
+    }
+
+    #[Test]
+    public function it_does_not_update_replacement_subscription_with_different_paddle_id(): void
+    {
+        $user = User::factory()->create();
+
+        // Original subscription with Paddle ID 998877
+        $originalSub = $this->createProSubscription($user, ['paddle_id' => '998877', 'paddle_plan' => 123]);
+
+        // The original local row has been replaced; the current row has a new
+        // Paddle identity and must not be selected for the old operation.
+        $originalSub->delete();
+        $replacementSub = $this->createProSubscription($user, ['paddle_id' => '112233', 'paddle_plan' => 789]);
+
+        // Operation for the original subscription
+        $operation = SubscriptionOperation::factory()->swap('yearly')->unknown()->create([
+            'user_id' => $user->id,
+            'subscription_id' => $originalSub->id,
+            'paddle_subscription_id' => '998877',
+            'attempts' => 1,
+        ]);
+
+        // Paddle confirms the swap succeeded on the original remote identity
+        $this->cashier->shouldReceive('getSubscription')
+            ->once()
+            ->with('998877')
+            ->andReturn(new PaddleSubscriptionSnapshot(
+                subscription_id: '998877',
+                plan_id: '456',
+                status: 'active',
+            ));
+
+        $outcome = $this->action->execute($operation);
+
+        // It must not apply the old result to the replacement local row.
+        $this->assertSame(SubscriptionOperationRecoveryOutcome::ManualReview, $outcome);
+        $this->assertSame(SubscriptionOperationStatus::ManualReview, $operation->fresh()->status);
+
+        $replacementSub->refresh();
+        $this->assertSame(789, $replacementSub->paddle_plan);
+    }
+
+    #[Test]
+    public function it_moves_to_manual_review_when_subscription_with_matching_paddle_id_not_found(): void
+    {
+        $user = User::factory()->create();
+
+        // Operation for a subscription that no longer exists locally
+        $operation = SubscriptionOperation::factory()->swap('yearly')->unknown()->create([
+            'user_id' => $user->id,
+            'subscription_id' => null, // Original subscription was deleted
+            'paddle_subscription_id' => '998877', // References non-existent local subscription
+            'attempts' => 1,
+        ]);
+
+        // Paddle confirms the swap succeeded
+        $this->cashier->shouldReceive('getSubscription')
+            ->once()
+            ->with('998877')
+            ->andReturn(new PaddleSubscriptionSnapshot(
+                subscription_id: '998877',
+                plan_id: '456',
+                status: 'active',
+            ));
+
+        $outcome = $this->action->execute($operation);
+
+        // Should go to manual review because the local subscription with matching Paddle ID doesn't exist
+        $this->assertSame(SubscriptionOperationRecoveryOutcome::ManualReview, $outcome);
         $this->assertSame(SubscriptionOperationStatus::ManualReview, $operation->fresh()->status);
     }
 }

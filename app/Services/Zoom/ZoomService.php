@@ -11,7 +11,8 @@ use App\DataTransferObjects\Zoom\Meeting;
 use App\DataTransferObjects\Zoom\MeetingSummary;
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
-use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Http\Integrations\Zoom\Requests\CreateMeeting;
 use App\Http\Integrations\Zoom\Requests\DeleteMeeting;
 use App\Http\Integrations\Zoom\Requests\GetMeeting;
@@ -70,7 +71,7 @@ final readonly class ZoomService implements Zoom
             throw $zoomException->withContext(['retry_after_seconds' => $retryAfter]);
         } catch (ZoomExternalFailureException|FatalRequestException $exception) {
             if ($this->isUncertainOutcome($exception)) {
-                throw new ZoomMeetingCreationUnknownException(
+                throw new ZoomMeetingOperationUnknownException(
                     'Zoom meeting creation result is uncertain',
                     $exception->getCode(),
                     previous: $exception
@@ -87,17 +88,59 @@ final readonly class ZoomService implements Zoom
     #[Override]
     public function updateMeeting(array $validated, User $user): void
     {
-        $this->connectedConnector($user)
-            ->send(new UpdateMeeting($validated, $this->limiterKey($user)))
-            ->throw();
+        try {
+            $this->connectedConnector($user)
+                ->send(new UpdateMeeting($validated, $this->limiterKey($user)))
+                ->throw();
+        } catch (RateLimitReachedException $exception) {
+            $retryAfter = $exception->getLimit()->getRemainingSeconds();
+
+            throw new ZoomRateLimitException(
+                $retryAfter,
+                'Zoom meeting update was rate limited.',
+                previous: $exception
+            );
+        } catch (ZoomExternalFailureException|FatalRequestException $exception) {
+            if ($this->isUncertainOutcome($exception)) {
+                throw new ZoomMeetingOperationUnknownException(
+                    'Zoom meeting update result is uncertain',
+                    $exception->getCode(),
+                    previous: $exception
+                );
+            }
+
+            throw $exception;
+        }
     }
 
     #[Override]
     public function deleteMeeting(int $meetingId, User $user): void
     {
-        $this->connectedConnector($user)
-            ->send(new DeleteMeeting($meetingId, $this->limiterKey($user)))
-            ->throw();
+        try {
+            $this->connectedConnector($user)
+                ->send(new DeleteMeeting($meetingId, $this->limiterKey($user)))
+                ->throw();
+        } catch (NotFoundException) {
+            return;
+        } catch (RateLimitReachedException $exception) {
+            $retryAfter = $exception->getLimit()->getRemainingSeconds();
+
+            throw new ZoomRateLimitException(
+                $retryAfter,
+                'Zoom meeting deletion was rate limited.',
+                previous: $exception
+            );
+        } catch (ZoomExternalFailureException|FatalRequestException $exception) {
+            if ($this->isUncertainOutcome($exception)) {
+                throw new ZoomMeetingOperationUnknownException(
+                    'Zoom meeting deletion result is uncertain',
+                    $exception->getCode(),
+                    previous: $exception
+                );
+            }
+
+            throw $exception;
+        }
     }
 
     #[Override]

@@ -55,55 +55,78 @@ final readonly class SubscriptionService implements Paddle
     public function swap(User $user, string $plan, string $idempotencyKey): SubscriptionOperationResult
     {
         $planId = $this->resolvePlanId($plan, 'swap');
-        $user = $user->loadMissing('subscriptions', 'customer');
 
-        $operation = $this->findExistingOperation($user, SubscriptionOperationType::Swap, $plan, $idempotencyKey);
+        [$lockedUser, $operation, $callProvider] = DB::transaction(function () use ($user, $plan, $idempotencyKey): array {
+            // Acquire lock FIRST, then reload user to get fresh state
+            $lockedUser = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $lockedUser->loadMissing('subscriptions', 'customer');
 
-        if ($operation instanceof SubscriptionOperation) {
+            $operation = $this->findExistingOperation($lockedUser, SubscriptionOperationType::Swap, $plan, $idempotencyKey);
+
+            if ($operation instanceof SubscriptionOperation) {
+                return [$lockedUser, $operation, false];
+            }
+
+            // Validate against FRESH state after lock
+            $this->validateSwapAllowed($lockedUser, $plan);
+
+            $operation = $this->createProcessingOperation(
+                user: $lockedUser,
+                type: SubscriptionOperationType::Swap,
+                plan: $plan,
+                idempotencyKey: $idempotencyKey,
+            );
+
+            if (! $operation->wasRecentlyCreated) {
+                return [$lockedUser, $operation, false];
+            }
+
+            return [$lockedUser, $operation, true];
+        });
+
+        if (! $callProvider) {
             return $this->returnExistingOperation($operation, SubscriptionOperationType::Swap, $plan);
         }
 
-        $this->validateSwapAllowed($user, $plan);
-
-        $operation = $this->createProcessingOperation(
-            user: $user,
-            type: SubscriptionOperationType::Swap,
-            plan: $plan,
-            idempotencyKey: $idempotencyKey,
-        );
-
-        if (! $operation->wasRecentlyCreated) {
-            return $this->returnExistingOperation($operation, SubscriptionOperationType::Swap, $plan);
-        }
-
-        return $this->callPaddleOnce($user, $operation, $planId);
+        return $this->callPaddleOnce($lockedUser, $operation, $planId);
     }
 
     #[Override]
     public function cancel(User $user, string $plan, string $idempotencyKey): SubscriptionOperationResult
     {
-        $user = $user->loadMissing('subscriptions', 'customer');
+        [$lockedUser, $operation, $callProvider] = DB::transaction(function () use ($user, $plan, $idempotencyKey): array {
+            // Acquire lock FIRST, then reload user to get fresh state
+            $lockedUser = User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+            $lockedUser->loadMissing('subscriptions', 'customer');
 
-        $operation = $this->findExistingOperation($user, SubscriptionOperationType::Cancel, $plan, $idempotencyKey);
+            $operation = $this->findExistingOperation($lockedUser, SubscriptionOperationType::Cancel, $plan, $idempotencyKey);
 
-        if ($operation instanceof SubscriptionOperation) {
+            if ($operation instanceof SubscriptionOperation) {
+                return [$lockedUser, $operation, false];
+            }
+
+            // Validate against FRESH state after lock
+            $this->validateCancelAllowed($lockedUser, $plan);
+
+            $operation = $this->createProcessingOperation(
+                user: $lockedUser,
+                type: SubscriptionOperationType::Cancel,
+                plan: $plan,
+                idempotencyKey: $idempotencyKey,
+            );
+
+            if (! $operation->wasRecentlyCreated) {
+                return [$lockedUser, $operation, false];
+            }
+
+            return [$lockedUser, $operation, true];
+        });
+
+        if (! $callProvider) {
             return $this->returnExistingOperation($operation, SubscriptionOperationType::Cancel, $plan);
         }
 
-        $this->validateCancelAllowed($user, $plan);
-
-        $operation = $this->createProcessingOperation(
-            user: $user,
-            type: SubscriptionOperationType::Cancel,
-            plan: $plan,
-            idempotencyKey: $idempotencyKey,
-        );
-
-        if (! $operation->wasRecentlyCreated) {
-            return $this->returnExistingOperation($operation, SubscriptionOperationType::Cancel, $plan);
-        }
-
-        return $this->callPaddleOnce($user, $operation);
+        return $this->callPaddleOnce($lockedUser, $operation);
     }
 
     private function findExistingOperation(
@@ -148,56 +171,53 @@ final readonly class SubscriptionService implements Paddle
         $idempotencyKeyHash = hash('sha256', $idempotencyKey);
         $fingerprint = hash('sha256', "{$user->id}:{$type->value}:{$plan}");
 
-        return DB::transaction(function () use ($user, $type, $plan, $idempotencyKeyHash, $fingerprint): SubscriptionOperation {
-            User::query()->whereKey($user->getKey())->lockForUpdate()->firstOrFail();
+        // Note: Lock is already acquired by caller (swap/cancel methods)
+        $existing = SubscriptionOperation::query()
+            ->where('user_id', $user->id)
+            ->where('idempotency_key_hash', $idempotencyKeyHash)
+            ->first();
 
-            $existing = SubscriptionOperation::query()
-                ->where('user_id', $user->id)
-                ->where('idempotency_key_hash', $idempotencyKeyHash)
-                ->first();
-
-            if ($existing !== null) {
-                if ($existing->request_fingerprint !== $fingerprint) {
-                    throw new IdempotencyMismatchException;
-                }
-
-                return $existing;
+        if ($existing !== null) {
+            if ($existing->request_fingerprint !== $fingerprint) {
+                throw new IdempotencyMismatchException;
             }
 
-            // Check for active operation conflict
-            $activeConflict = SubscriptionOperation::query()
-                ->where('user_id', $user->id)
-                ->active()
-                ->exists();
+            return $existing;
+        }
 
-            if ($activeConflict) {
-                throw new ActiveOperationConflictException;
-            }
+        // Check for active operation conflict
+        $activeConflict = SubscriptionOperation::query()
+            ->where('user_id', $user->id)
+            ->active()
+            ->exists();
 
-            $paddleSubscription = $user->subscription($user->subscriptionName());
-            $paddleSubscriptionId = $paddleSubscription !== null ? (string) $paddleSubscription->paddle_id : '';
-            $claimToken = (string) Str::uuid();
+        if ($activeConflict) {
+            throw new ActiveOperationConflictException;
+        }
 
-            /** @var SubscriptionOperation $operation */
-            $operation = SubscriptionOperation::create([
-                'operation_uuid' => (string) Str::uuid(),
-                'user_id' => $user->id,
-                'subscription_id' => $paddleSubscription?->id,
-                'paddle_subscription_id' => $paddleSubscriptionId,
-                'type' => $type,
-                'target_plan' => $plan,
-                'idempotency_key_hash' => $idempotencyKeyHash,
-                'request_fingerprint' => $fingerprint,
-                'status' => SubscriptionOperationStatus::Processing,
-                'attempts' => 0,
-                'claim_token' => $claimToken,
-                'claimed_at' => now(),
-                'claim_expires_at' => now()->addMinutes(self::CLAIM_LEASE_MINUTES),
-                'provider_attempted_at' => now(),
-            ]);
+        $paddleSubscription = $user->subscription($user->subscriptionName());
+        $paddleSubscriptionId = $paddleSubscription !== null ? (string) $paddleSubscription->paddle_id : '';
+        $claimToken = (string) Str::uuid();
 
-            return $operation;
-        });
+        /** @var SubscriptionOperation $operation */
+        $operation = SubscriptionOperation::create([
+            'operation_uuid' => (string) Str::uuid(),
+            'user_id' => $user->id,
+            'subscription_id' => $paddleSubscription?->id,
+            'paddle_subscription_id' => $paddleSubscriptionId,
+            'type' => $type,
+            'target_plan' => $plan,
+            'idempotency_key_hash' => $idempotencyKeyHash,
+            'request_fingerprint' => $fingerprint,
+            'status' => SubscriptionOperationStatus::Processing,
+            'attempts' => 0,
+            'claim_token' => $claimToken,
+            'claimed_at' => now(),
+            'claim_expires_at' => now()->addMinutes(self::CLAIM_LEASE_MINUTES),
+            'provider_attempted_at' => now(),
+        ]);
+
+        return $operation;
     }
 
     private function callPaddleOnce(
@@ -205,6 +225,7 @@ final readonly class SubscriptionService implements Paddle
         SubscriptionOperation $operation,
         ?int $planId = null,
     ): SubscriptionOperationResult {
+        // Use fresh subscription from locked user, not stale from before lock
         $paddleSubscription = $user->subscription($user->subscriptionName());
         $plan = $operation->target_plan;
 
@@ -315,12 +336,66 @@ final readonly class SubscriptionService implements Paddle
 
     private function validateSwapAllowed(User $user, string $plan): void
     {
+        $subscription = $user->subscription($user->subscriptionName());
+
+        if ($subscription === null) {
+            throw new SubscriptionException(
+                'You are not subscribed to a paid plan.',
+                action: 'swap',
+                plan: $plan,
+            );
+        }
+
+        // Cashier-compatible preflight validation to prevent stuck Unknown operations
+        // These checks must come BEFORE isBillingSubscribed() to provide specific error messages
+
+        // Check for trial status - Cashier rejects swaps during trial
+        if ($subscription->onTrial()) {
+            throw new SubscriptionException(
+                'Cannot swap plans during trial. Please wait for your trial to end.',
+                action: 'swap',
+                plan: $plan,
+                currentState: $subscription->paddle_status,
+            );
+        }
+
+        // Check for grace period - Cashier rejects swaps during grace period
+        if ($subscription->ends_at !== null && $subscription->ends_at->isFuture()) {
+            throw new SubscriptionException(
+                'Cannot swap plans during grace period. Please renew your subscription.',
+                action: 'swap',
+                plan: $plan,
+                currentState: $subscription->paddle_status,
+            );
+        }
+
+        // Check for paused status - Cashier rejects swaps when paused
+        if ($subscription->paused() || $subscription->onPausedGracePeriod()) {
+            throw new SubscriptionException(
+                'Cannot swap plans while subscription is paused.',
+                action: 'swap',
+                plan: $plan,
+                currentState: $subscription->paddle_status,
+            );
+        }
+
+        // Check for past-due status - Cashier rejects swaps when past due
+        if ($subscription->paddle_status === 'past_due') {
+            throw new SubscriptionException(
+                'Cannot swap plans while subscription is past due. Please update your payment method.',
+                action: 'swap',
+                plan: $plan,
+                currentState: $subscription->paddle_status,
+            );
+        }
+
+        // Now check general billing subscription status
         if (! $user->isBillingSubscribed()) {
             throw new SubscriptionException(
                 'You are not subscribed to a paid plan.',
                 action: 'swap',
                 plan: $plan,
-                currentState: $user->subscription($user->subscriptionName())?->paddle_status
+                currentState: $subscription->paddle_status
             );
         }
 
@@ -329,7 +404,7 @@ final readonly class SubscriptionService implements Paddle
                 'You are already on this plan.',
                 action: 'swap',
                 plan: $plan,
-                currentState: $user->subscription($user->subscriptionName())?->paddle_status
+                currentState: $subscription->paddle_status
             );
         }
     }

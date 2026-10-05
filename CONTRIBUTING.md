@@ -25,6 +25,26 @@ We very much appreciate any help with [open issues labeled with "help wanted"](h
 - Write the full namespace in DocBlocks for `@param`, `@var` or `@return` tags
 - GitHub Actions checks Laravel Pint, PHPStan/Larastan, Rector, PHPUnit, frontend linting, frontend tests, and the production build. Run the relevant checks locally before opening a pull request.
 
+## Backend integrations and external side effects
+
+Do not use an outbox for every endpoint. Choose the simplest design that preserves the required reliability:
+
+- Local database changes only: use a normal database transaction.
+- Read-only third-party requests: an outbox is usually unnecessary.
+- Third-party writes that change remote state: use a durable outbox or operation record when losing or duplicating the request could cause inconsistency.
+- Payments, subscriptions, provisioning, notifications, SMS, and destructive actions: prefer an outbox or durable operation record with retries and reconciliation.
+
+For a reliable third-party write, follow this sequence:
+
+1. In a short database transaction, validate fresh state and save the intended operation in an outbox or operation table.
+2. Commit the transaction before making the network request.
+3. Process the operation after commit, normally in a queue worker.
+4. Mark it `completed`, `failed`, or `unknown` and retain enough data to retry or reconcile it.
+
+Never hold a database transaction open during a third-party network request. The database and provider generally cannot be committed atomically together, so use provider idempotency keys when available, make retries safe, and treat timeouts as `unknown` rather than automatically failed.
+
+For inbound webhooks, save the verified event before acknowledging it. Process it asynchronously through the webhook inbox, deduplicate by provider event ID or a deterministic fingerprint, and make the handler safe to run more than once. See [`docs/WEBHOOK_INBOX.md`](docs/WEBHOOK_INBOX.md) and [`docs/WEBHOOK_PROVIDER_ONBOARDING.md`](docs/WEBHOOK_PROVIDER_ONBOARDING.md).
+
 ## Testing
 
 All tests can be run with the following commands.

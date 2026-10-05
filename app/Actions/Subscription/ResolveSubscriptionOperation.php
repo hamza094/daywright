@@ -11,6 +11,7 @@ use App\Interfaces\Paddle\CashierGatewayInterface;
 use App\Models\SubscriptionOperation;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use Laravel\Paddle\Subscription;
 use LogicException;
 use Throwable;
 
@@ -65,10 +66,20 @@ final readonly class ResolveSubscriptionOperation
                 throw new LogicException('Operation is no longer awaiting manual review.');
             }
 
-            $localSub = $current->subscription ?? $current->user->subscription($current->user->subscriptionName());
+            // Match the remote identity and the operation owner before
+            // applying a manually verified result.
+            $billable = $current->user;
+            $localSub = $billable === null
+                ? null
+                : Subscription::query()
+                    ->where('paddle_id', $current->paddle_subscription_id)
+                    ->where('billable_id', (string) $billable->getKey())
+                    ->where('billable_type', $billable->getMorphClass())
+                    ->lockForUpdate()
+                    ->first();
 
             if ($localSub === null) {
-                throw new LogicException('Cannot mark completed: local subscription is missing.');
+                throw new LogicException('Cannot mark completed: local subscription with matching Paddle ID not found.');
             }
 
             $localSub->update(match ($current->type) {

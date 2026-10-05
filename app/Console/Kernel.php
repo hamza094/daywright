@@ -114,6 +114,13 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->appendOutputTo($this->schedulerLogPath());
 
+        $schedule->command('meetings:recover-pending --limit=25')
+            ->name('recover-pending-zoom-operations')
+            ->onOneServer()
+            ->withoutOverlapping()
+            ->everyMinute()
+            ->appendOutputTo($this->schedulerLogPath());
+
         $schedule->command('subscriptions:recover-operations --limit=25')
             ->name('recover-subscription-operations')
             ->onOneServer()

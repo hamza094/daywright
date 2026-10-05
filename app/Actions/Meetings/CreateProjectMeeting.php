@@ -95,46 +95,114 @@ final readonly class CreateProjectMeeting
         DB::transaction(function () use ($meeting, $zoomMeeting): void {
             $lockedMeeting = $this->lockMeeting($meeting);
 
-            if ($lockedMeeting->meeting_id !== null && (string) $lockedMeeting->meeting_id !== (string) $zoomMeeting->meeting_id) {
-                if ($lockedMeeting->sync_status === MeetingSyncStatus::Creating) {
-                    $lockedMeeting->transitionTo(MeetingSyncStatus::CreateUnknown, 'sync_status');
-                }
+            if ($this->isAlreadyActiveWithSameId($lockedMeeting, $zoomMeeting)) {
+                return;
+            }
 
-                $lockedMeeting->update([
-                    'sync_error' => 'remote_meeting_id_conflict',
-                    'sync_claim_token' => null,
-                    'sync_lease_expires_at' => null,
-                    'sync_available_at' => null,
-                ]);
-
-                Log::warning('Zoom meeting creation response conflicts with webhook meeting ID', [
-                    'meeting_id' => $lockedMeeting->id,
-                    'stored_zoom_meeting_id' => $lockedMeeting->meeting_id,
-                    'response_zoom_meeting_id' => $zoomMeeting->meeting_id,
-                ]);
+            if ($this->hasConflictingMeetingId($lockedMeeting, $zoomMeeting)) {
+                $this->handleMeetingIdConflict($lockedMeeting, $zoomMeeting);
 
                 return;
             }
 
-            $lockedMeeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
-            $lockedMeeting->update([
-                'meeting_id' => $zoomMeeting->meeting_id,
-                'start_url' => $zoomMeeting->start_url,
-                'join_url' => $zoomMeeting->join_url,
-                'status' => $zoomMeeting->status,
-                'sync_error' => null,
-                'sync_claim_token' => null,
-                'sync_lease_expires_at' => null,
-                'sync_available_at' => null,
-                'synced_at' => now(),
-            ]);
+            if ($lockedMeeting->sync_status === MeetingSyncStatus::CreateUnknown) {
+                $this->handleCreateUnknownState($lockedMeeting, $zoomMeeting);
+
+                return;
+            }
+
+            $this->finalizeMeetingAsActive($lockedMeeting, $zoomMeeting, 'created via API');
         }, attempts: $this->transactionRetryAttempts);
+    }
+
+    private function isAlreadyActiveWithSameId(Meeting $meeting, ZoomMeeting $zoomMeeting): bool
+    {
+        return $meeting->sync_status === MeetingSyncStatus::Active
+            && $this->sameMeetingId($meeting->meeting_id, $zoomMeeting->meeting_id);
+    }
+
+    private function hasConflictingMeetingId(Meeting $meeting, ZoomMeeting $zoomMeeting): bool
+    {
+        return $meeting->meeting_id !== null
+            && (string) $meeting->meeting_id !== (string) $zoomMeeting->meeting_id;
+    }
+
+    private function handleMeetingIdConflict(Meeting $meeting, ZoomMeeting $zoomMeeting): void
+    {
+        if ($meeting->sync_status === MeetingSyncStatus::Creating) {
+            $meeting->transitionTo(MeetingSyncStatus::CreateUnknown, 'sync_status');
+        }
+
+        $meeting->update([
+            'sync_error' => 'remote_meeting_id_conflict',
+            'sync_claim_token' => null,
+            'sync_lease_expires_at' => null,
+            'sync_available_at' => null,
+        ]);
+
+        Log::warning('Zoom meeting creation response conflicts with webhook meeting ID', [
+            'meeting_id' => $meeting->id,
+            'stored_zoom_meeting_id' => $meeting->meeting_id,
+            'response_zoom_meeting_id' => $zoomMeeting->meeting_id,
+        ]);
+    }
+
+    private function handleCreateUnknownState(Meeting $meeting, ZoomMeeting $zoomMeeting): void
+    {
+        if ($meeting->sync_claim_token !== null) {
+            Log::info('Zoom meeting creation response - webhook has active claim, respecting it', [
+                'meeting_id' => $meeting->id,
+                'zoom_meeting_id' => $zoomMeeting->meeting_id,
+            ]);
+
+            return;
+        }
+
+        $this->finalizeMeetingAsActive($meeting, $zoomMeeting, 'finalized webhook-initiated meeting');
+    }
+
+    private function finalizeMeetingAsActive(Meeting $meeting, ZoomMeeting $zoomMeeting, string $logContext): void
+    {
+        $meeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
+        $meeting->update([
+            'meeting_id' => $zoomMeeting->meeting_id,
+            'start_url' => $zoomMeeting->start_url,
+            'join_url' => $zoomMeeting->join_url,
+            'status' => $zoomMeeting->status,
+            'sync_error' => null,
+            'sync_claim_token' => null,
+            'sync_lease_expires_at' => null,
+            'sync_available_at' => null,
+            'synced_at' => now(),
+        ]);
+
+        Log::info('Zoom meeting creation response - '.$logContext, [
+            'meeting_id' => $meeting->id,
+            'zoom_meeting_id' => $zoomMeeting->meeting_id,
+        ]);
+    }
+
+    private function sameMeetingId(int|string|null $first, int|string $second): bool
+    {
+        return $first !== null && (string) $first === (string) $second;
     }
 
     private function markMeetingAsFailed(Meeting $meeting, Throwable $exception): void
     {
         DB::transaction(function () use ($meeting, $exception): void {
             $lockedMeeting = $this->lockMeeting($meeting);
+
+            // A webhook or recovery worker may have already established the
+            // remote meeting. Never let the late API error overwrite it.
+            if ($lockedMeeting->sync_status !== MeetingSyncStatus::Creating) {
+                Log::info('Ignoring late Zoom creation failure for finalized meeting', [
+                    'meeting_id' => $lockedMeeting->id,
+                    'sync_status' => $lockedMeeting->sync_status->value,
+                ]);
+
+                return;
+            }
+
             $lockedMeeting->transitionTo(MeetingSyncStatus::Failed, 'sync_status');
             $lockedMeeting->update([
                 'sync_error' => $this->errorFormatter->format($exception),
@@ -150,7 +218,30 @@ final readonly class CreateProjectMeeting
     {
         DB::transaction(function () use ($meeting, $exception): void {
             $lockedMeeting = $this->lockMeeting($meeting);
-            $lockedMeeting->transitionTo(MeetingSyncStatus::CreateUnknown, 'sync_status');
+
+            // A webhook/recovery worker owns the newer state. In particular,
+            // never perform CreateUnknown -> CreateUnknown, which is an
+            // invalid transition and can strand the meeting.
+            if ($lockedMeeting->sync_status === MeetingSyncStatus::Active
+                || $lockedMeeting->sync_status === MeetingSyncStatus::Failed
+                || $lockedMeeting->sync_claim_token !== null) {
+                Log::info('Ignoring late uncertain Zoom creation result', [
+                    'meeting_id' => $lockedMeeting->id,
+                    'sync_status' => $lockedMeeting->sync_status->value,
+                ]);
+
+                return;
+            }
+
+            if ($lockedMeeting->sync_status !== MeetingSyncStatus::Creating
+                && $lockedMeeting->sync_status !== MeetingSyncStatus::CreateUnknown) {
+                return;
+            }
+
+            if ($lockedMeeting->sync_status === MeetingSyncStatus::Creating) {
+                $lockedMeeting->transitionTo(MeetingSyncStatus::CreateUnknown, 'sync_status');
+            }
+
             $lockedMeeting->update([
                 'sync_error' => $this->errorFormatter->format($exception),
                 'sync_attempts' => $lockedMeeting->sync_attempts + 1,
