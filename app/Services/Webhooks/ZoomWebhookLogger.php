@@ -45,6 +45,21 @@ final class ZoomWebhookLogger
     /**
      * @param  array<string, mixed>  $context
      */
+    public function logWebhookCritical(
+        string $operation,
+        int|string $meetingId,
+        ?string $requestId,
+        string $event,
+        int|string|null $userIdentifier = null,
+        array $context = []
+    ): void {
+        $params = new WebhookLogParameters($operation, $meetingId, $requestId, $userIdentifier, $context);
+        $this->logWebhook('critical', $event, $params);
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
     public function logWebhookRetryScheduled(
         string $operation,
         int|string $meetingId,

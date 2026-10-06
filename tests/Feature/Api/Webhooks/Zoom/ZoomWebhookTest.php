@@ -60,6 +60,21 @@ class ZoomWebhookTest extends TestCase
     }
 
     /** @test */
+    public function update_webhook_requires_provider_event_timestamp(): void
+    {
+        $postBody = ZoomWebhookPayloadFactory::meetingUpdatedPayload();
+        unset($postBody['event_ts']);
+
+        $this->postJson(
+            route('api.v1.webhooks.meetings.update'),
+            $postBody,
+            ZoomWebhookSigner::signPayload($postBody, 'zoom-update-without-event-time'),
+        )->assertUnprocessable();
+
+        $this->assertDatabaseCount('webhook_inboxes', 0);
+    }
+
+    /** @test */
     public function meeting_created_is_accepted_once_by_the_durable_inbox(): void
     {
         Meeting::factory()->create([

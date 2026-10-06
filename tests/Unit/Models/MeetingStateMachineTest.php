@@ -11,10 +11,13 @@ use App\Models\Meeting;
 use App\QueryBuilder\MeetingBuilder;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Support\Meeting\MeetingTestHelper;
 use Tests\TestCase;
 use Tests\Traits\ProjectSetup;
+
+use function Safe\json_encode;
 
 /**
  * Unit tests for Meeting state machine validation.
@@ -227,7 +230,7 @@ class MeetingStateMachineTest extends TestCase
             'sync_payload' => $payload,
         ]);
 
-        $rawPayload = Meeting::where('id', $meeting->id)->value('sync_payload');
+        $rawPayload = DB::table('meetings')->where('id', $meeting->id)->value('sync_payload');
 
         $this->assertNotEquals($payload, $rawPayload);
         $this->assertStringNotContainsString('Updated Topic', $rawPayload);

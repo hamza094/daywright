@@ -6,6 +6,11 @@ Complete these checks in the actual release environment or a staging environment
 
 Update `docs/DEPLOYMENT.md` from the current `composer.json`, `.env.example`, `config/queue.php`, and `app/Console/Kernel.php`. Document the actual PHP/extensions, install from `composer.lock`, required secret names, migration order, cache/build steps, worker restart, scheduler invocation, and a post-deploy smoke check. Check that worker timeouts and queue retry settings allow the Zoom and Paddle recovery leases to work. Run `composer check-platform-reqs --no-dev`, `php artisan route:list`, and `php artisan schedule:list` on the release build. Avoid a new deploy script if the hosting platform already performs these steps reliably.
 
+**Phase 5 webhook migration:**
+
+- Include the `2026_10_05_000001_add_last_zoom_event_timestamp_to_meetings_table` migration in the documented migration order.
+- Confirm application clock synchronization with Zoom's clock for reliable timestamp-based staleness detection.
+
 ## P5.2: detect broken dependencies and stopped work
 
 Prove that the selected monitoring detects database and Redis failures, stopped queue workers, and a stopped scheduler. A queue connection check alone cannot show that a worker is processing jobs; use the platform's worker/scheduler monitoring or a small heartbeat if no signal exists. Give failing checks a nonzero status or an alert. Keep health output free of credentials and private payloads. Test one healthy run and each failure signal in staging. Add a custom health service only for gaps the platform cannot cover.
@@ -17,6 +22,11 @@ Restore a real backup into an isolated target. Verify representative records, re
 ## P5.4: alerts reach a person
 
 Trigger one controlled queue failure and one health failure in staging. Confirm the configured operator receives both, can identify the affected operation, and has a short procedure for Zoom inbox, Zoom creation, and Paddle manual review. Test the actual destination, not only a mocked reporter. Sanitize alert context and record the delivery result without addresses or secrets.
+
+**Phase 5 webhook-specific alerting:**
+
+- Add monitoring for ignored Zoom webhooks (to detect timestamp unit issues or clock drift problems). Webhooks are rejected when `event_ts` is missing or stale; these should be observable in logs or alerts.
+- Confirm alerting covers stuck operations in `Updating`, `UpdateFailed`, `Deleting`, or `DeleteFailed` states that may require manual intervention.
 
 ## Deferred
 

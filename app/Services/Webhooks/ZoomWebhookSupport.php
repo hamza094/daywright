@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Webhooks;
 
 use App\Models\Meeting;
+use Carbon\CarbonInterface;
 use Throwable;
 
 final readonly class ZoomWebhookSupport
@@ -43,6 +44,33 @@ final readonly class ZoomWebhookSupport
     public function getMeeting(int|string $meetingId): ?Meeting
     {
         return Meeting::where('meeting_id', $meetingId)->first();
+    }
+
+    public function lockMeeting(Meeting $meeting): Meeting
+    {
+        return Meeting::query()
+            ->whereKey($meeting->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+    }
+
+    public function isStaleProviderEvent(Meeting $meeting, ?int $occurredAt): bool
+    {
+        // Provider and application timestamps are stored in milliseconds.
+        if ($occurredAt === null) {
+            return true;
+        }
+
+        if ($meeting->last_zoom_event_timestamp !== null
+            && $occurredAt <= $meeting->last_zoom_event_timestamp) {
+            return true;
+        }
+
+        $latestLocalSync = collect([$meeting->sync_started_at, $meeting->synced_at])
+            ->filter(fn (mixed $timestamp): bool => $timestamp instanceof CarbonInterface)
+            ->max(fn (CarbonInterface $timestamp): int => (int) $timestamp->valueOf());
+
+        return $latestLocalSync !== null && $occurredAt <= $latestLocalSync;
     }
 
     public function userUuid(Meeting $meeting): ?string

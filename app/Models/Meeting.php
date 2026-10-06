@@ -47,6 +47,7 @@ class Meeting extends Model
         'sync_started_at' => 'datetime',
         'sync_lease_expires_at' => 'datetime',
         'sync_available_at' => 'datetime',
+        'last_zoom_event_timestamp' => 'integer',
         'started_notification_sent_at' => 'datetime',
         'ended_notification_sent_at' => 'datetime',
         'started_notification_pending_at' => 'datetime',

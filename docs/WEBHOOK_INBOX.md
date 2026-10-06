@@ -39,6 +39,23 @@ The provider implementation owns signature verification, timestamp tolerance, pa
 
 Do not assume that providers share the same event IDs, signature algorithms, ordering guarantees, retry schedules, or acknowledgement rules.
 
+### Zoom timestamp handling
+
+Zoom event timestamps are normalized at the inbox boundary and stored in `provider_occurred_at` as milliseconds since the Unix epoch. The Zoom adapter accepts a seconds or milliseconds value from the provider and converts it before persistence, so meeting handlers compare one consistent format.
+
+The meeting handlers use `last_zoom_event_timestamp` to reject an older or equal provider event. They also compare provider time with local synchronization timestamps as a conservative barrier against a delayed webhook overwriting a state already finalized by the application. This assumes the provider and application clocks are reasonably synchronized.
+
+Zoom documents `event_ts` as optional for `meeting.deleted`. When it is absent, the handler trusts the authenticated, deduplicated delete event and processes it under the normal database row lock, without calling Zoom's API. It emits a critical log because the event cannot be checked for staleness. This accepts the event as authoritative while acknowledging that ordering cannot be verified without its timestamp.
+
+The ownership boundaries are:
+
+- operation IDs identify the current local meeting operation;
+- claim tokens and leases coordinate recovery workers;
+- the inbox deduplicates and retries webhook delivery;
+- row locks protect final meeting state transitions;
+- recovery verifies Zoom when an API result is uncertain;
+- provider timestamps order webhook events.
+
 ## Deduplication Mechanism
 
 ### Deterministic Fingerprint

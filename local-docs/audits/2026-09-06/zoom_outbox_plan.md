@@ -150,67 +150,38 @@ Update the Zoom webhook handlers:
 - A stale webhook must not overwrite a newer local operation.
 - Keep webhook inbox deduplication unchanged.
 
-## Tests to add or update
+## Test coverage status
 
-### Migration and model tests ✅ COMPLETED
+The implementation-focused regression coverage below exists. Keep these tests: they exercise different boundaries (action behavior, queued recovery, inbox persistence, and HTTP contracts), even where the same outcome is asserted at more than one layer.
 
-- Operation type and payload are persisted.
-- Update payload is encrypted.
-- Payload is restored correctly through the model.
-- Operation IDs are unique.
-- Custom QueryBuilder is used for recovery scopes.
+### Operation data and update flow — covered
 
-### Update tests ✅ COMPLETED
+- `MeetingStateMachineTest` covers operation state and model invariants; meeting update tests cover encrypted payload persistence.
+- `UpdateProjectMeetingTest` covers success, definite failure, timeout recovery state, rate-limit rollback, stale operation fencing, and rejection of overlapping updates.
+- `RecoverZoomMeetingOperationJobTest` covers reconciling an already-applied update, retrying when Zoom still has old values, stale claim/operation rejection, and retry timing.
 
-- Successful update saves Zoom and local values.
-- Zoom failure leaves original local values unchanged.
-- Timeout leaves the operation recoverable.
-- Rate limit rolls back to active for manual retry.
-- Operation ID prevents stale update.
-- A second update is rejected while one is already active.
-- Sync payload is encrypted.
-- Password payload is never written to logs.
+### Delete flow — covered
 
-### Update tests (REMAINING - Phase 4)
+- `DeleteProjectMeetingTest` covers successful deletion, Zoom 404, temporary failure, timeout, rate-limit behavior, operation fencing, overlap rejection, tombstone retention, and repeated deletion.
+- `RecoverZoomMeetingOperationJobTest` covers recovery when the Zoom meeting is already gone and retry scheduling for uncertain outcomes.
+- `MeetingDeleteTest` covers the delete HTTP response and the Zoom 404 contract.
 
-- Recovery finalizes when Zoom already contains the requested values.
-- Recovery retries when Zoom still has old values.
-- A stale worker cannot finalize a newer update.
-- Retry from `update_failed` works.
+### Recovery claims and creation compatibility — covered
 
-### Delete tests
+- `RecoverPendingZoomMeetingOperationsTest` covers claiming due work, skipping live claims, choosing another due operation, and reclaiming expired leases.
+- `RecoverZoomMeetingOperationJobTest` and `ZoomRecoveryPolicyTest` cover recovery outcomes, retry delays, and policy limits.
+- `RecoverAmbiguousZoomMeetingTest` covers the existing create recovery path, including stale claims, bounded retry, and manual review.
 
-Add tests for:
+### Webhook and inbox behavior — covered
 
-- Successful delete changes status to `deleted`.
-- Zoom `404` is treated as success.
-- Temporary Zoom failure changes status to `delete_failed`.
-- Recovery retries a failed delete.
-- Recovery handles an already deleted Zoom meeting.
-- A stale delete worker cannot delete or finalize a newer operation.
-- Repeated delete request is idempotent.
-- Delete route requires and respects the idempotency key.
+- `HandleMeetingUpdatedWebhookIdempotencyTest` covers matching and mismatching pending updates, late completion, duplicate processing, and stale/out-of-order events.
+- `HandleMeetingDeletedWebhookIdempotencyTest` covers pending delete finalization, delete overriding pending/failed update, stale-event protection, duplicate processing, and deletion without `event_ts`.
+- `ZoomWebhookInboxServiceTest`, `WebhookInboxCrashRecoveryTest`, and `WebhookInboxTest` cover inbox deduplication, claims, retry scheduling, crash recovery, and request acceptance.
+- `ZoomWebhookTest` covers signed webhook acceptance and endpoint validation.
 
-### Recovery command tests
+### Remaining verification gap
 
-Add tests for:
-
-- Only due operations are selected.
-- Future retry operations are skipped.
-- An expired claim can be taken by another worker.
-- A live claim cannot be taken by another worker.
-- Maximum attempts move the operation to manual review.
-- Update and delete recovery do not affect create recovery behavior.
-
-### Webhook tests
-
-Add tests for:
-
-- Update webhook finalizes a matching update.
-- Delete webhook finalizes a matching delete.
-- Duplicate update webhook has no second effect.
-- Duplicate delete webhook has no second effect.
-- A stale webhook cannot overwrite a newer operation.
+- Add an HTTP-level DELETE idempotency-key test if the API contract requires delete retries with the same key to replay safely. Current `MeetingDeleteTest` verifies deletion behavior, but does not verify the key/replay contract. The update and create replay contracts have separate coverage in `IdempotencyContractTest`.
 
 ## Implementation order
 

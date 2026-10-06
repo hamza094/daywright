@@ -54,7 +54,12 @@ With real worker and scheduler processes, demonstrate these failure windows:
 
 In a real Zoom sandbox, confirm that the creation request and corresponding webhook carry the same operation ID before relying on webhook correlation. If Zoom cannot prove an ambiguous result, keep it visible for manual review. Record the worker exit, recovery command, final database state, and outcome.
 
-**Done when:** all three real-process outcomes and the sandbox operation-ID result have evidence. A synchronous exception test alone does not complete this ticket.
+**Additional Phase 5 webhook checks:**
+
+- Verify Zoom's `event_ts` unit using real Zoom sandbox payloads (milliseconds vs seconds). Zoom documents `event_ts` as required but does not specify its unit in the meeting webhook schema. Incorrect unit assumption will break timestamp-based staleness detection.
+- Test webhook row-lock behavior against MySQL (SQLite tests do not prove real database row-lock behavior).
+
+**Done when:** all three real-process outcomes and the sandbox operation-ID result have evidence, and the webhook timestamp unit and MySQL row-lock behavior are verified. A synchronous exception test alone does not complete this ticket.
 
 ## Ticket 6 — P4.3b: Recover Paddle work and verify Paddle Classic
 

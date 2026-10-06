@@ -30,6 +30,7 @@ final readonly class HandlePersistedZoomWebhookAction
             ),
             'meeting.updated' => $this->handleMeetingUpdated->handle(
                 MeetingUpdatedWebhookData::fromArray($webhookInbox->payload),
+                $webhookInbox->provider_occurred_at,
             ),
             'meeting.started' => $this->handleMeetingStarted->handle(
                 MeetingStartedWebhookData::fromArray($webhookInbox->payload),
@@ -39,6 +40,7 @@ final readonly class HandlePersistedZoomWebhookAction
             ),
             'meeting.deleted' => $this->handleMeetingDeleted->handle(
                 MeetingDeletedWebhookData::fromArray($webhookInbox->payload),
+                $webhookInbox->provider_occurred_at,
             ),
             default => throw new InvalidArgumentException(
                 "Unsupported Zoom webhook event type: {$webhookInbox->event_type}",

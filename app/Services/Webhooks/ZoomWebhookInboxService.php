@@ -35,6 +35,7 @@ final readonly class ZoomWebhookInboxService
 
     /**
      * Persists each provider event once and dispatches only newly accepted webhooks.
+     * Zoom provider timestamps are stored as milliseconds since the Unix epoch.
      */
     public function accept(
         string $eventKey,
@@ -51,7 +52,7 @@ final readonly class ZoomWebhookInboxService
             [
                 'event_type' => $eventType,
                 'provider_request_id' => $requestId,
-                'provider_occurred_at' => $occurredAt,
+                'provider_occurred_at' => ZoomWebhookTimestamp::toMilliseconds($occurredAt),
                 'payload' => $data->toArray(),
                 'state' => WebhookInboxState::Received,
             ],

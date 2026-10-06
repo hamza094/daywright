@@ -41,7 +41,7 @@ class MeetingDeletedWebhookRequest extends FormRequest
     {
         return [
             'event' => ['required', 'string', Rule::in(['meeting.deleted'])],
-            'event_ts' => ['sometimes', 'integer'],
+            'event_ts' => ['sometimes', 'integer', 'min:1'],
             'payload' => ['required', 'array'],
             'payload.object' => ['required', 'array'],
             'payload.object.id' => ['required', 'numeric'],

@@ -45,6 +45,8 @@ Do not accept an event until its request has been verified. Never log signing se
 
 Validate the fields DayWright uses, then convert them into the data needed by the relevant application action. Keep provider-specific event formats out of the shared inbox code.
 
+Normalize provider timestamps at the provider boundary before saving them to the inbox. Store one documented unit throughout persistence and processing. The current Zoom implementation stores event timestamps as milliseconds since the Unix epoch.
+
 Use the provider's stable event ID to recognize a duplicate when available. If it has none, derive a repeatable key from the verified request data. The database uses the provider name and event key together to prevent saving the same event twice.
 
 ### 3. Save before acknowledging
@@ -64,6 +66,8 @@ Do not rely on the original HTTP request being available to the background job.
 The inbox tracks whether an event is waiting, being processed, completed, or has failed. It also tracks attempts and when a failed or interrupted event can be tried again.
 
 Use the existing inbox recovery command and scheduled task. Keep retry timing in one place: the inbox owns webhook retries, while the queue job makes one processing attempt.
+
+Keep operation IDs in local actions and recovery. Do not require a provider webhook to echo a local operation ID unless the provider actually supports that field. Use row locks for the final local transition and use provider timestamps only for provider event ordering.
 
 ### 6. Document and test the integration
 
