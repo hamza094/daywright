@@ -337,15 +337,15 @@ DB::transaction(function () use ($meeting, $userUuid, $data, $occurredAt): void 
 
 **File:** `app/Http/Controllers/Api/V1/Webhooks/ZoomWebhookController.php`
 
-**Change:** Fallback for `event_ts` location
+**Change:** Read `event_ts` from root level
 
 ```php
-occurredAt: $request->input('event_ts') ?? $request->input('payload.event_ts'),
+occurredAt: $request->input('event_ts'),
 ```
 
-- Some Zoom webhooks have `event_ts` at root level
-- Others have it nested in `payload.event_ts`
-- This handles both cases
+- All webhook endpoints read `event_ts` from the root level
+- The value is passed to the inbox service as `provider_occurred_at`
+- Update webhooks require this field; delete webhooks make it optional
 
 ---
 
@@ -356,17 +356,20 @@ occurredAt: $request->input('event_ts') ?? $request->input('payload.event_ts'),
 **Change:** Require `event_ts`
 
 ```php
-'event_ts' => ['required', 'integer'],  // Changed from 'sometimes' to 'required'
+'event_ts' => ['required', 'integer'],
 ```
 
 **File:** `app/Http/Requests/Api/V1/Zoom/MeetingDeletedWebhookRequest.php`
 
-**Change:** Require `event_ts` or `payload.event_ts`
+**Change:** Optional `event_ts` with minimum value
 
 ```php
-'event_ts' => ['required_without:payload.event_ts', 'integer'],
-'payload.event_ts' => ['required_without:event_ts', 'integer'],
+'event_ts' => ['sometimes', 'integer', 'min:1'],
 ```
+
+- Update webhooks require a timestamp (required for staleness detection)
+- Delete webhooks make the timestamp optional (null timestamps are handled as stale in handlers)
+- When present, the timestamp must be a positive integer (milliseconds)
 
 ---
 

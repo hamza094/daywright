@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Zoom;
 
-use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
 use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Http\Integrations\Zoom\Requests\CreateMeeting;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
@@ -184,10 +184,11 @@ class ZoomMeetingCreateTest extends TestCase
 
         try {
             app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
-            $this->fail('Expected ZoomExternalFailureException was not thrown.');
-        } catch (ZoomExternalFailureException $exception) {
-            $this->assertSame(429, $exception->getCode());
-            $this->assertSame(60, $exception->context()['retry_after_seconds']);
+            $this->fail('Expected ZoomRateLimitException was not thrown.');
+        } catch (ZoomRateLimitException $exception) {
+            $this->assertSame(429, $exception->status());
+            $this->assertSame(60, $exception->retryAfterSeconds());
+            $this->assertSame('Zoom is limiting requests to its API. Please retry later. Try again in 60 seconds.', $exception->publicMessage());
             $this->assertSame(['Retry-After' => '60'], $exception->headers());
         }
     }
@@ -216,7 +217,7 @@ class ZoomMeetingCreateTest extends TestCase
         ]);
         $this->createAndAssertMeeting($this->meetingData, $this->user);
         $this->createAndAssertMeeting($this->meetingData, $this->user);
-        $this->expectException(ZoomExternalFailureException::class);
+        $this->expectException(ZoomRateLimitException::class);
         app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
     }
 

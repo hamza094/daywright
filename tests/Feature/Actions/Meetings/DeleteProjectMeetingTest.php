@@ -14,7 +14,7 @@ use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use RuntimeException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Tests\Support\Meeting\MeetingTestHelper;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
@@ -152,16 +152,40 @@ final class DeleteProjectMeetingTest extends TestCase
     }
 
     /** @test */
-    public function second_delete_is_rejected_while_one_is_active(): void
+    public function second_delete_while_deleting_reports_that_recovery_is_in_progress(): void
     {
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'sync_status' => MeetingSyncStatus::Deleting,
+            'sync_operation_id' => Str::uuid()->toString(),
         ]);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Meeting must be active, update_failed, or delete_failed to delete');
+        $this->expectException(ConflictHttpException::class);
+        $this->expectExceptionMessage('Meeting deletion is already in progress. Please retry.');
 
         $this->action->handle($meeting, $this->user, $this->zoom);
+    }
+
+    /** @test */
+    public function delete_while_deleting_does_not_call_zoom_api(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_status' => MeetingSyncStatus::Deleting,
+            'sync_operation_id' => Str::uuid()->toString(),
+        ]);
+
+        try {
+            $this->action->handle($meeting, $this->user, $this->zoom);
+            $this->fail('Expected ConflictHttpException to be thrown.');
+        } catch (ConflictHttpException) {
+            // The existing deletion remains owned by recovery; this request must not call Zoom.
+        }
+
+        $meeting->refresh();
+
+        $this->assertEquals(MeetingSyncStatus::Deleting, $meeting->sync_status);
+
+        // Assert that deleteMeeting was NOT called
+        $this->zoom->assertNoMeetingsDeleted();
     }
 
     /** @test */
@@ -182,7 +206,7 @@ final class DeleteProjectMeetingTest extends TestCase
     }
 
     /** @test */
-    public function repeated_delete_request_after_successful_delete_is_safe(): void
+    public function repeated_delete_request_after_successful_delete_is_idempotent(): void
     {
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'sync_status' => MeetingSyncStatus::Active,
@@ -193,10 +217,36 @@ final class DeleteProjectMeetingTest extends TestCase
         $meeting->refresh();
 
         $this->assertEquals(MeetingSyncStatus::Deleted, $meeting->sync_status);
+        $this->assertCount(1, $this->zoom->meetingsToDelete);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Meeting must be active, update_failed, or delete_failed to delete');
+        // Should not throw exception - already deleted
+        $this->action->handle($meeting, $this->user, $this->zoom);
+
+        $meeting->refresh();
+
+        // Status should remain Deleted
+        $this->assertEquals(MeetingSyncStatus::Deleted, $meeting->sync_status);
+        $this->assertCount(1, $this->zoom->meetingsToDelete);
+    }
+
+    /** @test */
+    public function new_delete_starts_with_fresh_retry_state_and_clears_old_payload(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_status' => MeetingSyncStatus::UpdateFailed,
+            'sync_attempts' => 5,
+            'sync_claim_token' => 'old-token',
+            'sync_available_at' => now()->subHour(),
+            'sync_payload' => '{"topic":"old update"}',
+        ]);
 
         $this->action->handle($meeting, $this->user, $this->zoom);
+
+        $meeting->refresh();
+
+        $this->assertEquals(0, $meeting->sync_attempts);
+        $this->assertNull($meeting->sync_claim_token);
+        $this->assertNull($meeting->sync_available_at);
+        $this->assertNull($meeting->sync_payload);
     }
 }

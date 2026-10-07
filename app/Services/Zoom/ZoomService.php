@@ -11,6 +11,7 @@ use App\DataTransferObjects\Zoom\Meeting;
 use App\DataTransferObjects\Zoom\MeetingSummary;
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Http\Integrations\Zoom\Requests\CreateMeeting;
@@ -60,21 +61,13 @@ final readonly class ZoomService implements Zoom
 
             return $response->dto();
         } catch (RateLimitReachedException $exception) {
-            $retryAfter = $exception->getLimit()->getRemainingSeconds();
-
-            $zoomException = new ZoomExternalFailureException(
-                'Zoom meeting creation was rate limited.',
-                429,
-                previous: $exception,
-            );
-
-            throw $zoomException->withContext(['retry_after_seconds' => $retryAfter]);
+            throw $this->applicationRateLimit($exception);
         } catch (ZoomExternalFailureException|FatalRequestException $exception) {
             if ($this->isUncertainOutcome($exception)) {
-                throw new ZoomMeetingOperationUnknownException(
+                throw new ZoomMeetingCreationUnknownException(
                     'Zoom meeting creation result is uncertain',
                     $exception->getCode(),
-                    previous: $exception
+                    $exception,
                 );
             }
 
@@ -93,13 +86,7 @@ final readonly class ZoomService implements Zoom
                 ->send(new UpdateMeeting($validated, $this->limiterKey($user)))
                 ->throw();
         } catch (RateLimitReachedException $exception) {
-            $retryAfter = $exception->getLimit()->getRemainingSeconds();
-
-            throw new ZoomRateLimitException(
-                $retryAfter,
-                'Zoom meeting update was rate limited.',
-                previous: $exception
-            );
+            throw $this->applicationRateLimit($exception);
         } catch (ZoomExternalFailureException|FatalRequestException $exception) {
             if ($this->isUncertainOutcome($exception)) {
                 throw new ZoomMeetingOperationUnknownException(
@@ -123,13 +110,7 @@ final readonly class ZoomService implements Zoom
         } catch (NotFoundException) {
             return;
         } catch (RateLimitReachedException $exception) {
-            $retryAfter = $exception->getLimit()->getRemainingSeconds();
-
-            throw new ZoomRateLimitException(
-                $retryAfter,
-                'Zoom meeting deletion was rate limited.',
-                previous: $exception
-            );
+            throw $this->applicationRateLimit($exception);
         } catch (ZoomExternalFailureException|FatalRequestException $exception) {
             if ($this->isUncertainOutcome($exception)) {
                 throw new ZoomMeetingOperationUnknownException(
@@ -164,6 +145,8 @@ final readonly class ZoomService implements Zoom
             return Meeting::fromResponse($response->json());
         } catch (NotFoundException) {
             return null;
+        } catch (RateLimitReachedException $exception) {
+            throw $this->applicationRateLimit($exception);
         }
     }
 
@@ -176,28 +159,42 @@ final readonly class ZoomService implements Zoom
         $meetings = [];
         $nextPageToken = null;
 
-        do {
-            $response = $this->connectedConnector($user)
-                ->send(new ListMeetings($this->limiterKey($user), $nextPageToken));
-            $response->throw();
+        try {
+            do {
+                $response = $this->connectedConnector($user)
+                    ->send(new ListMeetings($this->limiterKey($user), $nextPageToken));
+                $response->throw();
 
-            $items = $response->json('meetings', []);
+                $items = $response->json('meetings', []);
 
-            if (! is_array($items)) {
-                break;
-            }
-
-            foreach ($items as $item) {
-                if (is_array($item)) {
-                    $meetings[] = MeetingSummary::fromResponse($item);
+                if (! is_array($items)) {
+                    break;
                 }
-            }
 
-            $token = $response->json('next_page_token');
-            $nextPageToken = is_string($token) && $token !== '' ? $token : null;
-        } while ($nextPageToken !== null);
+                foreach ($items as $item) {
+                    if (is_array($item)) {
+                        $meetings[] = MeetingSummary::fromResponse($item);
+                    }
+                }
+
+                $token = $response->json('next_page_token');
+                $nextPageToken = is_string($token) && $token !== '' ? $token : null;
+            } while ($nextPageToken !== null);
+        } catch (RateLimitReachedException $exception) {
+            throw $this->applicationRateLimit($exception);
+        }
 
         return $meetings;
+    }
+
+    private function applicationRateLimit(RateLimitReachedException $exception): ZoomRateLimitException
+    {
+        return new ZoomRateLimitException(
+            $exception->getLimit()->getRemainingSeconds(),
+            'The application Zoom request limit was reached.',
+            previous: $exception,
+            source: ZoomRateLimitException::SOURCE_APPLICATION,
+        );
     }
 
     private function isUncertainOutcome(Throwable $exception): bool

@@ -61,7 +61,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
 
         app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
             meetingId: 654,
-            changes: ['topic' => 'Requested Topic', 'duration' => 45, 'join_url' => 'https://zoom.us/j/654'],
+            changes: ['topic' => 'Requested Topic', 'duration' => 45, 'agenda' => 'New agenda'],
             requestId: 'webhook-request',
         ), (int) now()->addSecond()->valueOf());
 
@@ -69,6 +69,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         $this->assertSame(MeetingSyncStatus::Active, $meeting->sync_status);
         $this->assertSame('Requested Topic', $meeting->topic);
         $this->assertSame(45, $meeting->duration);
+        $this->assertSame('New agenda', $meeting->agenda);
         $this->assertNull($meeting->sync_operation_id);
         $this->assertNull($meeting->sync_operation_type);
         $this->assertNull($meeting->sync_payload);
@@ -131,6 +132,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             'sync_status' => MeetingSyncStatus::Active,
             'sync_started_at' => now(),
             'synced_at' => now(),
+            'last_zoom_event_timestamp' => (int) now()->valueOf(),
         ]);
 
         app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
@@ -221,6 +223,116 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         $service->process($inbox->id);
         $meeting->refresh();
         $this->assertSame('Updated Topic', $meeting->topic);
+    }
+
+    public function test_late_callback_after_newer_operation_is_rejected(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 659,
+            'topic' => 'Original Topic',
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'old-operation',
+            'sync_payload' => json_encode(['topic' => 'Old Topic']),
+        ]);
+
+        $handler = app(HandleMeetingUpdatedWebhook::class);
+
+        // Simulate newer operation completing with a newer timestamp
+        $newerTimestamp = (int) now()->addSecond()->valueOf();
+        $meeting->update([
+            'sync_status' => MeetingSyncStatus::Active,
+            'sync_operation_id' => 'new-operation',
+            'sync_operation_type' => null,
+            'sync_payload' => null,
+            'synced_at' => now(),
+            'last_zoom_event_timestamp' => $newerTimestamp,
+        ]);
+
+        // Now invoke the old callback with a stale timestamp
+        $handler->handle(new MeetingUpdatedWebhookData(
+            meetingId: 659,
+            changes: ['topic' => 'Old Topic'],
+            requestId: 'old-request',
+        ), (int) now()->subSecond()->valueOf());
+
+        $meeting->refresh();
+        // The old callback should be rejected due to stale timestamp
+        $this->assertSame('Original Topic', $meeting->topic);
+        $this->assertSame($newerTimestamp, $meeting->last_zoom_event_timestamp);
+    }
+
+    public function test_additional_allowlisted_fields_from_webhook_are_preserved(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 660,
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'current-operation',
+            'sync_payload' => json_encode(['topic' => 'Requested Topic']),
+            'join_url' => 'https://zoom.us/j/old',
+        ]);
+
+        // Webhook includes agenda (allowlisted) that wasn't in the original request
+        $handler = app(HandleMeetingUpdatedWebhook::class);
+        $handler->handle(new MeetingUpdatedWebhookData(
+            meetingId: 660,
+            changes: [
+                'topic' => 'Requested Topic',
+                'agenda' => 'New agenda',
+                'join_url' => 'https://zoom.us/j/new',
+            ],
+            requestId: 'webhook-request',
+        ), (int) now()->addSecond()->valueOf());
+
+        $meeting->refresh();
+        $this->assertSame('Requested Topic', $meeting->topic);
+        $this->assertSame('New agenda', $meeting->agenda);
+        $this->assertSame('https://zoom.us/j/new', $meeting->join_url);
+        $this->assertNull($meeting->sync_payload);
+    }
+
+    public function test_delayed_update_then_delete_is_not_rejected_by_processing_time(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 661,
+            'topic' => 'Original Topic',
+            'sync_status' => MeetingSyncStatus::Active,
+        ]);
+        $updateTimestamp = (int) now()->subSeconds(10)->valueOf();
+        $deleteTimestamp = $updateTimestamp + 1000;
+
+        app(HandleMeetingUpdatedWebhook::class)->handle(
+            new MeetingUpdatedWebhookData(661, ['topic' => 'Updated Topic'], null),
+            $updateTimestamp,
+        );
+        app(\App\Actions\Webhooks\Zoom\HandleMeetingDeletedWebhook::class)->handle(
+            new \App\DataTransferObjects\Zoom\MeetingDeletedWebhookData(661),
+            $deleteTimestamp,
+        );
+
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->refresh()->sync_status);
+    }
+
+    public function test_delete_wins_when_update_and_delete_have_the_same_timestamp(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 662,
+            'topic' => 'Original Topic',
+            'sync_status' => MeetingSyncStatus::Active,
+        ]);
+        $timestamp = (int) now()->subSeconds(10)->valueOf();
+
+        app(HandleMeetingUpdatedWebhook::class)->handle(
+            new MeetingUpdatedWebhookData(662, ['topic' => 'Updated Topic'], null),
+            $timestamp,
+        );
+        app(\App\Actions\Webhooks\Zoom\HandleMeetingDeletedWebhook::class)->handle(
+            new \App\DataTransferObjects\Zoom\MeetingDeletedWebhookData(662),
+            $timestamp,
+        );
+
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->refresh()->sync_status);
     }
 
     /** @param array<string, mixed> $attributes */

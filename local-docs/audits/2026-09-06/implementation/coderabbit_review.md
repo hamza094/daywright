@@ -1,12 +1,12 @@
-I reviewed all 16 suggestions against the current code and focused tests.
+I reviewed the remaining CodeRabbit suggestions against the current code and focused tests. Resolved suggestions have been removed from this active review; the original CodeRabbit numbering is retained for traceability.
 
-Result: 13 are confirmed defects, and 3 are valid hardening recommendations but not confirmed production bugs. I made no code changes.
+This document tracks 9 confirmed defects that remain open or partially fixed, plus 2 valid hardening recommendations. It does not itself make code changes.
 
-Focused tests currently pass: 93 tests, 290 assertions. These tests do not cover all reported race conditions.
+The original focused review baseline was 93 tests and 290 assertions. Later changes added more focused coverage; these tests still do not replace real multi-process and provider verification.
 
 ## Confirmed defects
 
-### 1. Expired Zoom recovery claim becomes permanently stuck — Valid, P1
+### 1. Expired Zoom recovery claim becomes permanently stuck — Valid, P1 ⚠️ PARTIALLY FIXED
 
 `RecoverAmbiguousZoomMeeting::claim()` changes an expired `Creating` meeting to `CreateUnknown`, but leaves `sync_available_at` as `NULL`.
 
@@ -16,88 +16,13 @@ After the worker dies:
 - `CreateUnknownDueAt()` excludes `NULL`.
 - The claim token prevents manual resolution.
 
-Fix in [RecoverAmbiguousZoomMeeting.php](C:/Users/Hamza/daywright/app/Actions/Meetings/RecoverAmbiguousZoomMeeting.php:103):
+**Status:** PARTIALLY FIXED
 
-- Set `sync_available_at` to `now()` when claiming.
-- Preserve `NULL` only when deliberately moving to manual review.
-- Add a test for a crashed worker followed by successful reclaim.
+- New `RecoverPendingZoomMeetingOperations` sets `sync_available_at` when it claims work.
+- Queue-based recovery (`RecoverZoomMeetingOperationJob`) protects the new update/delete path.
+- The legacy `RecoverAmbiguousZoomMeeting` path is still scheduled and retains the old claim behavior, so item 1 is not fully closed.
 
-### 2. Late Zoom creation callbacks can throw invalid state transitions — Valid, P2
-
-The webhook can move `Creating → CreateUnknown` while the original request is still running. The original request then attempts:
-
-- `CreateUnknown → CreateUnknown`
-- `Active → Active`
-
-Both are rejected by the state machine.
-
-Fix [CreateProjectMeeting.php](C:/Users/Hamza/daywright/app/Actions/Meetings/CreateProjectMeeting.php:93):
-
-- Lock the meeting row.
-- Treat an already-active matching result as idempotent.
-- Treat an already-unknown result as handled.
-- Never clear or overwrite a newer recovery claim.
-- Reject conflicting remote IDs as manual review.
-
-Add tests covering:
-
-- Webhook first, then timeout.
-- Recovery first, then original success response.
-- Matching and conflicting remote IDs.
-
-### 3. Subscription recovery can update the wrong local subscription — Valid, P1
-
-Both recovery paths verify Paddle using the operation’s recorded Paddle ID, but then fall back to the user’s current subscription.
-
-Because `subscription_id` uses `nullOnDelete`, a replacement subscription with a different Paddle ID can receive the old operation’s plan change or cancellation.
-
-Affected files:
-
-- [RecoverSubscriptionOperation.php](C:/Users/Hamza/daywright/app/Actions/Subscription/RecoverSubscriptionOperation.php:136)
-- [ResolveSubscriptionOperation.php](C:/Users/Hamza/daywright/app/Actions/Subscription/ResolveSubscriptionOperation.php:61)
-
-Fix:
-
-- Select the local subscription inside the transaction.
-- Lock it with `lockForUpdate()`.
-- Require its `paddle_id` to equal `operation.paddle_subscription_id`.
-- Move the operation to manual review when no matching subscription exists.
-- Do not update any replacement subscription.
-
-Add the replacement-subscription regression test to both recovery and manual-resolution paths.
-
-### 4. Paddle service validates stale subscription state — Valid, P1
-
-`swap()` and `cancel()` validate the original `User` before acquiring the database lock. The transaction locks a fresh user row but discards it. The provider call also selects the subscription from the stale user instance.
-
-This allows a second request to submit a redundant provider mutation after the first request has completed.
-
-Fix [SubscriptionService.php](C:/Users/Hamza/daywright/app/Services/Paddle/SubscriptionService.php:151):
-
-- Acquire the user lock before final business-state validation.
-- Reload the subscription after the lock.
-- Validate the fresh plan/status/trial state.
-- Return the fresh subscription together with the operation context.
-- Use that exact subscription for the provider call.
-
-Add a test using two user instances loaded before the first plan change.
-
-### 5. Trial swap creates a stuck unknown operation — Valid, P1
-
-`isBillingSubscribed()` deliberately accepts `trialing` subscriptions, but Cashier’s `guardAgainstUpdates()` rejects swaps during trial before making an HTTP request.
-
-The current code has already created an operation and set `provider_attempted_at`, then converts the local rejection into `Unknown`. Recovery cannot prove a request that was never sent, and the operation can block future billing actions.
-
-Fix:
-
-- Perform Cashier-compatible preflight validation before creating a provider-attempted operation.
-- Convert known local restrictions into a definite `SubscriptionException`.
-- Reserve `Unknown` only for uncertain provider execution.
-- Cover trial, paused, grace-period, and past-due restrictions if the same Cashier guard applies.
-
-Done when a trial swap makes no provider call and leaves no active operation.
-
-### 6. Same-stage postponed reason changes are discarded — Valid, P2
+### 6. Same-stage postponed reason changes are discarded — Valid, P2 ❌ OPEN
 
 [ProjectService.php](C:/Users/Hamza/daywright/app/Services/Project/ProjectService.php:171) returns immediately when the stage is unchanged, so a new `postponed_reason` is ignored and the version is not incremented.
 
@@ -110,7 +35,7 @@ Fix:
 
 Add a service/API test asserting the new reason and incremented version.
 
-### 7. Recovery command limits accept unbounded input — Valid, P2
+### 7. Recovery command limits accept unbounded input — Valid, P2 ⚠️ PARTIALLY FIXED
 
 These commands cast input directly to integers:
 
@@ -129,7 +54,7 @@ Fix:
 
 Test negative, zero, nonnumeric, and oversized values, including “no provider/recovery call occurred.”
 
-### 8. Manual meeting IDs are coerced unsafely — Valid, P2
+### 8. Manual meeting IDs are coerced unsafely — Valid, P2 ❌ OPEN
 
 `(int) '123abc'` becomes `123`, and `(int) '123.9'` also becomes `123`.
 
@@ -142,7 +67,7 @@ Fix:
 - Reject prefixes, decimals, signs, zero, and overflow.
 - Perform no lookup when validation fails.
 
-### 9. Provider recovery blocks the scheduler process — Valid, P2 operational issue
+### 9. Provider recovery blocks the scheduler process — Valid, P2 operational issue ❌ OPEN
 
 The meeting recovery command can perform 25 sequential Zoom calls with 30-second timeouts. It runs before subscription recovery, so a provider outage can delay all later scheduled work.
 
@@ -153,7 +78,7 @@ Fix:
 - Add a schedule test proving background execution.
 - Verify behavior on the actual production scheduler platform.
 
-### 10. Password reset tokens are readable in queue payloads — Valid, P1
+### 10. Password reset tokens are readable in queue payloads — Valid, P1 ❌ OPEN
 
 [QueuedPasswordResetJob.php](C:/Users/Hamza/daywright/app/Jobs/QueuedPasswordResetJob.php:17) stores the raw reset token and does not implement `ShouldBeEncrypted`.
 
@@ -167,7 +92,7 @@ Fix:
 - Review and drain existing unencrypted queued/failed reset jobs before deployment.
 - Do not change reset token generation or the public reset API.
 
-### 11. Meeting notifications are marked sent before delivery — Valid, P2
+### 11. Meeting notifications are marked sent before delivery — Valid, P2 ❌ OPEN
 
 `MeetingStarted` and `MeetingEnded` implement `ShouldQueue`. Therefore, `Notification::send()` queues downstream notification work and returns before mail/database/broadcast delivery completes.
 
@@ -185,7 +110,7 @@ Fix as a dedicated delivery-state change:
 
 This requires a migration and should be implemented as its own larger ticket.
 
-### 12. SMS failures can count as successful batch jobs — Valid, P2
+### 12. SMS failures can count as successful batch jobs — Valid, P2 ❌ OPEN
 
 `VonageSmsService::send()` returns normally for:
 
@@ -203,7 +128,7 @@ Fix:
 
 Add tests for nonzero Vonage status and missing mobile numbers.
 
-### 13. Default exception reporting can bypass sanitization — Valid, P2 security risk
+### 13. Default exception reporting can bypass sanitization — Valid, P2 security risk ❌ OPEN
 
 The dedicated Zoom log is sanitized, but infrastructure Zoom exceptions continue to `parent::report($e)`.
 
@@ -228,30 +153,24 @@ This is a reporting-path vulnerability, not proof that a secret has already leak
 
 These are reasonable but not confirmed defects:
 
-14. Allowlist public Zoom metadata. `ZoomException::meta()` currently spreads all context into API responses. Expose only explicitly approved fields such as provider, reason, and validated retry seconds.
+14. Allowlist public Zoom metadata. `ZoomException::meta()` currently spreads all context into API responses. Expose only explicitly approved fields such as provider, reason, and validated retry seconds. **Status: OPEN.**
 
-15. Filter throttle response headers. The throttle handler forwards all exception headers directly. Reuse the validated header allowlist while preserving required rate-limit headers.
-
-16. Avoid error-level reporting for expected edit conflicts. `EditConflictException` represents normal optimistic-concurrency behavior and can be excluded from default error reporting while retaining a metric or lower-severity event.
+15. Avoid error-level reporting for expected edit conflicts. `EditConflictException` represents normal optimistic-concurrency behavior and can be excluded from default error reporting while retaining a metric or lower-severity event. **Status: OPEN.**
 
 ## SWE 1.6 implementation order
 
 Use one ticket per run:
 
 1. Zoom expired-claim recovery.
-2. Zoom late creation callback handling.
-3. Paddle subscription identity validation in recovery/manual resolution.
-4. Fresh-state Paddle service locking.
-5. Trial/preflight Paddle validation.
-6. Same-stage postponed-reason update.
-7. Recovery command input validation.
-8. Manual meeting-ID validation.
-9. Background provider recovery scheduling.
-10. Encrypted password-reset queue job.
-11. SMS typed outcomes and delivery failure recording.
-12. Meeting notification delivery ledger.
-13. Controlled provider exception reporting.
-14. Optional hardening ticket for metadata, throttle headers, and edit-conflict reporting.
+2. Same-stage postponed-reason update.
+3. Recovery command input validation.
+4. Manual meeting-ID validation.
+5. Background provider recovery scheduling.
+6. Encrypted password-reset queue job.
+7. SMS typed outcomes and delivery failure recording.
+8. Meeting notification delivery ledger.
+9. Controlled provider exception reporting.
+10. Optional hardening ticket for metadata and edit-conflict reporting.
 
 For every ticket, require:
 
@@ -264,3 +183,17 @@ For every ticket, require:
 - A final note distinguishing local tests from real MySQL, Redis, worker, scheduler, and provider-sandbox evidence.
 
 The existing modified files in the worktree were preserved and not included in this review’s changes.
+
+---
+
+## Phase 4 & 5 Implementation Status
+
+### Current status summary
+
+**Partially fixed:** Items 1 and 7. The new meeting recovery command/path has the lease or limit protection, but the legacy create-recovery and other scheduled recovery commands still need to be migrated, validated, or retired.
+
+**Open:** Items 6, 8, 9, 10, 11, 12, 13, 14, and 16.
+
+**Phase 5 Zoom follow-up:** The implementation and deployment findings from the latest review are tracked in [phase-5-zoom-integration-remediation.md](C:/Users/Hamza/daywright/local-docs/audits/2026-09-06/implementation/phase-5-zoom-integration-remediation.md). They remain open until the listed fixes and regression coverage are complete.
+
+The open and partial items require separate implementation tickets following the SWE 1.6 implementation order. Local tests do not replace production verification with MySQL, Redis, multiple workers, the scheduler, and provider sandboxes.

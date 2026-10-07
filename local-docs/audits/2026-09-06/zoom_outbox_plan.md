@@ -139,6 +139,16 @@ Use the existing claim token and lease fields:
 
 Do not send a second update if Zoom already applied the first update.
 
+Before recovery sends an update or delete to Zoom, it must also acquire the
+same per-meeting operation lock used by normal user mutations. After acquiring
+the lock, reload the meeting and validate the operation ID, claim token,
+operation type, and unexpired lease immediately before the provider write.
+Keep the provider request outside database transactions. The lock lifetime
+must cover the configured provider request timeout, or be safely renewed, so
+an expired recovery claim cannot overlap a newer operation while the old
+worker still sends a remote mutation. If the claim or operation changed,
+skip the provider write and let the recovery path reconcile the current state.
+
 ## Phase 5: Update webhook behavior
 
 Update the Zoom webhook handlers:

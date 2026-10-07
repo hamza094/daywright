@@ -21,7 +21,6 @@ Route::apiResource('/meetings', MeetingsController::class)
     ->middlewareFor('destroy', [
         'can:manage,project',
         'tokenAbility:projects:write',
-        Idempotent::using(scope: IdempotencyScope::User),
     ]);
 
 Route::post('/meetings/{meeting}/zoom-tokens/start', MeetingZoomStartTokensController::class)

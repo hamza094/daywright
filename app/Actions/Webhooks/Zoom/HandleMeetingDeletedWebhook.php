@@ -42,7 +42,8 @@ final readonly class HandleMeetingDeletedWebhook
                     return;
                 }
 
-                if ($occurredAt !== null && $this->support->isStaleProviderEvent($lockedMeeting, $occurredAt)) {
+                // A distinct delete wins an equal-timestamp tie with an update.
+                if ($occurredAt !== null && $this->support->isStaleProviderEvent($lockedMeeting, $occurredAt, allowEqualTimestamp: true)) {
                     $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_provider_event', $userUuid);
 
                     return;

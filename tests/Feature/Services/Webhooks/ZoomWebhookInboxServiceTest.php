@@ -464,4 +464,57 @@ class ZoomWebhookInboxServiceTest extends TestCase
 
         Queue::assertPushed(ProcessZoomWebhookInbox::class, 10);
     }
+
+    #[Test]
+    public function legacy_seconds_timestamp_is_normalized_when_read_from_database(): void
+    {
+        // Create a legacy row with seconds timestamp (as it would be before fix)
+        $secondsTimestamp = 1728278400; // Seconds
+        $expectedMilliseconds = 1728278400000; // Expected after normalization
+
+        $inbox = WebhookInbox::factory()->create([
+            'provider' => 'zoom',
+            'event_key' => 'legacy-test-key',
+            'event_type' => 'meeting.updated',
+            'provider_occurred_at' => $secondsTimestamp, // Stored as seconds
+            'state' => WebhookInboxState::Received,
+        ]);
+
+        // When accessed, the accessor should normalize to milliseconds
+        $this->assertEquals($expectedMilliseconds, $inbox->provider_occurred_at);
+    }
+
+    #[Test]
+    public function already_milliseconds_timestamp_is_not_double_converted(): void
+    {
+        // Create a row with milliseconds timestamp (as it would be after fix)
+        $millisecondsTimestamp = 1728278400000; // Already in milliseconds
+
+        $inbox = WebhookInbox::factory()->create([
+            'provider' => 'zoom',
+            'event_key' => 'milliseconds-test-key',
+            'event_type' => 'meeting.updated',
+            'provider_occurred_at' => $millisecondsTimestamp, // Stored as milliseconds
+            'state' => WebhookInboxState::Received,
+        ]);
+
+        // When accessed, should NOT multiply again (avoid double conversion)
+        $this->assertEquals($millisecondsTimestamp, $inbox->provider_occurred_at);
+    }
+
+    #[Test]
+    public function null_timestamp_remains_null(): void
+    {
+        // Create a row with null timestamp (delete webhooks)
+        $inbox = WebhookInbox::factory()->create([
+            'provider' => 'zoom',
+            'event_key' => 'null-timestamp-key',
+            'event_type' => 'meeting.deleted',
+            'provider_occurred_at' => null,
+            'state' => WebhookInboxState::Received,
+        ]);
+
+        // Should remain null
+        $this->assertNull($inbox->provider_occurred_at);
+    }
 }

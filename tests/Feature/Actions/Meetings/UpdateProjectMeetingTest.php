@@ -217,5 +217,33 @@ final class UpdateProjectMeetingTest extends TestCase
             'id' => $meeting->id,
             'topic' => 'New Topic',
         ]);
+
+        // Verify password is not in sync_payload after completion (it should be null)
+        $meeting->refresh();
+        $this->assertNull($meeting->sync_payload);
+        $this->assertNull($meeting->sync_error);
+    }
+
+    /** @test */
+    public function new_operation_starts_with_fresh_retry_state(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'topic' => 'Old Topic',
+            'sync_attempts' => 5,
+            'sync_claim_token' => 'old-token',
+            'sync_available_at' => now()->subHour(),
+        ]);
+
+        $data = new MeetingUpdateData(
+            topic: 'New Topic',
+        );
+
+        $this->action->handle($meeting, $this->user, $data, $this->zoom);
+
+        $meeting->refresh();
+
+        $this->assertEquals(0, $meeting->sync_attempts);
+        $this->assertNull($meeting->sync_claim_token);
+        $this->assertNull($meeting->sync_available_at);
     }
 }

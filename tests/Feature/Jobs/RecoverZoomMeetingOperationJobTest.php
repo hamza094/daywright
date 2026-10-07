@@ -8,6 +8,7 @@ use App\Actions\Meetings\PerformZoomMeetingRecovery;
 use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Jobs\RecoverZoomMeetingOperationJob;
+use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -294,6 +295,89 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
         $this->assertEquals(MeetingSyncStatus::Updating, $meeting->sync_status);
         $this->assertEquals(1, $meeting->sync_attempts);
         $this->assertEquals(now()->addSeconds(60)->toDateTimeString(), $meeting->sync_available_at->toDateTimeString());
+    }
+
+    /** @test */
+    public function it_uses_the_retry_after_delay_from_a_rate_limit_exception(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 123,
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'op-123',
+            'sync_payload' => json_encode(['topic' => 'New Topic']),
+            'sync_claim_token' => 'claim-token',
+            'sync_lease_expires_at' => now()->addMinutes(5),
+            'sync_attempts' => 0,
+        ]);
+
+        $this->zoom = $this->fakeZoom()->shouldFailWithException(
+            new \App\Exceptions\Integrations\Zoom\ZoomRateLimitException(90)
+        );
+
+        $job = new RecoverZoomMeetingOperationJob($meeting->id, 'op-123', 'claim-token');
+        $job->handle($this->zoom, app(PerformZoomMeetingRecovery::class));
+
+        $meeting->refresh();
+
+        $this->assertEquals(MeetingSyncStatus::Updating, $meeting->sync_status);
+        $this->assertEquals(1, $meeting->sync_attempts);
+        $this->assertEquals(now()->addSeconds(90)->toDateTimeString(), $meeting->sync_available_at->toDateTimeString());
+    }
+
+    /** @test */
+    public function stale_recovery_claim_cannot_send_an_update_after_the_meeting_is_reclaimed(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 123,
+            'topic' => 'Old Topic',
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'old-operation',
+            'sync_payload' => json_encode(['topic' => 'Stale Topic']),
+            'sync_claim_token' => 'old-claim',
+            'sync_lease_expires_at' => now()->addMinutes(5),
+        ]);
+
+        $zoom = $this->fakeZoom()->findsMeeting($this->zoomMeeting(123, 'Old Topic', 30));
+        $zoom->beforeFindingMeeting(function () use ($meeting): void {
+            Meeting::query()->whereKey($meeting->getKey())->update([
+                'sync_operation_id' => 'new-operation',
+                'sync_claim_token' => 'new-claim',
+                'sync_lease_expires_at' => now()->addMinutes(5),
+            ]);
+        });
+
+        app(PerformZoomMeetingRecovery::class)->execute($meeting, 'old-operation', 'old-claim', $zoom);
+
+        $this->assertTrue($zoom->meetingsToUpdate->isEmpty());
+        $this->assertSame('new-operation', $meeting->fresh()->sync_operation_id);
+    }
+
+    /** @test */
+    public function stale_recovery_claim_cannot_send_a_delete_after_the_meeting_is_reclaimed(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 123,
+            'sync_status' => MeetingSyncStatus::Deleting,
+            'sync_operation_type' => MeetingSyncOperationType::Delete,
+            'sync_operation_id' => 'old-operation',
+            'sync_claim_token' => 'old-claim',
+            'sync_lease_expires_at' => now()->addMinutes(5),
+        ]);
+
+        $zoom = $this->fakeZoom();
+
+        Meeting::query()->whereKey($meeting->getKey())->update([
+            'sync_operation_id' => 'new-operation',
+            'sync_claim_token' => 'new-claim',
+            'sync_lease_expires_at' => now()->addMinutes(5),
+        ]);
+
+        app(PerformZoomMeetingRecovery::class)->execute($meeting, 'old-operation', 'old-claim', $zoom);
+
+        $this->assertTrue($zoom->meetingsToDelete->isEmpty());
+        $this->assertSame('new-operation', $meeting->fresh()->sync_operation_id);
     }
 
     private function zoomMeeting(int $id, string $topic, int $duration): \App\DataTransferObjects\Zoom\Meeting

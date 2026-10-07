@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Webhooks;
 
 use App\Models\Meeting;
-use Carbon\CarbonInterface;
 use Throwable;
 
 final readonly class ZoomWebhookSupport
@@ -54,23 +53,27 @@ final readonly class ZoomWebhookSupport
             ->firstOrFail();
     }
 
-    public function isStaleProviderEvent(Meeting $meeting, ?int $occurredAt): bool
+    /**
+     * Provider events are strictly ordered by their provider timestamp.
+     * Delete handlers may opt into equal timestamps so a distinct delete wins
+     * an update/delete tie; inbox event keys still handle true duplicates.
+     */
+    public function isStaleProviderEvent(Meeting $meeting, ?int $occurredAt, bool $allowEqualTimestamp = false): bool
     {
-        // Provider and application timestamps are stored in milliseconds.
+        // Provider timestamps are stored in milliseconds. Local processing time
+        // must not participate in provider-event ordering.
         if ($occurredAt === null) {
             return true;
         }
 
         if ($meeting->last_zoom_event_timestamp !== null
-            && $occurredAt <= $meeting->last_zoom_event_timestamp) {
+            && ($allowEqualTimestamp
+                ? $occurredAt < $meeting->last_zoom_event_timestamp
+                : $occurredAt <= $meeting->last_zoom_event_timestamp)) {
             return true;
         }
 
-        $latestLocalSync = collect([$meeting->sync_started_at, $meeting->synced_at])
-            ->filter(fn (mixed $timestamp): bool => $timestamp instanceof CarbonInterface)
-            ->max(fn (CarbonInterface $timestamp): int => (int) $timestamp->valueOf());
-
-        return $latestLocalSync !== null && $occurredAt <= $latestLocalSync;
+        return false;
     }
 
     public function userUuid(Meeting $meeting): ?string

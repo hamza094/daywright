@@ -10,6 +10,7 @@ use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Exceptions\Integrations\Zoom\NotFoundException as ZoomNotFoundException;
 use App\Exceptions\Integrations\Zoom\UnauthorizedException as ZoomUnauthorizedException;
 use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
+use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Exceptions\Paddle\PaddleRequestException;
 use App\Exceptions\Paddle\SubscriptionException;
@@ -116,11 +117,14 @@ class ApiExceptionHandlerTest extends TestCase
             });
 
             Route::get('/zoom/rate-limit', function (): never {
-                $exception = new ZoomExternalFailureException(
-                    'Zoom meeting creation was rate limited.',
-                    429,
+                throw new ZoomRateLimitException(60);
+            });
+
+            Route::get('/zoom/application-rate-limit', function (): never {
+                throw new ZoomRateLimitException(
+                    retryAfterSeconds: 30,
+                    source: ZoomRateLimitException::SOURCE_APPLICATION,
                 );
-                throw $exception->withContext(['retry_after_seconds' => 60]);
             });
         });
     }
@@ -371,16 +375,32 @@ class ApiExceptionHandlerTest extends TestCase
         $response = $this->getJson('/api/v1/_exception-handler-test/zoom/rate-limit');
 
         $response
-            ->assertStatus(503)
+            ->assertTooManyRequests()
             ->assertJsonStructure(['message', 'code', 'errors', 'meta'])
-            ->assertJsonPath('message', 'Zoom service is temporarily unavailable.')
-            ->assertJsonPath('code', 'zoom_unavailable')
+            ->assertJsonPath('message', 'Zoom is limiting requests to its API. Please retry later. Try again in 60 seconds.')
+            ->assertJsonPath('code', 'zoom_rate_limit')
             ->assertJsonPath('meta.provider', 'zoom')
+            ->assertJsonPath('meta.rate_limit_source', 'zoom')
             ->assertJsonPath('meta.retry_after_seconds', 60);
 
         // Assert the Retry-After header is present
         $this->assertTrue($response->headers->has('Retry-After'));
         $this->assertSame('60', $response->headers->get('Retry-After'));
+    }
+
+    #[Test]
+    public function application_zoom_rate_limits_identify_the_application_as_the_source(): void
+    {
+        $response = $this->getJson('/api/v1/_exception-handler-test/zoom/application-rate-limit');
+
+        $response
+            ->assertTooManyRequests()
+            ->assertJsonPath('message', 'This app is limiting Zoom requests. Please retry later. Try again in 30 seconds.')
+            ->assertJsonPath('code', 'zoom_rate_limit')
+            ->assertJsonPath('meta.provider', 'zoom')
+            ->assertJsonPath('meta.rate_limit_source', 'application')
+            ->assertJsonPath('meta.retry_after_seconds', 30)
+            ->assertHeader('Retry-After', '30');
     }
 
     #[Test]

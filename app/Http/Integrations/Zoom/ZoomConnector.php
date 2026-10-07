@@ -7,6 +7,7 @@ namespace App\Http\Integrations\Zoom;
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\UnauthorizedException;
 use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
+use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Http\Integrations\Zoom\Requests\GetAccessTokenRequest;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
@@ -62,7 +63,11 @@ class ZoomConnector extends Connector
                 code: $status,
                 previous: $senderException,
             ))->withContext($context),
-            $status === HttpResponse::HTTP_TOO_MANY_REQUESTS,
+            $status === HttpResponse::HTTP_TOO_MANY_REQUESTS => $this->createRateLimitException(
+                $response,
+                $message,
+                $senderException,
+            ),
             $status >= HttpResponse::HTTP_INTERNAL_SERVER_ERROR => (new ZoomExternalFailureException(
                 message: $message,
                 code: $status,
@@ -147,13 +152,7 @@ class ZoomConnector extends Connector
      */
     private function exceptionContext(Response $response): array
     {
-        $retryAfter = $response->header('Retry-After');
-
         $context = [];
-
-        if (is_string($retryAfter) && is_numeric($retryAfter)) {
-            $context['retry_after_seconds'] = (int) $retryAfter;
-        }
 
         // Include OAuth error field if present for token refresh error handling
         $body = $response->body();
@@ -165,5 +164,43 @@ class ZoomConnector extends Connector
         }
 
         return $context;
+    }
+
+    private function createRateLimitException(
+        Response $response,
+        string $message,
+        ?Throwable $senderException
+    ): ZoomRateLimitException {
+        $retryAfter = $this->parseRetryAfter($response);
+
+        return (new ZoomRateLimitException(
+            retryAfterSeconds: $retryAfter,
+            message: $message ?: 'Zoom rate limit exceeded.',
+            previous: $senderException,
+            source: ZoomRateLimitException::SOURCE_ZOOM,
+        ))->withContext($retryAfter !== null ? ['retry_after_seconds' => $retryAfter] : []);
+    }
+
+    private function parseRetryAfter(Response $response): ?int
+    {
+        $retryAfter = $response->header('Retry-After');
+
+        if (! is_string($retryAfter)) {
+            return null;
+        }
+
+        // Parse as integer seconds
+        $parsed = filter_var($retryAfter, FILTER_VALIDATE_INT);
+
+        if ($parsed === false) {
+            return null;
+        }
+
+        // Ensure positive value
+        if ($parsed <= 0) {
+            return null;
+        }
+
+        return $parsed;
     }
 }

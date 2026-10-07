@@ -20,7 +20,7 @@ final readonly class HandleMeetingUpdatedWebhook
 {
     private const string OPERATION = 'zoom.webhook.meeting.updated';
 
-    private const array UPDATE_FIELDS = ['topic', 'duration', 'agenda', 'start_time', 'timezone', 'password', 'join_before_host'];
+    private const array UPDATE_FIELDS = ['topic', 'duration', 'agenda', 'start_time', 'timezone', 'password', 'join_before_host', 'join_url'];
 
     public function __construct(
         private ZoomWebhookSupport $support,
@@ -47,7 +47,11 @@ final readonly class HandleMeetingUpdatedWebhook
                         return;
                     }
 
-                    $lockedMeeting->update($payload + [
+                    // Merge validated operation fields with additional normalized provider changes from webhook
+                    $additionalChanges = $this->getAdditionalWebhookChanges($payload, $data->changes);
+                    $mergedFields = array_merge($payload, $additionalChanges);
+
+                    $lockedMeeting->update($mergedFields + [
                         'sync_status' => MeetingSyncStatus::Active,
                         'sync_operation_id' => null,
                         'sync_operation_type' => null,
@@ -118,6 +122,26 @@ final readonly class HandleMeetingUpdatedWebhook
         }
 
         return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $webhookChanges
+     * @return array<string, mixed>
+     */
+    private function getAdditionalWebhookChanges(array $operationPayload, array $webhookChanges): array
+    {
+        $additional = [];
+
+        foreach ($webhookChanges as $field => $value) {
+            // Only include fields that are in the allowlist but not in the operation payload
+            if (is_string($field)
+                && in_array($field, self::UPDATE_FIELDS, true)
+                && ! array_key_exists($field, $operationPayload)) {
+                $additional[$field] = $value;
+            }
+        }
+
+        return $additional;
     }
 
     private function sameValue(string $field, mixed $expected, mixed $actual): bool

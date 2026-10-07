@@ -102,6 +102,7 @@ final class HandleMeetingDeletedWebhookIdempotencyTest extends TestCase
             'sync_operation_id' => 'pending-update-operation',
             'sync_payload' => json_encode(['topic' => 'New Topic']),
             'sync_started_at' => now(),
+            'last_zoom_event_timestamp' => (int) now()->valueOf(),
         ]);
 
         app(HandleMeetingDeletedWebhook::class)->handle(
@@ -162,6 +163,7 @@ final class HandleMeetingDeletedWebhookIdempotencyTest extends TestCase
             'sync_status' => MeetingSyncStatus::Active,
             'sync_started_at' => now(),
             'synced_at' => now(),
+            'last_zoom_event_timestamp' => (int) now()->valueOf(),
         ]);
 
         app(HandleMeetingDeletedWebhook::class)->handle(
@@ -225,6 +227,54 @@ final class HandleMeetingDeletedWebhookIdempotencyTest extends TestCase
         $service->process($inbox->id);
         $meeting->refresh();
         $this->assertSame(MeetingSyncStatus::Deleted, $meeting->sync_status);
+    }
+
+    public function test_late_delete_callback_after_newer_operation_is_rejected(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 132,
+            'sync_status' => MeetingSyncStatus::Deleting,
+            'sync_operation_type' => MeetingSyncOperationType::Delete,
+            'sync_operation_id' => 'old-delete-operation',
+        ]);
+
+        $handler = app(HandleMeetingDeletedWebhook::class);
+
+        // Simulate newer operation completing with a newer timestamp
+        $newerTimestamp = (int) now()->addSecond()->valueOf();
+        $meeting->update([
+            'sync_status' => MeetingSyncStatus::Active,
+            'sync_operation_id' => 'new-operation',
+            'sync_operation_type' => null,
+            'synced_at' => now(),
+            'last_zoom_event_timestamp' => $newerTimestamp,
+        ]);
+
+        // Now invoke the old delete callback with a stale timestamp
+        $handler->handle(
+            new MeetingDeletedWebhookData(132),
+            (int) now()->subSecond()->valueOf(),
+        );
+
+        $meeting->refresh();
+        // The old delete callback should be rejected due to stale timestamp
+        $this->assertSame(MeetingSyncStatus::Active, $meeting->sync_status);
+        $this->assertSame($newerTimestamp, $meeting->last_zoom_event_timestamp);
+    }
+
+    public function test_delete_with_equal_timestamp_wins_over_an_update(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 133,
+            'sync_status' => MeetingSyncStatus::Active,
+        ]);
+        $timestamp = (int) now()->subSeconds(10)->valueOf();
+        $handler = app(\App\Actions\Webhooks\Zoom\HandleMeetingUpdatedWebhook::class);
+
+        $handler->handle(new \App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData(133, ['topic' => 'Updated'], null), $timestamp);
+        app(HandleMeetingDeletedWebhook::class)->handle(new MeetingDeletedWebhookData(133), $timestamp);
+
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->refresh()->sync_status);
     }
 
     /** @param array<string, mixed> $attributes */

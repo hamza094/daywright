@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Throwable;
 
 final readonly class DeleteProjectMeeting
@@ -39,9 +40,23 @@ final readonly class DeleteProjectMeeting
             key: $this->meetingLockKey($meeting),
             conflictMessage: 'This meeting is currently being deleted. Please retry.',
             callback: function () use ($meeting, $user, $zoom): void {
+                $currentMeeting = $this->findMeetingOrFail($meeting);
+
+                if ($currentMeeting->sync_status === MeetingSyncStatus::Deleted) {
+                    return;
+                }
+
+                if ($currentMeeting->sync_status === MeetingSyncStatus::Deleting) {
+                    throw new ConflictHttpException('Meeting deletion is already in progress. Please retry.');
+                }
+
                 $operationId = Str::uuid()->toString();
 
-                $lockedMeeting = $this->saveDeleteIntent($meeting, $operationId);
+                $lockedMeeting = $this->saveDeleteIntent($currentMeeting, $operationId);
+
+                if ($lockedMeeting === null) {
+                    return;
+                }
 
                 try {
                     $this->deleteFromZoom($lockedMeeting, $zoom, $user);
@@ -64,10 +79,18 @@ final readonly class DeleteProjectMeeting
         );
     }
 
-    private function saveDeleteIntent(Meeting $meeting, string $operationId): Meeting
+    private function saveDeleteIntent(Meeting $meeting, string $operationId): ?Meeting
     {
-        return DB::transaction(function () use ($meeting, $operationId): Meeting {
+        return DB::transaction(function () use ($meeting, $operationId): ?Meeting {
             $lockedMeeting = $this->lockMeeting($meeting);
+
+            if ($lockedMeeting->sync_status === MeetingSyncStatus::Deleted) {
+                return null;
+            }
+
+            if ($lockedMeeting->sync_status === MeetingSyncStatus::Deleting) {
+                throw new ConflictHttpException('Meeting deletion is already in progress. Please retry.');
+            }
 
             if ($lockedMeeting->sync_status !== MeetingSyncStatus::Active
                 && $lockedMeeting->sync_status !== MeetingSyncStatus::UpdateFailed
@@ -81,6 +104,10 @@ final readonly class DeleteProjectMeeting
                 'sync_status' => MeetingSyncStatus::Deleting,
                 'sync_started_at' => now(),
                 'sync_lease_expires_at' => now()->addMinutes(5),
+                'sync_payload' => null,
+                'sync_attempts' => 0,
+                'sync_claim_token' => null,
+                'sync_available_at' => null,
                 'sync_error' => null,
             ]);
 

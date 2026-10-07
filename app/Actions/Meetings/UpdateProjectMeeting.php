@@ -85,6 +85,9 @@ final readonly class UpdateProjectMeeting
                 'sync_status' => MeetingSyncStatus::Updating,
                 'sync_started_at' => now(),
                 'sync_lease_expires_at' => now()->addMinutes(5),
+                'sync_attempts' => 0,
+                'sync_claim_token' => null,
+                'sync_available_at' => null,
                 'sync_error' => null,
             ]);
 

@@ -12,6 +12,7 @@ use App\DataTransferObjects\Zoom\MeetingSummary;
 use App\Interfaces\Zoom;
 use App\Models\User;
 use App\Repository\OAuthConnectionRepository;
+use Closure;
 use Illuminate\Support\Collection;
 use Override;
 use PHPUnit\Framework\Assert;
@@ -33,6 +34,11 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
      */
     public Collection $meetingsToUpdate;
 
+    /**
+     * @var Collection<int, int>
+     */
+    public Collection $meetingsToDelete;
+
     public string $authorizationUrl;
 
     public string $state;
@@ -43,6 +49,8 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 
     private ?Meeting $meetingToFind = null;
 
+    private ?Closure $beforeFindMeeting = null;
+
     /** @var list<MeetingSummary> */
     private array $meetingsToList = [];
 
@@ -52,6 +60,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         parent::__construct($connectorManager);
         $this->meetingsToCreate = new Collection;
         $this->meetingsToUpdate = new Collection;
+        $this->meetingsToDelete = new Collection;
     }
 
     #[Override]
@@ -141,6 +150,8 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
+
+        $this->meetingsToDelete->push($meetingId);
     }
 
     #[Override]
@@ -152,6 +163,11 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     #[Override]
     public function getMeeting(int|string $meetingId, User $user): ?Meeting
     {
+        if ($this->beforeFindMeeting !== null) {
+            ($this->beforeFindMeeting)();
+            $this->beforeFindMeeting = null;
+        }
+
         if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
@@ -178,6 +194,16 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     public function findsMeeting(?Meeting $meeting): self
     {
         $this->meetingToFind = $meeting;
+
+        return $this;
+    }
+
+    /**
+     * @param  Closure(): void  $callback
+     */
+    public function beforeFindingMeeting(Closure $callback): self
+    {
+        $this->beforeFindMeeting = $callback;
 
         return $this;
     }
@@ -216,6 +242,11 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
             ->where('duration', $duration)
             ->isNotEmpty();
         Assert::assertTrue($meetingIsToBeCreated, 'Meetings were created.');
+    }
+
+    public function assertNoMeetingsDeleted(): void
+    {
+        Assert::assertEmpty($this->meetingsToDelete, 'deleteMeeting was called when it should not have been.');
     }
 
     private function fakeMeeting(): Meeting

@@ -12,8 +12,10 @@ use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
+use App\Services\Project\MeetingOperationLock;
 use App\Services\Project\MeetingSyncErrorFormatter;
 use App\Services\Zoom\ZoomRecoveryPolicy;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use JsonException;
@@ -28,6 +30,7 @@ final readonly class PerformZoomMeetingRecovery
     public function __construct(
         private MeetingSyncErrorFormatter $errorFormatter,
         private ZoomRecoveryPolicy $policy,
+        private MeetingOperationLock $operationLocks,
     ) {}
 
     public function execute(Meeting $meeting, string $operationId, string $claimToken, Zoom $zoom): void
@@ -91,20 +94,37 @@ final readonly class PerformZoomMeetingRecovery
         }
 
         if ($this->payloadMatches($requestedPayload, $zoomMeeting)) {
-            $this->applyUpdateLocally($meeting, $requestedPayload, $operationId, $claimToken);
+            $this->withValidatedOperationLock(
+                $meeting,
+                $operationId,
+                $claimToken,
+                MeetingSyncOperationType::Update,
+                function (Meeting $currentMeeting) use ($requestedPayload, $operationId, $claimToken): void {
+                    $this->applyUpdateLocally($currentMeeting, $requestedPayload, $operationId, $claimToken);
+                },
+            );
         } else {
-            $this->retryUpdate($meeting, $requestedPayload, $user, $zoom, $operationId, $claimToken);
+            $this->retryUpdate($meeting, $user, $zoom, $operationId, $claimToken);
         }
     }
 
     private function recoverDelete(Meeting $meeting, \App\Models\User $user, Zoom $zoom, string $operationId, string $claimToken): void
     {
-        try {
-            $zoom->deleteMeeting($meeting->meeting_id, $user);
-        } catch (\App\Exceptions\Integrations\Zoom\NotFoundException) {
-        }
+        $this->withValidatedOperationLock(
+            $meeting,
+            $operationId,
+            $claimToken,
+            MeetingSyncOperationType::Delete,
+            function (Meeting $currentMeeting) use ($user, $zoom, $operationId, $claimToken): void {
+                try {
+                    $zoom->deleteMeeting($currentMeeting->meeting_id, $user);
+                } catch (\App\Exceptions\Integrations\Zoom\NotFoundException) {
+                    // The requested remote state already holds.
+                }
 
-        $this->finalizeDelete($meeting, $operationId, $claimToken);
+                $this->finalizeDelete($currentMeeting, $operationId, $claimToken);
+            },
+        );
     }
 
     private function findZoomMeeting(Meeting $meeting, \App\Models\User $user, Zoom $zoom): ?ZoomMeeting
@@ -183,11 +203,63 @@ final readonly class PerformZoomMeetingRecovery
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function retryUpdate(Meeting $meeting, array $payload, \App\Models\User $user, Zoom $zoom, string $operationId, string $claimToken): void
+    private function retryUpdate(Meeting $meeting, \App\Models\User $user, Zoom $zoom, string $operationId, string $claimToken): void
     {
-        $zoom->updateMeeting($payload + ['meeting_id' => $meeting->meeting_id], $user);
+        $this->withValidatedOperationLock(
+            $meeting,
+            $operationId,
+            $claimToken,
+            MeetingSyncOperationType::Update,
+            function (Meeting $currentMeeting) use ($user, $zoom, $operationId, $claimToken): void {
+                $payload = $this->validateUpdatePayload($currentMeeting, $operationId, $claimToken);
 
-        $this->applyUpdateLocally($meeting, $payload, $operationId, $claimToken);
+                if ($payload === null) {
+                    return;
+                }
+
+                $zoom->updateMeeting($payload + ['meeting_id' => $currentMeeting->meeting_id], $user);
+
+                $this->applyUpdateLocally($currentMeeting, $payload, $operationId, $claimToken);
+            },
+        );
+    }
+
+    /**
+     * Acquire the same lock used by user initiated meeting operations, then
+     * reload and validate ownership immediately before any recovery write.
+     *
+     * @param  Closure(Meeting): void  $callback
+     */
+    private function withValidatedOperationLock(
+        Meeting $meeting,
+        string $operationId,
+        string $claimToken,
+        MeetingSyncOperationType $operationType,
+        Closure $callback,
+    ): void {
+        $this->operationLocks->block(
+            key: $this->meetingLockKey($meeting),
+            conflictMessage: 'A meeting operation is currently in progress. Recovery will retry.',
+            callback: function () use ($meeting, $operationId, $claimToken, $operationType, $callback): void {
+                $currentMeeting = $this->findMeetingOrFail($meeting);
+
+                if ($currentMeeting->sync_operation_type !== $operationType
+                    || ! $this->policy->isClaimValid($currentMeeting, $claimToken)
+                    || ! $this->policy->isOperationCurrent($currentMeeting, $operationId)) {
+                    Log::info('Recovery ownership changed before remote meeting mutation', [
+                        'meeting_id' => $currentMeeting->id,
+                        'expected_operation_id' => $operationId,
+                        'current_operation_id' => $currentMeeting->sync_operation_id,
+                        'expected_claim_token' => $claimToken,
+                        'current_claim_token' => $currentMeeting->sync_claim_token,
+                    ]);
+
+                    return;
+                }
+
+                $callback($currentMeeting);
+            },
+        );
     }
 
     private function finalizeDelete(Meeting $meeting, string $operationId, string $claimToken): void

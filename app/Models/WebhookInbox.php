@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\WebhookInboxState;
+use App\Services\Webhooks\ZoomWebhookTimestamp;
 use Carbon\CarbonInterface;
 use Database\Factories\WebhookInboxFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -69,6 +70,15 @@ final class WebhookInbox extends Model
     protected static function newFactory(): WebhookInboxFactory
     {
         return WebhookInboxFactory::new();
+    }
+
+    /**
+     * Normalize provider_occurred_at to milliseconds when reading from database.
+     * This handles legacy rows with seconds timestamps by converting them to milliseconds.
+     */
+    protected function getProviderOccurredAtAttribute(?int $value): ?int
+    {
+        return ZoomWebhookTimestamp::toMilliseconds($value);
     }
 
     /**
