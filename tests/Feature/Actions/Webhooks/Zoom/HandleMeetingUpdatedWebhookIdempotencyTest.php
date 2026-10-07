@@ -15,6 +15,7 @@ use App\Models\WebhookInbox;
 use App\Services\Webhooks\ZoomWebhookInboxService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
 
@@ -239,6 +240,44 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
                 meetingId: 663,
                 changes: ['topic' => 'Delayed Update A'],
                 requestId: 'same-second-delayed-update',
+            ), (int) $earlierEventAt->valueOf());
+
+            $this->assertSame('Update B', $meeting->refresh()->topic);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_precision_upgrade_preserves_same_second_reconciliation_cutoff(): void
+    {
+        Schema::table('meetings', function ($table): void {
+            $table->timestamp('sync_reconcile_before_at')->nullable()->change();
+        });
+
+        $migration = require database_path('migrations/2026_10_07_000002_change_sync_reconcile_before_at_precision_on_meetings_table.php');
+        $migration->up();
+
+        $completedAt = Carbon::parse('2026-10-07 12:00:05.900');
+        $earlierEventAt = Carbon::parse('2026-10-07 12:00:05.400');
+        Carbon::setTestNow($completedAt);
+
+        try {
+            $meeting = $this->createMeeting([
+                'meeting_id' => 665,
+                'topic' => 'Update B',
+                'sync_status' => MeetingSyncStatus::Active,
+                'sync_reconcile_before_at' => now(),
+                'synced_at' => now(),
+                'last_zoom_event_timestamp' => null,
+            ]);
+
+            $this->assertSame($completedAt->valueOf(), $meeting->fresh()->sync_reconcile_before_at->valueOf());
+            $this->fakeZoom()->findsMeeting($this->zoomMeeting(665, 'Update B'));
+
+            app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
+                meetingId: 665,
+                changes: ['topic' => 'Delayed Update A'],
+                requestId: 'upgraded-same-second-delayed-update',
             ), (int) $earlierEventAt->valueOf());
 
             $this->assertSame('Update B', $meeting->refresh()->topic);

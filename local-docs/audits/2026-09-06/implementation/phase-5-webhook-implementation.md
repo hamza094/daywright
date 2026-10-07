@@ -2,6 +2,8 @@
 
 This document explains the new code added in Phase 5 for reliable Zoom webhook handling with operation fencing and staleness detection.
 
+> **Historical implementation record:** The code examples below describe the initial Phase 5 implementation and do not all match the current code. For the current webhook behavior and ordering rules, read [`docs/WEBHOOK_INBOX.md`](../../../../docs/WEBHOOK_INBOX.md) and the current [Phase 5 Zoom remediation policy](phase-5-zoom-integration-remediation.md). In particular, local completion time no longer rejects provider events; `sync_reconcile_before_at` only triggers reconciliation with Zoom.
+
 ## Overview
 
 Phase 5 adds timestamp-based staleness detection to prevent stale webhooks from overwriting newer operations, and allows webhooks to finalize pending update/delete operations.
@@ -460,8 +462,8 @@ Before deploying to production:
 
 1. **Verify Zoom's `event_ts` unit**
    - Capture real Zoom meeting update/delete event from sandbox
-   - Confirm unit is milliseconds (not seconds)
-   - Incorrect unit will break staleness detection
+   - Confirm whether the provider sends seconds or milliseconds and verify the adapter normalizes it to milliseconds
+   - An incorrect normalization can break provider-event ordering and reconciliation decisions
 
 2. **Test against MySQL**
    - SQLite tests don't prove row-lock behavior
@@ -471,9 +473,9 @@ Before deploying to production:
    - Alert on ignored webhooks (to detect timestamp issues)
    - Alert on stuck operations in `Updating`/`Deleting` states
 
-4. **Clock synchronization**
-   - Ensure application clock is synchronized with Zoom's clock
-   - Clock drift can cause legitimate webhooks to be rejected
+4. **Clock behavior**
+   - The provider timestamp watermark orders Zoom events; local completion time does not reject a webhook
+   - Clock drift can change whether an update webhook triggers a Zoom state lookup through `sync_reconcile_before_at`
 
 ---
 

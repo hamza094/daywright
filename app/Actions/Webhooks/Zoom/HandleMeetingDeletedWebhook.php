@@ -23,6 +23,7 @@ final readonly class HandleMeetingDeletedWebhook
     {
         $this->support->executeWithLogging(self::OPERATION, $data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data, $occurredAt): void {
             if ($occurredAt === null) {
+                // We cannot tell whether this event is old, so log the risk and process Zoom's trusted delete event.
                 $this->support->logger->logWebhookCritical(
                     self::OPERATION,
                     $data->meetingId,
@@ -34,6 +35,7 @@ final readonly class HandleMeetingDeletedWebhook
             }
 
             DB::transaction(function () use ($meeting, $userUuid, $data, $occurredAt): void {
+                // Lock the row so a delete webhook cannot race with another local meeting change.
                 $lockedMeeting = $this->support->lockMeeting($meeting);
 
                 if ($lockedMeeting->sync_status === MeetingSyncStatus::Deleted) {
@@ -42,7 +44,7 @@ final readonly class HandleMeetingDeletedWebhook
                     return;
                 }
 
-                // A distinct delete wins an equal-timestamp tie with an update.
+                // If update and delete times tie, trust the delete so the meeting cannot stay active by mistake.
                 if ($occurredAt !== null && $this->support->isStaleProviderEvent($lockedMeeting, $occurredAt, allowEqualTimestamp: true)) {
                     $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_provider_event', $userUuid);
 
@@ -63,6 +65,7 @@ final readonly class HandleMeetingDeletedWebhook
                     return;
                 }
 
+                // A Zoom delete cancels any unfinished local update or delete operation.
                 $updates = [
                     'sync_status' => MeetingSyncStatus::Deleted,
                     'sync_operation_id' => null,

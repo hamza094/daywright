@@ -47,6 +47,7 @@ final readonly class ZoomWebhookSupport
 
     public function lockMeeting(Meeting $meeting): Meeting
     {
+        // Read the latest row while holding its lock before making a state change.
         return Meeting::query()
             ->whereKey($meeting->getKey())
             ->lockForUpdate()
@@ -63,8 +64,8 @@ final readonly class ZoomWebhookSupport
         ?int $occurredAt,
         bool $allowEqualTimestamp = false,
     ): bool {
-        // Provider timestamps are stored in milliseconds. Webhook processing
-        // time must never participate in ordering.
+        // Use Zoom's event time to order events. The time our app handles the
+        // webhook does not tell us when Zoom made the change.
         if ($occurredAt === null) {
             return true;
         }
@@ -81,6 +82,7 @@ final readonly class ZoomWebhookSupport
 
     public function requiresZoomReconciliation(Meeting $meeting, ?int $occurredAt): bool
     {
+        // A cutoff means “check Zoom for the latest values,” not “ignore this event.”
         return $occurredAt !== null
             && $meeting->sync_reconcile_before_at !== null
             && $occurredAt <= (int) $meeting->sync_reconcile_before_at->valueOf();
@@ -92,9 +94,8 @@ final readonly class ZoomWebhookSupport
             return false;
         }
 
-        // Timestamp ties are ambiguous at Zoom's second-level precision, so
-        // recovery must reconcile them instead of treating value equality as
-        // proof that this callback belongs to the pending operation.
+        // Zoom times can tie within one second. A tie cannot prove this event
+        // belongs to the current update, so leave the operation pending.
         return $occurredAt <= (int) $meeting->sync_started_at->valueOf();
     }
 
@@ -105,6 +106,7 @@ final readonly class ZoomWebhookSupport
 
     public function ensureActiveSyncStatus(string $operation, Meeting $meeting, int|string $meetingId, ?string $requestId, ?string $userUuid): bool
     {
+        // Ignore update events once the meeting is no longer in a state that accepts them.
         if (! $meeting->sync_status->acceptsZoomRuntimeWebhook()) {
             $this->logger->logWebhookIgnored($operation, $meetingId, $requestId, 'inactive_sync_status', $userUuid);
 

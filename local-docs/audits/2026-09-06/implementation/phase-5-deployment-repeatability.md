@@ -8,8 +8,8 @@ Update `docs/DEPLOYMENT.md` from the current `composer.json`, `.env.example`, `c
 
 **Phase 5 webhook migration:**
 
-- Include the `2026_10_05_000001_add_last_zoom_event_timestamp_to_meetings_table` migration in the documented migration order.
-- Confirm application clock synchronization with Zoom's clock for reliable timestamp-based staleness detection.
+- Include these Zoom webhook migrations in the documented migration order: `2026_10_05_000001_add_last_zoom_event_timestamp_to_meetings_table`, `2026_10_07_000001_add_sync_reconcile_before_at_to_meetings_table`, and `2026_10_07_000002_change_sync_reconcile_before_at_precision_on_meetings_table`.
+- Monitor application clock accuracy because update webhooks compare provider event time with a local reconciliation cutoff to decide whether to fetch Zoom's current state. Clock skew can change whether that lookup occurs; provider event ordering uses only provider timestamps and does not reject events based on the local clock.
 
 ## P5.2: detect broken dependencies and stopped work
 
@@ -25,7 +25,7 @@ Trigger one controlled queue failure and one health failure in staging. Confirm 
 
 **Phase 5 webhook-specific alerting:**
 
-- Add monitoring for ignored Zoom webhooks (to detect timestamp unit issues or clock drift problems). Webhooks are rejected when `event_ts` is missing or stale; these should be observable in logs or alerts.
+- Monitor ignored Zoom webhooks for stale provider timestamps and timestamp-unit problems. `meeting.updated` requires root-level `event_ts`; `meeting.deleted` allows it to be absent and processes an authenticated timestamp-less delete with a critical log. Older events can be ignored by the provider timestamp watermark; a distinct delete wins an equal-timestamp update/delete tie.
 - Confirm alerting covers stuck operations in `Updating`, `UpdateFailed`, `Deleting`, or `DeleteFailed` states that may require manual intervention.
 
 ## Deferred

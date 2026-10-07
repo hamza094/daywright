@@ -79,7 +79,7 @@ final readonly class PerformZoomMeetingRecovery
 
     private function recoverUpdate(Meeting $meeting, \App\Models\User $user, Zoom $zoom, string $operationId, string $claimToken): void
     {
-        $requestedPayload = $this->validateUpdatePayload($meeting, $operationId, $claimToken);
+        $requestedPayload = $this->decodeValidUpdatePayload($meeting, $operationId, $claimToken);
 
         if ($requestedPayload === null) {
             return;
@@ -91,9 +91,10 @@ final readonly class PerformZoomMeetingRecovery
             return;
         }
 
-        $zoomMeeting = $this->findZoomMeeting($meeting, $user, $zoom);
+        $currentZoomMeeting = $this->fetchZoomMeeting($meeting, $user, $zoom);
 
-        if ($zoomMeeting === null) {
+        if ($currentZoomMeeting === null) {
+            // Zoom confirmed the meeting is gone, so finish locally instead of retrying the update.
             $this->withValidatedOperationLock(
                 $meeting,
                 $operationId,
@@ -107,7 +108,7 @@ final readonly class PerformZoomMeetingRecovery
             return;
         }
 
-        if ($this->payloadMatches($requestedPayload, $zoomMeeting)) {
+        if ($this->requestedFieldsMatchZoom($requestedPayload, $currentZoomMeeting)) {
             $this->withValidatedOperationLock(
                 $meeting,
                 $operationId,
@@ -141,7 +142,7 @@ final readonly class PerformZoomMeetingRecovery
         );
     }
 
-    private function findZoomMeeting(Meeting $meeting, \App\Models\User $user, Zoom $zoom): ?ZoomMeeting
+    private function fetchZoomMeeting(Meeting $meeting, \App\Models\User $user, Zoom $zoom): ?ZoomMeeting
     {
         if ($meeting->meeting_id === null) {
             return null;
@@ -153,18 +154,16 @@ final readonly class PerformZoomMeetingRecovery
     /**
      * @return array<string, mixed>|null
      */
-    private function validateUpdatePayload(Meeting $meeting, string $operationId, string $claimToken): ?array
+    private function decodeValidUpdatePayload(Meeting $meeting, string $operationId, string $claimToken): ?array
     {
         $payload = $meeting->sync_payload;
 
-        // Check if payload is a non-empty string
         if (! is_string($payload) || trim($payload) === '') {
             $this->manualReview($meeting, 'invalid_payload', $operationId, $claimToken);
 
             return null;
         }
 
-        // Try to decode JSON
         try {
             $decoded = json_decode($payload, true);
         } catch (JsonException) {
@@ -173,7 +172,6 @@ final readonly class PerformZoomMeetingRecovery
             return null;
         }
 
-        // Check if decoded value is a non-empty array
         if (! is_array($decoded) || $decoded === []) {
             $this->manualReview($meeting, 'invalid_payload', $operationId, $claimToken);
 
@@ -226,13 +224,13 @@ final readonly class PerformZoomMeetingRecovery
             $claimToken,
             MeetingSyncOperationType::Update,
             function (Meeting $currentMeeting) use ($user, $zoom, $operationId, $claimToken): void {
-                $payload = $this->validateUpdatePayload($currentMeeting, $operationId, $claimToken);
+                $payload = $this->decodeValidUpdatePayload($currentMeeting, $operationId, $claimToken);
 
                 if ($payload === null) {
                     return;
                 }
 
-                // Move the pending-operation fence to this provider attempt.
+                // Record when this retry starts so an older webhook cannot finish this newer attempt.
                 $currentMeeting->update(['sync_started_at' => now()]);
                 $zoom->updateMeeting($payload + ['meeting_id' => $currentMeeting->meeting_id], $user);
 
@@ -242,8 +240,8 @@ final readonly class PerformZoomMeetingRecovery
     }
 
     /**
-     * Acquire the same lock used by user initiated meeting operations, then
-     * reload and validate ownership immediately before any recovery write.
+     * Take the same lock as user-initiated changes. Reload the meeting and
+     * check that this recovery still owns it before writing to Zoom.
      *
      * @param  Closure(Meeting): void  $callback
      */
@@ -378,7 +376,7 @@ final readonly class PerformZoomMeetingRecovery
     /**
      * @param  array<string, mixed>  $requested
      */
-    private function payloadMatches(array $requested, ZoomMeeting $zoomMeeting): bool
+    private function requestedFieldsMatchZoom(array $requested, ZoomMeeting $zoomMeeting): bool
     {
         return collect($this->getSupportedUpdateFields())
             ->filter(fn ($field) => array_key_exists($field, $requested))

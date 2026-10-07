@@ -43,9 +43,11 @@ Do not assume that providers share the same event IDs, signature algorithms, ord
 
 Zoom event timestamps are normalized at the inbox boundary and stored in `provider_occurred_at` as milliseconds since the Unix epoch. The Zoom adapter accepts a seconds or milliseconds value from the provider and converts it before persistence, so meeting handlers compare one consistent format.
 
-The meeting handlers use `last_zoom_event_timestamp` to reject an older or equal provider event. They also compare provider time with local synchronization timestamps as a conservative barrier against a delayed webhook overwriting a state already finalized by the application. This assumes the provider and application clocks are reasonably synchronized.
+`last_zoom_event_timestamp` orders provider events. An update event older than or equal to the stored timestamp is ignored. A delete event older than the stored timestamp is ignored, while a distinct delete at the same timestamp wins an update/delete tie. The inbox fingerprint maps an exact repeat delivery to its existing row; recoverable rows may be retried, so handlers must remain safe to run more than once.
 
-Zoom documents `event_ts` as optional for `meeting.deleted`. When it is absent, the handler trusts the authenticated, deduplicated delete event and processes it under the normal database row lock, without calling Zoom's API. It emits a critical log because the event cannot be checked for staleness. This accepts the event as authoritative while acknowledging that ordering cannot be verified without its timestamp.
+For update events, `sync_reconcile_before_at` is a local-time cutoff. An event at or before this cutoff triggers a read of Zoom's current meeting state; a callback matching a pending update also triggers that read. The handler makes the Zoom request outside the database transaction, then locks the local meeting and rechecks the provider watermark, operation ID, and cutoff before using the snapshot. If Zoom confirms the meeting is missing, the local meeting is marked deleted. The cutoff triggers reconciliation; it does not reject events. Clock differences can affect whether the handler makes the extra Zoom read, but provider event ordering itself uses only provider timestamps.
+
+`event_ts` is required for `meeting.updated` and optional for `meeting.deleted`. When a delete event has no timestamp, the handler trusts the authenticated, deduplicated event and processes it under the normal database row lock without calling Zoom's API. It emits a critical log because the event cannot be checked for staleness. Other Zoom event types have their own request validation rules.
 
 The ownership boundaries are:
 
