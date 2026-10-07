@@ -154,8 +154,9 @@ skip the provider write and let the recovery path reconcile the current state.
 Update the Zoom webhook handlers:
 
 - `meeting.updated` should safely apply changes while the operation is current.
-- If an update webhook matches the pending update payload, it may finalize the operation.
+- An update callback may finalize a pending operation only when its provider timestamp is strictly newer than the current attempt start and its requested fields match. Older callbacks and timestamp ties remain pending for recovery to reconcile.
 - `meeting.deleted` should finalize a matching local delete operation.
+- Order provider events by `last_zoom_event_timestamp`; use `sync_local_mutation_at` only for confirmed local-operation completion. Failed or rate-limited attempts must not advance that local barrier.
 - Repeated webhooks must remain harmless.
 - A stale webhook must not overwrite a newer local operation.
 - Keep webhook inbox deduplication unchanged.

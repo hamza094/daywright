@@ -73,12 +73,12 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
             'sync_operation_id' => 'op-124',
             'sync_payload' => json_encode(['topic' => 'Recovered Update B']),
             'sync_claim_token' => 'claim-token',
-            'sync_started_at' => now(),
+            'sync_started_at' => now()->subSeconds(20),
             'sync_lease_expires_at' => now()->addMinutes(5),
             'last_zoom_event_timestamp' => null,
         ]);
-        $oldWebhookTimestamp = (int) now()->subSeconds(5)->valueOf();
-        $this->zoom = $this->fakeZoom()->findsMeeting($this->zoomMeeting(124, 'Recovered Update B', 30));
+        $oldWebhookTimestamp = (int) now()->subSeconds(10)->valueOf();
+        $this->zoom = $this->fakeZoom()->findsMeeting($this->zoomMeeting(124, 'Old Topic', 30));
 
         (new RecoverZoomMeetingOperationJob($meeting->id, 'op-124', 'claim-token'))
             ->handle($this->zoom, app(PerformZoomMeetingRecovery::class));

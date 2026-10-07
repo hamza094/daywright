@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Actions\Meetings;
 
 use App\Actions\Meetings\UpdateProjectMeeting;
+use App\Actions\Webhooks\Zoom\HandleMeetingDeletedWebhook;
 use App\Actions\Webhooks\Zoom\HandleMeetingUpdatedWebhook;
+use App\DataTransferObjects\Zoom\MeetingDeletedWebhookData;
 use App\DataTransferObjects\Zoom\MeetingUpdateData;
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\Meeting\MeetingSyncStatus;
@@ -182,6 +184,30 @@ final class UpdateProjectMeetingTest extends TestCase
             $this->assertNull($meeting->sync_payload);
             $this->assertNull($meeting->sync_operation_id);
         }
+    }
+
+    /** @test */
+    public function rate_limited_update_does_not_discard_a_later_delete_webhook(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'topic' => 'Old Topic',
+            'sync_local_mutation_at' => now()->subMinute(),
+        ]);
+        $deleteEventTimestamp = (int) now()->subSeconds(10)->valueOf();
+        $this->zoom->shouldFailWithException(new ZoomRateLimitException(60, 'Rate limited'));
+
+        try {
+            $this->action->handle($meeting, $this->user, new MeetingUpdateData(topic: 'New Topic'), $this->zoom);
+        } catch (ZoomRateLimitException) {
+            // The local attempt was rejected before Zoom could mutate the meeting.
+        }
+
+        app(HandleMeetingDeletedWebhook::class)->handle(
+            new MeetingDeletedWebhookData($meeting->meeting_id),
+            $deleteEventTimestamp,
+        );
+
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->refresh()->sync_status);
     }
 
     /** @test */

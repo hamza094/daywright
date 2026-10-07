@@ -54,8 +54,8 @@ final readonly class ZoomWebhookSupport
     }
 
     /**
-     * Provider events are ordered by their provider timestamp. A completed
-     * local operation also fences callbacks that occurred before it began.
+     * Provider events are ordered by their provider timestamp. A successful
+     * local operation also fences callbacks that predate its completion.
      * Delete handlers may opt into equal timestamps so a distinct delete wins
      * an update/delete tie; inbox event keys still handle true duplicates.
      */
@@ -63,7 +63,6 @@ final readonly class ZoomWebhookSupport
         Meeting $meeting,
         ?int $occurredAt,
         bool $allowEqualTimestamp = false,
-        bool $ignoreLocalOperationBarrier = false,
     ): bool {
         // Provider timestamps are stored in milliseconds. Webhook processing
         // time must never participate in ordering.
@@ -78,13 +77,26 @@ final readonly class ZoomWebhookSupport
             return true;
         }
 
-        if ($ignoreLocalOperationBarrier || $meeting->sync_started_at === null) {
+        if ($meeting->sync_local_mutation_at === null) {
             return false;
         }
 
-        // sync_started_at records when the most recent local Zoom operation
-        // began. It persists after completion, unlike synced_at, which records
-        // only when this application processed a result.
+        // This timestamp advances only after a local Zoom mutation is
+        // confirmed. Failed attempts and webhook processing never move it.
+        return $allowEqualTimestamp
+            ? $occurredAt < (int) $meeting->sync_local_mutation_at->valueOf()
+            : $occurredAt <= (int) $meeting->sync_local_mutation_at->valueOf();
+    }
+
+    public function predatesPendingOperation(Meeting $meeting, ?int $occurredAt): bool
+    {
+        if ($occurredAt === null || $meeting->sync_started_at === null) {
+            return false;
+        }
+
+        // Timestamp ties are ambiguous at Zoom's second-level precision, so
+        // recovery must reconcile them instead of treating value equality as
+        // proof that this callback belongs to the pending operation.
         return $occurredAt <= (int) $meeting->sync_started_at->valueOf();
     }
 

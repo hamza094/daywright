@@ -32,13 +32,12 @@ final readonly class HandleMeetingUpdatedWebhook
             DB::transaction(function () use ($meeting, $userUuid, $data, $occurredAt): void {
                 $lockedMeeting = $this->support->lockMeeting($meeting);
 
-                // Always reject events behind the provider watermark. A
-                // matching pending callback may complete its own operation,
-                // even when it shares the operation-start timestamp.
+                // Always reject events behind the provider watermark. Pending
+                // callbacks must also be newer than that operation's start;
+                // ties are left for recovery to reconcile.
                 if ($this->support->isStaleProviderEvent(
                     $lockedMeeting,
                     $occurredAt,
-                    ignoreLocalOperationBarrier: true,
                 )) {
                     $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_provider_event', $userUuid);
 
@@ -46,6 +45,12 @@ final readonly class HandleMeetingUpdatedWebhook
                 }
 
                 if ($this->isPendingUpdate($lockedMeeting)) {
+                    if ($this->support->predatesPendingOperation($lockedMeeting, $occurredAt)) {
+                        $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'callback_predates_pending_operation', $userUuid);
+
+                        return;
+                    }
+
                     $payload = $this->matchingOperationPayload($lockedMeeting, $data->changes);
 
                     if ($payload === null) {
@@ -71,12 +76,6 @@ final readonly class HandleMeetingUpdatedWebhook
                         'synced_at' => now(),
                     ]);
                     $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
-
-                    return;
-                }
-
-                if ($this->support->isStaleProviderEvent($lockedMeeting, $occurredAt)) {
-                    $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_local_operation', $userUuid);
 
                     return;
                 }
@@ -138,6 +137,7 @@ final readonly class HandleMeetingUpdatedWebhook
     }
 
     /**
+     * @param  array<string, mixed>  $operationPayload
      * @param  array<string, mixed>  $webhookChanges
      * @return array<string, mixed>
      */
@@ -147,8 +147,7 @@ final readonly class HandleMeetingUpdatedWebhook
 
         foreach ($webhookChanges as $field => $value) {
             // Only include fields that are in the allowlist but not in the operation payload
-            if (is_string($field)
-                && in_array($field, self::UPDATE_FIELDS, true)
+            if (in_array($field, self::UPDATE_FIELDS, true)
                 && ! array_key_exists($field, $operationPayload)) {
                 $additional[$field] = $value;
             }

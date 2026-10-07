@@ -124,15 +124,64 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         $this->assertNull($meeting->sync_operation_id);
     }
 
+    public function test_old_matching_webhook_cannot_complete_a_new_pending_operation_or_restore_other_fields(): void
+    {
+        $operationStartedAt = now();
+        $meeting = $this->createMeeting([
+            'meeting_id' => 659,
+            'topic' => 'Current Topic',
+            'agenda' => 'Current agenda',
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'new-operation',
+            'sync_payload' => json_encode(['topic' => 'Repeated Topic']),
+            'sync_started_at' => $operationStartedAt,
+        ]);
+        app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
+            meetingId: 659,
+            changes: ['topic' => 'Repeated Topic', 'agenda' => 'Stale agenda'],
+            requestId: 'older-matching-event',
+        ), (int) $operationStartedAt->copy()->subSecond()->valueOf());
+
+        $meeting->refresh();
+        $this->assertSame(MeetingSyncStatus::Updating, $meeting->sync_status);
+        $this->assertSame('new-operation', $meeting->sync_operation_id);
+        $this->assertSame('Current agenda', $meeting->agenda);
+    }
+
+    public function test_timestamp_tie_does_not_complete_pending_update_without_correlation(): void
+    {
+        $operationStartedAt = now();
+        $meeting = $this->createMeeting([
+            'meeting_id' => 660,
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'tied-operation',
+            'sync_payload' => json_encode(['topic' => 'Requested Topic']),
+            'sync_started_at' => $operationStartedAt,
+        ]);
+        $persistedOperationStart = $meeting->fresh()->sync_started_at;
+
+        app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
+            meetingId: 660,
+            changes: ['topic' => 'Requested Topic'],
+            requestId: 'timestamp-tie',
+        ), (int) $persistedOperationStart->valueOf());
+
+        $meeting->refresh();
+        $this->assertSame(MeetingSyncStatus::Updating, $meeting->sync_status);
+        $this->assertSame('tied-operation', $meeting->sync_operation_id);
+    }
+
     public function test_stale_update_webhook_cannot_overwrite_a_completed_newer_operation(): void
     {
         $meeting = $this->createMeeting([
             'meeting_id' => 657,
             'topic' => 'Newer Topic',
             'sync_status' => MeetingSyncStatus::Active,
-            'sync_started_at' => now(),
+            'sync_local_mutation_at' => now(),
             'synced_at' => now(),
-            'last_zoom_event_timestamp' => (int) now()->valueOf(),
+            'last_zoom_event_timestamp' => null,
         ]);
 
         app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(

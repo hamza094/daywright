@@ -136,6 +136,9 @@ final readonly class PerformZoomMeetingRecovery
         return $zoom->getMeeting($meeting->meeting_id, $user);
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     private function validateUpdatePayload(Meeting $meeting, string $operationId, string $claimToken): ?array
     {
         $payload = $meeting->sync_payload;
@@ -196,13 +199,11 @@ final readonly class PerformZoomMeetingRecovery
                 'sync_lease_expires_at' => null,
                 'sync_available_at' => null,
                 'synced_at' => now(),
+                'sync_local_mutation_at' => now(),
             ]);
         });
     }
 
-    /**
-     * @param  array<string, mixed>  $payload
-     */
     private function retryUpdate(Meeting $meeting, \App\Models\User $user, Zoom $zoom, string $operationId, string $claimToken): void
     {
         $this->withValidatedOperationLock(
@@ -217,6 +218,8 @@ final readonly class PerformZoomMeetingRecovery
                     return;
                 }
 
+                // Move the pending-operation fence to this provider attempt.
+                $currentMeeting->update(['sync_started_at' => now()]);
                 $zoom->updateMeeting($payload + ['meeting_id' => $currentMeeting->meeting_id], $user);
 
                 $this->applyUpdateLocally($currentMeeting, $payload, $operationId, $claimToken);
@@ -280,6 +283,7 @@ final readonly class PerformZoomMeetingRecovery
                 'sync_lease_expires_at' => null,
                 'sync_available_at' => null,
                 'synced_at' => now(),
+                'sync_local_mutation_at' => now(),
             ]);
         });
     }

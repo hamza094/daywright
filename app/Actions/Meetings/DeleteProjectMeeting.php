@@ -136,6 +136,7 @@ final readonly class DeleteProjectMeeting
                 'sync_lease_expires_at' => null,
                 'sync_available_at' => null,
                 'synced_at' => now(),
+                'sync_local_mutation_at' => now(),
             ]);
         });
     }
