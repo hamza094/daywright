@@ -85,10 +85,24 @@ final readonly class PerformZoomMeetingRecovery
             return;
         }
 
+        if ($meeting->meeting_id === null) {
+            $this->scheduleRetry($meeting, null, $operationId, $claimToken);
+
+            return;
+        }
+
         $zoomMeeting = $this->findZoomMeeting($meeting, $user, $zoom);
 
         if ($zoomMeeting === null) {
-            $this->scheduleRetry($meeting, null, $operationId, $claimToken);
+            $this->withValidatedOperationLock(
+                $meeting,
+                $operationId,
+                $claimToken,
+                MeetingSyncOperationType::Update,
+                function (Meeting $currentMeeting) use ($operationId, $claimToken): void {
+                    $this->finalizeMeetingAsDeleted($currentMeeting, $operationId, $claimToken);
+                },
+            );
 
             return;
         }
@@ -122,7 +136,7 @@ final readonly class PerformZoomMeetingRecovery
                     // The requested remote state already holds.
                 }
 
-                $this->finalizeDelete($currentMeeting, $operationId, $claimToken);
+                $this->finalizeMeetingAsDeleted($currentMeeting, $operationId, $claimToken);
             },
         );
     }
@@ -265,7 +279,7 @@ final readonly class PerformZoomMeetingRecovery
         );
     }
 
-    private function finalizeDelete(Meeting $meeting, string $operationId, string $claimToken): void
+    private function finalizeMeetingAsDeleted(Meeting $meeting, string $operationId, string $claimToken): void
     {
         DB::transaction(function () use ($meeting, $operationId, $claimToken): void {
             $lockedMeeting = $this->lockMeeting($meeting);
@@ -278,6 +292,7 @@ final readonly class PerformZoomMeetingRecovery
                 'sync_status' => MeetingSyncStatus::Deleted,
                 'sync_operation_id' => null,
                 'sync_operation_type' => null,
+                'sync_payload' => null,
                 'sync_error' => null,
                 'sync_claim_token' => null,
                 'sync_lease_expires_at' => null,

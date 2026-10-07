@@ -77,6 +77,13 @@ final readonly class HandleMeetingUpdatedWebhook
                     throw new RuntimeException('Meeting requires Zoom reconciliation before applying this webhook.');
                 }
 
+                if ($requiresReconciliation && $remoteMeeting === null) {
+                    $this->markMeetingDeleted($lockedMeeting, $occurredAt);
+                    $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
+
+                    return;
+                }
+
                 if ($this->isPendingUpdate($lockedMeeting)) {
                     $callbackPredatesOperation = $this->support->predatesPendingOperation($lockedMeeting, $occurredAt);
                     $payload = $this->matchingOperationPayload($lockedMeeting, $data->changes);
@@ -88,13 +95,6 @@ final readonly class HandleMeetingUpdatedWebhook
                     }
 
                     if ($requiresReconciliation) {
-                        if ($remoteMeeting === null) {
-                            $this->markMeetingDeleted($lockedMeeting, $occurredAt);
-                            $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
-
-                            return;
-                        }
-
                         if (! $this->payloadMatchesZoom($payload, $remoteMeeting)) {
                             $lockedMeeting->update(['last_zoom_event_timestamp' => $occurredAt]);
                             $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'zoom_state_does_not_match_operation', $userUuid);
@@ -157,13 +157,6 @@ final readonly class HandleMeetingUpdatedWebhook
                 }
 
                 if ($requiresReconciliation) {
-                    if ($remoteMeeting === null) {
-                        $this->markMeetingDeleted($lockedMeeting, $occurredAt);
-                        $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
-
-                        return;
-                    }
-
                     $lockedMeeting->update($this->changesFromZoom($remoteMeeting) + [
                         'last_zoom_event_timestamp' => $occurredAt,
                         'synced_at' => now(),

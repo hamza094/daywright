@@ -21,6 +21,8 @@ class Meeting extends Model
 {
     use HasFactory, HasStateMachine, RecordActivity;
 
+    protected $dateFormat = 'Y-m-d H:i:s.v';
+
     protected $guarded = [];
 
     /**

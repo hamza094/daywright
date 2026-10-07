@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('meetings', function (Blueprint $table): void {
-            $table->timestamp('sync_reconcile_before_at')->nullable()->after('sync_started_at');
+            $table->timestamp('sync_reconcile_before_at', 3)->nullable()->after('sync_started_at');
         });
 
         DB::table('meetings')

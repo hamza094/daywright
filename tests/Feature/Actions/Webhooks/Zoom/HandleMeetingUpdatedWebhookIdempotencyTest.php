@@ -14,6 +14,7 @@ use App\Models\Meeting;
 use App\Models\WebhookInbox;
 use App\Services\Webhooks\ZoomWebhookInboxService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
 
@@ -212,6 +213,69 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
 
         $meeting->refresh();
         $this->assertSame('Newer Topic', $meeting->topic);
+    }
+
+    public function test_same_second_delayed_webhook_reconciles_with_millisecond_completion_cutoff(): void
+    {
+        $completedAt = Carbon::parse('2026-10-07 12:00:05.900');
+        $earlierEventAt = Carbon::parse('2026-10-07 12:00:05.400');
+        Carbon::setTestNow($completedAt);
+
+        try {
+            $meeting = $this->createMeeting([
+                'meeting_id' => 663,
+                'topic' => 'Update B',
+                'sync_status' => MeetingSyncStatus::Active,
+                'sync_reconcile_before_at' => now(),
+                'synced_at' => now(),
+                'last_zoom_event_timestamp' => null,
+            ]);
+            $storedCutoff = $meeting->fresh()->sync_reconcile_before_at;
+
+            $this->assertSame($completedAt->valueOf(), $storedCutoff->valueOf());
+            $this->fakeZoom()->findsMeeting($this->zoomMeeting(663, 'Update B'));
+
+            app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
+                meetingId: 663,
+                changes: ['topic' => 'Delayed Update A'],
+                requestId: 'same-second-delayed-update',
+            ), (int) $earlierEventAt->valueOf());
+
+            $this->assertSame('Update B', $meeting->refresh()->topic);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_pending_update_is_marked_deleted_when_reconciliation_confirms_zoom_meeting_missing(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 664,
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'pending-operation',
+            'sync_payload' => json_encode(['topic' => 'Requested Topic']),
+            'sync_claim_token' => 'claim-token',
+            'sync_lease_expires_at' => now()->addMinutes(5),
+            'sync_available_at' => now()->addMinute(),
+            'sync_reconcile_before_at' => now(),
+        ]);
+        $this->fakeZoom()->meetingNotFound();
+
+        app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
+            meetingId: 664,
+            changes: ['agenda' => 'Partial unrelated callback'],
+            requestId: 'partial-callback-for-missing-meeting',
+        ), (int) now()->subSecond()->valueOf());
+
+        $meeting->refresh();
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->sync_status);
+        $this->assertNull($meeting->sync_operation_id);
+        $this->assertNull($meeting->sync_operation_type);
+        $this->assertNull($meeting->sync_payload);
+        $this->assertNull($meeting->sync_claim_token);
+        $this->assertNull($meeting->sync_lease_expires_at);
+        $this->assertNull($meeting->sync_available_at);
     }
 
     public function test_out_of_order_update_events_cannot_overwrite_newer_event_state(): void

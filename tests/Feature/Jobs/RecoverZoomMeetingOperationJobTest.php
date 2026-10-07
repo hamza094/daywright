@@ -171,7 +171,7 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
     }
 
     /** @test */
-    public function it_schedules_retry_when_zoom_not_found(): void
+    public function it_finalizes_update_when_zoom_meeting_is_missing(): void
     {
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 123,
@@ -188,8 +188,13 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
 
         $meeting->refresh();
 
-        $this->assertEquals(MeetingSyncStatus::Updating, $meeting->sync_status);
-        $this->assertNotNull($meeting->sync_available_at);
+        $this->assertEquals(MeetingSyncStatus::Deleted, $meeting->sync_status);
+        $this->assertNull($meeting->sync_operation_id);
+        $this->assertNull($meeting->sync_operation_type);
+        $this->assertNull($meeting->sync_payload);
+        $this->assertNull($meeting->sync_claim_token);
+        $this->assertNull($meeting->sync_lease_expires_at);
+        $this->assertNull($meeting->sync_available_at);
     }
 
     /** @test */
