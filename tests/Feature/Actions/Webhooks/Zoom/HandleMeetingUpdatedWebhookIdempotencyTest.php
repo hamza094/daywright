@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Actions\Webhooks\Zoom;
 
 use App\Actions\Webhooks\Zoom\HandleMeetingUpdatedWebhook;
+use App\DataTransferObjects\Zoom\Meeting as ZoomMeeting;
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
@@ -14,12 +15,13 @@ use App\Models\WebhookInbox;
 use App\Services\Webhooks\ZoomWebhookInboxService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
+use Tests\Traits\InteractsWithZoom;
 
 use function Safe\json_encode;
 
 final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
 {
-    use LazilyRefreshDatabase;
+    use InteractsWithZoom, LazilyRefreshDatabase;
 
     public function test_noop_updates_are_ignored(): void
     {
@@ -58,6 +60,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             'sync_lease_expires_at' => now()->addMinutes(5),
             'sync_available_at' => now()->addMinute(),
         ]);
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(654, 'Requested Topic', 45, 'New agenda'));
 
         app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
             meetingId: 654,
@@ -111,6 +114,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             'sync_operation_id' => 'failed-operation',
             'sync_payload' => json_encode(['topic' => 'Eventually Updated']),
         ]);
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(656, 'Eventually Updated'));
 
         app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
             meetingId: 656,
@@ -137,6 +141,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             'sync_payload' => json_encode(['topic' => 'Repeated Topic']),
             'sync_started_at' => $operationStartedAt,
         ]);
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(659, 'Repeated Topic', 30, 'Current agenda'));
         app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
             meetingId: 659,
             changes: ['topic' => 'Repeated Topic', 'agenda' => 'Stale agenda'],
@@ -160,6 +165,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             'sync_payload' => json_encode(['topic' => 'Requested Topic']),
             'sync_started_at' => $operationStartedAt,
         ]);
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(660, 'Requested Topic'));
         $persistedOperationStart = $meeting->fresh()->sync_started_at;
 
         app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
@@ -179,10 +185,24 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             'meeting_id' => 657,
             'topic' => 'Newer Topic',
             'sync_status' => MeetingSyncStatus::Active,
-            'sync_local_mutation_at' => now(),
+            'sync_reconcile_before_at' => now(),
             'synced_at' => now(),
             'last_zoom_event_timestamp' => null,
         ]);
+        $this->fakeZoom()->findsMeeting(new ZoomMeeting(
+            meeting_id: 657,
+            topic: 'Newer Topic',
+            agenda: '',
+            created_at: '2026-01-01 00:00:00',
+            duration: 30,
+            start_time: '2026-01-01 00:00:00',
+            start_url: 'https://zoom.us/s/657',
+            join_url: 'https://zoom.us/j/657',
+            status: 'waiting',
+            timezone: 'UTC',
+            password: '',
+            join_before_host: false,
+        ));
 
         app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
             meetingId: 657,
@@ -321,6 +341,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             'sync_payload' => json_encode(['topic' => 'Requested Topic']),
             'join_url' => 'https://zoom.us/j/old',
         ]);
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(660, 'Requested Topic', agenda: 'New agenda', joinUrl: 'https://zoom.us/j/new'));
 
         // Webhook includes agenda (allowlisted) that wasn't in the original request
         $handler = app(HandleMeetingUpdatedWebhook::class);
@@ -352,6 +373,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             'sync_payload' => json_encode(['topic' => 'Updated Topic']),
             'sync_started_at' => now()->subSeconds(20),
         ]);
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(661, 'Updated Topic'));
         $updateTimestamp = (int) now()->subSeconds(10)->valueOf();
         $deleteTimestamp = $updateTimestamp + 1000;
 
@@ -395,5 +417,23 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         $this->assertInstanceOf(Meeting::class, $meeting);
 
         return $meeting;
+    }
+
+    private function zoomMeeting(int $id, string $topic, int $duration = 30, string $agenda = '', string $joinUrl = ''): ZoomMeeting
+    {
+        return new ZoomMeeting(
+            meeting_id: $id,
+            topic: $topic,
+            agenda: $agenda,
+            created_at: '2026-01-01 00:00:00',
+            duration: $duration,
+            start_time: '2026-01-01 00:00:00',
+            start_url: "https://zoom.us/s/{$id}",
+            join_url: $joinUrl !== '' ? $joinUrl : "https://zoom.us/j/{$id}",
+            status: 'waiting',
+            timezone: 'UTC',
+            password: '',
+            join_before_host: false,
+        );
     }
 }

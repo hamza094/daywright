@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Jobs;
 
 use App\Actions\Meetings\PerformZoomMeetingRecovery;
+use App\Actions\Webhooks\Zoom\HandleMeetingDeletedWebhook;
 use App\Actions\Webhooks\Zoom\HandleMeetingUpdatedWebhook;
+use App\DataTransferObjects\Zoom\MeetingDeletedWebhookData;
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
@@ -89,6 +91,35 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
         );
 
         $this->assertSame('Recovered Update B', $meeting->refresh()->topic);
+    }
+
+    /** @test */
+    public function delete_after_recovery_read_is_not_rejected_by_recovery_completion_time(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 125,
+            'topic' => 'Old Topic',
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'op-125',
+            'sync_payload' => json_encode(['topic' => 'Recovered Update']),
+            'sync_claim_token' => 'claim-token',
+            'sync_started_at' => now()->subMinute(),
+            'sync_lease_expires_at' => now()->addMinutes(5),
+            'last_zoom_event_timestamp' => null,
+        ]);
+        $deleteTimestamp = (int) now()->subSeconds(10)->valueOf();
+        $this->zoom = $this->fakeZoom()->findsMeeting($this->zoomMeeting(125, 'Recovered Update', 30));
+
+        (new RecoverZoomMeetingOperationJob($meeting->id, 'op-125', 'claim-token'))
+            ->handle($this->zoom, app(PerformZoomMeetingRecovery::class));
+
+        app(HandleMeetingDeletedWebhook::class)->handle(
+            new MeetingDeletedWebhookData(125),
+            $deleteTimestamp,
+        );
+
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->refresh()->sync_status);
     }
 
     /** @test */

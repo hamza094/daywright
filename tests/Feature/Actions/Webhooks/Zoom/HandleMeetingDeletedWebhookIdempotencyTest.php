@@ -156,12 +156,12 @@ final class HandleMeetingDeletedWebhookIdempotencyTest extends TestCase
         $this->assertNull($meeting->sync_payload);
     }
 
-    public function test_stale_delete_webhook_cannot_overwrite_a_completed_newer_operation(): void
+    public function test_delayed_delete_webhook_is_not_rejected_by_local_completion_time(): void
     {
         $meeting = $this->createMeeting([
             'meeting_id' => 130,
             'sync_status' => MeetingSyncStatus::Active,
-            'sync_local_mutation_at' => now(),
+            'sync_reconcile_before_at' => now(),
             'synced_at' => now(),
             'last_zoom_event_timestamp' => null,
         ]);
@@ -172,7 +172,7 @@ final class HandleMeetingDeletedWebhookIdempotencyTest extends TestCase
         );
 
         $meeting->refresh();
-        $this->assertSame(MeetingSyncStatus::Active, $meeting->sync_status);
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->sync_status);
     }
 
     public function test_missing_meeting_is_handled_gracefully(): void
@@ -197,15 +197,15 @@ final class HandleMeetingDeletedWebhookIdempotencyTest extends TestCase
         $this->assertSame(MeetingSyncStatus::Deleted, $meeting->refresh()->sync_status);
     }
 
-    public function test_equal_timestamp_delete_wins_over_local_mutation_barrier(): void
+    public function test_equal_timestamp_delete_wins_over_reconciliation_cutoff(): void
     {
         $meeting = $this->createMeeting([
             'meeting_id' => 132,
             'sync_status' => MeetingSyncStatus::Active,
-            'sync_local_mutation_at' => now(),
+            'sync_reconcile_before_at' => now(),
             'last_zoom_event_timestamp' => null,
         ]);
-        $eventTimestamp = (int) $meeting->fresh()->sync_local_mutation_at->valueOf();
+        $eventTimestamp = (int) $meeting->fresh()->sync_reconcile_before_at->valueOf();
 
         app(HandleMeetingDeletedWebhook::class)->handle(
             new MeetingDeletedWebhookData(132),

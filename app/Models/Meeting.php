@@ -45,7 +45,7 @@ class Meeting extends Model
         'sync_payload' => 'encrypted',
         'synced_at' => 'datetime',
         'sync_started_at' => 'datetime',
-        'sync_local_mutation_at' => 'datetime',
+        'sync_reconcile_before_at' => 'datetime',
         'sync_lease_expires_at' => 'datetime',
         'sync_available_at' => 'datetime',
         'last_zoom_event_timestamp' => 'integer',

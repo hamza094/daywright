@@ -54,8 +54,7 @@ final readonly class ZoomWebhookSupport
     }
 
     /**
-     * Provider events are ordered by their provider timestamp. A successful
-     * local operation also fences callbacks that predate its completion.
+     * Provider events are ordered only by their provider timestamp.
      * Delete handlers may opt into equal timestamps so a distinct delete wins
      * an update/delete tie; inbox event keys still handle true duplicates.
      */
@@ -77,15 +76,14 @@ final readonly class ZoomWebhookSupport
             return true;
         }
 
-        if ($meeting->sync_local_mutation_at === null) {
-            return false;
-        }
+        return false;
+    }
 
-        // This timestamp advances only after a local Zoom mutation is
-        // confirmed. Failed attempts and webhook processing never move it.
-        return $allowEqualTimestamp
-            ? $occurredAt < (int) $meeting->sync_local_mutation_at->valueOf()
-            : $occurredAt <= (int) $meeting->sync_local_mutation_at->valueOf();
+    public function requiresZoomReconciliation(Meeting $meeting, ?int $occurredAt): bool
+    {
+        return $occurredAt !== null
+            && $meeting->sync_reconcile_before_at !== null
+            && $occurredAt <= (int) $meeting->sync_reconcile_before_at->valueOf();
     }
 
     public function predatesPendingOperation(Meeting $meeting, ?int $occurredAt): bool

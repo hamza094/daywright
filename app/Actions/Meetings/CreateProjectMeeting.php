@@ -158,10 +158,10 @@ final readonly class CreateProjectMeeting
             return;
         }
 
-        $this->finalizeMeetingAsActive($meeting, $zoomMeeting, 'finalized webhook-initiated meeting', recordLocalMutationAt: false);
+        $this->finalizeMeetingAsActive($meeting, $zoomMeeting, 'finalized webhook-initiated meeting');
     }
 
-    private function finalizeMeetingAsActive(Meeting $meeting, ZoomMeeting $zoomMeeting, string $logContext, bool $recordLocalMutationAt = true): void
+    private function finalizeMeetingAsActive(Meeting $meeting, ZoomMeeting $zoomMeeting, string $logContext): void
     {
         $meeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
         $meeting->update([
@@ -174,7 +174,6 @@ final readonly class CreateProjectMeeting
             'sync_lease_expires_at' => null,
             'sync_available_at' => null,
             'synced_at' => now(),
-            ...($recordLocalMutationAt ? ['sync_local_mutation_at' => now()] : []),
         ]);
 
         Log::info('Zoom meeting creation response - '.$logContext, [

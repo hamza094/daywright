@@ -112,7 +112,7 @@ final readonly class UpdateProjectMeeting
                 'sync_claim_token' => null,
                 'sync_lease_expires_at' => null,
                 'synced_at' => now(),
-                'sync_local_mutation_at' => now(),
+                'sync_reconcile_before_at' => now(),
             ]);
 
             return $lockedMeeting;

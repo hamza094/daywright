@@ -7,6 +7,7 @@ namespace Tests\Feature\Actions\Meetings;
 use App\Actions\Meetings\UpdateProjectMeeting;
 use App\Actions\Webhooks\Zoom\HandleMeetingDeletedWebhook;
 use App\Actions\Webhooks\Zoom\HandleMeetingUpdatedWebhook;
+use App\DataTransferObjects\Zoom\Meeting as ZoomMeeting;
 use App\DataTransferObjects\Zoom\MeetingDeletedWebhookData;
 use App\DataTransferObjects\Zoom\MeetingUpdateData;
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
@@ -14,6 +15,7 @@ use App\Enums\Meeting\MeetingSyncStatus;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
+use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -191,7 +193,7 @@ final class UpdateProjectMeetingTest extends TestCase
     {
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'topic' => 'Old Topic',
-            'sync_local_mutation_at' => now()->subMinute(),
+            'sync_reconcile_before_at' => now()->subMinute(),
         ]);
         $deleteEventTimestamp = (int) now()->subSeconds(10)->valueOf();
         $this->zoom->shouldFailWithException(new ZoomRateLimitException(60, 'Rate limited'));
@@ -281,6 +283,8 @@ final class UpdateProjectMeetingTest extends TestCase
             $this->zoom,
         );
 
+        $this->zoom->findsMeeting($this->zoomMeetingSnapshot($meeting, 'API Update B'));
+
         $this->assertNull($meeting->refresh()->last_zoom_event_timestamp);
 
         app(HandleMeetingUpdatedWebhook::class)->handle(
@@ -293,6 +297,50 @@ final class UpdateProjectMeetingTest extends TestCase
         );
 
         $this->assertSame('API Update B', $meeting->refresh()->topic);
+    }
+
+    /** @test */
+    public function delayed_delete_after_update_response_is_not_rejected_by_local_completion_time(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'topic' => 'Before update',
+            'last_zoom_event_timestamp' => null,
+        ]);
+
+        $this->action->handle($meeting, $this->user, new MeetingUpdateData(topic: 'Updated'), $this->zoom);
+
+        app(HandleMeetingDeletedWebhook::class)->handle(
+            new MeetingDeletedWebhookData($meeting->meeting_id),
+            (int) now()->subSecond()->valueOf(),
+        );
+
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->refresh()->sync_status);
+    }
+
+    /** @test */
+    public function delayed_password_webhook_reconciles_the_current_join_url_from_zoom(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'topic' => 'Original Topic',
+            'join_url' => 'https://zoom.us/j/old',
+        ]);
+
+        $this->action->handle($meeting, $this->user, new MeetingUpdateData(password: 'new-secret'), $this->zoom);
+        $this->zoom->findsMeeting($this->zoomMeetingSnapshot(
+            $meeting,
+            'Original Topic',
+            password: 'new-secret',
+            joinUrl: 'https://zoom.us/j/new',
+        ));
+
+        app(HandleMeetingUpdatedWebhook::class)->handle(
+            new MeetingUpdatedWebhookData($meeting->meeting_id, ['password' => 'new-secret', 'join_url' => 'https://zoom.us/j/new'], 'password-update'),
+            (int) now()->subSecond()->valueOf(),
+        );
+
+        $meeting->refresh();
+        $this->assertSame('new-secret', $meeting->password);
+        $this->assertSame('https://zoom.us/j/new', $meeting->join_url);
     }
 
     /** @test */
@@ -316,5 +364,23 @@ final class UpdateProjectMeetingTest extends TestCase
         $this->assertEquals(0, $meeting->sync_attempts);
         $this->assertNull($meeting->sync_claim_token);
         $this->assertNull($meeting->sync_available_at);
+    }
+
+    private function zoomMeetingSnapshot(Meeting $meeting, string $topic, string $password = '', string $joinUrl = 'https://zoom.us/j/current'): ZoomMeeting
+    {
+        return new ZoomMeeting(
+            meeting_id: (int) $meeting->meeting_id,
+            topic: $topic,
+            agenda: $meeting->agenda ?? '',
+            created_at: '2026-01-01 00:00:00',
+            duration: (int) ($meeting->duration ?? 30),
+            start_time: '2026-01-01 00:00:00',
+            start_url: 'https://zoom.us/s/current',
+            join_url: $joinUrl,
+            status: 'waiting',
+            timezone: $meeting->timezone ?? 'UTC',
+            password: $password,
+            join_before_host: (bool) ($meeting->join_before_host ?? false),
+        );
     }
 }
