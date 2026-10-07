@@ -7,6 +7,7 @@ namespace Tests\Feature\Services\Webhooks;
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\WebhookInboxState;
 use App\Jobs\Webhooks\ProcessZoomWebhookInbox;
+use App\Models\Meeting;
 use App\Models\WebhookInbox;
 use App\Services\Webhooks\ZoomWebhookInboxService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -472,16 +473,30 @@ class ZoomWebhookInboxServiceTest extends TestCase
         $secondsTimestamp = 1728278400; // Seconds
         $expectedMilliseconds = 1728278400000; // Expected after normalization
 
+        $meeting = Meeting::factory()->create([
+            'meeting_id' => 7654321,
+            'topic' => 'Original Topic',
+            'last_zoom_event_timestamp' => $expectedMilliseconds - 1000,
+        ]);
         $inbox = WebhookInbox::factory()->create([
             'provider' => 'zoom',
             'event_key' => 'legacy-test-key',
             'event_type' => 'meeting.updated',
             'provider_occurred_at' => $secondsTimestamp, // Stored as seconds
             'state' => WebhookInboxState::Received,
+            'payload' => [
+                'meetingId' => $meeting->meeting_id,
+                'changes' => ['topic' => 'Updated Through Persisted Inbox'],
+                'requestId' => 'legacy-test-request',
+            ],
         ]);
 
-        // When accessed, the accessor should normalize to milliseconds
-        $this->assertEquals($expectedMilliseconds, $inbox->provider_occurred_at);
+        $persistedInbox = WebhookInbox::query()->findOrFail($inbox->id);
+        $this->assertSame($expectedMilliseconds, $persistedInbox->provider_occurred_at);
+
+        $this->service->process($persistedInbox->id);
+
+        $this->assertSame('Updated Through Persisted Inbox', $meeting->fresh()->topic);
     }
 
     #[Test]

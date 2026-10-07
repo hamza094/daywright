@@ -297,7 +297,11 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         $meeting = $this->createMeeting([
             'meeting_id' => 661,
             'topic' => 'Original Topic',
-            'sync_status' => MeetingSyncStatus::Active,
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'pending-update',
+            'sync_payload' => json_encode(['topic' => 'Updated Topic']),
+            'sync_started_at' => now()->subSeconds(20),
         ]);
         $updateTimestamp = (int) now()->subSeconds(10)->valueOf();
         $deleteTimestamp = $updateTimestamp + 1000;

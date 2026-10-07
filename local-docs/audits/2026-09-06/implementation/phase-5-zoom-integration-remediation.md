@@ -25,13 +25,13 @@
 **Priority:** P1/P2  
 **Start with:** `app/Services/Webhooks/ZoomWebhookSupport.php`, `app/Actions/Webhooks/Zoom/HandleMeetingUpdatedWebhook.php`, `app/Actions/Webhooks/Zoom/HandleMeetingDeletedWebhook.php`, and their feature tests.
 
-**Findings:** Completing a pending update sets `synced_at` to webhook processing time; this can cause a later provider event to be rejected. The watermark check also rejects equal timestamps, even for distinct events.
+**Findings:** Completing a pending update sets `synced_at` to webhook processing time; this can cause a later provider event to be rejected. The watermark check also rejects equal timestamps, even for distinct events. A delayed provider callback can also predate a successful local API or recovery update even when no newer provider watermark has been stored.
 
-**Implemented policy:** Keep `last_zoom_event_timestamp` as the provider-event ordering watermark. Local processing timestamps are excluded from provider ordering. Event-key deduplication remains authoritative; for distinct equal-timestamp events, delete wins over update. Update events reject an equal watermark, while delete events accept an equal watermark unless the event key was already deduplicated.
+**Implemented policy:** Keep `last_zoom_event_timestamp` as the provider-event ordering watermark. `synced_at` is excluded because it records local processing time. `sync_started_at` is retained as a separate local-operation barrier after local completion: callbacks that occurred before the most recent local operation began cannot overwrite its result. A matching callback can still complete its pending operation. Event-key deduplication remains authoritative; for distinct equal-timestamp events, delete wins over update. Update events reject an equal watermark, while delete events accept an equal watermark unless the event key was already deduplicated.
 
-**Regression coverage:** Process a matching update event and a later delete event only after simulated queue delay; assert the meeting becomes `Deleted`. Process distinct update and delete events with the same normalized timestamp; assert the meeting does not remain active.
+**Regression coverage:** Process a matching pending update event and a later delete event only after simulated queue delay; assert the meeting becomes `Deleted`. Process distinct update and delete events with the same normalized timestamp; assert the meeting does not remain active. Complete an update through both the synchronous action and recovery, then deliver an older callback without advancing the provider watermark; assert the completed values remain unchanged.
 
-**Done when:** Delayed update/delete and equal-timestamp update/delete behavior pass at the handler boundary, with inbox event-key deduplication unchanged.
+**Done when:** Delayed update/delete, equal-timestamp update/delete, and post-completion delayed-callback behavior pass at handler, synchronous-action, and recovery boundaries, with inbox event-key deduplication unchanged.
 
 ## Ticket 2 — Preserve all allowlisted fields when completing a pending update
 
@@ -177,9 +177,9 @@
 
 **Findings:** Existing stale-event tests set up a stale timestamp before handling; they do not exercise a callback arriving late after a newer operation replaced the operation ID. The password-log test asserts database state but does not inspect logs.
 
-**Recommended fix:** Add deterministic interleaving tests that invoke the old callback only after the newer operation is committed, asserting no stale local or provider state is applied. Capture the relevant logger/channel in the password test and assert the sentinel password is absent from emitted messages and context.
+**Implemented fix:** Added deterministic tests for a delayed callback after synchronous and recovery completion, without manually advancing the provider watermark. The delayed update/delete test now completes an `Updating` operation. The password test causes an operational warning and asserts the sentinel password is absent from both its message and context. Legacy timestamp coverage reloads a persisted seconds row and processes it through the inbox handler boundary.
 
-**Done when:** Both tests observe the behavior they claim to protect. Coordinate the late-callback tests with Ticket 1 and Ticket 7 if their implementation changes provide needed seams.
+**Done when:** The tests observe the behavior they claim to protect across the webhook, synchronous action, recovery, persisted inbox, and logging boundaries.
 
 ## Recommended implementation sequence
 

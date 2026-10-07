@@ -32,7 +32,14 @@ final readonly class HandleMeetingUpdatedWebhook
             DB::transaction(function () use ($meeting, $userUuid, $data, $occurredAt): void {
                 $lockedMeeting = $this->support->lockMeeting($meeting);
 
-                if ($this->support->isStaleProviderEvent($lockedMeeting, $occurredAt)) {
+                // Always reject events behind the provider watermark. A
+                // matching pending callback may complete its own operation,
+                // even when it shares the operation-start timestamp.
+                if ($this->support->isStaleProviderEvent(
+                    $lockedMeeting,
+                    $occurredAt,
+                    ignoreLocalOperationBarrier: true,
+                )) {
                     $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_provider_event', $userUuid);
 
                     return;
@@ -64,6 +71,12 @@ final readonly class HandleMeetingUpdatedWebhook
                         'synced_at' => now(),
                     ]);
                     $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
+
+                    return;
+                }
+
+                if ($this->support->isStaleProviderEvent($lockedMeeting, $occurredAt)) {
+                    $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_local_operation', $userUuid);
 
                     return;
                 }

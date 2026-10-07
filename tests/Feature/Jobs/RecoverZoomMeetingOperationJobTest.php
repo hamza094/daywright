@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\Jobs;
 
 use App\Actions\Meetings\PerformZoomMeetingRecovery;
+use App\Actions\Webhooks\Zoom\HandleMeetingUpdatedWebhook;
+use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Jobs\RecoverZoomMeetingOperationJob;
@@ -58,6 +60,35 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
         $this->assertEquals('New Topic', $meeting->topic);
         $this->assertEquals(45, $meeting->duration);
         $this->assertEquals(MeetingSyncStatus::Active, $meeting->sync_status);
+    }
+
+    /** @test */
+    public function delayed_webhook_cannot_overwrite_an_update_completed_by_recovery(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 124,
+            'topic' => 'Old Topic',
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'op-124',
+            'sync_payload' => json_encode(['topic' => 'Recovered Update B']),
+            'sync_claim_token' => 'claim-token',
+            'sync_started_at' => now(),
+            'sync_lease_expires_at' => now()->addMinutes(5),
+            'last_zoom_event_timestamp' => null,
+        ]);
+        $oldWebhookTimestamp = (int) now()->subSeconds(5)->valueOf();
+        $this->zoom = $this->fakeZoom()->findsMeeting($this->zoomMeeting(124, 'Recovered Update B', 30));
+
+        (new RecoverZoomMeetingOperationJob($meeting->id, 'op-124', 'claim-token'))
+            ->handle($this->zoom, app(PerformZoomMeetingRecovery::class));
+
+        app(HandleMeetingUpdatedWebhook::class)->handle(
+            new MeetingUpdatedWebhookData(124, ['topic' => 'Delayed Update A'], 'delayed-update-a'),
+            $oldWebhookTimestamp,
+        );
+
+        $this->assertSame('Recovered Update B', $meeting->refresh()->topic);
     }
 
     /** @test */

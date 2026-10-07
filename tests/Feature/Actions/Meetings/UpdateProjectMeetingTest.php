@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Actions\Meetings;
 
 use App\Actions\Meetings\UpdateProjectMeeting;
+use App\Actions\Webhooks\Zoom\HandleMeetingUpdatedWebhook;
 use App\DataTransferObjects\Zoom\MeetingUpdateData;
+use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
@@ -13,6 +15,7 @@ use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Tests\Support\Meeting\MeetingTestHelper;
@@ -202,26 +205,68 @@ final class UpdateProjectMeetingTest extends TestCase
     /** @test */
     public function password_payload_is_never_written_to_logs(): void
     {
+        $sentinelPassword = 'password-that-must-not-appear-in-logs';
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'topic' => 'Old Topic',
         ]);
 
         $data = new MeetingUpdateData(
             topic: 'New Topic',
-            password: 'secret123',
+            password: $sentinelPassword,
         );
 
-        $this->action->handle($meeting, $this->user, $data, $this->zoom);
+        Log::spy();
+        $this->zoom->shouldFailWithException(new ZoomException('Zoom rejected the update', 400));
+
+        try {
+            $this->action->handle($meeting, $this->user, $data, $this->zoom);
+            $this->fail('Expected ZoomException to be thrown.');
+        } catch (ZoomException) {
+            // The failure path emits an operational warning that must not expose the password.
+        }
 
         $this->assertDatabaseHas('meetings', [
             'id' => $meeting->id,
-            'topic' => 'New Topic',
+            'topic' => 'Old Topic',
+            'sync_status' => MeetingSyncStatus::UpdateFailed->value,
         ]);
 
-        // Verify password is not in sync_payload after completion (it should be null)
-        $meeting->refresh();
-        $this->assertNull($meeting->sync_payload);
-        $this->assertNull($meeting->sync_error);
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->withArgs(function (string $message, array $context) use ($sentinelPassword): bool {
+                return ! str_contains($message, $sentinelPassword)
+                    && ! str_contains((string) json_encode($context), $sentinelPassword);
+            });
+    }
+
+    /** @test */
+    public function delayed_webhook_before_a_successful_api_update_cannot_overwrite_local_values(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'topic' => 'Original Topic',
+            'last_zoom_event_timestamp' => null,
+        ]);
+        $oldWebhookTimestamp = (int) now()->subSeconds(5)->valueOf();
+
+        $this->action->handle(
+            $meeting,
+            $this->user,
+            new MeetingUpdateData(topic: 'API Update B'),
+            $this->zoom,
+        );
+
+        $this->assertNull($meeting->refresh()->last_zoom_event_timestamp);
+
+        app(HandleMeetingUpdatedWebhook::class)->handle(
+            new MeetingUpdatedWebhookData(
+                meetingId: $meeting->meeting_id,
+                changes: ['topic' => 'Delayed Update A'],
+                requestId: 'delayed-update-a',
+            ),
+            $oldWebhookTimestamp,
+        );
+
+        $this->assertSame('API Update B', $meeting->refresh()->topic);
     }
 
     /** @test */

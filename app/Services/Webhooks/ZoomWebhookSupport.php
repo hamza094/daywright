@@ -54,14 +54,19 @@ final readonly class ZoomWebhookSupport
     }
 
     /**
-     * Provider events are strictly ordered by their provider timestamp.
+     * Provider events are ordered by their provider timestamp. A completed
+     * local operation also fences callbacks that occurred before it began.
      * Delete handlers may opt into equal timestamps so a distinct delete wins
      * an update/delete tie; inbox event keys still handle true duplicates.
      */
-    public function isStaleProviderEvent(Meeting $meeting, ?int $occurredAt, bool $allowEqualTimestamp = false): bool
-    {
-        // Provider timestamps are stored in milliseconds. Local processing time
-        // must not participate in provider-event ordering.
+    public function isStaleProviderEvent(
+        Meeting $meeting,
+        ?int $occurredAt,
+        bool $allowEqualTimestamp = false,
+        bool $ignoreLocalOperationBarrier = false,
+    ): bool {
+        // Provider timestamps are stored in milliseconds. Webhook processing
+        // time must never participate in ordering.
         if ($occurredAt === null) {
             return true;
         }
@@ -73,7 +78,14 @@ final readonly class ZoomWebhookSupport
             return true;
         }
 
-        return false;
+        if ($ignoreLocalOperationBarrier || $meeting->sync_started_at === null) {
+            return false;
+        }
+
+        // sync_started_at records when the most recent local Zoom operation
+        // began. It persists after completion, unlike synced_at, which records
+        // only when this application processed a result.
+        return $occurredAt <= (int) $meeting->sync_started_at->valueOf();
     }
 
     public function userUuid(Meeting $meeting): ?string
