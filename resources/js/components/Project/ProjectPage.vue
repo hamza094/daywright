@@ -394,7 +394,7 @@ export default {
 
   methods: {
     ...mapActions('project', ['loadProject']),
-    ...mapMutations('project', ['aboutUpdate']),
+    ...mapMutations('project', ['aboutUpdate', 'updateProjectVersion']),
 
     openProjectChat() {
       if (!this.project || !this.project.slug) {
@@ -457,6 +457,7 @@ export default {
       axios
         .patch(`/projects/${this.project.slug}`, {
           name: this.projectname,
+          version: this.project.version,
         })
         .then((response) => {
           const project = getObjectData(response);
@@ -468,12 +469,17 @@ export default {
             'Project name updated.',
           );
           this.updateUrl(project.slug || this.project.slug);
+          this.updateProjectVersion(project.version);
         })
         .catch((error) => {
           this.$Progress.fail();
           this.nameEdit = false;
           this.projectname = this.project.name;
           this.showError(error);
+          // Handle version conflict (409)
+          if (error.response?.status === 409) {
+            this.$vToastify.error('Project was modified by another user. Please refresh and try again.');
+          }
         });
     },
     updateUrl(slug) {
@@ -502,6 +508,7 @@ export default {
       axios
         .patch(`/projects/${this.project.slug}`, {
           about: this.projectabout,
+          version: this.project.version,
         })
         .then((response) => {
           this.$Progress.finish();
@@ -510,6 +517,7 @@ export default {
           this.aboutUpdate(project.about);
           this.projectabout = project.about;
           this.aboutEdit = false;
+          this.updateProjectVersion(project.version);
           this.$vToastify.success('Project details updated.');
         })
         .catch((error) => {
@@ -517,6 +525,10 @@ export default {
           this.aboutEdit = false;
           this.projectabout = this.project.about;
           this.showError(error);
+          // Handle version conflict (409)
+          if (error.response?.status === 409) {
+            this.$vToastify.error('Project was modified by another user. Please refresh and try again.');
+          }
         });
     },
 

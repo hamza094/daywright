@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api\V1\Admin;
 
 use App\DataTransferObjects\Admin\BulkDeleteData;
+use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Foundation\Http\FormRequest;
 use Override;
 
+#[SchemaName('ProjectBulkDeleteRequestData')]
 class ProjectBulkDeleteRequest extends FormRequest
 {
     public function authorize(): bool
@@ -21,8 +23,8 @@ class ProjectBulkDeleteRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_ids' => ['required', 'array', 'min:1', 'max:200'],
-            'project_ids.*' => ['required', 'integer', 'distinct', 'exists:projects,id'],
+            'ids' => ['required', 'array', 'min:1', 'max:200'],
+            'ids.*' => ['required', 'integer', 'distinct', 'exists:projects,id'],
         ];
     }
 
@@ -33,18 +35,18 @@ class ProjectBulkDeleteRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'project_ids.required' => 'Please provide at least one project id.',
-            'project_ids.array' => 'Project ids must be provided as an array.',
-            'project_ids.min' => 'Please provide at least one project id.',
-            'project_ids.max' => 'You can delete up to 200 projects per request.',
-            'project_ids.*.integer' => 'Each project id must be an integer.',
-            'project_ids.*.distinct' => 'Duplicate project ids are not allowed.',
-            'project_ids.*.exists' => 'One or more selected projects do not exist.',
+            'ids.required' => 'Please provide at least one project id.',
+            'ids.array' => 'Project ids must be provided as an array.',
+            'ids.min' => 'Please provide at least one project id.',
+            'ids.max' => 'You can delete up to 200 projects per request.',
+            'ids.*.integer' => 'Each project id must be an integer.',
+            'ids.*.distinct' => 'Duplicate project ids are not allowed.',
+            'ids.*.exists' => 'One or more selected projects do not exist.',
         ];
     }
 
     public function toDto(): BulkDeleteData
     {
-        return BulkDeleteData::fromIds($this->validated()['project_ids']);
+        return BulkDeleteData::fromIds($this->validated()['ids']);
     }
 }

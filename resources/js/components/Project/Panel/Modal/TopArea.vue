@@ -60,7 +60,7 @@ export default {
   },
   created() {},
   methods: {
-    ...mapMutations('SingleTask', ['setErrors', 'updateTaskTitle', 'setForm']),
+    ...mapMutations('SingleTask', ['setErrors', 'updateTaskTitle', 'updateTaskVersion', 'setForm']),
 
     ...mapMutations('task', ['updateTask']),
 
@@ -70,7 +70,7 @@ export default {
       }
 
       axios
-        .put(url(this.slug, id), { title: this.form.title }, { useProgress: true })
+        .patch(url(this.slug, id), { title: this.form.title, version: this.task.version }, { useProgress: true })
         .then((response) => {
           const taskData = getObjectData(response);
 
@@ -78,11 +78,15 @@ export default {
           this.editing = false;
           this.setErrors({});
           this.updateTaskTitle(taskData.title);
+          this.updateTaskVersion(taskData.version);
           this.updateTask(taskData);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
           this.setErrors(parseApiError(error).errors);
+          if (error.response?.status === 409) {
+            this.$vToastify.error('Task was modified by another user. Please refresh and try again.');
+          }
         });
     },
 

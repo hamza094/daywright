@@ -293,6 +293,36 @@ class UsersTest extends TestCase
     }
 
     #[Test]
+    public function users_pagination_links_preserve_filter_sort_and_page_size(): void
+    {
+        $admin = $this->createAdminUser();
+        $this->enableTwoFactorForUser($admin);
+
+        $first = $this->createUser(['name' => 'Pagination Alpha']);
+        $this->createUser(['name' => 'Pagination Beta']);
+        $this->createUser(['name' => 'Unrelated User']);
+
+        $this->actingAs($admin, 'web');
+
+        $response = $this->getJson($this->apiV1AdminRoute('users.index', query: [
+            'filter' => ['search' => 'Pagination'],
+            'sort' => 'name',
+            'per_page' => 1,
+        ]))->assertOk();
+
+        $nextUrl = $response->json('links.next');
+        $this->assertNotNull($nextUrl);
+        $this->assertStringContainsString('filter%5Bsearch%5D=Pagination', $nextUrl);
+        $this->assertStringContainsString('sort=name', $nextUrl);
+        $this->assertStringContainsString('per_page=1', $nextUrl);
+
+        $nextResponse = $this->getJson($nextUrl)->assertOk();
+        $nextResponse->assertJsonCount(1, 'data')
+            ->assertJsonPath('meta.per_page', 1);
+        $this->assertNotSame($first->uuid, $nextResponse->json('data.0.uuid'));
+    }
+
+    #[Test]
     public function users_index_search_treats_sql_wildcards_as_literals(): void
     {
         $admin = $this->createAdminUser();

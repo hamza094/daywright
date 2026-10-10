@@ -58,7 +58,8 @@ class VonageSmsService
                 'message_id' => $message->id,
                 'recipient' => $recipient,
                 'vonage_status' => $msg?->getStatus(),
-                'exception' => $e,
+                'exception_class' => $e::class,
+                'exception_code' => $e->getCode(),
             ]);
             throw $e;
         }

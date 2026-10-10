@@ -8,6 +8,7 @@
   ],
   "license": "MIT",
   "require": {
+    "cweagans/composer-patches": "^2.0",
     "php": "^8.3",
     "barryvdh/laravel-debugbar": "^3.5",
     "bugsnag/bugsnag-laravel": "^2.0",
@@ -65,7 +66,8 @@
     "preferred-install": "dist",
     "sort-packages": true,
     "allow-plugins": {
-      "php-http/discovery": true
+      "php-http/discovery": true,
+      "cweagans/composer-patches": true
     }
   },
   "extra": {
@@ -73,6 +75,11 @@
       "dont-discover": [
         "laravel/telescope"
       ]
+    },
+    "patches": {
+      "wendelladriel/laravel-idempotency": {
+        "Harden request identity and processing locks": "patches/laravel-idempotency-resource-fingerprint.patch"
+      }
     }
   },
   "autoload": {

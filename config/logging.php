@@ -71,6 +71,7 @@ return [
             'level' => 'debug',
             'days' => 14,
             'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
 
         'slack' => [
@@ -79,6 +80,7 @@ return [
             'username' => 'Laravel Log',
             'emoji' => ':boom:',
             'level' => 'critical',
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
 
         'papertrail' => [
@@ -89,6 +91,7 @@ return [
                 'host' => env('PAPERTRAIL_URL'),
                 'port' => env('PAPERTRAIL_PORT'),
             ],
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
 
         'stderr' => [
@@ -98,16 +101,19 @@ return [
             'with' => [
                 'stream' => 'php://stderr',
             ],
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
 
         'syslog' => [
             'driver' => 'syslog',
             'level' => 'debug',
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
 
         'errorlog' => [
             'driver' => 'errorlog',
             'level' => 'debug',
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
 
         'null' => [
@@ -122,11 +128,13 @@ return [
             'driver' => 'single',
             'path' => storage_path('logs/webhook.log'),
             'level' => 'debug',
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
         'zoom' => [
             'driver' => 'single',
             'path' => storage_path('logs/zoom.log'),
             'level' => env('LOG_ZOOM_LEVEL', 'info'),
+            'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
         'zoom_webhook_failed' => [
             'driver' => 'daily',

@@ -133,7 +133,8 @@ class Handler extends ExceptionHandler
     private function recordExceptionMetric(ApiException $e): void
     {
         $context = [
-            'exception' => $e,
+            'exception_class' => $e::class,
+            'exception_code' => $e->getCode(),
             'code' => $e->errorCode(),
             'status' => $e->status(),
             'message' => $e->publicMessage(),
@@ -164,7 +165,8 @@ class Handler extends ExceptionHandler
             ? ZoomLogContext::forRequest($request, $e)
             : ['provider' => 'zoom'];
 
-        $context['exception'] = $e;
+        $context['exception_class'] = $e::class;
+        $context['exception_code'] = $e->getCode();
         $context['code'] = $e->errorCode();
         $context['status'] = $e->status();
         $context['message'] = $e->publicMessage();

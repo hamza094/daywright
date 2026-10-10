@@ -101,7 +101,7 @@ export default {
     // 2FA Operations
     async checkTwoFactorStatus() {
       await this.handleTwoFactorApiCall(
-        () => this.$axios.get('/twofactor/fetch-user'),
+        () => this.$axios.get('/twofactor/status'),
         (res) => {
           const twoFactor = parseTwoFactorResponse(res);
           this.twoFactorStatus = twoFactor.state;

@@ -26,29 +26,31 @@ Route::prefix('users/me')->name('users.me.')->group(function (): void {
 
     Route::singleton('subscription', SubscriptionController::class)
         ->creatable()
+        ->except(['create', 'edit'])
         ->middlewareFor('show', ['tokenAbility:account:read'])
         ->middlewareFor('store', ['session.auth', Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-billing'])
-        ->middlewareFor(['update', 'destroy'], ['session.auth', 'subscription', Idempotent::using(scope: IdempotencyScope::User), 'throttle:sensitive-billing']);
+        ->middlewareFor('update', ['session.auth', 'subscription', 'throttle:sensitive-billing'])
+        ->middlewareFor('destroy', ['session.auth', 'subscription', 'throttle:sensitive-billing']);
 });
 
 Route::apiResource('/users', UserController::class)
     ->except(['index', 'store'])
     ->middlewareFor(['show'], 'tokenAbility:team:read')
-    ->middlewareFor(['update'], 'tokenAbility:team:write')
-    ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'tokenAbility:team:write']);
+    ->middlewareFor(['update'], 'tokenAbility:account:write')
+    ->middlewareFor(['destroy'], ['firstParty.auth', 'throttle:sensitive-destructive']);
 
 Route::delete('/users/{user}/force', ForceDeleteUserController::class)
-    ->middleware(['throttle:sensitive-destructive', 'tokenAbility:team:write'])
+    ->middleware(['firstParty.auth', 'throttle:sensitive-destructive'])
     ->name('users.forceDestroy')
     ->withTrashed();
 
 Route::group(['prefix' => 'users/{user}'], function (): void {
 
     Route::delete('/avatar', [AvatarController::class, 'destroy'])
-        ->middleware('tokenAbility:team:write')
+        ->middleware('tokenAbility:account:write')
         ->name('user.avatar.remove');
 
     Route::post('/avatar', [AvatarController::class, 'store'])
-        ->middleware(['throttle:sensitive-upload', 'tokenAbility:team:write'])
+        ->middleware(['throttle:sensitive-upload', 'tokenAbility:account:write'])
         ->name('user.avatar');
 });

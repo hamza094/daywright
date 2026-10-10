@@ -45,6 +45,23 @@ class ZoomException extends ApiException
     }
 
     /**
+     * @return array<string, string>
+     */
+    #[Override]
+    public function headers(): array
+    {
+        $retryAfter = $this->context['retry_after_seconds'] ?? null;
+
+        if (! is_int($retryAfter) || $retryAfter <= 0) {
+            return [];
+        }
+
+        return [
+            'Retry-After' => (string) $retryAfter,
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $context
      */
     public function withContext(array $context): static

@@ -13,7 +13,6 @@ final readonly class NotificationActorData
         public string $name,
         public ?string $username,
         public ?string $avatarPath,
-        public string $email,
     ) {}
 
     public static function fromUser(User $user): self
@@ -23,12 +22,11 @@ final readonly class NotificationActorData
             name: $user->name,
             username: $user->username,
             avatarPath: $user->avatar_path,
-            email: $user->email,
         );
     }
 
     /**
-     * @return array{uuid: string, name: string, username: string|null, avatar_path: string|null, email: string}
+     * @return array{uuid: string, name: string, username: string|null, avatar_path: string|null}
      */
     public function toArray(): array
     {
@@ -37,7 +35,6 @@ final readonly class NotificationActorData
             'name' => $this->name,
             'username' => $this->username,
             'avatar_path' => $this->avatarPath,
-            'email' => $this->email,
         ];
     }
 }

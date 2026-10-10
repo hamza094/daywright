@@ -45,6 +45,67 @@ final readonly class ZoomWebhookSupport
         return Meeting::where('meeting_id', $meetingId)->first();
     }
 
+    public function lockMeeting(Meeting $meeting): Meeting
+    {
+        // Read the latest row while holding its lock before making a state change.
+        return Meeting::query()
+            ->whereKey($meeting->getKey())
+            ->lockForUpdate()
+            ->firstOrFail();
+    }
+
+    /**
+     * Provider events are ordered only by their provider timestamp.
+     * Delete handlers may opt into equal timestamps so a distinct delete wins
+     * an update/delete tie; inbox event keys still handle true duplicates.
+     */
+    public function isStaleProviderEvent(
+        Meeting $meeting,
+        ?int $occurredAt,
+        bool $allowEqualTimestamp = false,
+    ): bool {
+        // Use Zoom's event time to order events. The time our app handles the
+        // webhook does not tell us when Zoom made the change.
+        if ($occurredAt === null) {
+            return true;
+        }
+
+        if ($meeting->last_zoom_event_timestamp !== null
+            && ($allowEqualTimestamp
+                ? $occurredAt < $meeting->last_zoom_event_timestamp
+                : $occurredAt <= $meeting->last_zoom_event_timestamp)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    public function requiresZoomReconciliation(Meeting $meeting, ?int $occurredAt): bool
+    {
+        // A cutoff means “check Zoom for the latest values,” not “ignore this event.”
+        if ($occurredAt === null) {
+            return false;
+        }
+
+        if ($meeting->last_zoom_event_timestamp !== null && $occurredAt === $meeting->last_zoom_event_timestamp) {
+            return true;
+        }
+
+        return $meeting->sync_reconcile_before_at !== null
+            && $occurredAt <= (int) $meeting->sync_reconcile_before_at->valueOf();
+    }
+
+    public function predatesPendingOperation(Meeting $meeting, ?int $occurredAt): bool
+    {
+        if ($occurredAt === null || $meeting->sync_started_at === null) {
+            return false;
+        }
+
+        // Zoom times can tie within one second. A tie cannot prove this event
+        // belongs to the current update, so leave the operation pending.
+        return $occurredAt <= (int) $meeting->sync_started_at->valueOf();
+    }
+
     public function userUuid(Meeting $meeting): ?string
     {
         return $meeting->user()->value('uuid') ?: null;
@@ -52,6 +113,7 @@ final readonly class ZoomWebhookSupport
 
     public function ensureActiveSyncStatus(string $operation, Meeting $meeting, int|string $meetingId, ?string $requestId, ?string $userUuid): bool
     {
+        // Ignore update events once the meeting is no longer in a state that accepts them.
         if (! $meeting->sync_status->acceptsZoomRuntimeWebhook()) {
             $this->logger->logWebhookIgnored($operation, $meetingId, $requestId, 'inactive_sync_status', $userUuid);
 

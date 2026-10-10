@@ -124,7 +124,7 @@ export default {
 
     getResults(page) {
       const slug = this.$route.params.slug;
-      this.fetchTasks({ slug, page });
+      this.fetchTasks({ slug, page, isArchived: this.state === 'archived' });
     },
 
     archiveTasks() {

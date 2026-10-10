@@ -40,7 +40,10 @@ class RecalculateAllProjectHealth extends Command
                     RecalculateProjectHealth::dispatch($project->id)->onQueue($queue);
                     $dispatched++;
                 } catch (Throwable $e) {
-                    Log::error('Failed to dispatch RecalculateProjectHealth for project '.$project->id, ['exception' => $e]);
+                    Log::error('Failed to dispatch RecalculateProjectHealth for project '.$project->id, [
+                        'exception_class' => $e::class,
+                        'exception_code' => $e->getCode(),
+                    ]);
                 }
             }
         });

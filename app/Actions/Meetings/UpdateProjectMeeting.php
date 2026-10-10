@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Meetings;
 
 use App\Actions\Meetings\Concerns\MeetingLockOperations;
+use App\Actions\Meetings\Concerns\MeetingOperationValidation;
 use App\DataTransferObjects\Zoom\MeetingUpdateData;
+use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
+use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\User;
@@ -15,11 +20,15 @@ use App\Services\Project\MeetingSyncErrorFormatter;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use RuntimeException;
 use Throwable;
+
+use function Safe\json_encode;
 
 final readonly class UpdateProjectMeeting
 {
-    use MeetingLockOperations;
+    use MeetingLockOperations, MeetingOperationValidation;
 
     public function __construct(
         private MeetingOperationLock $locks,
@@ -33,68 +42,161 @@ final readonly class UpdateProjectMeeting
             key: $this->meetingLockKey($meeting),
             conflictMessage: 'This meeting is currently being updated. Please retry.',
             callback: function () use ($meeting, $user, $data, $zoom): Meeting {
-                $currentMeeting = $this->findMeetingOrFail($meeting);
+                $operationId = Str::uuid()->toString();
+                $payload = json_encode($data->toArray());
+
+                $lockedMeeting = $this->saveUpdateIntent($meeting, $operationId, $payload);
 
                 try {
-                    $this->markMeetingAsUpdating($currentMeeting);
-                    $this->updateInZoom($currentMeeting, $data, $user, $zoom);
+                    $this->updateInZoom($lockedMeeting, $data, $user, $zoom);
 
-                    return $this->markMeetingAsUpdated($currentMeeting, $data);
+                    if ($this->isPasswordOperation($data)) {
+                        $this->schedulePasswordVerification($lockedMeeting, $operationId);
+
+                        return $lockedMeeting->refresh();
+                    }
+
+                    return $this->applyUpdateLocally($lockedMeeting, $data, $operationId);
+                } catch (ZoomMeetingOperationUnknownException $exception) {
+                    $this->markUpdateUnknownAndScheduleRecovery($lockedMeeting, $operationId, $exception);
+                    throw $exception;
+                } catch (ZoomRateLimitException $exception) {
+                    $this->rollbackToActive($lockedMeeting, $operationId);
+                    throw $exception;
+                } catch (ZoomException $exception) {
+                    $this->markUpdateFailed($lockedMeeting, $operationId, $exception);
+                    throw $exception;
                 } catch (Throwable $exception) {
-                    $this->markMeetingAsUpdateFailed($currentMeeting, $exception);
+                    report($exception);
                     throw $exception;
                 }
             },
         );
     }
 
-    private function markMeetingAsUpdating(Meeting $meeting): void
+    private function saveUpdateIntent(Meeting $meeting, string $operationId, string $payload): Meeting
     {
-        DB::transaction(function () use ($meeting): void {
+        return DB::transaction(function () use ($meeting, $operationId, $payload): Meeting {
             $lockedMeeting = $this->lockMeeting($meeting);
-            $lockedMeeting->transitionTo(MeetingSyncStatus::Updating, 'sync_status');
-            $lockedMeeting->update(['sync_error' => null]);
-        }, attempts: $this->transactionRetryAttempts);
-    }
 
-    private function updateInZoom(Meeting $meeting, MeetingUpdateData $data, User $user, Zoom $zoom): void
-    {
-        try {
-            $zoom->updateMeeting($data->toArray() + ['meeting_id' => $meeting->meeting_id], $user);
-        } catch (Throwable $exception) {
-            Log::error('Zoom API meeting update failed', [
-                'meeting_id' => $meeting->id,
-                'zoom_meeting_id' => $meeting->meeting_id,
-                'user_id' => $user->id,
-                'exception' => $exception,
-            ]);
-            throw $exception;
-        }
-    }
+            if ($lockedMeeting->sync_status !== MeetingSyncStatus::Active
+                && $lockedMeeting->sync_status !== MeetingSyncStatus::UpdateFailed) {
+                throw new RuntimeException('Meeting must be active or update_failed to update');
+            }
 
-    private function markMeetingAsUpdated(Meeting $meeting, MeetingUpdateData $data): Meeting
-    {
-        return DB::transaction(function () use ($meeting, $data): Meeting {
-            $lockedMeeting = $this->lockMeeting($meeting);
-            $lockedMeeting->transitionTo(MeetingSyncStatus::Active, 'sync_status');
-            $lockedMeeting->update(Arr::except($data->toArray(), ['sync_status']) + [
+            $lockedMeeting->update([
+                'sync_operation_id' => $operationId,
+                'sync_operation_type' => MeetingSyncOperationType::Update,
+                'sync_payload' => $payload,
+                'sync_status' => MeetingSyncStatus::Updating,
+                'sync_started_at' => now(),
+                'sync_lease_expires_at' => now()->addMinutes(5),
+                'sync_attempts' => 0,
+                'sync_claim_token' => null,
+                'sync_available_at' => null,
                 'sync_error' => null,
-                'synced_at' => now(),
             ]);
 
             return $lockedMeeting;
         }, attempts: $this->transactionRetryAttempts);
     }
 
-    private function markMeetingAsUpdateFailed(Meeting $meeting, Throwable $exception): void
+    private function updateInZoom(Meeting $meeting, MeetingUpdateData $data, User $user, Zoom $zoom): void
     {
-        DB::transaction(function () use ($meeting, $exception): void {
-            $lockedMeeting = $this->lockMeeting($meeting);
-            $lockedMeeting->transitionTo(MeetingSyncStatus::UpdateFailed, 'sync_status');
+        $zoom->updateMeeting($data->toArray() + ['meeting_id' => $meeting->meeting_id], $user);
+    }
+
+    private function applyUpdateLocally(Meeting $meeting, MeetingUpdateData $data, string $operationId): Meeting
+    {
+        return $this->executeWithOperationIdCheck($meeting, $operationId, 'local apply', function (Meeting $lockedMeeting) use ($data): Meeting {
+            $lockedMeeting->update(Arr::except($data->toArray(), ['sync_status']) + [
+                'sync_status' => MeetingSyncStatus::Active,
+                'sync_operation_id' => null,
+                'sync_operation_type' => null,
+                'sync_payload' => null,
+                'sync_error' => null,
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+                'synced_at' => now(),
+                'sync_reconcile_before_at' => now(),
+            ]);
+
+            return $lockedMeeting;
+        });
+    }
+
+    /**
+     * After a successful password PATCH, leave the operation open so recovery can
+     * do a GET and save the new join_url from Zoom's own response. We clear the
+     * claim and lease so the scheduler can reclaim it in ~1 minute, but we keep
+     * the operation ID and encrypted payload so recovery knows what to verify.
+     */
+    private function schedulePasswordVerification(Meeting $meeting, string $operationId): void
+    {
+        $this->executeWithOperationIdCheck($meeting, $operationId, 'schedule password verification', function (Meeting $lockedMeeting): void {
             $lockedMeeting->update([
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+                'sync_available_at' => now()->addMinute(),
+                'sync_error' => null,
+            ]);
+        });
+    }
+
+    private function isPasswordOperation(MeetingUpdateData $data): bool
+    {
+        return $data->password !== null;
+    }
+
+    private function markUpdateUnknownAndScheduleRecovery(Meeting $meeting, string $operationId, Throwable $exception): void
+    {
+        $this->executeWithOperationIdCheck($meeting, $operationId, 'update unknown', function (Meeting $lockedMeeting) use ($exception): void {
+            $lockedMeeting->update([
+                'sync_status' => MeetingSyncStatus::Updating,
                 'sync_error' => $this->errorFormatter->format($exception),
                 'sync_attempts' => DB::raw('sync_attempts + 1'),
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+                'sync_available_at' => now()->addMinute(),
             ]);
-        }, attempts: $this->transactionRetryAttempts);
+        });
+
+        report($exception);
+    }
+
+    private function rollbackToActive(Meeting $meeting, string $operationId): void
+    {
+        $this->executeWithOperationIdCheck($meeting, $operationId, 'rollback', function (Meeting $lockedMeeting): void {
+            $lockedMeeting->update([
+                'sync_status' => MeetingSyncStatus::Active,
+                'sync_operation_id' => null,
+                'sync_operation_type' => null,
+                'sync_payload' => null,
+                'sync_error' => null,
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+                'sync_available_at' => null,
+            ]);
+        });
+    }
+
+    private function markUpdateFailed(Meeting $meeting, string $operationId, ZoomException $exception): void
+    {
+        $this->executeWithOperationIdCheck($meeting, $operationId, 'update failure', function (Meeting $lockedMeeting) use ($exception): void {
+            $lockedMeeting->update([
+                'sync_status' => MeetingSyncStatus::UpdateFailed,
+                'sync_error' => $this->errorFormatter->format($exception),
+                'sync_attempts' => DB::raw('sync_attempts + 1'),
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+                'sync_available_at' => null,
+            ]);
+        });
+
+        Log::warning('Zoom API meeting update rejected', [
+            'meeting_id' => $meeting->id,
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
+        ]);
     }
 }

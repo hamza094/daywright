@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Actions\Webhooks\Zoom;
 
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
+use App\Interfaces\Zoom;
 use App\Models\Meeting;
+use App\Services\Webhooks\MeetingUpdateWebhookContext;
+use App\Services\Webhooks\ZoomMeetingUpdatedWebhookProcessor;
 use App\Services\Webhooks\ZoomWebhookSupport;
-use Carbon\Carbon;
+use RuntimeException;
 
 final readonly class HandleMeetingUpdatedWebhook
 {
@@ -15,59 +18,71 @@ final readonly class HandleMeetingUpdatedWebhook
 
     public function __construct(
         private ZoomWebhookSupport $support,
+        private ZoomMeetingUpdatedWebhookProcessor $processor,
+        private Zoom $zoom,
     ) {}
 
-    public function handle(MeetingUpdatedWebhookData $data): void
+    public function handle(MeetingUpdatedWebhookData $data, ?int $occurredAt = null): void
     {
-        $this->support->executeWithLogging(self::OPERATION, $data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data): void {
-            if (! $this->support->ensureActiveSyncStatus(self::OPERATION, $meeting, $data->meetingId, $data->requestId, $userUuid)) {
-                return;
-            }
+        $this->support->executeWithLogging(
+            self::OPERATION,
+            $data->meetingId,
+            $data->requestId,
+            function (Meeting $meeting, ?string $userUuid) use ($data, $occurredAt): void {
+                $context = $this->buildContext($meeting, $data, $occurredAt, $userUuid);
 
-            if (! $this->isMeetingUpdated($meeting, $data->changes)) {
-                $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'no_changes', $userUuid);
+                if ($context === null) {
+                    return;
+                }
 
-                return;
-            }
-
-            $meeting->update($data->changes);
-            $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
-        });
+                $this->processor->process(
+                    $meeting,
+                    $data,
+                    $occurredAt,
+                    $userUuid,
+                    $context,
+                );
+            },
+        );
     }
 
     /**
-     * @param  array<string, mixed>  $updateData
+     * Read Zoom before opening the database transaction. The processor checks
+     * that the meeting did not change while this request was in progress.
      */
-    private function isMeetingUpdated(Meeting $meeting, array $updateData): bool
-    {
-        foreach ($updateData as $key => $value) {
-            if ($this->hasChanged($meeting, $key, $value)) {
-                return true;
-            }
+    public function buildContext(
+        Meeting $meeting,
+        MeetingUpdatedWebhookData $data,
+        ?int $occurredAt,
+        ?string $userUuid,
+    ): ?MeetingUpdateWebhookContext {
+        if ($this->support->isStaleProviderEvent($meeting, $occurredAt, allowEqualTimestamp: true)) {
+            $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_provider_event', $userUuid);
+
+            return null;
         }
 
-        return false;
-    }
+        $needsZoomCheck = $this->support->requiresZoomReconciliation($meeting, $occurredAt)
+            || $this->processor->pendingUpdateMatchesEvent($meeting, $data->changes);
 
-    private function hasChanged(Meeting $meeting, string $key, mixed $value): bool
-    {
-        $current = $meeting->getAttribute($key);
-
-        if ($key === 'start_time') {
-            $currentIso = $current ? Carbon::parse($current)->toISOString() : null;
-            $valueIso = $value ? Carbon::parse($value)->toISOString() : null;
-
-            $changed = $currentIso !== $valueIso;
-        } elseif (is_bool($current) || is_bool($value)) {
-            // Normalize boolean/integer comparisons (1 === true, 0 === false)
-            $changed = (bool) $value !== (bool) $current;
-        } elseif (is_numeric($current) && is_numeric($value)) {
-            // Normalize integer/string comparisons for numeric fields
-            $changed = (int) $value !== (int) $current;
-        } else {
-            $changed = $value !== $current;
+        if ($needsZoomCheck && $meeting->meeting_id === null) {
+            throw new RuntimeException('Cannot reconcile a Zoom webhook without a Zoom meeting ID.');
         }
 
-        return $changed;
+        // Save the current operation details so we can detect changes made during the Zoom request.
+        $operationId = $meeting->sync_operation_id;
+        $cutoff = $meeting->sync_reconcile_before_at?->valueOf();
+        $providerWatermark = $meeting->last_zoom_event_timestamp;
+        $remoteMeeting = $needsZoomCheck
+            ? $this->zoom->getMeeting($meeting->meeting_id, $meeting->user)
+            : null;
+
+        return new MeetingUpdateWebhookContext(
+            needsZoomCheck: $needsZoomCheck,
+            zoomMeeting: $remoteMeeting,
+            operationId: $operationId,
+            reconcileBefore: $cutoff,
+            providerWatermark: $providerWatermark,
+        );
     }
 }

@@ -4,17 +4,24 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
+use App\QueryBuilder\MeetingBuilder;
 use App\Traits\HasStateMachine;
 use App\Traits\RecordActivity;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Override;
 
+/**
+ * @mixin MeetingBuilder
+ */
 class Meeting extends Model
 {
     use HasFactory, HasStateMachine, RecordActivity;
+
+    protected $dateFormat = 'Y-m-d H:i:s.v';
 
     protected $guarded = [];
 
@@ -36,9 +43,18 @@ class Meeting extends Model
         'start_url' => 'encrypted',
         'start_time' => 'datetime',
         'sync_status' => MeetingSyncStatus::class,
+        'sync_operation_type' => MeetingSyncOperationType::class,
+        'sync_payload' => 'encrypted',
         'synced_at' => 'datetime',
+        'sync_started_at' => 'datetime',
+        'sync_reconcile_before_at' => 'datetime',
+        'sync_lease_expires_at' => 'datetime',
+        'sync_available_at' => 'datetime',
+        'last_zoom_event_timestamp' => 'integer',
         'started_notification_sent_at' => 'datetime',
         'ended_notification_sent_at' => 'datetime',
+        'started_notification_pending_at' => 'datetime',
+        'ended_notification_pending_at' => 'datetime',
     ];
 
     /**
@@ -57,13 +73,19 @@ class Meeting extends Model
         return $this->belongsTo(Project::class);
     }
 
+    #[Override]
+    public function newEloquentBuilder($query): MeetingBuilder
+    {
+        return new MeetingBuilder($query);
+    }
+
     /**
      * @param  Builder<Meeting>  $query
      * @return Builder<Meeting>
      */
     public function scopePrevious(Builder $query): Builder
     {
-        return $query->where('start_time', '<', Carbon::now());
+        return $query->where('start_time', '<', now());
     }
 
     /**
@@ -72,7 +94,7 @@ class Meeting extends Model
      */
     public function scopeScheduled(Builder $query): Builder
     {
-        return $query->where('start_time', '>=', Carbon::now());
+        return $query->where('start_time', '>=', now());
     }
 
     /**
@@ -84,6 +106,29 @@ class Meeting extends Model
         return $query->where('sync_status', MeetingSyncStatus::Active);
     }
 
+    public function awaitsManualZoomRecovery(): bool
+    {
+        return $this->sync_status === MeetingSyncStatus::CreateUnknown
+            && $this->sync_available_at === null
+            && $this->sync_claim_token === null
+            && $this->sync_lease_expires_at === null;
+    }
+
+    public function isCreateOperation(): bool
+    {
+        return $this->sync_operation_type === MeetingSyncOperationType::Create;
+    }
+
+    public function isUpdateOperation(): bool
+    {
+        return $this->sync_operation_type === MeetingSyncOperationType::Update;
+    }
+
+    public function isDeleteOperation(): bool
+    {
+        return $this->sync_operation_type === MeetingSyncOperationType::Delete;
+    }
+
     /**
      * @return array<string, list<string>>
      */
@@ -91,6 +136,16 @@ class Meeting extends Model
     {
         return [
             MeetingSyncStatus::Pending->value => [
+                MeetingSyncStatus::Creating->value,
+                MeetingSyncStatus::Active->value,
+                MeetingSyncStatus::Failed->value,
+            ],
+            MeetingSyncStatus::Creating->value => [
+                MeetingSyncStatus::Active->value,
+                MeetingSyncStatus::Failed->value,
+                MeetingSyncStatus::CreateUnknown->value,
+            ],
+            MeetingSyncStatus::CreateUnknown->value => [
                 MeetingSyncStatus::Active->value,
                 MeetingSyncStatus::Failed->value,
             ],

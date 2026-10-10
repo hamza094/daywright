@@ -64,7 +64,8 @@ class QueuedVerifyEmailJob implements ShouldQueue
         Log::error('QueuedVerifyEmailJob failed', [
             'user_uuid' => $user?->uuid,
             'user_id' => $this->userId,
-            'exception' => $exception,
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
         ]);
     }
 }

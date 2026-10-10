@@ -31,7 +31,7 @@ class InvitationRepository
             ->where('id', '!=', $project->user_id)
             ->whereDoesntHave('members', fn (Builder $memberQuery) => $memberQuery->whereKey($project->id))
             ->whereAny(['name', 'email'], 'LIKE', $searchPattern)
-            ->select(['uuid', 'name', 'username', 'email', 'avatar_path'])
+            ->select(['id', 'uuid', 'name', 'username', 'email', 'avatar_path'])
             ->orderBy('name')
             ->limit(self::SEARCH_LIMIT)
             ->get();

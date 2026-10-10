@@ -19,11 +19,11 @@ This guide provides detailed instructions for deploying DayWright to production 
 
 ### Software Requirements
 
-- **PHP**: 8.2 or higher
+- **PHP**: 8.3 or higher
 - **Database**: MySQL 8.0+ or PostgreSQL 14+
 - **Redis**: 6.0+ (required for cache, queue locks, scheduler locks, rate limiting)
 - **Composer**: 2.x
-- **Node.js**: 18+ and npm 9+
+- **Node.js**: 20+ and npm 10+
 - **Web Server**: Nginx or Apache with mod_rewrite
 - **Supervisor**: For managing queue workers (recommended)
 
@@ -127,8 +127,10 @@ Set up automated backups:
 ```bash
 # Daily backup example (add to cron)
 # Use environment variables or a MySQL defaults file for credentials
-0 2 * * * mysqldump -u $DB_USER -p$DB_PASSWORD $DB_DATABASE > /backups/daywright_$(date +\%Y\%m\%d).sql
+0 2 * * * mysqldump --defaults-extra-file=/etc/daywright/mysql-backup.cnf daywright > "/backups/daywright_$(date +\%Y\%m\%d).sql"
 ```
+
+Replace `daywright` with the database name used by your deployment. Store credentials in the referenced defaults file with owner-only permissions (for example, mode `600`); do not place the password in the command line.
 
 ## Redis Configuration
 
@@ -208,14 +210,24 @@ php artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=1
 - `--timeout=120`: Maximum execution time per job (must be < retry_after)
 - `--max-time=3600`: Restart worker after 1 hour (prevents memory leaks)
 
+### PCNTL Requirement & Job Timeout Precedence
+
+- **PCNTL Extension Required**: The production PHP CLI runtime running queue workers MUST have the `pcntl` extension enabled. PCNTL is required for Laravel to handle signals (`SIGALRM`) and enforce timeouts. Without PCNTL, job timeouts are not enforced.
+- **Job Timeout Precedence**: Individual jobs can define a `$timeout` property that overrides the worker CLI `--timeout=120`. Specifically, `RecoverZoomMeetingOperationJob` defines `public int $timeout = 90;`, ensuring it terminates after 90 seconds even though the worker allows up to 120 seconds.
+- **Provider Request Timeout**: Zoom's HTTP client uses a 30-second request timeout. Because blocking network I/O may delay signal delivery, low client timeouts prevent workers from blocking past their deadlines.
+- **Supervisor Role**: Supervisor’s role is strictly process supervision and restarting workers when Laravel exits on timeout (`autorestart=true`). Do not treat `stopwaitsecs` as a per-job timeout; the configured 3600 seconds is shutdown grace.
+- **Provider Fencing Boundary**: This timing hierarchy (Zoom HTTP timeout 30s < job timeout 90s < worker timeout 120s < cache lock 120s < retry_after 150s < lease 300s) provides a bounded operational guarantee against stale workers. It is not absolute provider fencing, as Zoom does not receive or validate local claim tokens.
+
 ### Important: Timeout vs Retry After
 
 The queue `retry_after` configuration is set to 150 seconds. Worker `--timeout` must be **lower** than this to prevent jobs from being retried while still running:
 
 ```text
-retry_after (150s) > worker timeout (120s) ✅ CORRECT - safe
+retry_after (150s) > worker timeout (120s) > recovery job timeout (90s) ✅ CORRECT - safe
 retry_after (90s) < worker timeout (120s)  ❌ WRONG - causes duplicate executions
 ```
+
+All queue drivers (including Beanstalkd and SQS if used) must have retry / visibility timeouts configured above 120 seconds.
 
 ## Scheduler Configuration
 
@@ -233,11 +245,17 @@ The scheduler handles:
 
 - **Scheduled message dispatching**: Sends messages at their scheduled delivery time
 - **Failed job pruning**: Automatically removes failed jobs older than 7 days
-- **Other periodic tasks**: Future scheduled tasks
+- **Zoom recovery commands**: `webhooks:recover-pending` and `meetings:recover-pending --limit=25` run every minute with `withoutOverlapping(5)`. The 5-minute expiry prevents crashes from locking out recovery for Laravel's default 24-hour lock window.
 
-### Scheduler Locks
+### Scheduler Locks & Incident Recovery
 
-The scheduler uses Redis locks to prevent duplicate executions. Ensure Redis is running before the scheduler starts.
+The scheduler uses Redis locks (`onOneServer()`) to prevent duplicate executions across nodes. Shared Redis is required for production cache and locks; file-based cache is not suitable for multi-node deployments.
+
+During incident recovery, if an abandoned lock blocks scheduled commands after an abnormal termination, clear scheduler locks using:
+
+```bash
+php artisan schedule:clear-cache
+```
 
 ## Supervisor Setup
 
@@ -318,8 +336,9 @@ sudo supervisorctl status
 
    ```bash
    composer install --no-dev --optimize-autoloader
-   npm ci --production
+   npm ci
    npm run build
+   npm prune --omit=dev
    ```
 
 3. **Run migrations**:

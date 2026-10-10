@@ -1,354 +1,69 @@
 # Frontend Production Readiness Plan
 
-Updated: 2026-05-24
+Updated: 2026-09-30
 
-This plan is based on a fresh review of the current frontend codebase, not only the earlier audit snapshot.
-It is organized in phases so you can work through it one phase at a time.
+This is the single active frontend plan. It consolidates the API/frontend alignment plan, Phase 1 endpoint matrix, frontend/backend contract remediation plan, and the earlier frontend readiness review. Completed alignment work is intentionally omitted; historical checkboxes are not release evidence.
 
-## Current Review Summary
+## Current release verdict
 
-### What improved since the earlier audit
+**Not ready to ship yet.** Static review found launch-blocking frontend defects in task/project editing, form state, CSRF configuration, and undeclared runtime globals. The code audit did not exercise the browser against staging, so the release gate below still requires runtime evidence.
 
-- Response normalization is moving in the right direction through utility helpers such as auth, task, dashboard, and notification response parsers.
-- Some low-level frontend tests now exist under `resources/js/utils/` and `resources/js/services/`.
-- The production build currently completes successfully.
-- Some store and API parsing code is cleaner than before, especially in `currentUser`, `task`, and `notifications`.
+## P0 — Fix before production
 
-### What is still holding the frontend back
+| Finding                                                             | Current behavior                                                                                                                                                    | Required change                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Task title update omits concurrency version                         | `resources/js/components/Project/Panel/Modal/TopArea.vue` PATCHes only `title`; `TaskUpdateRequest` requires `version`.                                             | Send `task.version`, update local task/version from the wrapped response, and handle 409 `edit_conflict` with a clear reload/reconcile path.                                                                                                                                                                             |
+| Project notes update omits version and reads legacy response fields | `resources/js/components/Project/Panel/Features.vue` PATCHes only `notes`, then reads top-level `project` and `message`. `ProjectUpdateRequest` requires `version`. | Send current project version; parse the wrapped resource through the shared response utility; update project state/version; use local success text if the response has no message.                                                                                                                                       |
+| Task form mutation targets the wrong state property                 | `resources/js/store/SingleTask` implements `setForm` as `state.task = form`, while the form lives in `state.form`.                                                  | Set `state.form`; verify opening, editing, canceling, and closing a task modal do not replace or corrupt the task record or next edit payload.                                                                                                                                                                           |
+| Axios XSRF names are invalid                                        | `resources/js/bootstrap.js` sets `xsrfCookieName` and `xsrfHeaderName` to booleans.                                                                                 | Configure the actual cookie/header names used by the deployed Laravel/Sanctum setup and verify cookie acquisition, login, authenticated requests, logout, and CSRF rejection/recovery in a browser. Keep the client setup as small as possible; split clients only if a concrete cross-origin/base-URL need requires it. |
+| Runtime globals are undeclared                                      | `Register.vue` and `ResetPassword.vue` call `swal.fire`; `Dashboard/ProjectChart.vue` calls `new Chart` without an explicit import.                                 | Import and use the installed SweetAlert2 and Chart.js APIs explicitly (or a verified app-owned wrapper), then exercise registration, reset, and chart rendering at runtime.                                                                                                                                              |
+| Whole Vuex store is persisted                                       | `resources/js/store/index.js` applies `createPersistedState()` without a state allowlist.                                                                           | Stop persisting session/domain data, or restrict persistence to explicitly safe UI preferences. Clear relevant persisted state on logout and verify signing out/in as a different user cannot display the previous user's project, task, notification, or profile data.                                                  |
 
-- HTTP transport and CSRF/session configuration are still fragile.
-- The app still persists the entire Vuex store to browser storage.
-- Several important defects are runtime-only and are not caught by the current build.
-- Routing is still eager-loaded.
-- Large smart components still mix transport, state mutation, view logic, and side effects.
-- The current test work is not yet wired into a full frontend test workflow or release gate.
-- Event bus and global mixin coupling are still present.
+## P1 — Release verification (required before opening production traffic)
 
-### Important note from this review
+### API contract rules
 
-`npm run build` passes today.
-That means the highest-risk remaining issues are not simple compile-time failures.
-They are runtime correctness, state integrity, and maintainability problems that can still hurt production behavior.
+- Wrapped resources: use `getObjectData(response)` or `getResponseData(response)`; paginated collections: use `getPaginatedData(response)`; message-only responses: use `getResponseMessage(response)`; failures: use `parseApiError(error)`.
+- Do not add global response unwrapping or infer resource payloads from message-only responses.
+- Project and task PATCH requests require the latest `version`; stale writes return 409 `edit_conflict`. Refresh the resource and let the user retry/reconcile.
+- For pagination, send only validated canonical query values and follow returned `links.next`; preserve endpoint-specific compatibility such as meetings `request=previous`.
+- Add an `Idempotency-Key` only through the existing dedicated helper for routes that currently use backend idempotency middleware. Keep database operation idempotency authoritative for subscription flows; do not add a global header interceptor.
 
-## Priority Overview
+### Critical endpoint matrix
 
-| Phase | Focus                                         | Priority | Ship status                            |
-| ----- | --------------------------------------------- | -------- | -------------------------------------- |
-| 1     | Runtime transport and auth correctness        | Critical | Must finish before production          |
-| 2     | State integrity and persistence hardening     | Critical | Must finish before production          |
-| 3     | Runtime safety nets and release validation    | Critical | Must finish before production          |
-| 4     | API layer consolidation                       | High     | Strongly recommended before production |
-| 5     | Component decomposition and route performance | High     | Strongly recommended before production |
-| 6     | Hidden coupling cleanup and frontend polish   | Medium   | Can follow after launch                |
+Client paths below are relative to the configured API base URL unless marked as browser/session behavior. This is a compact production matrix, not an exhaustive route inventory.
 
-## Must Fix Before Production
+| Flow                                     | Endpoint(s)                                                                                                                                                                 | Success shape / critical constraint                                                                                                                         |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session/auth                             | `POST /session/login`, `POST /session/logout`, `GET /users/me`                                                                                                              | Login and current-user resources are wrapped; login may return `data.two_factor_state`; logout is message-only. Verify Sanctum cookie/CSRF behavior.        |
+| Two-factor                               | `POST /twofactor/login-confirm`, `GET /twofactor/status`, `POST /twofactor/setup`, `POST /twofactor/confirm`, `POST /twofactor/recovery-codes`, `DELETE /twofactor/disable` | Wrapped resources; status route is `/status`; recovery codes use POST. Challenge completion and authenticated settings have different session requirements. |
+| Email verification                       | `POST /email/verify/{user}`, `POST /email/resend`                                                                                                                           | Verify is wrapped; resend is message-only and has no `{user}` path segment. Check invalid/expired link and validation UX.                                   |
+| Projects/tasks                           | `PATCH /projects/{project}`, `PATCH /projects/{project}/stage`, `PATCH /projects/{project}/tasks/{task}`                                                                    | Wrapped resources; project/task edits require `version`; test success and stale-version conflict behavior.                                                  |
+| Task assignees                           | `POST /projects/{project}/tasks/{task}/assignees`, `DELETE /projects/{project}/tasks/{task}/assignees/{user}`                                                               | Assign is idempotent; removal is not. Frontend paths must remain REST-style.                                                                                |
+| Meetings                                 | `POST /projects/{project}/meetings`, `PATCH /projects/{project}/meetings/{meeting}`                                                                                         | Wrapped resources; client mutations use dedicated idempotency requests. Include duplicate-submit and provider-error/retry smoke checks.                     |
+| Collections                              | Projects, dashboard tasks/activities, invitations, notifications, admin lists                                                                                               | Native paginated responses are `{ data, meta, links }`; preserve validated filters/sort/page size when following pagination links.                          |
+| Subscription/tokens/invitations/messages | See registered routes and `resources/js/services/idempotencyCoverage.test.js`                                                                                               | Match the current endpoint method, payload, response type, auth boundary, and backend idempotency middleware. Do not assume every mutation is idempotent.   |
 
-These phases are production gates.
-Do not ship until they are complete.
-
-## Phase 1 - Runtime Transport and Auth Correctness
+### Pre-release checklist
 
-Priority: Critical  
-Ship status: Must finish before production
+- [ ] Fix every P0 item and add focused regression coverage for each corrected behavior.
+- [ ] Run `npm test`, `npm run lint`, and `npm run build`; investigate failures rather than treating build success as runtime proof.
+- [ ] Smoke-test registration, login, logout, password reset, email verification/resend, 2FA challenge and settings, dashboard/chart, project/task CRUD and edits, invitations, meetings, notifications, subscriptions, tokens, and admin access in production-like staging.
+- [ ] For task/project edits, confirm success updates the local version; submit a stale version and confirm 409 recovery works without silently losing the user's changes.
+- [ ] Verify no cross-account domain data survives logout/login; check persisted browser storage directly.
+- [ ] Check browser console/network output for failed requests, unhandled promise rejections, cookie/CORS/CSRF issues, and broken asset URLs.
+- [ ] Confirm production API base URL, HTTPS, cookie domain/SameSite/Secure settings, CSRF, CORS, websocket/Pusher configuration, and public asset build configuration.
+- [ ] Record staging environment, build identifier, commands/results, smoke-test outcomes, and any open provider/infrastructure checks. Leave unavailable real-provider checks explicitly open.
 
-### Why this phase is first
+## P2 — Can follow after launch
 
-- Authentication and session correctness are foundational.
-- Current issues here are runtime issues, not build issues.
-- If this layer is unreliable, every later frontend improvement is built on unstable behavior.
+These are valuable maintenance/performance improvements but are not release blockers unless they reveal a concrete defect:
 
-### Verified current issues
+- Centralize more Axios calls in domain services and reduce transport/payload logic in components.
+- Lazy-load route components and split large smart components such as `ProjectPage.vue`, `Subscription.vue`, and `TwoFactorAuth.vue`.
+- Reduce event-bus/global-mixin coupling and replace direct DOM lookups with refs where practical.
+- Expand endpoint-matrix detail for lower-traffic admin and edge-case endpoints after all production-critical routes are covered.
 
-- `resources/js/bootstrap.js` still uses one global axios client for everything.
-- `xsrfCookieName` and `xsrfHeaderName` are still configured as booleans instead of header names.
-- The auth store still mixes session-oriented requests with the API-base setup.
-- `Register.vue` and `ResetPassword.vue` still call `swal.fire(...)` without explicit imports.
-- `ProjectChart.vue` still calls `new Chart(...)` without importing `Chart`.
+## Evidence and scope
 
-### Primary files
-
-- `resources/js/bootstrap.js`
-- `resources/js/app.js`
-- `resources/js/store/currentUser`
-- `resources/js/components/Authentication/Login.vue`
-- `resources/js/components/Authentication/Register.vue`
-- `resources/js/components/Authentication/ResetPassword.vue`
-- `resources/js/components/Authentication/TwoFACode.vue`
-- `resources/js/components/Profile/TwoFactorAuth.vue`
-- `resources/js/components/Dashboard/ProjectChart.vue`
-
-### Step-by-step work
-
-- [ ] Split frontend HTTP usage into explicit clients instead of relying on one global axios configuration.
-- [ ] Keep one client for `/api/v1` traffic.
-- [ ] Keep one session-aware client or root-scope client for `/sanctum/csrf-cookie` and `/api/v1/session/*` flows.
-- [ ] Fix XSRF config values in `bootstrap.js` so they use real cookie and header names.
-- [ ] Move shared interceptors into reusable setup code instead of attaching everything directly to the global axios instance.
-- [ ] Normalize login, logout, session bootstrap, and 2FA requests so their URLs and transport layer are intentionally scoped.
-- [ ] Replace direct `swal.fire(...)` usage with imported `Swal` or route those flows through the shared alert helper.
-- [ ] Fix `ProjectChart.vue` so chart creation uses one clear implementation path with explicit imports.
-- [ ] Verify password reset, login, logout, 2FA login confirm, and dashboard chart behavior manually after transport cleanup.
-
-### Exit criteria
-
-- Auth and session flows work without relying on accidental axios defaults.
-- CSRF behavior is explicitly configured and stable.
-- Auth-related screens do not depend on undeclared global browser variables.
-- Dashboard chart rendering no longer depends on undeclared globals.
-
-## Phase 2 - State Integrity and Persistence Hardening
-
-Priority: Critical  
-Ship status: Must finish before production
-
-### Why this phase is second
-
-- The current store is functional but still too loose for production-grade predictability.
-- Whole-store persistence and direct component-driven state mutation will create stale data and debugging problems.
-- This phase reduces hidden state corruption before broader refactors begin.
-
-### Verified current issues
-
-- `createPersistedState()` still persists the entire Vuex store.
-- `SingleTask.setForm` still writes into `state.task` instead of `state.form`.
-- `notifications.js` still is not namespaced while most other modules are.
-- `ProjectPage.vue` still mutates mapped state directly for realtime activity updates.
-- The router still reads 2FA state from localStorage directly.
-
-### Primary files
-
-- `resources/js/store/index.js`
-- `resources/js/store/currentUser`
-- `resources/js/store/project`
-- `resources/js/store/task`
-- `resources/js/store/SingleTask`
-- `resources/js/store/notifications.js`
-- `resources/js/components/Project/ProjectPage.vue`
-- `resources/js/components/Notification.vue`
-- `resources/js/components/UserNotification.vue`
-- `resources/js/router.js`
-
-### Step-by-step work
-
-- [ ] Remove blanket Vuex persistence or reduce it to a strict allowlist of safe UI-only values.
-- [ ] Ensure logout clears any persisted frontend state that should not survive a session.
-- [ ] Fix `SingleTask.setForm` to write to `state.form`.
-- [ ] Standardize all store modules to use `namespaced: true` unless there is a very strong reason not to.
-- [ ] Add getters/selectors for frequently accessed state instead of depending on direct `$store.state` lookups everywhere.
-- [ ] Replace direct mutations in `ProjectPage.vue` with explicit `project` store mutations or actions.
-- [ ] Audit all components for direct mutation of mapped store objects and remove those patterns.
-- [ ] Normalize notification actions, commits, and selectors under a consistent store contract.
-- [ ] Re-evaluate whether the 2FA pending marker belongs in localStorage or should become a more controlled session-state mechanism.
-
-### Exit criteria
-
-- Sensitive or stale state is no longer broadly persisted.
-- Store writes happen through mutations and actions, not ad-hoc component mutation.
-- Store module contracts are predictable and consistent.
-- Realtime project and notification flows remain correct after the cleanup.
-
-## Phase 3 - Runtime Safety Nets and Release Validation
-
-Priority: Critical  
-Ship status: Must finish before production
-
-### Why this phase is still pre-production
-
-- The codebase now has some test files, but they are not enough to protect critical flows.
-- There is still no complete frontend release gate tied to runtime-sensitive behavior.
-- Current high-risk defects can pass the build and still fail in production.
-
-### Verified current issues
-
-- `package.json` still has no frontend test script.
-- There is no obvious wired test runner in the frontend toolchain.
-- Existing test files are mostly utility/service-focused and do not yet protect auth, router, or key UI flows.
-- Build success today does not catch runtime-only defects like undeclared globals.
-
-### Primary files
-
-- `package.json`
-- frontend test config files to be added
-- critical stores and auth/router components
-
-### Step-by-step work
-
-- [ ] Choose and install a Vue 2-compatible frontend test runner and component test stack.
-- [ ] Add a `test` script and any supporting watch or CI variants to `package.json`.
-- [ ] Keep the existing utility tests, but wire them into the official frontend test workflow.
-- [ ] Add tests for auth response parsing, session bootstrap, login flow branching, and 2FA handling.
-- [ ] Add tests for router guard behavior.
-- [ ] Add tests for project activity mutations and notification store behavior.
-- [ ] Add at least one runtime safety smoke test around dashboard chart rendering.
-- [ ] Add release-gate commands for lint, tests, and production build.
-- [ ] Document a minimal manual smoke checklist for login, dashboard, subscriptions, project detail, and notifications.
-
-### Exit criteria
-
-- Frontend tests run through a documented command in `package.json`.
-- Critical flows have automated coverage, not only utility helper tests.
-- Lint, tests, and build are part of the release gate.
-
-## Strongly Recommended Before Production
-
-These are not as immediately blocking as the first three phases, but shipping without them will keep the frontend expensive to maintain and slower to evolve.
-
-## Phase 4 - API Layer Consolidation
-
-Priority: High  
-Ship status: Strongly recommended before production
-
-### Why this phase matters
-
-- Some response parsing has improved, but API orchestration is still spread across many components.
-- The codebase will remain hard to change safely until transport is centralized by domain.
-
-### Verified current issues
-
-- Components still call axios directly for many domain operations.
-- UI components still own too much payload shaping, success handling, and error branching.
-- Response parser utilities exist, but the service layer is still inconsistent across domains.
-
-### Primary files
-
-- `resources/js/services/`
-- `resources/js/store/`
-- `resources/js/components/Dashboard/Dashboard.vue`
-- `resources/js/components/Subscription.vue`
-- `resources/js/components/Profile/TwoFactorAuth.vue`
-- `resources/js/components/ProjectForm.vue`
-- `resources/js/components/Admin/Users.vue`
-- `resources/js/components/Notification.vue`
-
-### Step-by-step work
-
-- [ ] Define a consistent service-layer pattern and document it.
-- [ ] Use existing parser utilities as part of service-layer response normalization instead of leaving parsing inside components.
-- [ ] Create or complete service modules for auth, dashboard, subscriptions, notifications, projects, tasks, and 2FA.
-- [ ] Move endpoint paths and payload formatting into those services or into the store actions that use them.
-- [ ] Keep page components focused on orchestration and view state only.
-- [ ] Standardize async state handling for loading, success, empty, and error states.
-- [ ] Remove UI behavior that depends on backend message text where structured response data should be used instead.
-
-### Exit criteria
-
-- Domain API behavior is mostly centralized.
-- Endpoint changes no longer require editing many unrelated components.
-- Error and loading behavior are more consistent across the app.
-
-## Phase 5 - Component Decomposition and Route Performance
-
-Priority: High  
-Ship status: Strongly recommended before production
-
-### Why this phase matters
-
-- The current app still has several high-complexity components.
-- Routing is still eager-loaded, which is avoidable in a Vue 2 SPA with this size.
-- This phase improves scalability and lowers regression risk for future work.
-
-### Verified current issues
-
-- `router.js` still imports every route component eagerly.
-- `ProjectPage.vue` still mixes realtime, store coordination, view state, and transport logic.
-- `Subscription.vue` and `TwoFactorAuth.vue` remain broad smart components.
-- Reusable form and layout patterns exist, but they are not yet applied consistently.
-
-### Primary files
-
-- `resources/js/router.js`
-- `resources/js/components/Project/ProjectPage.vue`
-- `resources/js/components/Subscription.vue`
-- `resources/js/components/Profile/TwoFactorAuth.vue`
-- `resources/js/components/Dashboard/Dashboard.vue`
-- `resources/js/components/ProjectForm.vue`
-
-### Step-by-step work
-
-- [ ] Convert route components to lazy-loaded imports grouped by feature area.
-- [ ] Split `ProjectPage.vue` into a page container and focused child sections.
-- [ ] Split `Subscription.vue` into plan overview, billing actions, payment modal, receipts, and usage sections.
-- [ ] Split `TwoFactorAuth.vue` into status, recovery-code management, setup flow, and destructive actions.
-- [ ] Move repeated permission and derived-state logic into helpers or selectors.
-- [ ] Expand reusable form primitives where the same validation and field markup repeats.
-- [ ] Standardize loading, empty, and error states across major views.
-
-### Exit criteria
-
-- Route loading is no longer fully eager.
-- Large smart components have clearer ownership boundaries.
-- Presentation components receive props and emit events instead of owning domain logic.
-
-## Can Follow After Launch
-
-## Phase 6 - Hidden Coupling Cleanup and Frontend Polish
-
-Priority: Medium  
-Ship status: Can follow after launch
-
-### Why this phase is later
-
-- These issues matter, but they are less urgent than auth, state, and release safety.
-- They should be cleaned up once the production gates are closed.
-
-### Verified current issues
-
-- Global mixins are still attached app-wide.
-- The event bus is still used across meetings, project panels, and modal coordination.
-- Direct browser globals and DOM lookups still exist in router and component logic.
-- There is still some dead or low-confidence bootstrap code, such as the `ProfilePge.vue` registration path in `app.js`.
-
-### Primary files
-
-- `resources/js/app.js`
-- `resources/js/mixins/alertNotice.js`
-- `resources/js/mixins/conversation.js`
-- project, meeting, notification, and modal components using `$bus`
-
-### Step-by-step work
-
-- [ ] Replace global mixins with explicit imports where practical.
-- [ ] Reduce `$bus` usage in favor of parent-child events, store actions, or feature-level controllers.
-- [ ] Replace direct DOM queries with refs or dedicated utilities.
-- [ ] Remove dead registrations, typos, stale code paths, and low-value bootstrap coupling.
-- [ ] Review remaining `console.*` usage and keep debug logging behind development guards.
-
-### Exit criteria
-
-- Cross-component behavior is easier to trace.
-- The frontend has fewer hidden globals and less implicit coupling.
-- Bootstrap and shared infrastructure become easier to reason about.
-
-## Recommended Working Order
-
-Work through the plan in this order:
-
-1. Finish Phase 1 completely.
-2. Finish Phase 2 completely.
-3. Add the release safety net in Phase 3.
-4. Then move into the strongly recommended architecture work in Phase 4 and Phase 5.
-5. Leave Phase 6 for cleanup once the app is already stable.
-
-## Validation Checklist For Every Phase
-
-- [ ] `npm run lint`
-- [ ] `npm run build`
-- [ ] Run the smallest relevant frontend test subset
-- [ ] Manual smoke test the touched user flow
-- [ ] Confirm there are no new console errors in that flow
-
-## Minimum Shipping Checklist
-
-Do not ship until all of these are true:
-
-- [ ] Phase 1 is complete
-- [ ] Phase 2 is complete
-- [ ] Phase 3 is complete
-- [ ] Login, logout, password reset, 2FA, dashboard, subscriptions, project detail, and notifications are manually smoke-tested
-- [ ] Frontend lint, tests, and production build are all part of the release gate
-
-## Notes From This Review
-
-- No uncommitted frontend file changes were detected when this plan was updated.
-- The current build succeeds, so do not mistake build success for production readiness.
-- The highest-risk remaining work is now runtime correctness and frontend architecture discipline.
+The 2026-09-30 review compared current Vue call sites with Laravel routes, request validation, resources, and frontend configuration. It was static inspection only. No production or staging browser smoke test was run as part of that review. The separate backend Phase 4 production-readiness plan remains separate because its MySQL, Redis, queue, scheduler, Zoom, and Paddle checks are backend/infrastructure release gates.

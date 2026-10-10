@@ -17,6 +17,8 @@ class TaskMemberResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
+     * This resource provides a minimal user representation for task members without email.
+     * For invitation search with email, use InvitableUserResource instead.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return array|\Illuminate\Contracts\Support\Arrayable|JsonSerializable
@@ -54,15 +56,6 @@ class TaskMemberResource extends JsonResource
              * @example berry
              */
             'username' => $this->username,
-
-            /**
-             * Member email address.
-             *
-             * @format email
-             *
-             * @example user@example.com
-             */
-            'email' => $this->email,
 
             /**
              * Member avatar URL when present.

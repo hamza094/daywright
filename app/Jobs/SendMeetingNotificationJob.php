@@ -99,7 +99,8 @@ abstract class SendMeetingNotificationJob implements ShouldBeUnique, ShouldQueue
     {
         Log::error($this->failedLogMessage(), [
             'meeting_id' => $this->meetingId,
-            'exception' => $exception,
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
         ]);
     }
 }

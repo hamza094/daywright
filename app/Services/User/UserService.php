@@ -9,9 +9,7 @@ use App\DataTransferObjects\User\PasswordUpdateData;
 use App\DataTransferObjects\User\UpdateUserData;
 use App\Events\PasswordUpdateEvent;
 use App\Models\User;
-use Exception;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class UserService
 {
@@ -53,14 +51,8 @@ class UserService
 
     public function updatePassword(User $user, PasswordUpdateData $data): void
     {
-        try {
-            $this->updatePasswordAction->execute($user, $data);
+        $this->updatePasswordAction->execute($user, $data);
 
-            event(new PasswordUpdateEvent($user, now()->toDayDateTimeString()));
-        } catch (Exception) {
-            throw ValidationException::withMessages([
-                'password' => 'Unable to update password. Please try again later.',
-            ]);
-        }
+        event(new PasswordUpdateEvent($user, now()->toDayDateTimeString()));
     }
 }

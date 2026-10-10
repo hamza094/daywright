@@ -102,7 +102,8 @@ final class DispatchProjectMessageAction
             ->catch(function (Batch $batch, Throwable $throwable): void {
                 Log::error('Message batch failed', [
                     'batch_id' => $batch->id,
-                    'exception' => $throwable,
+                    'exception_class' => $throwable::class,
+                    'exception_code' => $throwable->getCode(),
                 ]);
             })
             ->dispatch();

@@ -110,6 +110,41 @@ class MeetingDeleteTest extends TestCase
     }
 
     /** @test */
+    public function repeated_delete_after_success_returns_success_without_another_zoom_call(): void
+    {
+        $zoom = $this->fakeZoom();
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user);
+        $route = $this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]);
+
+        $this->deleteJson($route)->assertOk();
+        $this->deleteJson($route)->assertOk()->assertJsonPath('message', 'Meeting deleted successfully.');
+
+        $this->assertCount(1, $zoom->meetingsToDelete);
+        $this->assertDatabaseHas('meetings', [
+            'id' => $meeting->id,
+            'sync_status' => 'deleted',
+        ]);
+    }
+
+    /** @test */
+    public function delete_while_a_recovery_is_pending_returns_conflict_without_calling_zoom(): void
+    {
+        $zoom = $this->fakeZoom();
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_status' => 'deleting',
+        ]);
+
+        $this->deleteJson($this->apiV1Route('meetings.destroy', ['project' => $this->project, 'meeting' => $meeting]))
+            ->assertConflict();
+
+        $this->assertCount(0, $zoom->meetingsToDelete);
+        $this->assertDatabaseHas('meetings', [
+            'id' => $meeting->id,
+            'sync_status' => 'deleting',
+        ]);
+    }
+
+    /** @test */
     public function normal_index_excludes_deleted_and_delete_failed_meetings(): void
     {
         $this->fakeZoom();

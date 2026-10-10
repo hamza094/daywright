@@ -27,6 +27,9 @@ jobs:
 
       - uses: actions/checkout@v5
 
+      - name: Audit production dependencies
+        run: composer audit --locked --no-dev
+
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 

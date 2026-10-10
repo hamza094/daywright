@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Zoom;
 
+use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Http\Integrations\Zoom\Requests\CreateMeeting;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use App\Models\User;
 use App\Services\Zoom\ZoomService;
+use Illuminate\Cache\ArrayStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Override;
 use Safe\DateTimeImmutable;
 use Saloon\Enums\Method;
 use Saloon\Http\Faking\MockResponse;
 use Saloon\Http\PendingRequest;
 use Saloon\Laravel\Facades\Saloon;
-use Saloon\RateLimitPlugin\Exceptions\RateLimitReachedException;
 use Tests\Support\Zoom\ZoomResponseFactory;
 use Tests\TestCase;
 use Tests\Traits\CreatesZoomUsers;
@@ -44,6 +47,8 @@ class ZoomMeetingCreateTest extends TestCase
 
     private array $meetingData;
 
+    private string $operationId;
+
     #[Override]
     protected function setUp(): void
     {
@@ -57,6 +62,7 @@ class ZoomMeetingCreateTest extends TestCase
             'start_time' => (new DateTimeImmutable('2024-06-18T18:00:07Z'))->format('Y-m-d\TH:i:s\Z'),
             'timezone' => 'UTC',
         ];
+        $this->operationId = '00000000-0000-4000-8000-000000000001';
         $this->user = $this->createZoomUser(now()->addWeek());
     }
 
@@ -81,7 +87,7 @@ class ZoomMeetingCreateTest extends TestCase
                 'timezone' => $this->meetingData['timezone'],
             ]),
         ]);
-        app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser);
+        app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser, $this->operationId);
         Saloon::assertSent(GetRefreshTokenRequest::class);
         $expiredUser->refresh();
         $tokens = app(\App\Repository\OAuthConnectionRepository::class)->getTokens($expiredUser, 'zoom');
@@ -101,7 +107,7 @@ class ZoomMeetingCreateTest extends TestCase
         ]);
 
         try {
-            app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser);
+            app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser, $this->operationId);
             $this->fail('Expected ZoomUserErrorException was not thrown.');
         } catch (ZoomUserErrorException $exception) {
             $this->assertSame('Zoom account connection needs to be re-authorized.', $exception->getMessage());
@@ -129,6 +135,7 @@ class ZoomMeetingCreateTest extends TestCase
         Saloon::assertSent(fn (CreateMeeting $request): bool => $request->resolveEndpoint() === '/users/me/meetings'
             && $request->getMethod() === Method::POST
             && $request->body()->all() === [
+                'type' => 2,
                 'topic' => $this->meetingData['topic'],
                 'agenda' => $this->meetingData['agenda'],
                 'duration' => $this->meetingData['duration'],
@@ -136,8 +143,54 @@ class ZoomMeetingCreateTest extends TestCase
                 'join_before_host' => $this->meetingData['join_before_host'],
                 'start_time' => (new DateTimeImmutable('2024-06-18T18:00:07Z'))->format('Y-m-d\TH:i:s\Z'),
                 'timezone' => $this->meetingData['timezone'],
+                'tracking_fields' => [[
+                    'field' => config('services.zoom.meeting_operation_tracking_field'),
+                    'value' => $this->operationId,
+                ]],
             ]
         );
+    }
+
+    /** @test */
+    public function provider_server_failure_has_an_unknown_creation_result(): void
+    {
+        Saloon::fake([
+            'users/me/meetings' => MockResponse::make(['message' => 'Unavailable'], 500),
+        ]);
+
+        $this->expectException(ZoomMeetingCreationUnknownException::class);
+
+        app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
+    }
+
+    /** @test */
+    public function malformed_success_response_has_an_unknown_creation_result(): void
+    {
+        Saloon::fake([
+            'users/me/meetings' => MockResponse::make(['topic' => 'Incomplete response']),
+        ]);
+
+        $this->expectException(ZoomMeetingCreationUnknownException::class);
+
+        app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
+    }
+
+    /** @test */
+    public function rate_limit_is_a_definite_rejection_for_creation(): void
+    {
+        Saloon::fake([
+            'users/me/meetings' => ZoomResponseFactory::rateLimitResponse(60),
+        ]);
+
+        try {
+            app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
+            $this->fail('Expected ZoomRateLimitException was not thrown.');
+        } catch (ZoomRateLimitException $exception) {
+            $this->assertSame(429, $exception->status());
+            $this->assertSame(60, $exception->retryAfterSeconds());
+            $this->assertSame('Zoom is limiting requests to its API. Please retry later. Try again in 60 seconds.', $exception->publicMessage());
+            $this->assertSame(['Retry-After' => '60'], $exception->headers());
+        }
     }
 
     /** @test */
@@ -164,8 +217,8 @@ class ZoomMeetingCreateTest extends TestCase
         ]);
         $this->createAndAssertMeeting($this->meetingData, $this->user);
         $this->createAndAssertMeeting($this->meetingData, $this->user);
-        $this->expectException(RateLimitReachedException::class);
-        app(ZoomService::class)->createMeeting($this->meetingData, $this->user);
+        $this->expectException(ZoomRateLimitException::class);
+        app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
     }
 
     /** @test */
@@ -173,13 +226,25 @@ class ZoomMeetingCreateTest extends TestCase
     {
         $this->freezeSecond();
         $expiredUser = $this->createZoomUser(now()->subWeek());
+        $refreshRequests = 0;
 
         Saloon::fake([
-            GetRefreshTokenRequest::class => ZoomResponseFactory::tokenResponse([
-                'access_token' => 'new-access-token',
-                'refresh_token' => 'new-refresh-token',
-                'expires_in' => 3600,
-            ]),
+            GetRefreshTokenRequest::class => function () use ($expiredUser, &$refreshRequests): MockResponse {
+                $refreshRequests++;
+
+                $store = Cache::getStore();
+                $lockKey = 'lock:zoom:oauth-refresh:user:'.$expiredUser->getKey();
+
+                $this->assertInstanceOf(ArrayStore::class, $store);
+                $this->assertArrayHasKey($lockKey, $store->locks);
+                $this->assertSame(45, (int) now()->diffInSeconds($store->locks[$lockKey]['expiresAt']));
+
+                return ZoomResponseFactory::tokenResponse([
+                    'access_token' => 'new-access-token',
+                    'refresh_token' => 'new-refresh-token',
+                    'expires_in' => 3600,
+                ]);
+            },
             'users/me/meetings' => ZoomResponseFactory::validMeetingResponse([
                 'topic' => $this->meetingData['topic'],
                 'agenda' => $this->meetingData['agenda'],
@@ -191,16 +256,13 @@ class ZoomMeetingCreateTest extends TestCase
             ]),
         ]);
 
-        // Simulate concurrent requests
         $results = [];
         for ($i = 0; $i < 2; $i++) {
-            $results[] = app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser);
+            $results[] = app(ZoomService::class)->createMeeting($this->meetingData, $expiredUser, $this->operationId);
         }
 
-        // Should only send one refresh request despite multiple concurrent calls
-        Saloon::assertSent(GetRefreshTokenRequest::class);
+        $this->assertSame(1, $refreshRequests);
 
-        // All requests should succeed with the new token
         foreach ($results as $result) {
             $this->assertNotNull($result);
         }
@@ -223,7 +285,7 @@ class ZoomMeetingCreateTest extends TestCase
             ]),
         ]);
 
-        app(ZoomService::class)->createMeeting($this->meetingData, $validUser);
+        app(ZoomService::class)->createMeeting($this->meetingData, $validUser, $this->operationId);
 
         // Should not attempt to refresh valid token
         Saloon::assertNotSent(GetRefreshTokenRequest::class);
@@ -231,7 +293,7 @@ class ZoomMeetingCreateTest extends TestCase
 
     private function createAndAssertMeeting(array $meetingData, User $user): void
     {
-        $meeting = app(ZoomService::class)->createMeeting($meetingData, $user);
+        $meeting = app(ZoomService::class)->createMeeting($meetingData, $user, $this->operationId);
         $expectedAttributes = [
             'meeting_id' => 124,
             'topic' => $meetingData['topic'],

@@ -31,7 +31,7 @@ class ActivityController extends ApiController
             $this->authenticatedUser()->id,
             $request->perPage(),
             $request->pageNumber(),
-            $request->url(),
+            $request->validatedPaginationQuery(),
         );
 
         return ActivityResource::collection($paginator)->response();

@@ -101,6 +101,29 @@ class ActivityTest extends TestCase
     }
 
     /** @test */
+    public function pagination_links_preserve_activity_filter_and_page_size(): void
+    {
+        $this->actingAs($this->user);
+
+        $this->project->addTask('continuity task one');
+        $this->project->addTask('continuity task two');
+
+        $response = $this->getJson($this->activityUrl(['type' => 'tasks']).'&per_page=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $nextUrl = $response->json('links.next');
+        $this->assertNotNull($nextUrl);
+        $this->assertStringContainsString('filter%5Btype%5D=tasks', $nextUrl);
+        $this->assertStringContainsString('per_page=1', $nextUrl);
+
+        $this->getJson($nextUrl)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('meta.per_page', 1);
+    }
+
+    /** @test */
     public function it_validates_activity_filter_type(): void
     {
         $this->getJson($this->activityUrl(['type' => 'invalid']))

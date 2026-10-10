@@ -34,7 +34,8 @@ final class ProjectHealthRecalculationAction
                     RateLimiter::clear($key);
                     Log::error('ProjectHealthRecalculationAction: failed to dispatch RecalculateProjectHealth', [
                         'project_id' => $project->id,
-                        'exception' => $e,
+                        'exception_class' => $e::class,
+                        'exception_code' => $e->getCode(),
                     ]);
                 }
             },

@@ -99,5 +99,9 @@ export function createIdempotentRequest(client = axios) {
     patch(url, data, config = {}) {
       return send('patch', url, data, config);
     },
+
+    delete(url, data, config = {}) {
+      return send('delete', url, data, config);
+    },
   };
 }

@@ -102,7 +102,8 @@ class CancelZoomMeetingsJob implements ShouldQueue
         Log::channel(self::LOG_CHANNEL)->error('CancelZoomMeetingsJob failed permanently.', [
             'meeting_id' => $this->meetingId,
             'user_id' => $this->userId,
-            'exception' => $exception,
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
         ]);
     }
 }

@@ -62,7 +62,7 @@
                         :value="user"
                         :id="'checkUser-' + user.id" />
                       <label v-if="user.id !== auth.id" class="form-check-label" :for="'checkUser-' + user.id">
-                        {{ user.name }} ({{ user.email }})
+                        {{ user.name }} (@{{ user.username }})
                       </label>
                     </div>
                   </div>

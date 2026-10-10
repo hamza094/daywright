@@ -30,6 +30,7 @@ class UserRepository
             ->allowedFilters(...UserFilterRequest::allowedFilters())
             ->allowedSorts(...UserFilterRequest::allowedSorts())
             ->defaultSort(...UserFilterRequest::defaultSorts())
-            ->paginate($request->perPage());
+            ->paginate($request->perPage())
+            ->appends($request->validatedPaginationQuery());
     }
 }

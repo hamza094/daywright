@@ -62,6 +62,7 @@ class Project extends Model
         'delivered_at' => 'datetime',
         'health_score' => 'float',
         'health_score_calculated_at' => 'datetime',
+        'version' => 'integer',
     ];
 
     /**
