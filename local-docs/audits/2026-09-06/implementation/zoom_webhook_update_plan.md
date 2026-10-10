@@ -56,9 +56,10 @@ Zoom documents `event_ts` as required for `meeting.updated` and optional for `me
 
 - After a successful password PATCH, retain the operation ID and existing encrypted `sync_payload`.
 - Under the existing operation-ID check, clear the claim and lease, set `sync_available_at` to one minute later, keep `sync_attempts` unchanged, clear any prior error, and leave `sync_status` as `updating` so the existing scheduler claims it.
-- Recovery must GET Zoom, verify the requested password, save the canonical snapshot, including the refreshed `join_url`, and then clear the operation.
-- If recovery sees the old password, it may use the existing PATCH retry, but it must leave the operation pending for a later GET. It must never finalize locally from the requested payload alone.
+- Recovery must first GET Zoom. This GET is read-only: if Zoom already shows the requested password, save Zoom's complete snapshot, including the refreshed `join_url`, and clear the operation without sending another PATCH.
+- Only if the GET proves that Zoom still has the old password may recovery use the existing PATCH retry. After that PATCH, leave the operation pending for a later read-only GET; never finalize locally from the requested payload alone.
 - If GET fails, retain the existing retry/backoff behavior.
+- Bound repeated GET-mismatch/PATCH-success cycles using the existing `sync_attempts` and recovery maximum. Each GET mismatch consumes one recovery cycle before another PATCH is sent; a successful PATCH itself does not count as a failed attempt. When the limit is reached, stop automatic retries and move the meeting to `UpdateFailed` for manual review while retaining `sync_operation_id` and the encrypted `sync_payload`.
 - A late successful PATCH response may only schedule verification when the same operation ID is still current. It must not restore `updating`, recreate an operation, or overwrite a newer webhook completion or deletion.
 
 **Tests:**
@@ -67,6 +68,7 @@ Zoom documents `event_ts` as required for `meeting.updated` and optional for `me
 - The final local row contains the new password and Zoom's new `join_url`.
 - A failed GET leaves the operation retryable.
 - A recovery PATCH followed by a later GET is required before completion.
+- When GET always returns the old password and PATCH always succeeds, mismatch cycles stop at the configured recovery maximum, transition to `UpdateFailed`, and retain the operation ID and encrypted payload for manual review.
 - A webhook that completes or deletes the meeting while a PATCH is in flight remains authoritative after the late PATCH response returns.
 - Existing response shape and HTTP status remain unchanged; the temporary status is the existing `updating` value.
 
@@ -142,8 +144,9 @@ Zoom documents `event_ts` as required for `meeting.updated` and optional for `me
 **Tests/evidence:**
 
 - Test concurrent claims with MySQL and shared Redis.
-- Verify the recovery job's 90-second Laravel timeout with PCNTL enabled, then separately verify Supervisor restarts the exited worker.
-- Pause a worker immediately after ownership validation, allow lock and lease expiry, and let a replacement complete. Record that the old worker exits before it resumes to the Zoom mutation.
+- Verify the recovery job's 90-second Laravel timeout with PCNTL enabled using an application-level pause that leaves the process running, then separately verify Supervisor restarts the exited worker.
+- Test worker termination and replacement-worker completion as separate assertions: the first proves Laravel timeout termination; the second proves a new claim can recover after lease expiry.
+- Do not use `SIGSTOP` or host suspension as proof of Laravel timeout enforcement. A stopped process cannot handle PCNTL's timeout signal until it resumes. If the product requires a wall-clock kill guarantee during OS or host suspension, identify and test a separate external watchdog; otherwise record that case as outside the Laravel timeout guarantee.
 - Terminate each affected scheduled recovery command while it owns its overlap lock and verify that recovery resumes after at most five minutes, or that `schedule:clear-cache` clears an abandoned lock during incident recovery.
 - Record effective job timeout, worker CLI timeout, Supervisor restart behavior, lock TTL, queue retry/visibility timeout, Zoom request timeout, and operation lease.
 

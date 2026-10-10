@@ -11,9 +11,16 @@ Update `docs/DEPLOYMENT.md` from the current `composer.json`, `.env.example`, `c
 - Include these Zoom webhook migrations in the documented migration order: `2026_10_05_000001_add_last_zoom_event_timestamp_to_meetings_table`, `2026_10_07_000001_add_sync_reconcile_before_at_to_meetings_table`, and `2026_10_07_000002_change_sync_reconcile_before_at_precision_on_meetings_table`.
 - Monitor application clock accuracy because update webhooks compare provider event time with a local reconciliation cutoff to decide whether to fetch Zoom's current state. Clock skew can change whether that lookup occurs; provider event ordering uses only provider timestamps and does not reject events based on the local clock.
 
+**Zoom recovery runtime contract:**
+
+- Confirm the deployed values, rather than relying on repository defaults: Zoom HTTP request timeout `30s`; `RecoverZoomMeetingOperationJob` timeout `90s`; queue-worker timeout `120s`; per-meeting cache lock `120s`; queue retry or visibility timeout greater than `120s` (currently `150s` for configured database, Redis, and Beanstalkd connections); and recovery claim lease `300s`.
+- Confirm PCNTL is enabled in each PHP CLI worker runtime so Laravel can enforce the job timeout. Confirm the cache driver is shared Redis for workers and scheduler nodes; file or array cache cannot coordinate these locks across processes.
+- Confirm `webhooks:recover-pending` and `meetings:recover-pending --limit=25` use a five-minute `withoutOverlapping` expiry. Record the worker command, Supervisor or platform restart behavior, scheduler command, cache store, queue driver, and effective timeout values in the release record.
+- This limits the stale-worker window but does not fence Zoom itself: Zoom does not receive an application claim token. Keep that limitation in the operator runbook.
+
 ## P5.2: detect broken dependencies and stopped work
 
-Prove that the selected monitoring detects database and Redis failures, stopped queue workers, and a stopped scheduler. A queue connection check alone cannot show that a worker is processing jobs; use the platform's worker/scheduler monitoring or a small heartbeat if no signal exists. Give failing checks a nonzero status or an alert. Keep health output free of credentials and private payloads. Test one healthy run and each failure signal in staging. Add a custom health service only for gaps the platform cannot cover.
+Prove that the selected monitoring detects database and Redis failures, stopped queue workers, and a stopped scheduler. A queue connection check alone cannot show that a worker is processing jobs; use the platform's worker/scheduler monitoring or a small heartbeat if no signal exists. Give failing checks a nonzero status or an alert. Keep health output free of credentials and private payloads. Test one healthy run and each failure signal in staging. Verify that a recovery worker terminated by its Laravel timeout is restarted by the platform, and that a terminated scheduled recovery command can run again within five minutes or after `php artisan schedule:clear-cache`. Add a custom health service only for gaps the platform cannot cover.
 
 ## P5.3: restore and recover a release
 
@@ -34,4 +41,4 @@ P5.5 PHPUnit metadata cleanup can follow launch if warnings are non-blocking and
 
 ## Acceptance
 
-Keep a short release record with the build identifier, commands, test results, real-service evidence from Phase 4, restore result, and delivered alert. Mark unexecuted staging or provider checks as open. Release sign-off needs the actual environment checks above; documentation alone is not evidence that restore or alerts work.
+Keep a short release record with the build identifier, commands, test results, real-service evidence from Phase 4, effective Zoom recovery timeout and lock values, restore result, and delivered alert. Mark unexecuted staging or provider checks as open. Release sign-off needs the actual environment checks above; documentation alone is not evidence that restore or alerts work.

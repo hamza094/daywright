@@ -63,14 +63,14 @@ final readonly class ZoomMeetingUpdatedWebhookProcessor
         // The meeting may have changed while we were asking Zoom for its latest state.
         $lockedMeeting = $this->support->lockMeeting($meeting);
 
-        if ($this->support->isStaleProviderEvent($lockedMeeting, $occurredAt)) {
+        if ($this->support->isStaleProviderEvent($lockedMeeting, $occurredAt, allowEqualTimestamp: true)) {
             $this->logIgnored($data, 'stale_provider_event', $userUuid);
 
             return;
         }
 
         // Check that the Zoom response still belongs to the operation we started with.
-        $this->checkMeetingDidNotChange($lockedMeeting, $occurredAt, $context);
+        $this->checkMeetingDidNotChange($lockedMeeting, $context);
 
         // If Zoom says the meeting is gone, mark it deleted even if this webhook is incomplete.
         if ($context->isMissingAtZoom()) {
@@ -109,17 +109,12 @@ final readonly class ZoomMeetingUpdatedWebhookProcessor
 
     private function checkMeetingDidNotChange(
         Meeting $meeting,
-        ?int $occurredAt,
         MeetingUpdateWebhookContext $context,
     ): void {
         if ($meeting->sync_operation_id !== $context->operationId
-            || $meeting->sync_reconcile_before_at?->valueOf() !== $context->reconcileBefore) {
+            || $meeting->sync_reconcile_before_at?->valueOf() !== $context->reconcileBefore
+            || $meeting->last_zoom_event_timestamp !== $context->providerWatermark) {
             throw new RuntimeException('Meeting state changed while reconciling the Zoom webhook.');
-        }
-
-        if ($this->support->requiresZoomReconciliation($meeting, $occurredAt)
-            && ! $context->needsZoomCheck) {
-            throw new RuntimeException('Meeting requires Zoom reconciliation before applying this webhook.');
         }
     }
 

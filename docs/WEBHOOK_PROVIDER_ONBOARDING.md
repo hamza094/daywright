@@ -2,7 +2,7 @@
 
 Use this guide when connecting an external service that sends event notifications to DayWright. For example, Zoom sends DayWright a webhook when a meeting starts or ends.
 
-The webhook inbox is currently used by Zoom. When adding another provider, keep that provider's security checks and payload handling specific to it, and reuse the inbox for saving, processing, and recovering events.
+The webhook inbox is currently used by Zoom. This page explains how to add an inbound provider. For the current Zoom event behavior, ordering, password-update recovery, and operational troubleshooting, start with [Webhook Inbox](WEBHOOK_INBOX.md). When adding another provider, keep that provider's security checks and payload handling specific to it, and reuse the inbox for saving, processing, and recovering events.
 
 ## How webhook handling works
 
@@ -16,7 +16,7 @@ Providers may send the same event more than once, and a worker may start process
 
 ## Where to look in the code
 
-The Zoom integration is the working example:
+The Zoom integration is the working example. A request passes through these boundaries:
 
 - [`routes/api/v1/webhooks.php`](../routes/api/v1/webhooks.php) registers the webhook routes and request checks.
 - [`VerifyZoomWebhook.php`](../app/Http/Middleware/VerifyZoomWebhook.php) verifies Zoom requests.
@@ -26,6 +26,8 @@ The Zoom integration is the working example:
 - [`RecoverPendingWebhooks.php`](../app/Console/Commands/RecoverPendingWebhooks.php) retries events that were not completed.
 
 Follow this flow when adding a provider, while keeping its request checks and event handling specific to that provider.
+
+Zoom's meeting endpoints are `POST /api/v1/webhooks/zoom/meetings/{created,update,delete,start,ended}`. The `VerifyZoomWebhook` middleware requires `x-zm-request-id`, `x-zm-request-timestamp`, and `x-zm-signature`; it checks the request timestamp is within five minutes and verifies the HMAC using `ZOOM_WEBHOOK_SECRET_TOKEN`. It also handles Zoom endpoint URL validation. Event payload timestamps are separate: Zoom `event_ts` is normalized to milliseconds for inbox storage and event ordering. For `meeting.updated`, the root `event_ts` is required; for `meeting.deleted`, it may be absent. A timestamp-less authenticated delete is processed with a critical log because it cannot be checked for staleness.
 
 ## Steps for a new integration
 
@@ -45,7 +47,7 @@ Do not accept an event until its request has been verified. Never log signing se
 
 Validate the fields DayWright uses, then convert them into the data needed by the relevant application action. Keep provider-specific event formats out of the shared inbox code.
 
-Normalize provider timestamps at the provider boundary before saving them to the inbox. Store one documented unit throughout persistence and processing. The current Zoom implementation stores event timestamps as milliseconds since the Unix epoch.
+Normalize provider occurrence timestamps at the provider boundary before saving them to the inbox. Store one documented unit throughout persistence and processing. The current Zoom implementation stores event timestamps as milliseconds since the Unix epoch. Keep this event timestamp distinct from the request timestamp used to verify the signature.
 
 Use the provider's stable event ID to recognize a duplicate when available. If it has none, derive a repeatable key from the verified request data. The database uses the provider name and event key together to prevent saving the same event twice.
 

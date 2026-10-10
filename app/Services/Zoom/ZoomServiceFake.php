@@ -51,6 +51,10 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 
     private ?Closure $beforeFindMeeting = null;
 
+    private ?Closure $beforeUpdateMeeting = null;
+
+    private ?Throwable $updateFailureException = null;
+
     /** @var list<MeetingSummary> */
     private array $meetingsToList = [];
 
@@ -133,6 +137,18 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     #[Override]
     public function updateMeeting(array $validated, User $user): void
     {
+        if ($this->beforeUpdateMeeting !== null) {
+            ($this->beforeUpdateMeeting)();
+            $this->beforeUpdateMeeting = null;
+        }
+
+        if ($this->updateFailureException instanceof Throwable) {
+            $exception = $this->updateFailureException;
+            $this->updateFailureException = null;
+
+            throw $exception;
+        }
+
         if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
@@ -204,6 +220,23 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     public function beforeFindingMeeting(Closure $callback): self
     {
         $this->beforeFindMeeting = $callback;
+
+        return $this;
+    }
+
+    /**
+     * @param  Closure(): void  $callback
+     */
+    public function beforeUpdatingMeeting(Closure $callback): self
+    {
+        $this->beforeUpdateMeeting = $callback;
+
+        return $this;
+    }
+
+    public function failNextUpdateWithException(Throwable $exception): self
+    {
+        $this->updateFailureException = $exception;
 
         return $this;
     }

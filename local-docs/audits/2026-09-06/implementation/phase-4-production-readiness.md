@@ -2,6 +2,8 @@
 
 This phase proves the release code works with its intended database, Redis, queue worker, scheduler, and external providers. Complete one ticket at a time, in order. Keep the fast SQLite suite and reuse the existing MySQL 8.4 CI job in `.github/workflows/tests.yml`. Use isolated non-customer data and a separate staging environment for worker and provider exercises.
 
+Local tests prove application behavior. Phase 4 proves the same release candidate with real MySQL, shared Redis, separate worker and scheduler processes, and provider sandboxes. Record sandbox and staging outcomes in the sign-off record only after they run; an unrun environment check stays open.
+
 ## How to hand off one ticket
 
 Give the implementer this document and **one** ticket below. Add this instruction:
@@ -22,7 +24,7 @@ Check the release candidate against the intended MySQL engine and shared Redis. 
 
 **Start with:** `app/Console/Kernel.php`, `config/queue.php`, and the existing Zoom/Paddle recovery commands.
 
-In isolated staging, run a worker in a separate process and run the scheduler every minute. Dispatch one controlled job and confirm that the worker processes it. Confirm `webhooks:recover-pending`, `meetings:recover-ambiguous`, and `subscriptions:recover-operations` are scheduled and can execute. Verify that all scheduler nodes share Redis so `onOneServer()` and `withoutOverlapping()` coordinate correctly. Use the deployment platform's existing worker and scheduler facilities where suitable.
+In isolated staging, run a worker in a separate process and run the scheduler every minute. Dispatch one controlled job and confirm that the worker processes it. Confirm `webhooks:recover-pending`, `meetings:recover-ambiguous`, `meetings:recover-pending --limit=25`, and `subscriptions:recover-operations` are scheduled and can execute. Verify that all scheduler nodes share Redis so `onOneServer()` and `withoutOverlapping()` coordinate correctly. Use the deployment platform's existing worker and scheduler facilities where suitable.
 
 **Done when:** the worker process, scheduled invocations, processed job, resolved configuration, and commands are recorded. A successful `schedule:list` by itself is insufficient.
 
@@ -54,12 +56,17 @@ With real worker and scheduler processes, demonstrate these failure windows:
 
 In a real Zoom sandbox, confirm that the creation request and corresponding webhook carry the same operation ID before relying on webhook correlation. If Zoom cannot prove an ambiguous result, keep it visible for manual review. Record the worker exit, recovery command, final database state, and outcome.
 
-**Additional Phase 5 webhook checks:**
+**Additional Zoom update and webhook checks:**
 
 - Verify Zoom's `event_ts` unit using real Zoom sandbox payloads (milliseconds vs seconds). Zoom documents `event_ts` as required but does not specify its unit in the meeting webhook schema. Incorrect unit assumption will break timestamp-based staleness detection.
 - Test webhook row-lock behavior against MySQL (SQLite tests do not prove real database row-lock behavior).
+- Change a sandbox meeting password, make its update webhook unavailable or delayed for this isolated exercise, and let scheduled recovery GET Zoom. Confirm the exact password and Zoom's refreshed `join_url` are saved locally without another local-only completion.
+- Show that a failed recovery GET remains retryable. Show that a GET mismatch followed by a successful PATCH remains pending until a later GET confirms Zoom's state. Record the final `UpdateFailed` manual-review state if the configured mismatch limit is reached.
+- Confirm that recovery GET returning Zoom 404 marks a pending local update as `Deleted`.
+- Stop a worker after it claims a recovery operation and show that a replacement worker completes it only after the lease expires. Run two recovery workers against MySQL and shared Redis and show only the claim owner completes the operation.
+- Send or capture an authenticated timestamp-less `meeting.deleted` event. Confirm it marks the local meeting deleted and emits the critical missing-timestamp log without a Zoom GET or DELETE.
 
-**Done when:** all three real-process outcomes and the sandbox operation-ID result have evidence, and the webhook timestamp unit and MySQL row-lock behavior are verified. A synchronous exception test alone does not complete this ticket.
+**Done when:** all three real-process outcomes, the sandbox operation-ID result, password-recovery result, timestamp-less delete result, and worker-replacement result have evidence. The webhook timestamp unit and MySQL row-lock behavior must also be verified. A synchronous exception test alone does not complete this ticket.
 
 ## Ticket 6 — P4.3b: Recover Paddle work and verify Paddle Classic
 
@@ -94,7 +101,7 @@ composer pint:test
 composer audit --locked --no-dev
 ```
 
-Check `php artisan schedule:list`, the public Cashier webhook route, the running queue worker, the every-minute scheduler, shared Redis locks, failed-job monitoring, and alerts for `unknown` and `manual_review` subscription operations. Confirm `PADDLE_PUBLIC_KEY` and the public HTTPS `CASHIER_WEBHOOK` URL before deployment. Prepare a rollback procedure and a manual-resolution procedure for unresolved subscription operations. Use the platform's existing operational facilities where available.
+Check `php artisan schedule:list`, the public Cashier webhook route, the running queue worker, the every-minute scheduler, shared Redis locks, failed-job monitoring, and alerts for `unknown` and `manual_review` subscription operations. Confirm `PADDLE_PUBLIC_KEY` and the public HTTPS `CASHIER_WEBHOOK` URL before deployment. Include the Zoom sandbox evidence, webhook timestamp-unit result, password-derived `join_url` recovery result, and any Zoom manual-review cases. Prepare a rollback procedure and manual-resolution procedures for unresolved subscription and Zoom operations. Use the platform's existing operational facilities where available.
 
 Save one concise record of the build identifier, environment, commands, outcomes, provider evidence, final states, and unresolved checks. Correct a failing gate before sign-off. Record any known Cashier webhook limitation and the person responsible for manual reconciliation.
 

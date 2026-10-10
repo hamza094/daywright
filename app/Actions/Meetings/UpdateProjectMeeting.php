@@ -50,6 +50,12 @@ final readonly class UpdateProjectMeeting
                 try {
                     $this->updateInZoom($lockedMeeting, $data, $user, $zoom);
 
+                    if ($this->isPasswordOperation($data)) {
+                        $this->schedulePasswordVerification($lockedMeeting, $operationId);
+
+                        return $lockedMeeting->refresh();
+                    }
+
                     return $this->applyUpdateLocally($lockedMeeting, $data, $operationId);
                 } catch (ZoomMeetingOperationUnknownException $exception) {
                     $this->markUpdateUnknownAndScheduleRecovery($lockedMeeting, $operationId, $exception);
@@ -117,6 +123,29 @@ final readonly class UpdateProjectMeeting
 
             return $lockedMeeting;
         });
+    }
+
+    /**
+     * After a successful password PATCH, leave the operation open so recovery can
+     * do a GET and save the new join_url from Zoom's own response. We clear the
+     * claim and lease so the scheduler can reclaim it in ~1 minute, but we keep
+     * the operation ID and encrypted payload so recovery knows what to verify.
+     */
+    private function schedulePasswordVerification(Meeting $meeting, string $operationId): void
+    {
+        $this->executeWithOperationIdCheck($meeting, $operationId, 'schedule password verification', function (Meeting $lockedMeeting): void {
+            $lockedMeeting->update([
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+                'sync_available_at' => now()->addMinute(),
+                'sync_error' => null,
+            ]);
+        });
+    }
+
+    private function isPasswordOperation(MeetingUpdateData $data): bool
+    {
+        return $data->password !== null;
     }
 
     private function markUpdateUnknownAndScheduleRecovery(Meeting $meeting, string $operationId, Throwable $exception): void

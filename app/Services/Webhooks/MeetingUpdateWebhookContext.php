@@ -20,6 +20,7 @@ final readonly class MeetingUpdateWebhookContext
         public ?ZoomMeeting $zoomMeeting,
         public ?string $operationId,
         public ?float $reconcileBefore,
+        public ?int $providerWatermark = null,
     ) {}
 
     public function isMissingAtZoom(): bool

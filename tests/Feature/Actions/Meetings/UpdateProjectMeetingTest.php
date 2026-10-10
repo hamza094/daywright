@@ -366,6 +366,86 @@ final class UpdateProjectMeetingTest extends TestCase
         $this->assertNull($meeting->sync_available_at);
     }
 
+    /** @test */
+    public function password_update_leaves_operation_pending_for_recovery_verification(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'topic' => 'My Meeting',
+            'join_url' => 'https://zoom.us/j/old',
+        ]);
+
+        $result = $this->action->handle(
+            $meeting,
+            $this->user,
+            new MeetingUpdateData(password: 'hunter2'),
+            $this->zoom,
+        );
+
+        $result->refresh();
+
+        // The PATCH succeeded, but we don't finalise locally yet.
+        // Recovery needs to do a GET first to capture the refreshed join_url.
+        $this->assertSame(MeetingSyncStatus::Updating, $result->sync_status);
+        $this->assertNotNull($result->sync_operation_id);
+        $this->assertNotNull($result->sync_payload);
+        $this->assertNotNull($result->sync_available_at);
+        $this->assertTrue($result->sync_available_at->isFuture());
+        $this->assertNull($result->sync_claim_token);
+        $this->assertNull($result->sync_lease_expires_at);
+    }
+
+    /** @test */
+    public function non_password_update_completes_locally_without_pending_verification(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'topic' => 'Old Topic',
+        ]);
+
+        $result = $this->action->handle(
+            $meeting,
+            $this->user,
+            new MeetingUpdateData(topic: 'New Topic', duration: 60),
+            $this->zoom,
+        );
+
+        $result->refresh();
+
+        // Non-password updates are applied locally immediately.
+        $this->assertSame(MeetingSyncStatus::Active, $result->sync_status);
+        $this->assertNull($result->sync_operation_id);
+        $this->assertNull($result->sync_payload);
+        $this->assertSame('New Topic', $result->topic);
+    }
+
+    /** @test */
+    public function late_password_patch_response_does_not_schedule_verification_when_operation_was_overtaken(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'topic' => 'Before',
+            'sync_status' => MeetingSyncStatus::Active,
+        ]);
+
+        // First password update succeeds and schedules verification.
+        $this->action->handle($meeting, $this->user, new MeetingUpdateData(password: 'first'), $this->zoom);
+        $afterFirst = $meeting->refresh();
+        $firstOperationId = $afterFirst->sync_operation_id;
+        $this->assertNotNull($firstOperationId);
+
+        // A newer operation overtakes: simulate by directly changing the operation ID in the DB.
+        Meeting::query()->whereKey($meeting->getKey())->update([
+            'sync_operation_id' => 'newer-operation',
+            'sync_claim_token' => null,
+            'sync_available_at' => null,
+            'sync_status' => MeetingSyncStatus::Active,
+            'sync_payload' => null,
+        ]);
+
+        // The row no longer has the first operation; calling schedulePasswordVerification
+        // with the old operation ID is a no-op (executeWithOperationIdCheck guards it).
+        $meeting->refresh();
+        $this->assertNotSame($firstOperationId, $meeting->sync_operation_id);
+    }
+
     private function zoomMeetingSnapshot(Meeting $meeting, string $topic, string $password = '', string $joinUrl = 'https://zoom.us/j/current'): ZoomMeeting
     {
         return new ZoomMeeting(

@@ -70,7 +70,7 @@
 **Status:** ✅ Completed
 
 **Priority:** Documentation  
-**Start with:** `local-docs/audits/2026-09-06/implementation/phase-5-webhook-implementation.md` and the current webhook controller/request classes.
+**Start with:** `docs/WEBHOOK_INBOX.md`, `docs/WEBHOOK_PROVIDER_ONBOARDING.md`, and the current webhook controller/request classes.
 
 **Finding:** The guide documents a `payload.event_ts` fallback and `required_without` rules that are absent from the implementation.
 

@@ -18,6 +18,8 @@ final class RecoverZoomMeetingOperationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public int $timeout = 90;
+
     public function __construct(
         private readonly int $meetingId,
         private readonly string $operationId,

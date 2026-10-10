@@ -103,7 +103,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('webhooks:recover-pending')
             ->name('recover-pending-webhooks')
             ->onOneServer()
-            ->withoutOverlapping()
+            ->withoutOverlapping(5)
             ->everyMinute()
             ->appendOutputTo($this->schedulerLogPath());
 
@@ -117,7 +117,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('meetings:recover-pending --limit=25')
             ->name('recover-pending-zoom-operations')
             ->onOneServer()
-            ->withoutOverlapping()
+            ->withoutOverlapping(5)
             ->everyMinute()
             ->appendOutputTo($this->schedulerLogPath());
 

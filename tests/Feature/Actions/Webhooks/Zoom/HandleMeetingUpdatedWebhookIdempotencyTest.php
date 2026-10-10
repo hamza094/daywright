@@ -16,6 +16,7 @@ use App\Services\Webhooks\ZoomWebhookInboxService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
 
@@ -511,6 +512,169 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         );
 
         $this->assertSame(MeetingSyncStatus::Deleted, $meeting->refresh()->sync_status);
+    }
+
+    public function test_two_distinct_update_events_with_the_same_millisecond_timestamp_reconcile_to_current_zoom_state(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 663,
+            'topic' => 'Original Topic',
+            'agenda' => 'Original Agenda',
+            'sync_status' => MeetingSyncStatus::Active,
+        ]);
+        $timestamp = (int) now()->subSeconds(10)->valueOf();
+
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(663, 'Canonical Zoom Topic', agenda: 'Canonical Zoom Agenda'));
+
+        $handler = app(HandleMeetingUpdatedWebhook::class);
+
+        // First update at $timestamp
+        $handler->handle(
+            new MeetingUpdatedWebhookData(663, ['topic' => 'Topic From Event A'], null),
+            $timestamp,
+        );
+        $meeting->refresh();
+        $this->assertSame('Topic From Event A', $meeting->topic);
+        $this->assertSame($timestamp, $meeting->last_zoom_event_timestamp);
+
+        // Second distinct update at the exact same millisecond timestamp reconciles via Zoom GET
+        $handler->handle(
+            new MeetingUpdatedWebhookData(663, ['topic' => 'Topic From Event B'], null),
+            $timestamp,
+        );
+        $meeting->refresh();
+        $this->assertSame('Canonical Zoom Topic', $meeting->topic);
+        $this->assertSame('Canonical Zoom Agenda', $meeting->agenda);
+        $this->assertSame($timestamp, $meeting->last_zoom_event_timestamp);
+    }
+
+    public function test_update_context_built_below_timestamp_retries_when_equal_timestamp_event_completes_first(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 664,
+            'topic' => 'Original Topic',
+            'sync_status' => MeetingSyncStatus::Active,
+            'last_zoom_event_timestamp' => 500,
+        ]);
+        $timestamp = 1000;
+        $handler = app(HandleMeetingUpdatedWebhook::class);
+
+        $dataA = new MeetingUpdatedWebhookData(664, ['topic' => 'Event A Payload'], null);
+        $dataB = new MeetingUpdatedWebhookData(664, ['topic' => 'Event B Topic'], null);
+
+        // Build update A context before it enters the transaction
+        $contextA = $handler->buildContext($meeting, $dataA, $timestamp, null);
+        $this->assertNotNull($contextA);
+        $this->assertFalse($contextA->needsZoomCheck);
+        $this->assertNull($contextA->zoomMeeting);
+        $this->assertSame(500, $contextA->providerWatermark);
+
+        // Event B with the same timestamp runs and completes first
+        $handler->handle($dataB, $timestamp);
+        $meeting->refresh();
+        $this->assertSame('Event B Topic', $meeting->topic);
+        $this->assertSame(1000, $meeting->last_zoom_event_timestamp);
+
+        // Resume A with its stale context: processor detects the mismatch under the lock and throws
+        $processor = app(\App\Services\Webhooks\ZoomMeetingUpdatedWebhookProcessor::class);
+
+        $this->expectException(RuntimeException::class);
+        try {
+            $processor->process($meeting, $dataA, $timestamp, null, $contextA);
+        } finally {
+            $meeting->refresh();
+            // Event A's payload was not applied
+            $this->assertSame('Event B Topic', $meeting->topic);
+        }
+
+        // When A retries, durable inbox processing rebuilds context, reads Zoom snapshot, and reconciles
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(664, 'Reconciled Zoom Topic'));
+        $handler->handle($dataA, $timestamp);
+        $meeting->refresh();
+        $this->assertSame('Reconciled Zoom Topic', $meeting->topic);
+    }
+
+    public function test_equal_timestamp_delete_followed_by_delayed_update_cannot_resurrect_the_meeting(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 665,
+            'topic' => 'Original Topic',
+            'sync_status' => MeetingSyncStatus::Active,
+        ]);
+        $timestamp = (int) now()->subSeconds(10)->valueOf();
+
+        // Delete arrives first at $timestamp
+        app(\App\Actions\Webhooks\Zoom\HandleMeetingDeletedWebhook::class)->handle(
+            new \App\DataTransferObjects\Zoom\MeetingDeletedWebhookData(665),
+            $timestamp,
+        );
+        $meeting->refresh();
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->sync_status);
+        $this->assertSame($timestamp, $meeting->last_zoom_event_timestamp);
+
+        // Delayed update arrives with the same timestamp
+        $this->fakeZoom()->findsMeeting($this->zoomMeeting(665, 'Resurrected Topic'));
+        app(HandleMeetingUpdatedWebhook::class)->handle(
+            new MeetingUpdatedWebhookData(665, ['topic' => 'Resurrected Topic'], null),
+            $timestamp,
+        );
+
+        $meeting->refresh();
+        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->sync_status);
+        $this->assertSame('Original Topic', $meeting->topic);
+    }
+
+    public function test_context_created_before_concurrent_local_change_is_rejected(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 666,
+            'topic' => 'Original Topic',
+            'sync_status' => MeetingSyncStatus::Active,
+            'sync_operation_id' => 'original-op',
+        ]);
+        $timestamp = (int) now()->valueOf();
+        $handler = app(HandleMeetingUpdatedWebhook::class);
+        $data = new MeetingUpdatedWebhookData(666, ['topic' => 'Stale Context Topic'], null);
+
+        // Build context before local change
+        $context = $handler->buildContext($meeting, $data, $timestamp, null);
+        $this->assertNotNull($context);
+        $this->assertSame('original-op', $context->operationId);
+
+        // Concurrent local change updates the operation ID
+        $meeting->update(['sync_operation_id' => 'newer-op']);
+
+        $processor = app(\App\Services\Webhooks\ZoomMeetingUpdatedWebhookProcessor::class);
+
+        $this->expectException(RuntimeException::class);
+        try {
+            $processor->process($meeting, $data, $timestamp, null, $context);
+        } finally {
+            $meeting->refresh();
+            $this->assertSame('Original Topic', $meeting->topic);
+        }
+    }
+
+    public function test_no_extra_zoom_get_is_introduced_for_ordinary_current_events(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 667,
+            'topic' => 'Original Topic',
+            'sync_status' => MeetingSyncStatus::Active,
+            'last_zoom_event_timestamp' => 1000,
+        ]);
+        $timestamp = 2000;
+
+        // Note: fakeZoom is NOT given findsMeeting, so any Zoom GET would fail or return null
+        $handler = app(HandleMeetingUpdatedWebhook::class);
+        $handler->handle(
+            new MeetingUpdatedWebhookData(667, ['topic' => 'Ordinary New Topic'], null),
+            $timestamp,
+        );
+
+        $meeting->refresh();
+        $this->assertSame('Ordinary New Topic', $meeting->topic);
+        $this->assertSame(2000, $meeting->last_zoom_event_timestamp);
     }
 
     /** @param array<string, mixed> $attributes */

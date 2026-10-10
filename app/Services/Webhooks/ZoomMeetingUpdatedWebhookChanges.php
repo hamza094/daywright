@@ -17,7 +17,7 @@ use function Safe\json_decode;
  */
 final readonly class ZoomMeetingUpdatedWebhookChanges
 {
-    private const array ALLOWED_FIELDS = [
+    public const array ALLOWED_FIELDS = [
         'topic',
         'duration',
         'agenda',
@@ -69,7 +69,9 @@ final readonly class ZoomMeetingUpdatedWebhookChanges
     public function zoomHasRequestedFields(array $payload, ZoomMeeting $meeting): bool
     {
         foreach ($payload as $field => $expected) {
-            if (! in_array($field, self::ALLOWED_FIELDS, true)
+            if (! is_string($field)
+                || ! in_array($field, self::ALLOWED_FIELDS, true)
+                || ! property_exists($meeting, $field)
                 || ! $this->fieldValuesMatch($field, $expected, $meeting->{$field})) {
                 return false;
             }

@@ -14,6 +14,7 @@ use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Services\Project\MeetingOperationLock;
 use App\Services\Project\MeetingSyncErrorFormatter;
+use App\Services\Webhooks\ZoomMeetingUpdatedWebhookChanges;
 use App\Services\Zoom\ZoomRecoveryPolicy;
 use Closure;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,7 @@ final readonly class PerformZoomMeetingRecovery
         private MeetingSyncErrorFormatter $errorFormatter,
         private ZoomRecoveryPolicy $policy,
         private MeetingOperationLock $operationLocks,
+        private ZoomMeetingUpdatedWebhookChanges $changes,
     ) {}
 
     public function execute(Meeting $meeting, string $operationId, string $claimToken, Zoom $zoom): void
@@ -108,16 +110,33 @@ final readonly class PerformZoomMeetingRecovery
             return;
         }
 
-        if ($this->requestedFieldsMatchZoom($requestedPayload, $currentZoomMeeting)) {
+        if ($this->changes->zoomHasRequestedFields($requestedPayload, $currentZoomMeeting)) {
+            // Zoom already has what we asked for — save the full Zoom snapshot (including
+            // the refreshed join_url) and clear the operation.
             $this->withValidatedOperationLock(
                 $meeting,
                 $operationId,
                 $claimToken,
                 MeetingSyncOperationType::Update,
-                function (Meeting $currentMeeting) use ($requestedPayload, $operationId, $claimToken): void {
-                    $this->applyUpdateLocally($currentMeeting, $requestedPayload, $operationId, $claimToken);
+                function (Meeting $currentMeeting) use ($currentZoomMeeting, $operationId, $claimToken): void {
+                    $this->applyUpdateLocally(
+                        $currentMeeting,
+                        $this->changes->fieldsFromZoom($currentZoomMeeting),
+                        $operationId,
+                        $claimToken,
+                    );
                 },
             );
+        } elseif ($this->isPasswordOperation($requestedPayload)) {
+            // For password operations the GET proved Zoom still has the old value.
+            // Consume one recovery cycle now; if the limit is reached, stop.
+            if (! $this->consumeMismatchCycle($meeting, $operationId, $claimToken)) {
+                return;
+            }
+
+            // Send the PATCH again, then leave the operation open so the next recovery
+            // cycle can do another GET before finalising locally.
+            $this->retryPasswordUpdate($meeting, $user, $zoom, $operationId, $claimToken);
         } else {
             $this->retryUpdate($meeting, $user, $zoom, $operationId, $claimToken);
         }
@@ -182,26 +201,26 @@ final readonly class PerformZoomMeetingRecovery
     }
 
     /**
-     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $updateData
      */
-    private function applyUpdateLocally(Meeting $meeting, array $payload, string $operationId, string $claimToken): void
+    private function applyUpdateLocally(Meeting $meeting, array $updateData, string $operationId, string $claimToken): void
     {
-        DB::transaction(function () use ($meeting, $payload, $operationId, $claimToken): void {
+        DB::transaction(function () use ($meeting, $updateData, $operationId, $claimToken): void {
             $lockedMeeting = $this->lockMeeting($meeting);
 
             if (! $this->policy->isClaimValid($lockedMeeting, $claimToken) || ! $this->policy->isOperationCurrent($lockedMeeting, $operationId)) {
                 return;
             }
 
-            $updateData = [];
+            $fieldsToUpdate = [];
 
-            foreach ($this->getSupportedUpdateFields() as $field) {
-                if (array_key_exists($field, $payload)) {
-                    $updateData[$field] = $payload[$field];
+            foreach (ZoomMeetingUpdatedWebhookChanges::ALLOWED_FIELDS as $field) {
+                if (array_key_exists($field, $updateData)) {
+                    $fieldsToUpdate[$field] = $updateData[$field];
                 }
             }
 
-            $lockedMeeting->update($updateData + [
+            $lockedMeeting->update($fieldsToUpdate + [
                 'sync_status' => MeetingSyncStatus::Active,
                 'sync_operation_id' => null,
                 'sync_operation_type' => null,
@@ -237,6 +256,110 @@ final readonly class PerformZoomMeetingRecovery
                 $this->applyUpdateLocally($currentMeeting, $payload, $operationId, $claimToken);
             },
         );
+    }
+
+    /**
+     * For a password PATCH retry: send the update to Zoom and then leave the
+     * operation open (claim cleared, available_at +1 min) so the next recovery
+     * cycle performs a read-only GET before finalising locally.
+     *
+     * A successful PATCH here does NOT increment sync_attempts; only a GET
+     * mismatch counts as a failed cycle (consumed before calling this method).
+     */
+    private function retryPasswordUpdate(Meeting $meeting, \App\Models\User $user, Zoom $zoom, string $operationId, string $claimToken): void
+    {
+        $this->withValidatedOperationLock(
+            $meeting,
+            $operationId,
+            $claimToken,
+            MeetingSyncOperationType::Update,
+            function (Meeting $currentMeeting) use ($user, $zoom, $operationId, $claimToken): void {
+                $payload = $this->decodeValidUpdatePayload($currentMeeting, $operationId, $claimToken);
+
+                if ($payload === null) {
+                    return;
+                }
+
+                $currentMeeting->update(['sync_started_at' => now()]);
+                $zoom->updateMeeting($payload + ['meeting_id' => $currentMeeting->meeting_id], $user);
+
+                // PATCH succeeded — leave pending for a later GET instead of finalising.
+                $this->scheduleVerification($currentMeeting, $operationId, $claimToken);
+            },
+        );
+    }
+
+    /**
+     * Consume one mismatch cycle. Returns false when the limit is reached and
+     * the meeting has already been moved to UpdateFailed.
+     */
+    private function consumeMismatchCycle(Meeting $meeting, string $operationId, string $claimToken): bool
+    {
+        $shouldContinue = true;
+
+        DB::transaction(function () use ($meeting, $operationId, $claimToken, &$shouldContinue): void {
+            $lockedMeeting = $this->lockMeeting($meeting);
+
+            if (! $this->policy->isClaimValid($lockedMeeting, $claimToken) || ! $this->policy->isOperationCurrent($lockedMeeting, $operationId)) {
+                $shouldContinue = false;
+
+                return;
+            }
+
+            $nextAttempt = $lockedMeeting->sync_attempts + 1;
+
+            if (! $this->policy->shouldRetry($nextAttempt)) {
+                // Keep operation ID and payload for manual review.
+                $lockedMeeting->update([
+                    'sync_status' => MeetingSyncStatus::UpdateFailed,
+                    'sync_error' => 'max_attempts_reached',
+                    'sync_attempts' => $nextAttempt,
+                    'sync_claim_token' => null,
+                    'sync_lease_expires_at' => null,
+                    'sync_available_at' => null,
+                ]);
+
+                Log::warning('Zoom meeting recovery requires manual review', [
+                    'meeting_id' => $meeting->id,
+                    'reason' => 'max_attempts_reached',
+                ]);
+
+                $shouldContinue = false;
+
+                return;
+            }
+
+            $lockedMeeting->update(['sync_attempts' => $nextAttempt]);
+        });
+
+        return $shouldContinue;
+    }
+
+    /**
+     * Clear the claim and lease and set sync_available_at to one minute from now
+     * so the scheduler picks it up for a read-only GET verification cycle.
+     */
+    private function scheduleVerification(Meeting $meeting, string $operationId, string $claimToken): void
+    {
+        DB::transaction(function () use ($meeting, $operationId, $claimToken): void {
+            $lockedMeeting = $this->lockMeeting($meeting);
+
+            if (! $this->policy->isClaimValid($lockedMeeting, $claimToken) || ! $this->policy->isOperationCurrent($lockedMeeting, $operationId)) {
+                return;
+            }
+
+            $lockedMeeting->update([
+                'sync_claim_token' => null,
+                'sync_lease_expires_at' => null,
+                'sync_available_at' => now()->addMinute(),
+                'sync_error' => null,
+            ]);
+        });
+    }
+
+    private function isPasswordOperation(array $payload): bool
+    {
+        return array_key_exists('password', $payload);
     }
 
     /**
@@ -371,25 +494,6 @@ final readonly class PerformZoomMeetingRecovery
         }
 
         return $this->policy->getBackoffSeconds($currentAttempt);
-    }
-
-    /**
-     * @param  array<string, mixed>  $requested
-     */
-    private function requestedFieldsMatchZoom(array $requested, ZoomMeeting $zoomMeeting): bool
-    {
-        return collect($this->getSupportedUpdateFields())
-            ->filter(fn ($field) => array_key_exists($field, $requested))
-            ->every(fn ($field) => ($requested[$field] ?? null) === ($zoomMeeting->{$field} ?? null)
-            );
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function getSupportedUpdateFields(): array
-    {
-        return ['topic', 'duration', 'agenda', 'timezone', 'start_time', 'password', 'join_before_host'];
     }
 
     private function isPermanentError(ZoomException $exception): bool

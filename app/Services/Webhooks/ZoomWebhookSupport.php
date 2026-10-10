@@ -83,8 +83,15 @@ final readonly class ZoomWebhookSupport
     public function requiresZoomReconciliation(Meeting $meeting, ?int $occurredAt): bool
     {
         // A cutoff means “check Zoom for the latest values,” not “ignore this event.”
-        return $occurredAt !== null
-            && $meeting->sync_reconcile_before_at !== null
+        if ($occurredAt === null) {
+            return false;
+        }
+
+        if ($meeting->last_zoom_event_timestamp !== null && $occurredAt === $meeting->last_zoom_event_timestamp) {
+            return true;
+        }
+
+        return $meeting->sync_reconcile_before_at !== null
             && $occurredAt <= (int) $meeting->sync_reconcile_before_at->valueOf();
     }
 

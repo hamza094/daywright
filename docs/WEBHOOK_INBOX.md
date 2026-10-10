@@ -4,7 +4,13 @@
 
 The webhook inbox provides durable, at-least-once processing of third-party webhook events with automatic recovery from failures. The current implementation is used by Zoom; the reliability rules in this document are provider-neutral unless a section is explicitly marked as Zoom-specific.
 
-Provider onboarding and future integration work should follow `docs/WEBHOOK_PROVIDER_ONBOARDING.md`.
+Provider onboarding and future integration work should follow [Webhook Provider Onboarding](WEBHOOK_PROVIDER_ONBOARDING.md).
+
+## Start here
+
+For one event, follow this path: Zoom sends an HTTP request, middleware verifies it, the controller stores a normalized event in the inbox, a queue worker runs the event handler, and the scheduled recovery command redispatches events that were not completed. The controller acknowledges a request only after the inbox has saved it. Business handling is asynchronous and may run more than once, so handlers must be safe to retry.
+
+The main code path is [VerifyZoomWebhook](../app/Http/Middleware/VerifyZoomWebhook.php) → [ZoomWebhookController](../app/Http/Controllers/Api/V1/Webhooks/ZoomWebhookController.php) → [ZoomWebhookInboxService](../app/Services/Webhooks/ZoomWebhookInboxService.php) → [ProcessZoomWebhookInbox](../app/Jobs/Webhooks/ProcessZoomWebhookInbox.php) → [HandlePersistedZoomWebhookAction](../app/Actions/Webhooks/Zoom/HandlePersistedZoomWebhookAction.php) → an event handler. Start with this flow before reading the detailed operations sections below.
 
 ## Architecture
 
@@ -43,11 +49,17 @@ Do not assume that providers share the same event IDs, signature algorithms, ord
 
 Zoom event timestamps are normalized at the inbox boundary and stored in `provider_occurred_at` as milliseconds since the Unix epoch. The Zoom adapter accepts a seconds or milliseconds value from the provider and converts it before persistence, so meeting handlers compare one consistent format.
 
-`last_zoom_event_timestamp` orders provider events. An update event older than or equal to the stored timestamp is ignored. A delete event older than the stored timestamp is ignored, while a distinct delete at the same timestamp wins an update/delete tie. The inbox fingerprint maps an exact repeat delivery to its existing row; recoverable rows may be retried, so handlers must remain safe to run more than once.
+`last_zoom_event_timestamp` orders provider events. An update event strictly older than the stored timestamp is ignored. A distinct update with an equal timestamp is reconciled against Zoom's current state; the inbox fingerprint still deduplicates an exact repeat delivery. A delete event older than the stored timestamp is ignored, while a distinct delete at the same timestamp wins an update/delete tie. Recoverable rows may be retried, so handlers must remain safe to run more than once.
 
-For update events, `sync_reconcile_before_at` is a local-time cutoff. An event at or before this cutoff triggers a read of Zoom's current meeting state; a callback matching a pending update also triggers that read. The handler makes the Zoom request outside the database transaction, then locks the local meeting and rechecks the provider watermark, operation ID, and cutoff before using the snapshot. If Zoom confirms the meeting is missing, the local meeting is marked deleted. The cutoff triggers reconciliation; it does not reject events. Clock differences can affect whether the handler makes the extra Zoom read, but provider event ordering itself uses only provider timestamps.
+For update events, `sync_reconcile_before_at` is a local-time cutoff. An event at or before this cutoff, an event tied with the provider watermark, or a callback matching a pending update triggers a read of Zoom's current meeting state. The handler makes the Zoom request outside the database transaction, then locks the local meeting and rechecks the provider watermark, operation ID, and cutoff before using the snapshot. If Zoom confirms the meeting is missing, the local meeting is marked deleted. The cutoff triggers reconciliation; it does not reject events. Clock differences can affect whether the handler makes the extra Zoom read, but provider event ordering itself uses only provider timestamps.
 
 `event_ts` is required for `meeting.updated` and optional for `meeting.deleted`. When a delete event has no timestamp, the handler trusts the authenticated, deduplicated event and processes it under the normal database row lock without calling Zoom's API. It emits a critical log because the event cannot be checked for staleness. Other Zoom event types have their own request validation rules.
+
+### Password updates and the refreshed join link
+
+Zoom may return no response body after a meeting update, and a password change can refresh the meeting's `join_url`. The application therefore leaves a successful password update in `updating` with its encrypted operation payload and schedules recovery. Recovery reads the meeting from Zoom. If the requested password is present, it saves Zoom's full snapshot, including the current `join_url`, and clears the operation. If Zoom still reports the old password, recovery may retry the PATCH, but it waits for a later GET before completing locally. Repeated mismatches stop at the configured retry limit and leave the operation in `UpdateFailed` for manual review.
+
+This path makes a lost update webhook recoverable. During the verification delay, local state can still contain the previous join link; persistent Zoom or worker failures can require manual review.
 
 The ownership boundaries are:
 
@@ -129,7 +141,7 @@ The following policy is the current Zoom inbox policy. A future provider may req
 
 ### Scheduler Command
 
-**Command:** `webhooks:recover-pending --limit=100`
+**Command:** `webhooks:recover-pending --limit=100` (the command default; the production scheduler runs it without an explicit limit)
 
 **Frequency:** Every minute
 
@@ -147,10 +159,12 @@ The following policy is the current Zoom inbox policy. A future provider may req
 $schedule->command('webhooks:recover-pending')
     ->name('recover-pending-webhooks')
     ->onOneServer()
-    ->withoutOverlapping()
+    ->withoutOverlapping(5)
     ->everyMinute()
     ->appendOutputTo(storage_path('logs/scheduler.log'));
 ```
+
+The five-minute overlap expiry lets recovery resume after an abnormal scheduler exit. `onOneServer()` and overlap locks require a shared cache store across scheduler hosts; production uses shared Redis.
 
 ## Monitoring
 

@@ -50,13 +50,13 @@ final readonly class HandleMeetingUpdatedWebhook
      * Read Zoom before opening the database transaction. The processor checks
      * that the meeting did not change while this request was in progress.
      */
-    private function buildContext(
+    public function buildContext(
         Meeting $meeting,
         MeetingUpdatedWebhookData $data,
         ?int $occurredAt,
         ?string $userUuid,
     ): ?MeetingUpdateWebhookContext {
-        if ($this->support->isStaleProviderEvent($meeting, $occurredAt)) {
+        if ($this->support->isStaleProviderEvent($meeting, $occurredAt, allowEqualTimestamp: true)) {
             $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_provider_event', $userUuid);
 
             return null;
@@ -72,6 +72,7 @@ final readonly class HandleMeetingUpdatedWebhook
         // Save the current operation details so we can detect changes made during the Zoom request.
         $operationId = $meeting->sync_operation_id;
         $cutoff = $meeting->sync_reconcile_before_at?->valueOf();
+        $providerWatermark = $meeting->last_zoom_event_timestamp;
         $remoteMeeting = $needsZoomCheck
             ? $this->zoom->getMeeting($meeting->meeting_id, $meeting->user)
             : null;
@@ -81,6 +82,7 @@ final readonly class HandleMeetingUpdatedWebhook
             zoomMeeting: $remoteMeeting,
             operationId: $operationId,
             reconcileBefore: $cutoff,
+            providerWatermark: $providerWatermark,
         );
     }
 }
