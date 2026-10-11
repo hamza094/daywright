@@ -738,7 +738,11 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
 
         $this->assertSame(MeetingSyncStatus::Updating, $meeting->sync_status);
         $this->assertSame('op-pw-206', $meeting->sync_operation_id);
-        $this->assertSame(2, $meeting->sync_attempts);
+        // consumeMismatchCycle charged one slot (0 → 1). The PATCH failure is caught
+        // locally and routed to scheduleVerification, which does NOT charge another slot.
+        // This prevents the double-increment that would otherwise occur if the exception
+        // propagated to the outer scheduleRetry handler.
+        $this->assertSame(1, $meeting->sync_attempts);
         $this->assertNull($meeting->sync_claim_token);
         $this->assertNotNull($meeting->sync_available_at);
         $this->assertTrue($meeting->sync_available_at->isFuture());

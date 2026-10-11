@@ -548,7 +548,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         $this->assertSame($timestamp, $meeting->last_zoom_event_timestamp);
     }
 
-    public function test_update_context_built_below_timestamp_retries_when_equal_timestamp_event_completes_first(): void
+    public function test_stale_context_is_rejected_under_lock_when_equal_timestamp_event_completes_first(): void
     {
         $meeting = $this->createMeeting([
             'meeting_id' => 664,
@@ -575,7 +575,8 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         $this->assertSame('Event B Topic', $meeting->topic);
         $this->assertSame(1000, $meeting->last_zoom_event_timestamp);
 
-        // Resume A with its stale context: processor detects the mismatch under the lock and throws
+        // Resume A with its stale context: processor detects the watermark mismatch under
+        // the lock and throws — Event A's payload must not have been applied
         $processor = app(\App\Services\Webhooks\ZoomMeetingUpdatedWebhookProcessor::class);
 
         $this->expectException(RuntimeException::class);
@@ -583,15 +584,32 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             $processor->process($meeting, $dataA, $timestamp, null, $contextA);
         } finally {
             $meeting->refresh();
-            // Event A's payload was not applied
             $this->assertSame('Event B Topic', $meeting->topic);
         }
+    }
 
-        // When A retries, durable inbox processing rebuilds context, reads Zoom snapshot, and reconciles
+    public function test_stale_context_retry_reconciles_via_zoom_get_on_equal_timestamp_collision(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 664,
+            'topic' => 'Event B Topic',
+            'sync_status' => MeetingSyncStatus::Active,
+            'last_zoom_event_timestamp' => 1000,
+        ]);
+        $timestamp = 1000;
+        $dataA = new MeetingUpdatedWebhookData(664, ['topic' => 'Event A Payload'], null);
+
+        // When A retries, the durable inbox rebuilds context (needsZoomCheck=true because
+        // last_zoom_event_timestamp == event timestamp), fetches the Zoom snapshot, and
+        // applies it — regardless of what Event A's original payload said.
+        // fakeZoom() must be called before handler construction so the container swaps
+        // the Zoom binding before the handler captures its injected dependency.
         $this->fakeZoom()->findsMeeting($this->zoomMeeting(664, 'Reconciled Zoom Topic'));
+        $handler = app(HandleMeetingUpdatedWebhook::class);
+
         $handler->handle($dataA, $timestamp);
-        $meeting->refresh();
-        $this->assertSame('Reconciled Zoom Topic', $meeting->topic);
+
+        $this->assertSame('Reconciled Zoom Topic', $meeting->refresh()->topic);
     }
 
     public function test_equal_timestamp_delete_followed_by_delayed_update_cannot_resurrect_the_meeting(): void
@@ -644,6 +662,8 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         // Concurrent local change updates the operation ID
         $meeting->update(['sync_operation_id' => 'newer-op']);
 
+        // Processor detects the stale operationId in the context and throws — the
+        // original topic must remain untouched
         $processor = app(\App\Services\Webhooks\ZoomMeetingUpdatedWebhookProcessor::class);
 
         $this->expectException(RuntimeException::class);
@@ -653,6 +673,38 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             $meeting->refresh();
             $this->assertSame('Original Topic', $meeting->topic);
         }
+    }
+
+    public function test_stale_context_does_not_overwrite_topic_after_concurrent_local_change(): void
+    {
+        $meeting = $this->createMeeting([
+            'meeting_id' => 666,
+            'topic' => 'Original Topic',
+            'sync_status' => MeetingSyncStatus::Active,
+            'sync_operation_id' => 'original-op',
+        ]);
+        $timestamp = (int) now()->valueOf();
+        $handler = app(HandleMeetingUpdatedWebhook::class);
+        $data = new MeetingUpdatedWebhookData(666, ['topic' => 'Stale Context Topic'], null);
+
+        // Build context before local change
+        $context = $handler->buildContext($meeting, $data, $timestamp, null);
+
+        // Concurrent local change updates the operation ID
+        $meeting->update(['sync_operation_id' => 'newer-op']);
+
+        // Simulate the exception being swallowed (as it would be by the inbox retry system)
+        // and verify the DB guard held — the stale payload was never committed
+        try {
+            $processor = app(\App\Services\Webhooks\ZoomMeetingUpdatedWebhookProcessor::class);
+            $processor->process($meeting, $data, $timestamp, null, $context);
+        } catch (RuntimeException) {
+            // expected — inbox retry loop would catch this and requeue
+        }
+
+        $meeting->refresh();
+        $this->assertSame('Original Topic', $meeting->topic);
+        $this->assertSame('newer-op', $meeting->sync_operation_id);
     }
 
     public function test_no_extra_zoom_get_is_introduced_for_ordinary_current_events(): void

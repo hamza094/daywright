@@ -134,9 +134,18 @@ final readonly class PerformZoomMeetingRecovery
                 return;
             }
 
-            // Send the PATCH again, then leave the operation open so the next recovery
-            // cycle can do another GET before finalising locally.
-            $this->retryPasswordUpdate($meeting, $user, $zoom, $operationId, $claimToken);
+            // Send the PATCH again. If it succeeds, scheduleVerification leaves the
+            // operation open for a later GET to confirm Zoom accepted the change.
+            // If the PATCH throws, the result is ambiguous: Zoom may have accepted
+            // the request before the connection dropped. Schedule a verification GET
+            // rather than a blind retry so the next cycle can check before consuming
+            // another attempt slot.
+            try {
+                $this->retryPasswordUpdate($meeting, $user, $zoom, $operationId, $claimToken);
+            } catch (ZoomException $exception) {
+                report($exception);
+                $this->scheduleVerification($meeting, $operationId, $claimToken);
+            }
         } else {
             $this->retryUpdate($meeting, $user, $zoom, $operationId, $claimToken);
         }
