@@ -11,6 +11,7 @@ use App\DataTransferObjects\Zoom\MeetingDeletedWebhookData;
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Jobs\RecoverZoomMeetingOperationJob;
 use App\Models\Meeting;
 use App\Models\Project;
@@ -311,6 +312,8 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
     /** @test */
     public function it_uses_zoom_retry_after_delay_for_rate_limits(): void
     {
+        $this->travelTo(now()->startOfSecond());
+
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 123,
             'sync_status' => MeetingSyncStatus::Updating,
@@ -339,6 +342,8 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
     /** @test */
     public function it_uses_fixed_backoff_when_rate_limit_has_no_retry_after(): void
     {
+        $this->travelTo(now()->startOfSecond());
+
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 123,
             'sync_status' => MeetingSyncStatus::Updating,
@@ -367,6 +372,8 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
     /** @test */
     public function it_uses_the_retry_after_delay_from_a_rate_limit_exception(): void
     {
+        $this->travelTo(now()->startOfSecond());
+
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 123,
             'sync_status' => MeetingSyncStatus::Updating,
@@ -738,11 +745,9 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
 
         $this->assertSame(MeetingSyncStatus::Updating, $meeting->sync_status);
         $this->assertSame('op-pw-206', $meeting->sync_operation_id);
-        // consumeMismatchCycle charged one slot (0 → 1). The PATCH failure is caught
-        // locally and routed to scheduleVerification, which does NOT charge another slot.
-        // This prevents the double-increment that would otherwise occur if the exception
-        // propagated to the outer scheduleRetry handler.
-        $this->assertSame(1, $meeting->sync_attempts);
+        // consumeMismatchCycle charged one slot (0 → 1). The 503 ZoomException reaches
+        // the outer scheduleRetry handler, charging another slot (1 → 2).
+        $this->assertSame(2, $meeting->sync_attempts);
         $this->assertNull($meeting->sync_claim_token);
         $this->assertNotNull($meeting->sync_available_at);
         $this->assertTrue($meeting->sync_available_at->isFuture());
@@ -877,6 +882,7 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
     {
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 205,
+            'password' => 'old-secret',
             'sync_status' => MeetingSyncStatus::Updating,
             'sync_operation_type' => MeetingSyncOperationType::Update,
             'sync_operation_id' => 'op-pw-205',
@@ -886,21 +892,146 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
             'last_zoom_event_timestamp' => null,
         ]);
 
-        // Delete webhook arrives and marks the meeting as deleted.
-        app(HandleMeetingDeletedWebhook::class)->handle(
-            new MeetingDeletedWebhookData(205),
-            (int) now()->subSeconds(5)->valueOf(),
-        );
+        $this->zoom = $this->fakeZoom()->findsMeeting($this->zoomMeetingWithDetails(
+            id: 205,
+            password: 'old-secret',
+            joinUrl: 'https://zoom.us/j/205-old',
+        ));
 
-        $meeting->refresh();
-        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->sync_status);
+        $this->zoom->beforeUpdatingMeeting(function (): void {
+            // Delete webhook arrives and marks the meeting as deleted while PATCH is in flight.
+            app(HandleMeetingDeletedWebhook::class)->handle(
+                new MeetingDeletedWebhookData(205),
+                (int) now()->valueOf(),
+            );
+        });
 
-        // Recovery job that arrives later must be skipped (claim token cleared by delete webhook).
         (new RecoverZoomMeetingOperationJob($meeting->id, 'op-pw-205', 'claim-pw-205'))
             ->handle($this->zoom, app(PerformZoomMeetingRecovery::class));
 
         $meeting->refresh();
         $this->assertSame(MeetingSyncStatus::Deleted, $meeting->sync_status);
+        $this->assertNull($meeting->sync_operation_id);
+        $this->assertNull($meeting->sync_available_at);
+    }
+
+    /** @test */
+    public function uncertain_password_patch_near_attempt_limit_remains_pending_at_attempt_four_and_next_get_completes(): void
+    {
+        $startTime = now()->startOfSecond();
+        $this->travelTo($startTime);
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 207,
+            'password' => 'old-secret',
+            'join_url' => 'https://zoom.us/j/207-old',
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'op-pw-207',
+            'sync_payload' => json_encode(['password' => 'new-secret']),
+            'sync_claim_token' => 'claim-pw-207',
+            'sync_lease_expires_at' => now()->addMinutes(5),
+            'sync_attempts' => 3,
+        ]);
+
+        $oldZoomMeeting = $this->zoomMeetingWithDetails(
+            id: 207,
+            password: 'old-secret',
+            joinUrl: 'https://zoom.us/j/207-old',
+        );
+        $newZoomMeeting = $this->zoomMeetingWithDetails(
+            id: 207,
+            password: 'new-secret',
+            joinUrl: 'https://zoom.us/j/207-new',
+        );
+
+        $this->zoom = $this->fakeZoom()
+            ->findsMeeting($oldZoomMeeting)
+            ->beforeUpdatingMeeting(function () use ($newZoomMeeting): void {
+                // Zoom accepted the password change and refreshed join_url,
+                // but the response was uncertain/lost.
+                $this->zoom->findsMeeting($newZoomMeeting);
+            })
+            ->failNextUpdateWithException(new ZoomMeetingOperationUnknownException('Network timeout'));
+
+        (new RecoverZoomMeetingOperationJob($meeting->id, 'op-pw-207', 'claim-pw-207'))
+            ->handle($this->zoom, app(PerformZoomMeetingRecovery::class));
+
+        $meeting->refresh();
+
+        // Mismatch consumed attempt 3 -> 4. Uncertain failure schedules verification
+        // without consuming another attempt, remaining pending at attempt 4 instead of
+        // reaching attempt 5 and moving to UpdateFailed.
+        $this->assertSame(MeetingSyncStatus::Updating, $meeting->sync_status);
+        $this->assertSame(4, $meeting->sync_attempts);
+        $this->assertSame('op-pw-207', $meeting->sync_operation_id);
+        $this->assertNull($meeting->sync_claim_token);
+        $this->assertNull($meeting->sync_lease_expires_at);
+        $this->assertNotNull($meeting->sync_available_at);
+        $this->assertTrue($meeting->sync_available_at->gte($startTime->copy()->addSeconds(60)));
+        $this->assertNotNull($meeting->sync_error);
+
+        // Next recovery GET cycle verifies and completes.
+        Meeting::query()->whereKey($meeting->getKey())->update([
+            'sync_claim_token' => 'claim-pw-207-retry',
+            'sync_lease_expires_at' => now()->addMinutes(5),
+            'sync_available_at' => null,
+        ]);
+
+        (new RecoverZoomMeetingOperationJob($meeting->id, 'op-pw-207', 'claim-pw-207-retry'))
+            ->handle($this->zoom, app(PerformZoomMeetingRecovery::class));
+
+        $meeting->refresh();
+
+        $this->assertSame(MeetingSyncStatus::Active, $meeting->sync_status);
+        $this->assertSame('new-secret', $meeting->password);
+        $this->assertSame('https://zoom.us/j/207-new', $meeting->join_url);
+        $this->assertNull($meeting->sync_operation_id);
+        $this->assertNull($meeting->sync_error);
+    }
+
+    /** @test */
+    public function rate_limited_password_patch_near_attempt_limit_schedules_verification_without_incrementing_again(): void
+    {
+        $startTime = now()->startOfSecond();
+        $this->travelTo($startTime);
+
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'meeting_id' => 208,
+            'password' => 'old-secret',
+            'join_url' => 'https://zoom.us/j/208-old',
+            'sync_status' => MeetingSyncStatus::Updating,
+            'sync_operation_type' => MeetingSyncOperationType::Update,
+            'sync_operation_id' => 'op-pw-208',
+            'sync_payload' => json_encode(['password' => 'new-secret']),
+            'sync_claim_token' => 'claim-pw-208',
+            'sync_lease_expires_at' => now()->addMinutes(5),
+            'sync_attempts' => 3,
+        ]);
+
+        $this->zoom = $this->fakeZoom()
+            ->findsMeeting($this->zoomMeetingWithDetails(
+                id: 208,
+                password: 'old-secret',
+                joinUrl: 'https://zoom.us/j/208-old',
+            ))
+            ->failNextUpdateWithException(new \App\Exceptions\Integrations\Zoom\ZoomRateLimitException(120));
+
+        (new RecoverZoomMeetingOperationJob($meeting->id, 'op-pw-208', 'claim-pw-208'))
+            ->handle($this->zoom, app(PerformZoomMeetingRecovery::class));
+
+        $meeting->refresh();
+
+        // Mismatch consumed attempt 3 -> 4. Rate-limit PATCH failure is routed to scheduleVerification
+        // with Retry-After delay (120s), so attempts remain 4 and operation remains pending.
+        $this->assertSame(MeetingSyncStatus::Updating, $meeting->sync_status);
+        $this->assertSame(4, $meeting->sync_attempts);
+        $this->assertSame('op-pw-208', $meeting->sync_operation_id);
+        $this->assertNull($meeting->sync_claim_token);
+        $this->assertNull($meeting->sync_lease_expires_at);
+        $this->assertNotNull($meeting->sync_available_at);
+        $this->assertTrue($meeting->sync_available_at->gte($startTime->copy()->addSeconds(120)));
+        $this->assertNotNull($meeting->sync_error);
     }
 
     /** @test */

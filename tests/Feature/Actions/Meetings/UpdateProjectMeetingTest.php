@@ -425,25 +425,22 @@ final class UpdateProjectMeetingTest extends TestCase
             'sync_status' => MeetingSyncStatus::Active,
         ]);
 
-        // First password update succeeds and schedules verification.
+        $this->zoom->beforeUpdatingMeeting(function () use ($meeting): void {
+            // A newer operation overtakes while the PATCH is in flight.
+            Meeting::query()->whereKey($meeting->getKey())->update([
+                'sync_operation_id' => 'newer-operation',
+                'sync_claim_token' => null,
+                'sync_available_at' => null,
+                'sync_status' => MeetingSyncStatus::Active,
+                'sync_payload' => null,
+            ]);
+        });
+
         $this->action->handle($meeting, $this->user, new MeetingUpdateData(password: 'first'), $this->zoom);
-        $afterFirst = $meeting->refresh();
-        $firstOperationId = $afterFirst->sync_operation_id;
-        $this->assertNotNull($firstOperationId);
 
-        // A newer operation overtakes: simulate by directly changing the operation ID in the DB.
-        Meeting::query()->whereKey($meeting->getKey())->update([
-            'sync_operation_id' => 'newer-operation',
-            'sync_claim_token' => null,
-            'sync_available_at' => null,
-            'sync_status' => MeetingSyncStatus::Active,
-            'sync_payload' => null,
-        ]);
-
-        // The row no longer has the first operation; calling schedulePasswordVerification
-        // with the old operation ID is a no-op (executeWithOperationIdCheck guards it).
         $meeting->refresh();
-        $this->assertNotSame($firstOperationId, $meeting->sync_operation_id);
+        $this->assertSame('newer-operation', $meeting->sync_operation_id);
+        $this->assertNull($meeting->sync_available_at);
     }
 
     private function zoomMeetingSnapshot(Meeting $meeting, string $topic, string $password = '', string $joinUrl = 'https://zoom.us/j/current'): ZoomMeeting

@@ -9,6 +9,7 @@ use App\DataTransferObjects\Zoom\Meeting as ZoomMeeting;
 use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
@@ -136,15 +137,33 @@ final readonly class PerformZoomMeetingRecovery
 
             // Send the PATCH again. If it succeeds, scheduleVerification leaves the
             // operation open for a later GET to confirm Zoom accepted the change.
-            // If the PATCH throws, the result is ambiguous: Zoom may have accepted
-            // the request before the connection dropped. Schedule a verification GET
-            // rather than a blind retry so the next cycle can check before consuming
-            // another attempt slot.
+            // If the PATCH throws ZoomMeetingOperationUnknownException, the result
+            // is ambiguous: Zoom may have accepted the request before the connection
+            // dropped. Schedule a verification GET without consuming another attempt.
+            // If the PATCH is rate-limited, schedule verification after the Retry-After
+            // delay (or 60 seconds fallback) without consuming another attempt.
+            // Other ZoomExceptions bubble up to the outer handler to be retried or reviewed.
             try {
                 $this->retryPasswordUpdate($meeting, $user, $zoom, $operationId, $claimToken);
-            } catch (ZoomException $exception) {
+            } catch (ZoomMeetingOperationUnknownException $exception) {
                 report($exception);
-                $this->scheduleVerification($meeting, $operationId, $claimToken);
+                $this->scheduleVerification(
+                    $meeting,
+                    $operationId,
+                    $claimToken,
+                    delaySeconds: 60,
+                    exception: $exception,
+                );
+            } catch (ZoomRateLimitException $exception) {
+                report($exception);
+                $delaySeconds = $exception->retryAfterSeconds() ?? 60;
+                $this->scheduleVerification(
+                    $meeting,
+                    $operationId,
+                    $claimToken,
+                    delaySeconds: $delaySeconds,
+                    exception: $exception,
+                );
             }
         } else {
             $this->retryUpdate($meeting, $user, $zoom, $operationId, $claimToken);
@@ -345,12 +364,17 @@ final readonly class PerformZoomMeetingRecovery
     }
 
     /**
-     * Clear the claim and lease and set sync_available_at to one minute from now
-     * so the scheduler picks it up for a read-only GET verification cycle.
+     * Clear the claim and lease and set sync_available_at so the scheduler
+     * picks it up for a read-only GET verification cycle.
      */
-    private function scheduleVerification(Meeting $meeting, string $operationId, string $claimToken): void
-    {
-        DB::transaction(function () use ($meeting, $operationId, $claimToken): void {
+    private function scheduleVerification(
+        Meeting $meeting,
+        string $operationId,
+        string $claimToken,
+        int $delaySeconds = 60,
+        ?Throwable $exception = null,
+    ): void {
+        DB::transaction(function () use ($meeting, $operationId, $claimToken, $delaySeconds, $exception): void {
             $lockedMeeting = $this->lockMeeting($meeting);
 
             if (! $this->policy->isClaimValid($lockedMeeting, $claimToken) || ! $this->policy->isOperationCurrent($lockedMeeting, $operationId)) {
@@ -360,8 +384,8 @@ final readonly class PerformZoomMeetingRecovery
             $lockedMeeting->update([
                 'sync_claim_token' => null,
                 'sync_lease_expires_at' => null,
-                'sync_available_at' => now()->addMinute(),
-                'sync_error' => null,
+                'sync_available_at' => now()->addSeconds(max(1, $delaySeconds)),
+                'sync_error' => $exception !== null ? $this->errorFormatter->format($exception) : null,
             ]);
         });
     }
