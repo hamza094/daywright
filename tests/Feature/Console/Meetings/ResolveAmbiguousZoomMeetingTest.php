@@ -25,7 +25,7 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
         $meeting = $this->createUnknownMeeting();
 
         $this->artisan('meetings:resolve-ambiguous', [
-            'meeting_id' => $meeting->id,
+            'meeting_id' => (string) $meeting->id,
             '--mark-failed' => true,
             '--force' => true,
         ])->assertExitCode(1);
@@ -39,7 +39,7 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
         $meeting = $this->createUnknownMeeting();
 
         $this->artisan('meetings:resolve-ambiguous', [
-            'meeting_id' => $meeting->id,
+            'meeting_id' => (string) $meeting->id,
             '--mark-failed' => true,
             '--reference' => 'INC-123',
             '--force' => true,
@@ -72,7 +72,7 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
         ));
 
         $this->artisan('meetings:resolve-ambiguous', [
-            'meeting_id' => $meeting->id,
+            'meeting_id' => (string) $meeting->id,
             '--zoom-meeting-id' => '123',
             '--reference' => 'INC-123',
             '--force' => true,
@@ -88,7 +88,7 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
         $meeting->update(['sync_available_at' => now()]);
 
         $this->artisan('meetings:resolve-ambiguous', [
-            'meeting_id' => $meeting->id,
+            'meeting_id' => (string) $meeting->id,
             '--mark-failed' => true,
             '--reference' => 'INC-123',
             '--force' => true,
@@ -103,7 +103,7 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
         $meeting = $this->createUnknownMeeting();
 
         $this->artisan('meetings:resolve-ambiguous', [
-            'meeting_id' => $meeting->id,
+            'meeting_id' => (string) $meeting->id,
             '--mark-failed' => true,
             '--reference' => 'INC-123',
         ])
@@ -111,6 +111,87 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
             ->assertSuccessful();
 
         $this->assertSame(MeetingSyncStatus::CreateUnknown, $meeting->fresh()->sync_status);
+    }
+
+    #[Test]
+    public function it_rejects_non_numeric_meeting_id(): void
+    {
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => 'abc',
+            '--mark-failed' => true,
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_meeting_id_with_prefix(): void
+    {
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => '123abc',
+            '--mark-failed' => true,
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_meeting_id_with_decimal(): void
+    {
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => '123.9',
+            '--mark-failed' => true,
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_zero_meeting_id(): void
+    {
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => '0',
+            '--mark-failed' => true,
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_negative_meeting_id(): void
+    {
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => '-1',
+            '--mark-failed' => true,
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_non_numeric_zoom_meeting_id(): void
+    {
+        $meeting = $this->createUnknownMeeting();
+
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => (string) $meeting->id,
+            '--zoom-meeting-id' => 'abc123',
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_zero_zoom_meeting_id(): void
+    {
+        $meeting = $this->createUnknownMeeting();
+
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => (string) $meeting->id,
+            '--zoom-meeting-id' => '0',
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])->assertExitCode(1);
     }
 
     private function createUnknownMeeting(): \App\Models\Meeting

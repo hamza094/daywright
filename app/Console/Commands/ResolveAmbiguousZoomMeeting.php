@@ -30,11 +30,20 @@ final class ResolveAmbiguousZoomMeeting extends Command
 
     public function handle(): int
     {
-        $meetingId = (int) $this->argument('meeting_id');
+        $meetingIdArgument = $this->argument('meeting_id');
         $zoomMeetingId = $this->option('zoom-meeting-id');
         $markFailed = (bool) $this->option('mark-failed');
         $reference = $this->option('reference');
         $hasZoomMeetingId = is_string($zoomMeetingId) && $zoomMeetingId !== '';
+
+        // Validate meeting_id is a positive integer string
+        if (! ctype_digit($meetingIdArgument) || $meetingIdArgument === '0') {
+            $this->error('The meeting_id must be a positive integer.');
+
+            return self::FAILURE;
+        }
+
+        $meetingId = (int) $meetingIdArgument;
 
         if (! is_string($reference) || $reference === '') {
             $this->error('A ticket or incident reference is required.');
@@ -44,6 +53,13 @@ final class ResolveAmbiguousZoomMeeting extends Command
 
         if ($hasZoomMeetingId === $markFailed) {
             $this->error('Provide exactly one of --zoom-meeting-id or --mark-failed.');
+
+            return self::FAILURE;
+        }
+
+        // Validate zoom-meeting-id is a valid string if provided
+        if ($hasZoomMeetingId && (! ctype_digit($zoomMeetingId) || $zoomMeetingId === '0')) {
+            $this->error('The zoom-meeting-id must be a positive integer string.');
 
             return self::FAILURE;
         }

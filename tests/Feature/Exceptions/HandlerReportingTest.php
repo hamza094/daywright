@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\Exceptions;
 
 use App\Exceptions\ArchivedResourceException;
+use App\Exceptions\EditConflictException;
 use App\Exceptions\Handler;
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
+use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Exceptions\Paddle\PaddleRequestException;
@@ -58,6 +60,7 @@ class HandlerReportingTest extends TestCase
             ),
             new SubscriptionException('You are already on this plan.'),
             new ZoomUserErrorException('User is not connected to Zoom.'),
+            new EditConflictException(expectedVersion: 5, currentVersion: 6),
         ];
 
         foreach ($exceptions as $exception) {
@@ -230,5 +233,28 @@ class HandlerReportingTest extends TestCase
             );
 
         $handler->report(new SubscriptionRequiredException);
+    }
+
+    #[Test]
+    public function zoom_exception_meta_allows_only_approved_fields(): void
+    {
+        $request = Request::create('/api/v1/meetings', 'POST');
+        $this->app->instance('request', $request);
+
+        $exception = (new ZoomException)->withContext([
+            'provider' => 'zoom',
+            'reason' => 'rate_limited',
+            'retry_after_seconds' => 30,
+            'sensitive_data' => 'should_not_be_exposed',
+            'user_email' => 'user@example.com',
+        ]);
+
+        $meta = $exception->meta($request);
+
+        $this->assertSame('zoom', $meta['provider']);
+        $this->assertSame('rate_limited', $meta['reason']);
+        $this->assertSame(30, $meta['retry_after_seconds']);
+        $this->assertArrayNotHasKey('sensitive_data', $meta);
+        $this->assertArrayNotHasKey('user_email', $meta);
     }
 }

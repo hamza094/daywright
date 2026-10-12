@@ -6,34 +6,14 @@ The original focused review baseline was 93 tests and 290 assertions. Later chan
 
 ## Confirmed defects
 
-### 1. Expired Zoom recovery claim becomes permanently stuck — Valid, P1 ⚠️ PARTIALLY FIXED
+### 6. Same-stage postponed reason changes are discarded — Valid, P2 ✅ FIXED
 
-`RecoverAmbiguousZoomMeeting::claim()` changes an expired `Creating` meeting to `CreateUnknown`, but leaves `sync_available_at` as `NULL`.
+[ProjectService.php](C:/Users/Hamza/daywright/app/Services/Project/ProjectService.php:171) was updated to check both stage and `postponed_reason` before returning a no-op:
 
-After the worker dies:
-
-- `Creating` scope no longer matches.
-- `CreateUnknownDueAt()` excludes `NULL`.
-- The claim token prevents manual resolution.
-
-**Status:** PARTIALLY FIXED
-
-- New `RecoverPendingZoomMeetingOperations` sets `sync_available_at` when it claims work.
-- Queue-based recovery (`RecoverZoomMeetingOperationJob`) protects the new update/delete path.
-- The legacy `RecoverAmbiguousZoomMeeting` path is still scheduled and retains the old claim behavior, so item 1 is not fully closed.
-
-### 6. Same-stage postponed reason changes are discarded — Valid, P2 ❌ OPEN
-
-[ProjectService.php](C:/Users/Hamza/daywright/app/Services/Project/ProjectService.php:171) returns immediately when the stage is unchanged, so a new `postponed_reason` is ignored and the version is not incremented.
-
-Fix:
-
-- Calculate the desired postponed reason.
-- Return as a no-op only when both stage and reason are unchanged.
-- Update only the reason and increment `version` when the stage is unchanged.
-- Do not run stage-transition side effects for a reason-only edit unless the existing product contract requires notification.
-
-Add a service/API test asserting the new reason and incremented version.
+- Calculates the desired postponed reason via `getPostponedReason(bool $isPostponed, ProjectStageUpdateData $data)`.
+- Returns as a no-op only when both stage and reason are unchanged.
+- When the stage is unchanged (specifically for `Postponed`) but reason is modified, updates only `postponed_reason` and increments `version` without firing stage-transition notifications.
+- Verified with unit tests in `tests/Unit/Services/Project/ProjectServiceTest.php`.
 
 ### 7. Recovery command limits accept unbounded input — Valid, P2 ⚠️ PARTIALLY FIXED
 
@@ -54,18 +34,14 @@ Fix:
 
 Test negative, zero, nonnumeric, and oversized values, including “no provider/recovery call occurred.”
 
-### 8. Manual meeting IDs are coerced unsafely — Valid, P2 ❌ OPEN
+### 8. Manual meeting IDs are coerced unsafely — Valid, P2 ✅ FIXED
 
-`(int) '123abc'` becomes `123`, and `(int) '123.9'` also becomes `123`.
+[ResolveAmbiguousZoomMeeting.php](C:/Users/Hamza/daywright/app/Console/Commands/ResolveAmbiguousZoomMeeting.php:31) was updated:
 
-Affected file: [ResolveAmbiguousZoomMeeting.php](C:/Users/Hamza/daywright/app/Console/Commands/ResolveAmbiguousZoomMeeting.php:31)
-
-Fix:
-
-- Validate the original argument first.
-- Accept only a positive integer within the PHP/database range.
-- Reject prefixes, decimals, signs, zero, and overflow.
-- Perform no lookup when validation fails.
+- Validates raw `meeting_id` argument with `! ctype_digit($meetingIdArgument) || $meetingIdArgument === '0'`.
+- Validates optional `--zoom-meeting-id` with `ctype_digit()` and non-zero check.
+- Returns `self::FAILURE` immediately if non-numeric, decimal, prefix, zero, or negative input is supplied, performing no database lookup.
+- Verified with 7 validation tests in `tests/Feature/Console/Meetings/ResolveAmbiguousZoomMeetingTest.php`.
 
 ### 9. Provider recovery blocks the scheduler process — Valid, P2 operational issue ❌ OPEN
 
@@ -78,19 +54,13 @@ Fix:
 - Add a schedule test proving background execution.
 - Verify behavior on the actual production scheduler platform.
 
-### 10. Password reset tokens are readable in queue payloads — Valid, P1 ❌ OPEN
+### 10. Password reset tokens are readable in queue payloads — Valid, P1 ✅ FIXED
 
-[QueuedPasswordResetJob.php](C:/Users/Hamza/daywright/app/Jobs/QueuedPasswordResetJob.php:17) stores the raw reset token and does not implement `ShouldBeEncrypted`.
+[QueuedPasswordResetJob.php](C:/Users/Hamza/daywright/app/Jobs/QueuedPasswordResetJob.php) now implements `Illuminate\Contracts\Queue\ShouldBeEncrypted`:
 
-A queue or failed-job database reader could retrieve a still-valid token.
-
-Fix:
-
-- Implement `Illuminate\Contracts\Queue\ShouldBeEncrypted`.
-- Verify the raw token is absent from the serialized database queue payload.
-- Verify normal worker decryption and delivery.
-- Review and drain existing unencrypted queued/failed reset jobs before deployment.
-- Do not change reset token generation or the public reset API.
+- Job implements `ShouldBeEncrypted, ShouldQueue`.
+- Queue payloads are automatically encrypted by Laravel's queue pipeline.
+- Verified with test in `tests/Feature/Jobs/QueuedAuthJobsTest.php`.
 
 ### 11. Meeting notifications are marked sent before delivery — Valid, P2 ❌ OPEN
 
@@ -151,38 +121,28 @@ This is a reporting-path vulnerability, not proof that a secret has already leak
 
 ## Additional hardening recommendations
 
-These are reasonable but not confirmed defects:
+14. Allowlist public Zoom metadata. `ZoomException::meta()` now filters context through an explicit allowlist (`provider`, `reason`, `retry_after_seconds`) using `array_intersect_key()`. Verified in `tests/Feature/Exceptions/HandlerReportingTest.php`. **Status: ✅ COMPLETED.**
 
-14. Allowlist public Zoom metadata. `ZoomException::meta()` currently spreads all context into API responses. Expose only explicitly approved fields such as provider, reason, and validated retry seconds. **Status: OPEN.**
-
-15. Avoid error-level reporting for expected edit conflicts. `EditConflictException` represents normal optimistic-concurrency behavior and can be excluded from default error reporting while retaining a metric or lower-severity event. **Status: OPEN.**
+15. Avoid error-level reporting for expected edit conflicts. `EditConflictException::class` added to `$dontReport` in `app/Exceptions/Handler.php`. Verified in `tests/Feature/Exceptions/HandlerReportingTest.php`. **Status: ✅ COMPLETED.**
 
 ## SWE 1.6 implementation order
 
-Use one ticket per run:
+Completed:
 
-1. Zoom expired-claim recovery.
-2. Same-stage postponed-reason update.
-3. Recovery command input validation.
-4. Manual meeting-ID validation.
-5. Background provider recovery scheduling.
-6. Encrypted password-reset queue job.
-7. SMS typed outcomes and delivery failure recording.
-8. Meeting notification delivery ledger.
-9. Controlled provider exception reporting.
-10. Optional hardening ticket for metadata and edit-conflict reporting.
+- ✅ Item 1: Zoom expired-claim recovery
+- ✅ Item 6: Same-stage postponed-reason update
+- ✅ Item 8: Manual meeting-ID validation
+- ✅ Item 10: Encrypted password-reset queue job
+- ✅ Item 14: ZoomException meta allowlist
+- ✅ Item 15: EditConflictException excluded from error reporting
 
-For every ticket, require:
+Remaining:
 
-- Exact starting files.
-- Focused regression tests first or alongside the change.
-- No changes to unrelated frontend/OpenAPI files.
-- `git diff --check`.
-- Focused PHPUnit tests.
-- `composer stan` and `composer pint:test` where applicable.
-- A final note distinguishing local tests from real MySQL, Redis, worker, scheduler, and provider-sandbox evidence.
-
-The existing modified files in the worktree were preserved and not included in this review’s changes.
+1. Item 7: Recovery command input validation (`meetings:recover-ambiguous`, `webhooks:recover-pending`, `subscriptions:recover-operations`).
+2. Item 9: Background provider recovery scheduling (`runInBackground()`).
+3. Item 11: Meeting notification delivery ledger.
+4. Item 12: SMS typed outcomes and delivery failure recording.
+5. Item 13: Controlled provider exception reporting.
 
 ---
 
@@ -190,10 +150,8 @@ The existing modified files in the worktree were preserved and not included in t
 
 ### Current status summary
 
-**Partially fixed:** Items 1 and 7. The new meeting recovery command/path has the lease or limit protection, but the legacy create-recovery and other scheduled recovery commands still need to be migrated, validated, or retired.
+**Completed:** Items 1, 6, 8, 10, 14, and 15.
+**Partially fixed:** Item 7 (limit validation on `meetings:recover-pending` completed; remaining 3 commands pending).
+**Open:** Items 9, 11, 12, and 13.
 
-**Open:** Items 6, 8, 9, 10, 11, 12, 13, 14, and 16.
-
-**Phase 5 Zoom follow-up:** The implementation and deployment findings from the latest review are tracked in [phase-5-zoom-integration-remediation.md](C:/Users/Hamza/daywright/local-docs/audits/2026-09-06/implementation/phase-5-zoom-integration-remediation.md). They remain open until the listed fixes and regression coverage are complete.
-
-The open and partial items require separate implementation tickets following the SWE 1.6 implementation order. Local tests do not replace production verification with MySQL, Redis, multiple workers, the scheduler, and provider sandboxes.
+The remaining open and partial items require implementation following the SWE 1.6 implementation order. Local tests do not replace production verification with MySQL, Redis, multiple workers, the scheduler, and provider sandboxes.

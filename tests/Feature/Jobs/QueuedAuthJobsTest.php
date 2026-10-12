@@ -7,6 +7,7 @@ namespace Tests\Feature\Jobs;
 use App\Jobs\QueuedPasswordResetJob;
 use App\Jobs\QueuedVerifyEmailJob;
 use App\Models\User;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Mockery;
@@ -57,5 +58,16 @@ class QueuedAuthJobsTest extends TestCase
         $job->failed(new RuntimeException('Simulated failure'));
 
         $this->assertTrue(true);
+    }
+
+    /** @test */
+    public function password_reset_job_implements_should_be_encrypted(): void
+    {
+        $user = User::factory()->create();
+        $token = 'super-secret-reset-token-12345';
+
+        $job = new QueuedPasswordResetJob($user->id, $token);
+
+        $this->assertInstanceOf(ShouldBeEncrypted::class, $job);
     }
 }

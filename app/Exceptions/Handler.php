@@ -51,6 +51,7 @@ class Handler extends ExceptionHandler
         ModelNotFoundException::class,
         NotFoundHttpException::class,
         MethodNotAllowedHttpException::class,
+        EditConflictException::class,
     ];
 
     /**

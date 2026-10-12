@@ -9,7 +9,7 @@ use App\Actions\Project\SendProjectUpdatedNotificationAction;
 use App\DataTransferObjects\Project\ProjectCreateData;
 use App\DataTransferObjects\Project\ProjectStageUpdateData;
 use App\DataTransferObjects\Project\ProjectUpdateData;
-use App\Enums\StageStatus;
+use App\Enums\ProjectStage;
 use App\Enums\Subscription\PlanLimitType;
 use App\Exceptions\EditConflictException;
 use App\Exceptions\InvalidStateTransitionException;
@@ -167,11 +167,26 @@ class ProjectService
             // Handle stage transition using state machine
             $newStage = $data->stage();
             $currentStage = $freshProject->stage_id;
+            $isNewStagePostponed = $newStage === ProjectStage::Postponed;
+            $newPostponedReason = $this->getPostponedReason($isNewStagePostponed, $data);
+            $currentPostponedReason = $freshProject->postponed_reason;
 
-            // Check for no-op state transition (setting to current state)
-            if ($newStage->value === $currentStage) {
+            // Check for no-op state transition (setting to current state with same reason)
+            if ($newStage->value === $currentStage && $newPostponedReason === $currentPostponedReason) {
                 // Allow the request but skip state transition and side effects
                 // Do not increment version since nothing changed
+                $freshProject->load('stage');
+
+                return $freshProject;
+            }
+
+            // If stage is unchanged but reason changed, update only the reason and increment version
+            // Only allow reason updates when the stage is Postponed
+            if ($newStage->value === $currentStage) {
+                $freshProject->update([
+                    'postponed_reason' => $newPostponedReason,
+                    'version' => $freshProject->version + 1,
+                ]);
                 $freshProject->load('stage');
 
                 return $freshProject;
@@ -186,7 +201,7 @@ class ProjectService
 
             // Update other stage-related fields with version increment
             $freshProject->update([
-                'postponed_reason' => $this->getPostponedReason($freshProject, $data),
+                'postponed_reason' => $newPostponedReason,
                 'stage_updated_at' => now(),
                 'version' => $freshProject->version + 1,
             ]);
@@ -214,9 +229,9 @@ class ProjectService
         return $this->forceDeleteAbandonedProjectAction->execute($project);
     }
 
-    private function getPostponedReason(Project $project, ProjectStageUpdateData $data): ?string
+    private function getPostponedReason(bool $isPostponed, ProjectStageUpdateData $data): ?string
     {
-        return ($project->stage->name === StageStatus::Postponed->value && ! in_array($data->postponedReason, [null, '', '0'], true))
+        return ($isPostponed && ! in_array($data->postponedReason, [null, '', '0'], true))
             ? $data->postponedReason
             : null;
     }
