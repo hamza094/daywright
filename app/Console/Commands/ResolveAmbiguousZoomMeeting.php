@@ -11,6 +11,8 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
+use function Safe\preg_match;
+
 final class ResolveAmbiguousZoomMeeting extends Command
 {
     protected $signature = 'meetings:resolve-ambiguous
@@ -36,8 +38,10 @@ final class ResolveAmbiguousZoomMeeting extends Command
         $reference = $this->option('reference');
         $hasZoomMeetingId = is_string($zoomMeetingId) && $zoomMeetingId !== '';
 
-        // Validate meeting_id is a positive integer string
-        if (! ctype_digit($meetingIdArgument) || $meetingIdArgument === '0') {
+        // Validate meeting_id is a positive integer string without leading zeroes or overflow
+        if (! preg_match('/^[1-9]\d*$/', $meetingIdArgument)
+            || filter_var($meetingIdArgument, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => PHP_INT_MAX]]) === false
+        ) {
             $this->error('The meeting_id must be a positive integer.');
 
             return self::FAILURE;
@@ -57,8 +61,8 @@ final class ResolveAmbiguousZoomMeeting extends Command
             return self::FAILURE;
         }
 
-        // Validate zoom-meeting-id is a valid string if provided
-        if ($hasZoomMeetingId && (! ctype_digit($zoomMeetingId) || $zoomMeetingId === '0')) {
+        // Validate zoom-meeting-id is a positive integer string if provided
+        if ($hasZoomMeetingId && ! preg_match('/^[1-9]\d*$/', $zoomMeetingId)) {
             $this->error('The zoom-meeting-id must be a positive integer string.');
 
             return self::FAILURE;

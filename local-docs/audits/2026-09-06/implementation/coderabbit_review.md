@@ -1,6 +1,6 @@
 I reviewed the remaining CodeRabbit suggestions against the current code and focused tests. Resolved suggestions have been removed from this active review; the original CodeRabbit numbering is retained for traceability.
 
-This document tracks 9 confirmed defects that remain open or partially fixed, plus 2 valid hardening recommendations. It does not itself make code changes.
+This document tracks confirmed defects and hardening recommendations. It does not itself make code changes.
 
 The original focused review baseline was 93 tests and 290 assertions. Later changes added more focused coverage; these tests still do not replace real multi-process and provider verification.
 
@@ -8,7 +8,7 @@ The original focused review baseline was 93 tests and 290 assertions. Later chan
 
 ### 6. Same-stage postponed reason changes are discarded — Valid, P2 ✅ FIXED
 
-[ProjectService.php](C:/Users/Hamza/daywright/app/Services/Project/ProjectService.php:171) was updated to check both stage and `postponed_reason` before returning a no-op:
+[ProjectService.php](app/Services/Project/ProjectService.php) was updated to check both stage and `postponed_reason` before returning a no-op:
 
 - Calculates the desired postponed reason via `getPostponedReason(bool $isPostponed, ProjectStageUpdateData $data)`.
 - Returns as a no-op only when both stage and reason are unchanged.
@@ -36,12 +36,13 @@ Test negative, zero, nonnumeric, and oversized values, including “no provider/
 
 ### 8. Manual meeting IDs are coerced unsafely — Valid, P2 ✅ FIXED
 
-[ResolveAmbiguousZoomMeeting.php](C:/Users/Hamza/daywright/app/Console/Commands/ResolveAmbiguousZoomMeeting.php:31) was updated:
+[ResolveAmbiguousZoomMeeting.php](app/Console/Commands/ResolveAmbiguousZoomMeeting.php) was updated:
 
-- Validates raw `meeting_id` argument with `! ctype_digit($meetingIdArgument) || $meetingIdArgument === '0'`.
-- Validates optional `--zoom-meeting-id` with `ctype_digit()` and non-zero check.
-- Returns `self::FAILURE` immediately if non-numeric, decimal, prefix, zero, or negative input is supplied, performing no database lookup.
-- Verified with 7 validation tests in `tests/Feature/Console/Meetings/ResolveAmbiguousZoomMeetingTest.php`.
+- Validates raw `meeting_id` argument against `/^[1-9]\d*$/` to reject all zero representations (`0`, `00`), prefixes, decimals, and leading zeros.
+- Validates that `meeting_id` is within integer range using `filter_var(..., FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => PHP_INT_MAX]]) !== false`, preventing 64-bit integer overflow.
+- Validates optional `--zoom-meeting-id` with `/^[1-9]\d*$/` as a positive integer string, keeping it as a string to prevent overflow.
+- Returns `self::FAILURE` immediately on invalid input, ensuring no `Meeting::find()` lookup or provider call occurs.
+- Verified with 11 validation tests in `tests/Feature/Console/Meetings/ResolveAmbiguousZoomMeetingTest.php` covering overflow, zero strings (`00`), leading zeros, and verifying error messages.
 
 ### 9. Provider recovery blocks the scheduler process — Valid, P2 operational issue ❌ OPEN
 
@@ -56,11 +57,11 @@ Fix:
 
 ### 10. Password reset tokens are readable in queue payloads — Valid, P1 ✅ FIXED
 
-[QueuedPasswordResetJob.php](C:/Users/Hamza/daywright/app/Jobs/QueuedPasswordResetJob.php) now implements `Illuminate\Contracts\Queue\ShouldBeEncrypted`:
+[QueuedPasswordResetJob.php](app/Jobs/QueuedPasswordResetJob.php) implements `Illuminate\Contracts\Queue\ShouldBeEncrypted`:
 
 - Job implements `ShouldBeEncrypted, ShouldQueue`.
 - Queue payloads are automatically encrypted by Laravel's queue pipeline.
-- Verified with test in `tests/Feature/Jobs/QueuedAuthJobsTest.php`.
+- Verified via integration test in `tests/Feature/Jobs/QueuedAuthJobsTest.php`: dispatches to database queue, asserts that the plaintext token is absent from the serialized payload in the database `jobs` table, and verifies that popping and executing the job successfully decrypts and delivers the notification.
 
 ### 11. Meeting notifications are marked sent before delivery — Valid, P2 ❌ OPEN
 
@@ -106,9 +107,9 @@ Laravel adds the raw exception object and previous-exception chain to the defaul
 
 Affected files:
 
-- [Handler.php](C:/Users/Hamza/daywright/app/Exceptions/Handler.php:67)
-- [ZoomMeetingCreationUnknownException.php](C:/Users/Hamza/daywright/app/Exceptions/Integrations/Zoom/ZoomMeetingCreationUnknownException.php:12)
-- [ScrubSensitiveData.php](C:/Users/Hamza/daywright/app/Logging/ScrubSensitiveData.php:36)
+- [Handler.php](app/Exceptions/Handler.php:67)
+- [ZoomMeetingCreationUnknownException.php](app/Exceptions/Integrations/Zoom/ZoomMeetingCreationUnknownException.php:12)
+- [ScrubSensitiveData.php](app/Logging/ScrubSensitiveData.php:36)
 
 Fix:
 
@@ -131,8 +132,8 @@ Completed:
 
 - ✅ Item 1: Zoom expired-claim recovery
 - ✅ Item 6: Same-stage postponed-reason update
-- ✅ Item 8: Manual meeting-ID validation
-- ✅ Item 10: Encrypted password-reset queue job
+- ✅ Item 8: Manual meeting-ID validation (with overflow, leading zero, and multi-zero guards)
+- ✅ Item 10: Encrypted password-reset queue job (with database payload encryption test)
 - ✅ Item 14: ZoomException meta allowlist
 - ✅ Item 15: EditConflictException excluded from error reporting
 
@@ -150,8 +151,8 @@ Remaining:
 
 ### Current status summary
 
-**Completed:** Items 1, 6, 8, 10, 14, and 15.
-**Partially fixed:** Item 7 (limit validation on `meetings:recover-pending` completed; remaining 3 commands pending).
+**Completed:** Items 1, 6, 8, 10, 14, and 15.  
+**Partially fixed:** Item 7 (limit validation on `meetings:recover-pending` completed; remaining 3 commands pending).  
 **Open:** Items 9, 11, 12, and 13.
 
 The remaining open and partial items require implementation following the SWE 1.6 implementation order. Local tests do not replace production verification with MySQL, Redis, multiple workers, the scheduler, and provider sandboxes.

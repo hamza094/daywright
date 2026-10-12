@@ -121,7 +121,10 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
             '--mark-failed' => true,
             '--reference' => 'INC-123',
             '--force' => true,
-        ])->assertExitCode(1);
+        ])
+            ->expectsOutput('The meeting_id must be a positive integer.')
+            ->doesntExpectOutput('Meeting not found: 0')
+            ->assertExitCode(1);
     }
 
     #[Test]
@@ -132,7 +135,10 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
             '--mark-failed' => true,
             '--reference' => 'INC-123',
             '--force' => true,
-        ])->assertExitCode(1);
+        ])
+            ->expectsOutput('The meeting_id must be a positive integer.')
+            ->doesntExpectOutput('Meeting not found: 123')
+            ->assertExitCode(1);
     }
 
     #[Test]
@@ -143,7 +149,10 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
             '--mark-failed' => true,
             '--reference' => 'INC-123',
             '--force' => true,
-        ])->assertExitCode(1);
+        ])
+            ->expectsOutput('The meeting_id must be a positive integer.')
+            ->doesntExpectOutput('Meeting not found: 123')
+            ->assertExitCode(1);
     }
 
     #[Test]
@@ -154,7 +163,57 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
             '--mark-failed' => true,
             '--reference' => 'INC-123',
             '--force' => true,
-        ])->assertExitCode(1);
+        ])
+            ->expectsOutput('The meeting_id must be a positive integer.')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_multi_zero_meeting_id(): void
+    {
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => '00',
+            '--mark-failed' => true,
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])
+            ->expectsOutput('The meeting_id must be a positive integer.')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_leading_zero_meeting_id(): void
+    {
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => '0123',
+            '--mark-failed' => true,
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])
+            ->expectsOutput('The meeting_id must be a positive integer.')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_integer_overflow_meeting_id(): void
+    {
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => '9223372036854775808', // PHP_INT_MAX + 1
+            '--mark-failed' => true,
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])
+            ->expectsOutput('The meeting_id must be a positive integer.')
+            ->assertExitCode(1);
+
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => '999999999999999999999999',
+            '--mark-failed' => true,
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])
+            ->expectsOutput('The meeting_id must be a positive integer.')
+            ->assertExitCode(1);
     }
 
     #[Test]
@@ -165,7 +224,9 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
             '--mark-failed' => true,
             '--reference' => 'INC-123',
             '--force' => true,
-        ])->assertExitCode(1);
+        ])
+            ->expectsOutput('The meeting_id must be a positive integer.')
+            ->assertExitCode(1);
     }
 
     #[Test]
@@ -178,7 +239,9 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
             '--zoom-meeting-id' => 'abc123',
             '--reference' => 'INC-123',
             '--force' => true,
-        ])->assertExitCode(1);
+        ])
+            ->expectsOutput('The zoom-meeting-id must be a positive integer string.')
+            ->assertExitCode(1);
     }
 
     #[Test]
@@ -191,7 +254,39 @@ final class ResolveAmbiguousZoomMeetingTest extends TestCase
             '--zoom-meeting-id' => '0',
             '--reference' => 'INC-123',
             '--force' => true,
-        ])->assertExitCode(1);
+        ])
+            ->expectsOutput('The zoom-meeting-id must be a positive integer string.')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_multi_zero_zoom_meeting_id(): void
+    {
+        $meeting = $this->createUnknownMeeting();
+
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => (string) $meeting->id,
+            '--zoom-meeting-id' => '00',
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])
+            ->expectsOutput('The zoom-meeting-id must be a positive integer string.')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_leading_zero_zoom_meeting_id(): void
+    {
+        $meeting = $this->createUnknownMeeting();
+
+        $this->artisan('meetings:resolve-ambiguous', [
+            'meeting_id' => (string) $meeting->id,
+            '--zoom-meeting-id' => '012345',
+            '--reference' => 'INC-123',
+            '--force' => true,
+        ])
+            ->expectsOutput('The zoom-meeting-id must be a positive integer string.')
+            ->assertExitCode(1);
     }
 
     private function createUnknownMeeting(): \App\Models\Meeting

@@ -7,9 +7,13 @@ namespace Tests\Feature\Jobs;
 use App\Jobs\QueuedPasswordResetJob;
 use App\Jobs\QueuedVerifyEmailJob;
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Mockery;
 use RuntimeException;
 use Tests\TestCase;
@@ -69,5 +73,31 @@ class QueuedAuthJobsTest extends TestCase
         $job = new QueuedPasswordResetJob($user->id, $token);
 
         $this->assertInstanceOf(ShouldBeEncrypted::class, $job);
+    }
+
+    /** @test */
+    public function password_reset_job_encrypts_payload_in_database_and_decrypts_on_worker_execution(): void
+    {
+        Notification::fake();
+        config(['queue.default' => 'database']);
+
+        $user = User::factory()->create();
+        $token = 'super-secret-sentinel-token';
+
+        QueuedPasswordResetJob::dispatch($user->id, $token);
+
+        // 1. Assert plaintext token is never stored in the database jobs table
+        $payload = (string) DB::table('jobs')->value('payload');
+        $this->assertNotEmpty($payload);
+        $this->assertStringNotContainsString($token, $payload);
+
+        // 2. Process the job and verify worker decrypts the token for the notification
+        Queue::pop('critical')->fire();
+
+        Notification::assertSentTo(
+            $user,
+            ResetPassword::class,
+            fn (ResetPassword $notification): bool => $notification->token === $token
+        );
     }
 }
