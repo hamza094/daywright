@@ -82,7 +82,19 @@ return 'The message failed with status: '.$msg->getStatus()."\n";  // ← non-ze
 
 [SmsMessage.php L75](file:///c:/Users/Hamza/daywright/app/Jobs/SmsMessage.php#L75) ignores the return value: `$service->send($project, $message);`. Laravel marks the job successful. The batch can set `delivered = true` despite a failed send.
 
-**Status:** DEFERRED - SMS feature is not yet released. Will implement typed outcomes/exceptions and update error handling flow when the feature is released.
+**Status:** IMPLEMENTED (typed exceptions & batch safety), but feature is DEFERRED / not yet released.
+
+> [!WARNING]
+> **Known Architectural Trade-off for Feature Release (Item 12 & DispatchProjectMessageAction):**
+> Currently, `Message` tracks delivery state at the aggregate parent level (`delivered: bool`) rather than per-recipient (e.g. via pivot table `message_user.delivered_at`).
+>
+> Because `finally()` in `DispatchProjectMessageAction` unlocks `batch_id` on failure (`delivered = false`), if a multi-recipient email batch partially succeeds (e.g. 3 users succeed, 1 fails) and `DispatchProjectMessageAction` is manually or automatically re-run, **it will re-dispatch jobs to ALL recipients, resulting in duplicate emails to users who already succeeded**.
+>
+> **Action required before releasing this feature:**
+>
+> 1. Add per-recipient delivery status (e.g., `delivered_at` on the `message_user` pivot table).
+> 2. In `DispatchProjectMessageAction`, only dispatch jobs for recipients where `delivered_at IS NULL`.
+> 3. In `MailMessage::handle()`, update the recipient's pivot `delivered_at` upon successful send.
 
 ---
 

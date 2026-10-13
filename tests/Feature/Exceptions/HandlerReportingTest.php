@@ -10,6 +10,8 @@ use App\Exceptions\Handler;
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Exceptions\Paddle\PaddleRequestException;
 use App\Exceptions\Paddle\SubscriptionException;
@@ -281,6 +283,67 @@ class HandlerReportingTest extends TestCase
                     && ! array_key_exists('previous', $context)
                 )
             );
+
+        $handler->report($exception);
+    }
+
+    #[Test]
+    public function zoom_meeting_creation_unknown_exception_does_not_leak_previous_chain_to_default_logger(): void
+    {
+        $handler = $this->app->make(Handler::class);
+
+        $previous = new RuntimeException('Secret token: sentinel_create_abc123');
+        $exception = new ZoomMeetingCreationUnknownException(previous: $previous);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom')
+            ->andReturnSelf();
+
+        Log::shouldReceive('warning')
+            ->once()
+            ->with(
+                'zoom_request_failed',
+                Mockery::on(fn (array $context): bool => $context['provider'] === 'zoom'
+                    && $context['exception_class'] === ZoomMeetingCreationUnknownException::class
+                    && $context['code'] === 'zoom_meeting_creation_unknown'
+                    && ! array_key_exists('exception', $context)
+                    && ! array_key_exists('previous', $context)
+                )
+            );
+
+        // The default logger must never receive the raw exception or its previous chain.
+        Log::shouldReceive('channel')->with('exception_metrics')->never();
+
+        $handler->report($exception);
+    }
+
+    #[Test]
+    public function zoom_meeting_operation_unknown_exception_does_not_leak_previous_chain_to_default_logger(): void
+    {
+        $handler = $this->app->make(Handler::class);
+
+        $previous = new RuntimeException('Secret token: sentinel_operation_xyz789');
+        $exception = new ZoomMeetingOperationUnknownException(previous: $previous);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom')
+            ->andReturnSelf();
+
+        Log::shouldReceive('warning')
+            ->once()
+            ->with(
+                'zoom_request_failed',
+                Mockery::on(fn (array $context): bool => $context['provider'] === 'zoom'
+                    && $context['exception_class'] === ZoomMeetingOperationUnknownException::class
+                    && $context['code'] === 'zoom_meeting_operation_unknown'
+                    && ! array_key_exists('exception', $context)
+                    && ! array_key_exists('previous', $context)
+                )
+            );
+
+        Log::shouldReceive('channel')->with('exception_metrics')->never();
 
         $handler->report($exception);
     }

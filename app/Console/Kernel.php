@@ -110,7 +110,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('meetings:recover-ambiguous --limit=25')
             ->name('recover-ambiguous-zoom-meetings')
             ->onOneServer()
-            ->withoutOverlapping(5)
+            ->withoutOverlapping(15) // 25 calls × 30 s worst-case = 12.5 min; 15 min covers with margin
             ->runInBackground()
             ->everyMinute()
             ->appendOutputTo($this->schedulerLogPath());

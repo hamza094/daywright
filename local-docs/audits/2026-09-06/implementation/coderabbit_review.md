@@ -80,6 +80,7 @@ Updated [VonageSmsService.php](app/Services/VonageSmsService.php) and [SmsMessag
 - `SmsMessage` marks job as failed (`$this->fail($e)`) on permanent rejections and missing recipients without retry; re-throws transient provider failures for queue worker retry.
 - Prevents failed SMS jobs from allowing the batch to mark `delivered = true`.
 - Verified in `tests/Feature/Jobs/SmsMessageTest.php` and `tests/Feature/Services/VonageSmsServiceTest.php`.
+- **Note on Feature Release Trade-off**: Since `Message` tracks delivery at parent level (`delivered: bool`) and `finally()` unlocks `batch_id` on failure, re-dispatching a failed multi-recipient email batch will re-send to already-successful recipients. Before releasing the messaging feature, implement per-recipient delivery tracking (`message_user.delivered_at`) so retries only target undelivered recipients.
 
 ### 13. Default exception reporting can bypass sanitization — Valid, P2 security risk ✅ FIXED
 

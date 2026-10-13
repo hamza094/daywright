@@ -98,6 +98,32 @@ final class RecoverAmbiguousZoomMeetingsTest extends TestCase
             ->assertExitCode(0);
     }
 
+    #[Test]
+    public function it_rejects_alphanumeric_prefixed_limit(): void
+    {
+        // '25abc' would silently become 25 via (int) cast — must be rejected.
+        $this->artisan('meetings:recover-ambiguous', ['--limit' => '25abc'])
+            ->expectsOutputToContain('Limit must be between 1 and 100')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_decimal_limit(): void
+    {
+        // '1.9' would silently become 1 via (int) cast — must be rejected.
+        $this->artisan('meetings:recover-ambiguous', ['--limit' => '1.9'])
+            ->expectsOutputToContain('Limit must be between 1 and 100')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_non_numeric_limit(): void
+    {
+        $this->artisan('meetings:recover-ambiguous', ['--limit' => 'abc'])
+            ->expectsOutputToContain('Limit must be between 1 and 100')
+            ->assertExitCode(1);
+    }
+
     private function zoomMeeting(int $meetingId): ZoomMeeting
     {
         return new ZoomMeeting(

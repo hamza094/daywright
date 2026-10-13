@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Actions\Meetings\RecoverPendingZoomMeetingOperations;
+use App\Console\Commands\Concerns\ValidatesLimitOption;
 use Illuminate\Console\Command;
 use Throwable;
 
 final class RecoverPendingZoomOperations extends Command
 {
+    use ValidatesLimitOption;
+
     private const int MAX_LIMIT = 100;
 
     protected $signature = 'meetings:recover-pending {--limit=25}';
@@ -24,11 +27,9 @@ final class RecoverPendingZoomOperations extends Command
 
     public function handle(): int
     {
-        $limit = min((int) $this->option('limit'), self::MAX_LIMIT);
+        $limit = $this->parseLimit(self::MAX_LIMIT);
 
-        if ($limit <= 0) {
-            $this->error('Limit must be between 1 and '.self::MAX_LIMIT);
-
+        if ($limit === null) {
             return 1;
         }
 

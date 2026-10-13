@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Exceptions;
 
 use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Exceptions\Subscription\PlanLimitExceededException;
@@ -79,6 +81,17 @@ class Handler extends ExceptionHandler
             }
         }
 
+        // ZoomMeetingCreationUnknownException and ZoomMeetingOperationUnknownException
+        // extend ApiException (not ZoomException). ZoomService attaches the original
+        // provider exception as $previous. Route them through a sanitised path so
+        // neither the raw exception nor its previous chain reaches parent::report(),
+        // the daily log, or Bugsnag.
+        if ($this->isZoomUncertainResultException($e)) {
+            $this->recordZoomUncertainResultException($e);
+
+            return;
+        }
+
         if ($this->shouldRecordExceptionMetric($e)) {
             if ($e instanceof ApiException) {
                 $this->recordExceptionMetric($e);
@@ -137,6 +150,45 @@ class Handler extends ExceptionHandler
             || $e instanceof PlanLimitExceededException
             || $e instanceof SubscriptionException
             || $e instanceof ZoomUserErrorException;
+    }
+
+    /**
+     * Returns true for the two uncertain-result Zoom exceptions that extend
+     * ApiException rather than ZoomException. These carry a $previous exception
+     * from the Zoom driver that may contain raw HTTP secrets.
+     */
+    private function isZoomUncertainResultException(Throwable $e): bool
+    {
+        return $e instanceof ZoomMeetingCreationUnknownException
+            || $e instanceof ZoomMeetingOperationUnknownException;
+    }
+
+    /**
+     * Log fixed diagnostic fields to the zoom channel without touching the
+     * raw exception object or its previous chain. Never calls parent::report().
+     */
+    private function recordZoomUncertainResultException(ApiException $e): void
+    {
+        /** @var mixed $request */
+        $request = request();
+
+        $context = [
+            'provider' => 'zoom',
+            'exception_class' => $e::class,
+            'code' => $e->errorCode(),
+            'status' => $e->status(),
+            'message' => $e->publicMessage(),
+        ];
+
+        if ($request instanceof Request) {
+            $context['path'] = $request->path();
+            $context['method'] = $request->method();
+        }
+
+        Log::channel(self::ZOOM_CHANNEL)->warning(
+            self::ZOOM_REQUEST_FAILED_EVENT,
+            $context,
+        );
     }
 
     private function recordExceptionMetric(ApiException $e): void
