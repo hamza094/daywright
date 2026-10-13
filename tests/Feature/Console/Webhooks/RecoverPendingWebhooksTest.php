@@ -38,4 +38,28 @@ final class RecoverPendingWebhooksTest extends TestCase
             fn (ProcessZoomWebhookInbox $job): bool => $job->webhookInboxId === $inbox->id,
         );
     }
+
+    #[Test]
+    public function it_rejects_negative_limit(): void
+    {
+        $this->artisan('webhooks:recover-pending', ['--limit' => -1])
+            ->expectsOutput('Limit must be between 1 and 500')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_zero_limit(): void
+    {
+        $this->artisan('webhooks:recover-pending', ['--limit' => 0])
+            ->expectsOutput('Limit must be between 1 and 500')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_captures_limit_at_max(): void
+    {
+        $this->artisan('webhooks:recover-pending', ['--limit' => 999])
+            ->expectsOutput('Selected: 0')
+            ->assertExitCode(0);
+    }
 }

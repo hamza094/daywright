@@ -13,6 +13,8 @@ use Throwable;
 
 final class RecoverAmbiguousZoomMeetings extends Command
 {
+    private const int MAX_LIMIT = 100;
+
     protected $signature = 'meetings:recover-ambiguous {--limit=25}';
 
     protected $description = 'Recover meetings in creating or create_unknown state by checking Zoom';
@@ -25,7 +27,13 @@ final class RecoverAmbiguousZoomMeetings extends Command
 
     public function handle(): int
     {
-        $limit = (int) $this->option('limit');
+        $limit = min((int) $this->option('limit'), self::MAX_LIMIT);
+
+        if ($limit <= 0) {
+            $this->error('Limit must be between 1 and '.self::MAX_LIMIT);
+
+            return 1;
+        }
 
         try {
             $meetings = Meeting::query()

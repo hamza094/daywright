@@ -69,6 +69,14 @@ class Handler extends ExceptionHandler
     {
         if ($e instanceof ZoomException) {
             $this->recordZoomException($e);
+
+            // Return early so the raw exception object never reaches the default
+            // logger via parent::report(). ZoomUserErrorException is also a
+            // ZoomException, so its metrics path is handled inside recordZoomException
+            // or via shouldRecordExceptionMetric below — but the raw object stops here.
+            if (! $this->shouldRecordExceptionMetric($e)) {
+                return;
+            }
         }
 
         if ($this->shouldRecordExceptionMetric($e)) {

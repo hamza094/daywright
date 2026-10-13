@@ -74,6 +74,30 @@ final class RecoverAmbiguousZoomMeetingsTest extends TestCase
         $this->assertSame(MeetingSyncStatus::Active, $meeting->fresh()->sync_status);
     }
 
+    #[Test]
+    public function it_rejects_negative_limit(): void
+    {
+        $this->artisan('meetings:recover-ambiguous', ['--limit' => -1])
+            ->expectsOutput('Limit must be between 1 and 100')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_zero_limit(): void
+    {
+        $this->artisan('meetings:recover-ambiguous', ['--limit' => 0])
+            ->expectsOutput('Limit must be between 1 and 100')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_captures_limit_at_max(): void
+    {
+        $this->artisan('meetings:recover-ambiguous', ['--limit' => 999])
+            ->expectsOutput('Selected: 0')
+            ->assertExitCode(0);
+    }
+
     private function zoomMeeting(int $meetingId): ZoomMeeting
     {
         return new ZoomMeeting(

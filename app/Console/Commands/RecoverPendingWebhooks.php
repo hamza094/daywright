@@ -11,6 +11,8 @@ use Throwable;
 
 final class RecoverPendingWebhooks extends Command
 {
+    private const int MAX_LIMIT = 500;
+
     protected $signature = 'webhooks:recover-pending {--limit=100}';
 
     protected $description = 'Recover pending and expired Zoom webhook inbox rows';
@@ -23,7 +25,13 @@ final class RecoverPendingWebhooks extends Command
 
     public function handle(): int
     {
-        $limit = (int) $this->option('limit');
+        $limit = min((int) $this->option('limit'), self::MAX_LIMIT);
+
+        if ($limit <= 0) {
+            $this->error('Limit must be between 1 and '.self::MAX_LIMIT);
+
+            return 1;
+        }
 
         $this->info("Recovering pending webhooks (limit: {$limit})...");
 

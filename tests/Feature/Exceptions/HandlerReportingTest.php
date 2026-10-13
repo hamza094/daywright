@@ -257,4 +257,31 @@ class HandlerReportingTest extends TestCase
         $this->assertArrayNotHasKey('sensitive_data', $meta);
         $this->assertArrayNotHasKey('user_email', $meta);
     }
+
+    #[Test]
+    public function zoom_infrastructure_exceptions_are_logged_to_zoom_channel_and_do_not_bleed_to_default_logger(): void
+    {
+        $handler = $this->app->make(Handler::class);
+
+        $previous = new RuntimeException('Secret token in previous exception: secret_12345');
+        $exception = new ZoomExternalFailureException('Zoom API request failed.', previous: $previous);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom')
+            ->andReturnSelf();
+
+        Log::shouldReceive('error')
+            ->once()
+            ->with(
+                'zoom_request_failed',
+                Mockery::on(fn (array $context): bool => $context['provider'] === 'zoom'
+                    && $context['exception_class'] === ZoomExternalFailureException::class
+                    && ! array_key_exists('exception', $context)
+                    && ! array_key_exists('previous', $context)
+                )
+            );
+
+        $handler->report($exception);
+    }
 }

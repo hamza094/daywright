@@ -11,6 +11,8 @@ use Throwable;
 
 final class RecoverSubscriptionOperations extends Command
 {
+    private const int MAX_LIMIT = 100;
+
     protected $signature = 'subscriptions:recover-operations {--limit=25}';
 
     protected $description = 'Recover due unknown and expired processing subscription operations';
@@ -23,7 +25,13 @@ final class RecoverSubscriptionOperations extends Command
 
     public function handle(): int
     {
-        $limit = (int) $this->option('limit');
+        $limit = min((int) $this->option('limit'), self::MAX_LIMIT);
+
+        if ($limit <= 0) {
+            $this->error('Limit must be between 1 and '.self::MAX_LIMIT);
+
+            return 1;
+        }
 
         $this->info("Recovering subscription operations (limit: {$limit})...");
 
@@ -40,12 +48,12 @@ final class RecoverSubscriptionOperations extends Command
             if ($result['failed'] > 0) {
                 $this->warn('Some subscription operations failed to recover.');
 
-                return self::FAILURE;
+                return 1;
             }
 
             $this->info('Subscription operations recovery completed successfully.');
 
-            return self::SUCCESS;
+            return 0;
         } catch (Throwable $exception) {
             Log::error('Subscription recovery command failed', [
                 'exception_class' => $exception::class,
@@ -54,7 +62,7 @@ final class RecoverSubscriptionOperations extends Command
 
             $this->error('Subscription recovery failed: '.$exception::class);
 
-            return self::FAILURE;
+            return 1;
         }
     }
 }

@@ -157,4 +157,28 @@ final class SubscriptionRecoveryCommandsTest extends TestCase
             ->expectsOutputToContain('A ticket or incident reference is required')
             ->assertExitCode(1);
     }
+
+    #[Test]
+    public function it_rejects_negative_limit(): void
+    {
+        $this->artisan('subscriptions:recover-operations', ['--limit' => -1])
+            ->expectsOutputToContain('Limit must be between 1 and 100')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_rejects_zero_limit(): void
+    {
+        $this->artisan('subscriptions:recover-operations', ['--limit' => 0])
+            ->expectsOutputToContain('Limit must be between 1 and 100')
+            ->assertExitCode(1);
+    }
+
+    #[Test]
+    public function it_captures_limit_at_max(): void
+    {
+        $this->artisan('subscriptions:recover-operations', ['--limit' => 999])
+            ->expectsOutputToContain('Selected: 0')
+            ->assertExitCode(0);
+    }
 }

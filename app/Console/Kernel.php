@@ -110,7 +110,8 @@ class Kernel extends ConsoleKernel
         $schedule->command('meetings:recover-ambiguous --limit=25')
             ->name('recover-ambiguous-zoom-meetings')
             ->onOneServer()
-            ->withoutOverlapping()
+            ->withoutOverlapping(5)
+            ->runInBackground()
             ->everyMinute()
             ->appendOutputTo($this->schedulerLogPath());
 
@@ -118,13 +119,15 @@ class Kernel extends ConsoleKernel
             ->name('recover-pending-zoom-operations')
             ->onOneServer()
             ->withoutOverlapping(5)
+            ->runInBackground()
             ->everyMinute()
             ->appendOutputTo($this->schedulerLogPath());
 
         $schedule->command('subscriptions:recover-operations --limit=25')
             ->name('recover-subscription-operations')
             ->onOneServer()
-            ->withoutOverlapping()
+            ->withoutOverlapping(5)
+            ->runInBackground()
             ->everyMinute()
             ->appendOutputTo($this->schedulerLogPath());
     }

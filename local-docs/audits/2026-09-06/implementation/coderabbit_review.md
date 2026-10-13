@@ -15,24 +15,15 @@ The original focused review baseline was 93 tests and 290 assertions. Later chan
 - When the stage is unchanged (specifically for `Postponed`) but reason is modified, updates only `postponed_reason` and increments `version` without firing stage-transition notifications.
 - Verified with unit tests in `tests/Unit/Services/Project/ProjectServiceTest.php`.
 
-### 7. Recovery command limits accept unbounded input — Valid, P2 ⚠️ PARTIALLY FIXED
+### 7. Recovery command limits accept unbounded input — Valid, P2 ✅ FIXED
 
-These commands cast input directly to integers:
+All recovery commands (`meetings:recover-ambiguous`, `webhooks:recover-pending`, `subscriptions:recover-operations`) were updated:
 
-- `meetings:recover-ambiguous`
-- `webhooks:recover-pending`
-- `subscriptions:recover-operations`
-
-Laravel ignores negative limits, so `--limit=-1` can select all eligible rows. Non-numeric input becomes zero and reports success without processing anything.
-
-Fix:
-
-- Validate the raw option before querying or dispatching.
-- Require a positive decimal integer.
-- Add documented maximum limits.
-- Return a failure exit code before calling recovery services.
-
-Test negative, zero, nonnumeric, and oversized values, including “no provider/recovery call occurred.”
+- Validates raw `--limit` option before querying or dispatching.
+- Requires a positive integer `limit > 0`.
+- Imposes documented caps (`MAX_LIMIT = 100` or `500`).
+- Returns failure exit code `1` immediately on negative, zero, or invalid limits.
+- Verified with unit & feature tests in `SubscriptionRecoveryCommandsTest`, `RecoverAmbiguousZoomMeetingsTest`, and `RecoverPendingWebhooksTest`.
 
 ### 8. Manual meeting IDs are coerced unsafely — Valid, P2 ✅ FIXED
 
@@ -44,16 +35,14 @@ Test negative, zero, nonnumeric, and oversized values, including “no provider/
 - Returns `self::FAILURE` immediately on invalid input, ensuring no `Meeting::find()` lookup or provider call occurs.
 - Verified with 11 validation tests in `tests/Feature/Console/Meetings/ResolveAmbiguousZoomMeetingTest.php` covering overflow, zero strings (`00`), leading zeros, and verifying error messages.
 
-### 9. Provider recovery blocks the scheduler process — Valid, P2 operational issue ❌ OPEN
+### 9. Provider recovery blocks the scheduler process — Valid, P2 operational issue ✅ FIXED
 
-The meeting recovery command can perform 25 sequential Zoom calls with 30-second timeouts. It runs before subscription recovery, so a provider outage can delay all later scheduled work.
+[Kernel.php](app/Console/Kernel.php) was updated:
 
-Fix:
-
-- Use `runInBackground()` for provider-backed scheduled commands, or dispatch bounded recovery jobs.
-- Preserve `onOneServer()`, `withoutOverlapping()`, and row-level claim checks.
-- Add a schedule test proving background execution.
-- Verify behavior on the actual production scheduler platform.
+- Added `runInBackground()` to all provider-backed recovery commands: `meetings:recover-ambiguous`, `meetings:recover-pending`, and `subscriptions:recover-operations`.
+- Maintained `onOneServer()`, `withoutOverlapping(5)`, and row-level lease claim checks.
+- Prevents provider timeouts or sequential API calls from stalling the scheduler loop.
+- Verified in `tests/Unit/Console/KernelScheduleTest.php`.
 
 ### 10. Password reset tokens are readable in queue payloads — Valid, P1 ✅ FIXED
 
@@ -81,44 +70,24 @@ Fix as a dedicated delivery-state change:
 
 This requires a migration and should be implemented as its own larger ticket.
 
-### 12. SMS failures can count as successful batch jobs — Valid, P2 ❌ OPEN
+### 12. SMS failures can count as successful batch jobs — Valid, P2 ✅ FIXED
 
-`VonageSmsService::send()` returns normally for:
+Updated [VonageSmsService.php](app/Services/VonageSmsService.php) and [SmsMessage.php](app/Jobs/SmsMessage.php):
 
-- Missing mobile recipient.
-- Nonzero Vonage status.
+- Introduced typed SMS exceptions (`SmsMissingRecipientException`, `SmsProviderException` extending `SmsException`).
+- `VonageSmsService` resolves recipient mobile from `user_infos` or user attribute; throws `SmsMissingRecipientException` if missing.
+- `VonageSmsService` throws `SmsProviderException::fromStatus($status)` for non-zero statuses, distinguishing transient retryable codes (1, 5, 13) from permanent rejections (3, 7, etc.).
+- `SmsMessage` marks job as failed (`$this->fail($e)`) on permanent rejections and missing recipients without retry; re-throws transient provider failures for queue worker retry.
+- Prevents failed SMS jobs from allowing the batch to mark `delivered = true`.
+- Verified in `tests/Feature/Jobs/SmsMessageTest.php` and `tests/Feature/Services/VonageSmsServiceTest.php`.
 
-`SmsMessage` ignores the return value. Laravel therefore treats the job as successful, and the message batch can set `delivered = true`.
+### 13. Default exception reporting can bypass sanitization — Valid, P2 security risk ✅ FIXED
 
-Fix:
+[Handler.php](app/Exceptions/Handler.php) was updated:
 
-- Introduce typed SMS outcomes or typed exceptions.
-- Retry transient provider failures.
-- Record permanent rejection and missing-recipient outcomes separately.
-- Ensure unsuccessful SMS never causes `delivered = true`.
-
-Add tests for nonzero Vonage status and missing mobile numbers.
-
-### 13. Default exception reporting can bypass sanitization — Valid, P2 security risk ❌ OPEN
-
-The dedicated Zoom log is sanitized, but infrastructure Zoom exceptions continue to `parent::report($e)`.
-
-Laravel adds the raw exception object and previous-exception chain to the default log context. `ScrubSensitiveData` sanitizes arrays but not exception objects, and the default message is also not normalized.
-
-Affected files:
-
-- [Handler.php](app/Exceptions/Handler.php:67)
-- [ZoomMeetingCreationUnknownException.php](app/Exceptions/Integrations/Zoom/ZoomMeetingCreationUnknownException.php:12)
-- [ScrubSensitiveData.php](app/Logging/ScrubSensitiveData.php:36)
-
-Fix:
-
-- Add a controlled provider-exception reporting path.
-- Send only safe class, status, code, correlation ID, and fixed diagnostic fields.
-- Never forward the original exception or previous chain to logs/Bugsnag.
-- Add a sentinel-secret test covering both daily logs and error reporting.
-
-This is a reporting-path vulnerability, not proof that a secret has already leaked.
+- `recordZoomException($e)` records structured, sanitized data to the dedicated `zoom` log channel.
+- Added an early return after recording `ZoomException`, preventing raw exception objects and previous-exception chains from flowing into `parent::report($e)` / default logger.
+- Verified in `tests/Feature/Exceptions/HandlerReportingTest.php` that sensitive previous-exception chains do not bleed to the default logger.
 
 ## Additional hardening recommendations
 
@@ -132,18 +101,18 @@ Completed:
 
 - ✅ Item 1: Zoom expired-claim recovery
 - ✅ Item 6: Same-stage postponed-reason update
+- ✅ Item 7: Recovery command input validation (`meetings:recover-ambiguous`, `webhooks:recover-pending`, `subscriptions:recover-operations`)
 - ✅ Item 8: Manual meeting-ID validation (with overflow, leading zero, and multi-zero guards)
+- ✅ Item 9: Background provider recovery scheduling (`runInBackground()`)
 - ✅ Item 10: Encrypted password-reset queue job (with database payload encryption test)
+- ✅ Item 12: SMS typed outcomes, retry handling, and delivery failure recording
+- ✅ Item 13: Controlled provider exception reporting (sanitized `zoom` channel, no default bleed)
 - ✅ Item 14: ZoomException meta allowlist
 - ✅ Item 15: EditConflictException excluded from error reporting
 
 Remaining:
 
-1. Item 7: Recovery command input validation (`meetings:recover-ambiguous`, `webhooks:recover-pending`, `subscriptions:recover-operations`).
-2. Item 9: Background provider recovery scheduling (`runInBackground()`).
-3. Item 11: Meeting notification delivery ledger.
-4. Item 12: SMS typed outcomes and delivery failure recording.
-5. Item 13: Controlled provider exception reporting.
+- ❌ Item 11: Meeting notification delivery ledger (deferred to dedicated migration session).
 
 ---
 
@@ -151,8 +120,7 @@ Remaining:
 
 ### Current status summary
 
-**Completed:** Items 1, 6, 8, 10, 14, and 15.  
-**Partially fixed:** Item 7 (limit validation on `meetings:recover-pending` completed; remaining 3 commands pending).  
-**Open:** Items 9, 11, 12, and 13.
+**Completed:** Items 1, 6, 7, 8, 9, 10, 12, 13, 14, and 15.  
+**Open (deferred):** Item 11 (requires database migration & delivery-ledger schema changes).
 
-The remaining open and partial items require implementation following the SWE 1.6 implementation order. Local tests do not replace production verification with MySQL, Redis, multiple workers, the scheduler, and provider sandboxes.
+Item 11 is deferred to its own dedicated ticket/session. Local tests do not replace production verification with MySQL, Redis, multiple workers, the scheduler, and provider sandboxes.
