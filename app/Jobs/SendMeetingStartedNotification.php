@@ -17,7 +17,7 @@ final class SendMeetingStartedNotification extends SendMeetingNotificationJob
 
     protected function createNotification(MeetingNotificationData $data): MeetingStarted
     {
-        return new MeetingStarted($data);
+        return new MeetingStarted($data, $this->meetingId);
     }
 
     protected function hasAlreadySentNotification(Meeting $meeting): bool

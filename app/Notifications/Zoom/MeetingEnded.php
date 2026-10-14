@@ -18,10 +18,27 @@ class MeetingEnded extends Notification implements ShouldBroadcast
 {
     use Queueable;
 
+    public ?int $meetingId = null;
+
     /**
      * Create a new notification instance.
      */
-    public function __construct(protected MeetingNotificationData $data) {}
+    public function __construct(
+        protected MeetingNotificationData $data,
+        ?int $meetingId = null,
+    ) {
+        $this->meetingId = $meetingId ?? $data->meetingId;
+    }
+
+    /**
+     * Get a stable database signature for deduplication.
+     */
+    public function databaseSignature(mixed $notifiable): ?string
+    {
+        return $this->meetingId !== null
+            ? hash('sha256', 'meeting:'.$this->meetingId)
+            : null;
+    }
 
     /**
      * Get the notification's delivery channels.

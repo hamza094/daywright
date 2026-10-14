@@ -274,4 +274,91 @@ class SendMeetingEndedNotificationTest extends TestCase
             'type' => MeetingEnded::class,
         ]);
     }
+
+    /** @test */
+    public function database_channel_deduplicates_when_payload_differs_between_initial_send_and_recovery(): void
+    {
+        $assignee = User::factory()->create();
+        $this->inviteAndActivateUser($this->project, $assignee);
+
+        $channel = new DatabaseChannel;
+
+        // Initial send with full end_time
+        $initialNotification = new MeetingEnded(
+            MeetingNotificationData::fromArray([
+                'meeting_id' => 42,
+                'meeting_topic' => 'Test',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'start_time' => '2024-06-24T11:00:00Z',
+                'end_time' => '2024-06-24T12:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project',
+            ]),
+            42,
+        );
+        $channel->send($assignee, $initialNotification);
+
+        // Recovery redispatch with end_time = null (different payload / message string)
+        $recoveryNotification = new MeetingEnded(
+            MeetingNotificationData::fromArray([
+                'meeting_id' => 42,
+                'meeting_topic' => 'Test',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'start_time' => '2024-06-24T11:00:00Z',
+                'end_time' => null,
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project',
+            ]),
+            42,
+        );
+        $channel->send($assignee, $recoveryNotification);
+
+        // Still only 1 notification because meeting_id is identical
+        $this->assertDatabaseCount('notifications', 1);
+    }
+
+    /** @test */
+    public function database_channel_allows_different_meetings_with_identical_display_payloads(): void
+    {
+        $assignee = User::factory()->create();
+        $this->inviteAndActivateUser($this->project, $assignee);
+
+        $channel = new DatabaseChannel;
+
+        $meeting1Notification = new MeetingEnded(
+            MeetingNotificationData::fromArray([
+                'meeting_id' => 101,
+                'meeting_topic' => 'Standup',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'start_time' => '2024-06-24T11:00:00Z',
+                'end_time' => '2024-06-24T12:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project',
+            ]),
+            101,
+        );
+
+        $meeting2Notification = new MeetingEnded(
+            MeetingNotificationData::fromArray([
+                'meeting_id' => 102,
+                'meeting_topic' => 'Standup',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'start_time' => '2024-06-24T11:00:00Z',
+                'end_time' => '2024-06-24T12:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project',
+            ]),
+            102,
+        );
+
+        $channel->send($assignee, $meeting1Notification);
+        $channel->send($assignee, $meeting2Notification);
+
+        // Two distinct meetings produce two distinct notifications
+        $this->assertDatabaseCount('notifications', 2);
+    }
 }

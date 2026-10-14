@@ -73,6 +73,7 @@ final readonly class HandleMeetingStartedWebhook
             'start_time' => $startTime,
             'end_time' => null,
             'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
+            'meeting_id' => $meeting->id,
         ]);
 
         SendMeetingStartedNotification::dispatch($meeting->id, $notificationData);

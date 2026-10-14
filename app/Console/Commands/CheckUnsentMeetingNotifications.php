@@ -96,6 +96,7 @@ final class CheckUnsentMeetingNotifications extends Command
                         'name' => $meeting->project->user->name,
                         'email' => $meeting->project->user->email,
                     ],
+                    'meeting_id' => $meeting->id,
                 ]);
 
                 SendMeetingStartedNotification::dispatch($meeting->id, $notificationData);
@@ -134,6 +135,7 @@ final class CheckUnsentMeetingNotifications extends Command
                         'name' => $meeting->project->user->name,
                         'email' => $meeting->project->user->email,
                     ],
+                    'meeting_id' => $meeting->id,
                 ]);
 
                 SendMeetingEndedNotification::dispatch($meeting->id, $notificationData);

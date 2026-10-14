@@ -72,6 +72,7 @@ final readonly class HandleMeetingEndedWebhook
             'start_time' => $startTime,
             'end_time' => $endTime,
             'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
+            'meeting_id' => $meeting->id,
         ]);
 
         SendMeetingEndedNotification::dispatch($meeting->id, $notificationData);

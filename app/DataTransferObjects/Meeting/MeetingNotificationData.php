@@ -18,6 +18,7 @@ final readonly class MeetingNotificationData
         public string $startTime,
         public ?string $endTime,
         public array $notifier,
+        public ?int $meetingId = null,
     ) {}
 
     /**
@@ -34,6 +35,7 @@ final readonly class MeetingNotificationData
             startTime: (string) ($payload['start_time'] ?? ''),
             endTime: isset($payload['end_time']) ? (string) $payload['end_time'] : null,
             notifier: (array) ($payload['notifier'] ?? []),
+            meetingId: isset($payload['meeting_id']) ? (int) $payload['meeting_id'] : null,
         );
     }
 
@@ -53,6 +55,7 @@ final readonly class MeetingNotificationData
             'start_time' => $this->startTime,
             'end_time' => $this->endTime,
             'notifier' => $this->notifier,
+            'meeting_id' => $this->meetingId,
         ];
     }
 }
