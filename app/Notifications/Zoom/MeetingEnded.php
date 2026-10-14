@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications\Zoom;
 
+use App\Channels\DatabaseChannel;
 use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\Notifications\NotificationLink;
 use Carbon\Carbon;
@@ -29,7 +30,7 @@ class MeetingEnded extends Notification implements ShouldBroadcast
      */
     public function via(mixed $notifiable): array
     {
-        return ['mail', 'database', 'broadcast'];
+        return ['mail', DatabaseChannel::class, 'broadcast'];
     }
 
     /**

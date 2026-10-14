@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jobs;
 
+use App\Channels\DatabaseChannel;
 use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\Jobs\SendMeetingStartedNotification;
 use App\Models\User;
@@ -229,5 +230,48 @@ class SendMeetingStartedNotificationTest extends TestCase
         Notification::send($assignee, $notification);
 
         Queue::assertNotPushed(SendQueuedNotifications::class);
+    }
+
+    /** @test */
+    public function meeting_started_notification_uses_custom_database_channel(): void
+    {
+        $notification = new MeetingStarted(
+            MeetingNotificationData::fromArray([])
+        );
+
+        $channels = $notification->via(new User);
+
+        $this->assertContains(DatabaseChannel::class, $channels);
+        $this->assertNotContains('database', $channels);
+    }
+
+    /** @test */
+    public function database_channel_deduplicates_notifications_on_retry(): void
+    {
+        $assignee = User::factory()->create();
+        $this->inviteAndActivateUser($this->project, $assignee);
+
+        $notification = new MeetingStarted(
+            MeetingNotificationData::fromArray([
+                'meeting_topic' => 'Test',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'meeting_join_url' => 'https://zoom.us/j/813',
+                'start_time' => '2024-06-24T11:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project',
+                'end_time' => null,
+            ])
+        );
+
+        $channel = new DatabaseChannel;
+        $channel->send($assignee, $notification);
+        $channel->send($assignee, $notification);
+
+        $this->assertDatabaseCount('notifications', 1);
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_id' => $assignee->id,
+            'type' => MeetingStarted::class,
+        ]);
     }
 }

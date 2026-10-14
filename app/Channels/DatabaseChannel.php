@@ -7,6 +7,7 @@ namespace App\Channels;
 use Illuminate\Notifications\Channels\DatabaseChannel as Channel;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Override;
 
 class DatabaseChannel extends Channel
@@ -17,10 +18,10 @@ class DatabaseChannel extends Channel
         $data = json_encode($this->getData($notifiable, $notification));
 
         DB::table('notifications')->insertOrIgnore([
-            'id' => $notification->id,
+            'id' => $notification->id ?: (string) Str::uuid(),
             'type' => $notification::class,
             'notifiable_type' => $notifiable::class,
-            'notifiable_id' => $notifiable->id,
+            'notifiable_id' => (string) $notifiable->getKey(),
             'data' => $data,
             'signature' => hash('sha256', $data),
             'read_at' => null,
