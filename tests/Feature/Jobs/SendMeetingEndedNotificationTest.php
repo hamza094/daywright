@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Jobs;
 
+use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\Jobs\SendMeetingEndedNotification;
+use App\Models\User;
 use App\Notifications\Zoom\MeetingEnded;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\SendQueuedNotifications;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Mockery;
 use RuntimeException;
 use Tests\Support\Meeting\MeetingTestHelper;
@@ -34,7 +39,7 @@ class SendMeetingEndedNotificationTest extends TestCase
 
         $job = new SendMeetingEndedNotification(
             meetingId: $meeting->id,
-            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+            notificationData: MeetingNotificationData::fromArray([
                 'meeting_topic' => 'Test',
                 'project_name' => 'Project',
                 'notifier' => ['name' => 'Test User'],
@@ -56,7 +61,7 @@ class SendMeetingEndedNotificationTest extends TestCase
     {
         Notification::fake();
 
-        $assignee = \App\Models\User::factory()->create();
+        $assignee = User::factory()->create();
         $this->inviteAndActivateUser($this->project, $assignee);
 
         $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
@@ -68,7 +73,7 @@ class SendMeetingEndedNotificationTest extends TestCase
 
         $job = new SendMeetingEndedNotification(
             meetingId: $meeting->id,
-            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+            notificationData: MeetingNotificationData::fromArray([
                 'meeting_topic' => 'Test',
                 'project_name' => 'Project',
                 'notifier' => ['name' => 'Test User'],
@@ -104,7 +109,7 @@ class SendMeetingEndedNotificationTest extends TestCase
 
         $job = new SendMeetingEndedNotification(
             meetingId: $meeting->id,
-            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+            notificationData: MeetingNotificationData::fromArray([
                 'meeting_topic' => 'Test',
                 'project_name' => 'Project',
                 'notifier' => ['name' => 'Test User'],
@@ -138,7 +143,7 @@ class SendMeetingEndedNotificationTest extends TestCase
 
         $job = new SendMeetingEndedNotification(
             meetingId: $meeting->id,
-            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([
+            notificationData: MeetingNotificationData::fromArray([
                 'meeting_topic' => 'Test',
                 'project_name' => 'Project',
                 'notifier' => ['name' => 'Test User'],
@@ -178,11 +183,51 @@ class SendMeetingEndedNotificationTest extends TestCase
 
         $job = new SendMeetingEndedNotification(
             meetingId: 999,
-            notificationData: \App\DataTransferObjects\Meeting\MeetingNotificationData::fromArray([])
+            notificationData: MeetingNotificationData::fromArray([])
         );
 
         $job->failed(new RuntimeException('Test failure'));
 
         $this->assertTrue(true);
+    }
+
+    /** @test */
+    public function meeting_ended_notification_does_not_implement_should_queue(): void
+    {
+        $notification = new MeetingEnded(
+            MeetingNotificationData::fromArray([])
+        );
+
+        $this->assertNotInstanceOf(
+            ShouldQueue::class,
+            $notification,
+            'MeetingEnded must not implement ShouldQueue to prevent nested queuing marking notifications sent prematurely.'
+        );
+    }
+
+    /** @test */
+    public function does_not_queue_downstream_notification_jobs(): void
+    {
+        Queue::fake();
+
+        $assignee = User::factory()->create();
+        $this->inviteAndActivateUser($this->project, $assignee);
+
+        $notification = new MeetingEnded(
+            MeetingNotificationData::fromArray([
+                'meeting_topic' => 'Test',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Test User'],
+                'meeting_join_url' => 'https://zoom.us/j/813',
+                'start_time' => '2024-06-24T11:00:00Z',
+                'end_time' => '2024-06-24T12:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project',
+            ])
+        );
+
+        Notification::send($assignee, $notification);
+
+        Queue::assertNotPushed(SendQueuedNotifications::class);
     }
 }

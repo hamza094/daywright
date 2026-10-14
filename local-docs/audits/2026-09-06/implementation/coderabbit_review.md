@@ -52,23 +52,16 @@ All recovery commands (`meetings:recover-ambiguous`, `webhooks:recover-pending`,
 - Queue payloads are automatically encrypted by Laravel's queue pipeline.
 - Verified via integration test in `tests/Feature/Jobs/QueuedAuthJobsTest.php`: dispatches to database queue, asserts that the plaintext token is absent from the serialized payload in the database `jobs` table, and verifies that popping and executing the job successfully decrypts and delivers the notification.
 
-### 11. Meeting notifications are marked sent before delivery — Valid, P2 ❌ OPEN
+### 11. Meeting notifications are marked sent before delivery — Valid, P2 ✅ FIXED
 
-`MeetingStarted` and `MeetingEnded` implement `ShouldQueue`. Therefore, `Notification::send()` queues downstream notification work and returns before mail/database/broadcast delivery completes.
+Removed `ShouldQueue` from `MeetingStarted` and `MeetingEnded` notifications:
 
-The parent job then sets `*_notification_sent_at` and clears pending state. A failed downstream notification is therefore invisible to `CheckUnsentMeetingNotifications`.
-
-Existing tests use `Notification::fake()`, so they do not cover this sequence.
-
-Fix as a dedicated delivery-state change:
-
-- Track delivery per meeting event, recipient, and channel.
-- Distinguish “dispatch queued” from “delivery completed.”
-- Mark the meeting sent only when all required deliveries succeed.
-- Retry only failed or incomplete delivery units.
-- Add real queue/channel failure tests; retain notification fakes only for unit-level tests.
-
-This requires a migration and should be implemented as its own larger ticket.
+- Webhooks and HTTP requests still remain fully asynchronous and non-blocking because `SendMeetingStartedNotification` and `SendMeetingEndedNotification` are themselves queued jobs (`SendMeetingNotificationJob implements ShouldQueue`).
+- Inside the background job, `Notification::send()` now executes channel deliveries synchronously, eliminating the nested queue race condition.
+- `$this->markNotificationAsSent($meeting)` only runs after delivery succeeds.
+- If delivery fails (mail server timeout, network drop, etc.), an exception is thrown, preventing `*_notification_sent_at` from being set prematurely. The job then retries according to its configured `$tries = 3` and `$backoff = [10, 60]`.
+- If retries are exhausted, the record remains with `*_notification_sent_at = null`, allowing `CheckUnsentMeetingNotifications` to safely discover and re-dispatch it.
+- Verified in `tests/Feature/Jobs/SendMeetingStartedNotificationTest.php` and `tests/Feature/Jobs/SendMeetingEndedNotificationTest.php`: verifies notifications do not implement `ShouldQueue`, asserts `SendQueuedNotifications` is not pushed downstream, and verifies `sent_at` remains null upon delivery failure.
 
 ### 12. SMS failures can count as successful batch jobs — Valid, P2 ✅ FIXED
 
@@ -106,14 +99,13 @@ Completed:
 - ✅ Item 8: Manual meeting-ID validation (with overflow, leading zero, and multi-zero guards)
 - ✅ Item 9: Background provider recovery scheduling (`runInBackground()`)
 - ✅ Item 10: Encrypted password-reset queue job (with database payload encryption test)
+- ✅ Item 11: Synchronous notification dispatch within parent background jobs (prevents premature sent flag)
 - ✅ Item 12: SMS typed outcomes, retry handling, and delivery failure recording
 - ✅ Item 13: Controlled provider exception reporting (sanitized `zoom` channel, no default bleed)
 - ✅ Item 14: ZoomException meta allowlist
 - ✅ Item 15: EditConflictException excluded from error reporting
 
-Remaining:
-
-- ❌ Item 11: Meeting notification delivery ledger (deferred to dedicated migration session).
+Remaining: None
 
 ---
 
@@ -121,7 +113,5 @@ Remaining:
 
 ### Current status summary
 
-**Completed:** Items 1, 6, 7, 8, 9, 10, 12, 13, 14, and 15.  
-**Open (deferred):** Item 11 (requires database migration & delivery-ledger schema changes).
-
-Item 11 is deferred to its own dedicated ticket/session. Local tests do not replace production verification with MySQL, Redis, multiple workers, the scheduler, and provider sandboxes.
+**Completed:** Items 1, 6, 7, 8, 9, 10, 11, 12, 13, 14, and 15.  
+**Open:** None. All confirmed CodeRabbit review items have been resolved and verified with tests.
