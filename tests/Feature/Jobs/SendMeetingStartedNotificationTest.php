@@ -365,4 +365,85 @@ class SendMeetingStartedNotificationTest extends TestCase
         // Two distinct meetings produce two distinct notifications
         $this->assertDatabaseCount('notifications', 2);
     }
+
+    /** @test */
+    public function database_channel_produces_one_notification_per_recipient_per_event(): void
+    {
+        $assignee1 = User::factory()->create();
+        $assignee2 = User::factory()->create();
+        $this->inviteAndActivateUser($this->project, $assignee1);
+        $this->inviteAndActivateUser($this->project, $assignee2);
+
+        $channel = new DatabaseChannel;
+
+        $startedData = MeetingNotificationData::fromArray([
+            'meeting_id' => 77,
+            'meeting_topic' => 'Design Review',
+            'project_name' => 'Project',
+            'notifier' => ['name' => 'Alice'],
+            'meeting_join_url' => 'https://zoom.us/j/99',
+            'start_time' => '2024-06-24T11:00:00Z',
+            'meeting_timezone' => 'UTC',
+            'project_slug' => 'test-project',
+            'end_time' => null,
+        ]);
+
+        // Send started event to both recipients
+        $channel->send($assignee1, new MeetingStarted($startedData, 77));
+        $channel->send($assignee2, new MeetingStarted($startedData, 77));
+
+        // Retry for both recipients (simulating job retry)
+        $channel->send($assignee1, new MeetingStarted($startedData, 77));
+        $channel->send($assignee2, new MeetingStarted($startedData, 77));
+
+        // Each recipient gets exactly one notification — no duplicates on retry
+        $this->assertDatabaseCount('notifications', 2);
+        $this->assertDatabaseHas('notifications', ['notifiable_id' => $assignee1->id, 'type' => MeetingStarted::class]);
+        $this->assertDatabaseHas('notifications', ['notifiable_id' => $assignee2->id, 'type' => MeetingStarted::class]);
+    }
+
+    /** @test */
+    public function database_signature_is_derived_from_meeting_id_in_dto_when_no_explicit_id_passed(): void
+    {
+        $assignee = User::factory()->create();
+        $this->inviteAndActivateUser($this->project, $assignee);
+
+        $channel = new DatabaseChannel;
+
+        // meeting_id carried through DTO only — no explicit second constructor argument
+        $notification = new MeetingStarted(
+            MeetingNotificationData::fromArray([
+                'meeting_id' => 55,
+                'meeting_topic' => 'Standup',
+                'project_name' => 'Project',
+                'notifier' => ['name' => 'Bob'],
+                'meeting_join_url' => 'https://zoom.us/j/55',
+                'start_time' => '2024-06-24T11:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project',
+                'end_time' => null,
+            ])
+        );
+
+        $channel->send($assignee, $notification);
+
+        // Send again with different display data but same meeting (simulates recovery with renamed project)
+        $recoveryNotification = new MeetingStarted(
+            MeetingNotificationData::fromArray([
+                'meeting_id' => 55,
+                'meeting_topic' => 'Standup - Updated Topic',
+                'project_name' => 'Project Renamed',
+                'notifier' => ['name' => 'Bob'],
+                'meeting_join_url' => 'https://zoom.us/j/55',
+                'start_time' => '2024-06-24T11:00:00Z',
+                'meeting_timezone' => 'UTC',
+                'project_slug' => 'test-project',
+                'end_time' => null,
+            ])
+        );
+        $channel->send($assignee, $recoveryNotification);
+
+        // DTO-only path should still deduplicate correctly
+        $this->assertDatabaseCount('notifications', 1);
+    }
 }
