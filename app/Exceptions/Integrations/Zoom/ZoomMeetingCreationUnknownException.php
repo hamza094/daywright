@@ -12,9 +12,9 @@ use Throwable;
 
 final class ZoomMeetingCreationUnknownException extends ApiException
 {
-    public function __construct(string $message = '', ?Throwable $previous = null)
+    public function __construct(string $message = '', int $code = 0, ?Throwable $previous = null)
     {
-        parent::__construct($message, 0, $previous);
+        parent::__construct($message, $code, $previous);
     }
 
     public function status(): int

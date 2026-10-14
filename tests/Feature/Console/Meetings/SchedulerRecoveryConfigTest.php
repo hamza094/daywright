@@ -46,10 +46,14 @@ final class SchedulerRecoveryConfigTest extends TestCase
 
         $event = $events['recover-ambiguous-zoom-meetings'];
 
-        // withoutOverlapping() registers a mutex key on the event.
-        $this->assertNotNull(
-            $event->mutexName(),
+        $this->assertTrue(
+            $event->withoutOverlapping,
             'meetings:recover-ambiguous must use withoutOverlapping() so concurrent runs are prevented.',
+        );
+        $this->assertSame(
+            15,
+            $event->expiresAt,
+            'meetings:recover-ambiguous must specify a 15-minute expiration to cover worst-case execution time.',
         );
     }
 

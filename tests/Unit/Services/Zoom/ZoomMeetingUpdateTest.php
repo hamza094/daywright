@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Zoom;
 
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Http\Integrations\Zoom\Requests\GetRefreshTokenRequest;
 use App\Http\Integrations\Zoom\Requests\UpdateMeeting;
@@ -89,6 +90,26 @@ class ZoomMeetingUpdateTest extends TestCase
         } catch (ZoomRateLimitException $exception) {
             $this->assertSame(120, $exception->retryAfterSeconds());
             $this->assertSame('Zoom is limiting requests to its API. Please retry later. Try again in 120 seconds.', $exception->publicMessage());
+        }
+    }
+
+    /** @test */
+    public function provider_server_failure_has_an_unknown_operation_result(): void
+    {
+        $user = $this->createZoomUser(now()->addWeek());
+        $meetingData = $this->meetingData();
+
+        Saloon::fake([
+            UpdateMeeting::class => MockResponse::make(['message' => 'Internal error'], 500),
+        ]);
+
+        try {
+            app(ZoomService::class)->updateMeeting($meetingData, $user);
+            $this->fail('Expected ZoomMeetingOperationUnknownException to be thrown');
+        } catch (ZoomMeetingOperationUnknownException $exception) {
+            $this->assertSame('Zoom meeting update result is uncertain', $exception->getMessage());
+            $this->assertSame(500, $exception->getCode());
+            $this->assertNotNull($exception->getPrevious());
         }
     }
 

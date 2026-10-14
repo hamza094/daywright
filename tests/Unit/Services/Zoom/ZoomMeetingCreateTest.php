@@ -158,9 +158,14 @@ class ZoomMeetingCreateTest extends TestCase
             'users/me/meetings' => MockResponse::make(['message' => 'Unavailable'], 500),
         ]);
 
-        $this->expectException(ZoomMeetingCreationUnknownException::class);
-
-        app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
+        try {
+            app(ZoomService::class)->createMeeting($this->meetingData, $this->user, $this->operationId);
+            $this->fail('Expected ZoomMeetingCreationUnknownException to be thrown');
+        } catch (ZoomMeetingCreationUnknownException $exception) {
+            $this->assertSame('Zoom meeting creation result is uncertain', $exception->getMessage());
+            $this->assertSame(500, $exception->getCode());
+            $this->assertNotNull($exception->getPrevious());
+        }
     }
 
     /** @test */
