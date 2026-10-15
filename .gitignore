@@ -18,5 +18,5 @@ extra.txt
 phpstan.neon.tmp
 .vscode/settings.json
 storage/framework/laravel-excel/*
-/bootstrap/cache/*
+/bootstrap/cache/*.php
 
