@@ -8,15 +8,9 @@ use App\Exceptions\ApiException;
 use Illuminate\Http\Request;
 use Override;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 final class ZoomMeetingCreationUnknownException extends ApiException
 {
-    public function __construct(string $message = '', int $code = 0, ?Throwable $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
-    }
-
     public function status(): int
     {
         return Response::HTTP_ACCEPTED;

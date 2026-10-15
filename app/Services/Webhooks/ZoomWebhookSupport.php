@@ -70,14 +70,10 @@ final readonly class ZoomWebhookSupport
             return true;
         }
 
-        if ($meeting->last_zoom_event_timestamp !== null
+        return $meeting->last_zoom_event_timestamp !== null
             && ($allowEqualTimestamp
                 ? $occurredAt < $meeting->last_zoom_event_timestamp
-                : $occurredAt <= $meeting->last_zoom_event_timestamp)) {
-            return true;
-        }
-
-        return false;
+                : $occurredAt <= $meeting->last_zoom_event_timestamp);
     }
 
     public function requiresZoomReconciliation(Meeting $meeting, ?int $occurredAt): bool

@@ -250,7 +250,7 @@ class ProjectFeatureTest extends TestCase
         $project = Project::factory()->for($this->user)->create(['name' => 'Xepra Tech']);
         $originalName = $project->name;
 
-        $response = $this->patchJson($this->apiV1Route('projects.update', ['project' => $project]),
+        $this->patchJson($this->apiV1Route('projects.update', ['project' => $project]),
             [
                 'name' => $originalName,
                 'version' => $project->fresh()->version,

@@ -29,11 +29,13 @@ final class ZoomRateLimitException extends ZoomException
         parent::__construct($message ?: 'Zoom rate limit exceeded.', 0, $previous);
     }
 
+    #[Override]
     public function status(): int
     {
         return Response::HTTP_TOO_MANY_REQUESTS;
     }
 
+    #[Override]
     public function errorCode(): string
     {
         return 'zoom_rate_limit';
@@ -73,7 +75,7 @@ final class ZoomRateLimitException extends ZoomException
     #[Override]
     public function headers(): array
     {
-        $retryAfter = $this->retryAfterSeconds();
+        $retryAfter = $this->retryAfterSeconds;
 
         if ($retryAfter === null) {
             return [];

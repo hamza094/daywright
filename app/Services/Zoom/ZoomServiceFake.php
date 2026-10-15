@@ -18,10 +18,6 @@ use Override;
 use PHPUnit\Framework\Assert;
 use Throwable;
 
-/**
- * @template TKey of array-key
- * @template TValue
- */
 final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 {
     /**
@@ -92,9 +88,6 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         );
     }
 
-    /**
-     * @return self<array-key, array<string, mixed>>
-     */
     public function shouldFailWithException(Throwable $exception): self
     {
         $this->failureException = $exception;
@@ -102,9 +95,6 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         return $this;
     }
 
-    /**
-     * @return self<array-key, array<string, mixed>>
-     */
     public function buildAuthorizationUrlUsing(
         string $authorizationUrl,
         string $state,
@@ -137,7 +127,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     #[Override]
     public function updateMeeting(array $validated, User $user): void
     {
-        if ($this->beforeUpdateMeeting !== null) {
+        if ($this->beforeUpdateMeeting instanceof Closure) {
             ($this->beforeUpdateMeeting)();
             $this->beforeUpdateMeeting = null;
         }
@@ -155,7 +145,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 
         $this->meetingsToUpdate->push($validated);
 
-        if ($this->meetingToFind !== null) {
+        if ($this->meetingToFind instanceof Meeting) {
             $this->meetingToFind = $this->updatedMeeting($this->meetingToFind, $validated);
         }
     }
@@ -179,7 +169,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     #[Override]
     public function getMeeting(int|string $meetingId, User $user): ?Meeting
     {
-        if ($this->beforeFindMeeting !== null) {
+        if ($this->beforeFindMeeting instanceof Closure) {
             ($this->beforeFindMeeting)();
             $this->beforeFindMeeting = null;
         }
@@ -204,9 +194,6 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         return $this->meetingsToList;
     }
 
-    /**
-     * @return self<array-key, array<string, mixed>>
-     */
     public function findsMeeting(?Meeting $meeting): self
     {
         $this->meetingToFind = $meeting;
@@ -241,9 +228,6 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         return $this;
     }
 
-    /**
-     * @return self<array-key, array<string, mixed>>
-     */
     public function meetingNotFound(): self
     {
         $this->meetingToFind = null;
@@ -253,7 +237,6 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 
     /**
      * @param  list<MeetingSummary>  $meetings
-     * @return self<array-key, array<string, mixed>>
      */
     public function listsMeetings(array $meetings): self
     {

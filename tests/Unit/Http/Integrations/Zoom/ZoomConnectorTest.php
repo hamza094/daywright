@@ -7,6 +7,7 @@ namespace Tests\Unit\Http\Integrations\Zoom;
 use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\UnauthorizedException;
 use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
+use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Http\Integrations\Zoom\Requests\GetZakToken;
 use App\Http\Integrations\Zoom\ZoomConnector;
@@ -69,19 +70,8 @@ class ZoomConnectorTest extends TestCase
     }
 
     #[Test]
-    public function connector_maps_rate_limited_and_server_failures_to_external_failures(): void
+    public function connector_maps_server_failures_to_external_failures(): void
     {
-        Saloon::fake([
-            'users/me/token?type=zak' => MockResponse::make(body: 'Rate limited', status: 429),
-        ]);
-
-        try {
-            $this->authenticatedConnector()->send(new GetZakToken)->throw();
-            $this->fail('Expected ZoomExternalFailureException was not thrown.');
-        } catch (ZoomExternalFailureException $exception) {
-            $this->assertSame(429, $exception->getCode());
-        }
-
         Saloon::fake([
             'users/me/token?type=zak' => MockResponse::make(body: 'Server failure', status: 500),
         ]);
@@ -92,6 +82,18 @@ class ZoomConnectorTest extends TestCase
         } catch (ZoomExternalFailureException $exception) {
             $this->assertSame(500, $exception->getCode());
         }
+    }
+
+    #[Test]
+    public function connector_maps_rate_limited_responses_to_rate_limit_exceptions(): void
+    {
+        Saloon::fake([
+            'users/me/token?type=zak' => MockResponse::make(body: 'Rate limited', status: 429),
+        ]);
+
+        $this->expectException(ZoomRateLimitException::class);
+
+        $this->authenticatedConnector()->send(new GetZakToken)->throw();
     }
 
     #[Test]
@@ -119,9 +121,10 @@ class ZoomConnectorTest extends TestCase
 
         try {
             $this->authenticatedConnector()->send(new GetZakToken)->throw();
-            $this->fail('Expected ZoomExternalFailureException was not thrown.');
-        } catch (ZoomExternalFailureException $exception) {
-            $this->assertSame(429, $exception->getCode());
+            $this->fail('Expected ZoomRateLimitException was not thrown.');
+        } catch (ZoomRateLimitException $exception) {
+            $this->assertSame(429, $exception->status());
+            $this->assertSame(60, $exception->retryAfterSeconds());
             $this->assertArrayHasKey('retry_after_seconds', $exception->context());
             $this->assertEquals(60, $exception->context()['retry_after_seconds']);
         }

@@ -300,7 +300,7 @@ final class SubscriptionServiceTest extends TestCase
     public function it_validates_against_fresh_state_after_acquiring_lock(): void
     {
         $user = User::factory()->create();
-        $sub = $this->createProSubscription($user, ['name' => 'daywright', 'paddle_id' => 998877, 'paddle_plan' => 123]);
+        $this->createProSubscription($user, ['name' => 'daywright', 'paddle_id' => 998877, 'paddle_plan' => 123]);
 
         $idempotencyKey = (string) Str::uuid();
 
@@ -318,7 +318,7 @@ final class SubscriptionServiceTest extends TestCase
     public function it_rejects_swap_during_trial_with_definite_exception(): void
     {
         $user = User::factory()->create();
-        $sub = $this->createProSubscription($user, [
+        $this->createProSubscription($user, [
             'name' => 'daywright',
             'paddle_id' => 998877,
             'paddle_plan' => 123,
@@ -363,7 +363,7 @@ final class SubscriptionServiceTest extends TestCase
     public function it_rejects_swap_during_grace_period_with_definite_exception(): void
     {
         $user = User::factory()->create();
-        $sub = $this->createProSubscription($user, [
+        $this->createProSubscription($user, [
             'name' => 'daywright',
             'paddle_id' => 998877,
             'paddle_plan' => 123,
@@ -387,7 +387,7 @@ final class SubscriptionServiceTest extends TestCase
     public function it_rejects_swap_when_paused_with_definite_exception(): void
     {
         $user = User::factory()->create();
-        $sub = $this->createProSubscription($user, [
+        $this->createProSubscription($user, [
             'name' => 'daywright',
             'paddle_id' => 998877,
             'paddle_plan' => 123,
@@ -411,7 +411,7 @@ final class SubscriptionServiceTest extends TestCase
     public function it_rejects_swap_when_past_due_with_definite_exception(): void
     {
         $user = User::factory()->create();
-        $sub = $this->createProSubscription($user, [
+        $this->createProSubscription($user, [
             'name' => 'daywright',
             'paddle_id' => 998877,
             'paddle_plan' => 123,

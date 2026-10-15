@@ -25,7 +25,7 @@ final readonly class MeetingUpdateWebhookContext
 
     public function isMissingAtZoom(): bool
     {
-        return $this->needsZoomCheck && $this->zoomMeeting === null;
+        return $this->needsZoomCheck && ! $this->zoomMeeting instanceof ZoomMeeting;
     }
 
     public function zoomMeetingOrFail(): ZoomMeeting

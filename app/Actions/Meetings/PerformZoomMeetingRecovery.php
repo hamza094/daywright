@@ -96,7 +96,7 @@ final readonly class PerformZoomMeetingRecovery
 
         $currentZoomMeeting = $this->fetchZoomMeeting($meeting, $user, $zoom);
 
-        if ($currentZoomMeeting === null) {
+        if (! $currentZoomMeeting instanceof ZoomMeeting) {
             // Zoom confirmed the meeting is gone, so finish locally instead of retrying the update.
             $this->withValidatedOperationLock(
                 $meeting,
@@ -385,11 +385,14 @@ final readonly class PerformZoomMeetingRecovery
                 'sync_claim_token' => null,
                 'sync_lease_expires_at' => null,
                 'sync_available_at' => now()->addSeconds(max(1, $delaySeconds)),
-                'sync_error' => $exception !== null ? $this->errorFormatter->format($exception) : null,
+                'sync_error' => $exception instanceof Throwable ? $this->errorFormatter->format($exception) : null,
             ]);
         });
     }
 
+    /**
+     * @param  array<string, mixed>  $payload
+     */
     private function isPasswordOperation(array $payload): bool
     {
         return array_key_exists('password', $payload);
@@ -478,7 +481,7 @@ final readonly class PerformZoomMeetingRecovery
 
             $lockedMeeting->update([
                 'sync_attempts' => $nextAttempt,
-                'sync_error' => $exception ? $this->errorFormatter->format($exception) : 'zoom_meeting_not_found',
+                'sync_error' => $exception instanceof Throwable ? $this->errorFormatter->format($exception) : 'zoom_meeting_not_found',
                 'sync_claim_token' => null,
                 'sync_lease_expires_at' => null,
                 'sync_available_at' => now()->addSeconds(max(1, $retryDelay)),

@@ -50,8 +50,8 @@ final class ProjectServiceTest extends TestCase
 
         $data = new ProjectStageUpdateData(
             stageId: $this->project->stage_id,
-            version: $initialVersion,
             postponedReason: 'Budget constraints',
+            version: $initialVersion,
         );
 
         $updatedProject = app(ProjectService::class)->updateStageStatus($this->project, $data, $this->user);
@@ -72,8 +72,8 @@ final class ProjectServiceTest extends TestCase
 
         $data = new ProjectStageUpdateData(
             stageId: $newStage->id,
-            version: $initialVersion,
             postponedReason: 'Should be ignored',
+            version: $initialVersion,
         );
 
         $updatedProject = app(ProjectService::class)->updateStageStatus($this->project, $data, $this->user);
@@ -93,8 +93,8 @@ final class ProjectServiceTest extends TestCase
 
         $data = new ProjectStageUpdateData(
             stageId: $postponedStage->id,
-            version: $initialVersion,
             postponedReason: 'Initial reason',
+            version: $initialVersion,
         );
 
         $updatedProject = app(ProjectService::class)->updateStageStatus($this->project, $data, $this->user);

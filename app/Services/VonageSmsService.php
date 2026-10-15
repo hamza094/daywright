@@ -18,7 +18,7 @@ class VonageSmsService
 
     public function __construct(?\Vonage\Client $client = null)
     {
-        if ($client !== null) {
+        if ($client instanceof \Vonage\Client) {
             $this->client = $client;
             $this->basic = null;
 
@@ -39,7 +39,7 @@ class VonageSmsService
         $recipient = $message->users()
             ->with('info')
             ->get()
-            ->map(fn (\App\Models\User $user): ?string => $user->info?->mobile ?? ($user->getAttribute('mobile') !== null ? (string) $user->getAttribute('mobile') : null))
+            ->map(fn (\App\Models\User $user): ?string => $user->info->mobile ?? ($user->getAttribute('mobile') !== null ? (string) $user->getAttribute('mobile') : null))
             ->filter()
             ->first();
 

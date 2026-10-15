@@ -39,7 +39,7 @@ use LogicException;
  * @property string|null $last_error_code
  * @property CarbonInterface $created_at
  * @property CarbonInterface $updated_at
- * @property-read User $user
+ * @property-read User|null $user
  * @property-read PaddleSubscription|null $subscription
  *
  * @method static Builder<SubscriptionOperation> active()

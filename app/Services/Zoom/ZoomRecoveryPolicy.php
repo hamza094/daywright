@@ -45,10 +45,15 @@ final readonly class ZoomRecoveryPolicy
         return $currentAttempts < self::MAX_ATTEMPTS;
     }
 
-    public function shouldSkipExpiredLease(Meeting $meeting, CarbonInterface $now): bool
+    public function shouldSkipExpiredLease(Meeting $meeting, ?CarbonInterface $now = null): bool
     {
-        return $meeting->sync_lease_expires_at !== null
-            && $meeting->sync_lease_expires_at->isPast();
+        if ($meeting->sync_lease_expires_at === null) {
+            return false;
+        }
+
+        return $now instanceof CarbonInterface
+            ? $meeting->sync_lease_expires_at->lessThanOrEqualTo($now)
+            : $meeting->sync_lease_expires_at->isPast();
     }
 
     /**

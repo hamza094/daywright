@@ -30,6 +30,8 @@ final class UpdateProjectMeetingTest extends TestCase
 {
     use InteractsWithZoom, RefreshDatabase;
 
+    public $zoom;
+
     private UpdateProjectMeeting $action;
 
     private User $user;
@@ -261,10 +263,8 @@ final class UpdateProjectMeetingTest extends TestCase
 
         Log::shouldHaveReceived('warning')
             ->once()
-            ->withArgs(function (string $message, array $context) use ($sentinelPassword): bool {
-                return ! str_contains($message, $sentinelPassword)
-                    && ! str_contains((string) json_encode($context), $sentinelPassword);
-            });
+            ->withArgs(fn (string $message, array $context): bool => ! str_contains($message, $sentinelPassword)
+                && ! str_contains((string) json_encode($context), $sentinelPassword));
     }
 
     /** @test */

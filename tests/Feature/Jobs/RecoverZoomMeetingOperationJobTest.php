@@ -25,6 +25,8 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
 {
     use InteractsWithZoom, RefreshDatabase;
 
+    public $zoom;
+
     private User $user;
 
     private Project $project;
@@ -356,7 +358,7 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
         ]);
 
         $this->zoom = $this->fakeZoom()->shouldFailWithException(
-            new \App\Exceptions\Integrations\Zoom\ZoomRateLimitException(null)
+            new \App\Exceptions\Integrations\Zoom\ZoomRateLimitException
         );
 
         $job = new RecoverZoomMeetingOperationJob($meeting->id, 'op-123', 'claim-token');
@@ -731,8 +733,8 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
 
         $oldZoomMeeting = $this->zoomMeetingWithDetails(
             id: 206,
-            password: 'old-secret',
             joinUrl: 'https://zoom.us/j/206-old',
+            password: 'old-secret',
         );
         $this->zoom = $this->fakeZoom()
             ->findsMeeting($oldZoomMeeting)
@@ -755,8 +757,8 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
 
         $newZoomMeeting = $this->zoomMeetingWithDetails(
             id: 206,
-            password: 'new-secret',
             joinUrl: 'https://zoom.us/j/206-new',
+            password: 'new-secret',
         );
         Meeting::query()->whereKey($meeting->getKey())->update([
             'sync_claim_token' => 'claim-pw-206-retry',
@@ -843,14 +845,14 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
         ]);
         $this->zoom = $this->fakeZoom()->findsMeeting($this->zoomMeetingWithDetails(
             id: 204,
-            password: 'old-secret',
             joinUrl: 'https://zoom.us/j/204-old',
+            password: 'old-secret',
         ));
         $this->zoom->beforeUpdatingMeeting(function (): void {
             $this->zoom->findsMeeting($this->zoomMeetingWithDetails(
                 id: 204,
-                password: 'new-secret',
                 joinUrl: 'https://zoom.us/j/204-new',
+                password: 'new-secret',
             ));
 
             // This runs inside ZoomServiceFake::updateMeeting(), before the PATCH returns.
@@ -894,8 +896,8 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
 
         $this->zoom = $this->fakeZoom()->findsMeeting($this->zoomMeetingWithDetails(
             id: 205,
-            password: 'old-secret',
             joinUrl: 'https://zoom.us/j/205-old',
+            password: 'old-secret',
         ));
 
         $this->zoom->beforeUpdatingMeeting(function (): void {
@@ -936,13 +938,13 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
 
         $oldZoomMeeting = $this->zoomMeetingWithDetails(
             id: 207,
-            password: 'old-secret',
             joinUrl: 'https://zoom.us/j/207-old',
+            password: 'old-secret',
         );
         $newZoomMeeting = $this->zoomMeetingWithDetails(
             id: 207,
-            password: 'new-secret',
             joinUrl: 'https://zoom.us/j/207-new',
+            password: 'new-secret',
         );
 
         $this->zoom = $this->fakeZoom()
@@ -1012,8 +1014,8 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
         $this->zoom = $this->fakeZoom()
             ->findsMeeting($this->zoomMeetingWithDetails(
                 id: 208,
-                password: 'old-secret',
                 joinUrl: 'https://zoom.us/j/208-old',
+                password: 'old-secret',
             ))
             ->failNextUpdateWithException(new \App\Exceptions\Integrations\Zoom\ZoomRateLimitException(120));
 

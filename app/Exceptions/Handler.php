@@ -156,6 +156,8 @@ class Handler extends ExceptionHandler
      * Returns true for the two uncertain-result Zoom exceptions that extend
      * ApiException rather than ZoomException. These carry a $previous exception
      * from the Zoom driver that may contain raw HTTP secrets.
+     *
+     * @phpstan-assert-if-true ZoomMeetingCreationUnknownException|ZoomMeetingOperationUnknownException $e
      */
     private function isZoomUncertainResultException(Throwable $e): bool
     {

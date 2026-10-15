@@ -23,7 +23,7 @@ final readonly class RecoverPendingZoomMeetingOperations
     {
         $meeting = $this->claimNextDueOperation();
 
-        if ($meeting === null) {
+        if (! $meeting instanceof Meeting) {
             return false;
         }
 

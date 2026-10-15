@@ -23,6 +23,8 @@ final class DeleteProjectMeetingTest extends TestCase
 {
     use InteractsWithZoom, RefreshDatabase;
 
+    public $zoom;
+
     private DeleteProjectMeeting $action;
 
     private User $user;

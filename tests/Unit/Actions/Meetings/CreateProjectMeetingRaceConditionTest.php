@@ -42,7 +42,6 @@ final class CreateProjectMeetingRaceConditionTest extends TestCase
         $action = app(CreateProjectMeeting::class);
         $reflection = new ReflectionClass($action);
         $method = $reflection->getMethod('markMeetingAsSynced');
-        $method->setAccessible(true);
 
         // Should not throw an exception
         $method->invoke($action, $meeting, $zoomMeeting);
@@ -74,7 +73,6 @@ final class CreateProjectMeetingRaceConditionTest extends TestCase
         $action = app(CreateProjectMeeting::class);
         $reflection = new ReflectionClass($action);
         $method = $reflection->getMethod('markMeetingAsSynced');
-        $method->setAccessible(true);
 
         $method->invoke($action, $meeting, $zoomMeeting);
 
@@ -109,7 +107,6 @@ final class CreateProjectMeetingRaceConditionTest extends TestCase
         $action = app(CreateProjectMeeting::class);
         $reflection = new ReflectionClass($action);
         $method = $reflection->getMethod('markMeetingAsSynced');
-        $method->setAccessible(true);
 
         $method->invoke($action, $meeting, $zoomMeeting);
 
@@ -139,7 +136,6 @@ final class CreateProjectMeetingRaceConditionTest extends TestCase
         $action = app(CreateProjectMeeting::class);
         $reflection = new ReflectionClass($action);
         $method = $reflection->getMethod('markMeetingAsSynced');
-        $method->setAccessible(true);
 
         $method->invoke($action, $meeting, $zoomMeeting);
 
@@ -162,7 +158,6 @@ final class CreateProjectMeetingRaceConditionTest extends TestCase
 
         $action = app(CreateProjectMeeting::class);
         $method = (new ReflectionClass($action))->getMethod('markMeetingAsCreateUnknown');
-        $method->setAccessible(true);
         $method->invoke($action, $meeting, new RuntimeException('late timeout'));
 
         $meeting->refresh();
@@ -181,7 +176,6 @@ final class CreateProjectMeetingRaceConditionTest extends TestCase
 
         $action = app(CreateProjectMeeting::class);
         $method = (new ReflectionClass($action))->getMethod('markMeetingAsFailed');
-        $method->setAccessible(true);
         $method->invoke($action, $meeting, new RuntimeException('late rejection'));
 
         $meeting->refresh();

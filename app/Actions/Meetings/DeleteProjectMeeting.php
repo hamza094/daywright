@@ -54,7 +54,7 @@ final readonly class DeleteProjectMeeting
 
                 $lockedMeeting = $this->saveDeleteIntent($currentMeeting, $operationId);
 
-                if ($lockedMeeting === null) {
+                if (! $lockedMeeting instanceof Meeting) {
                     return;
                 }
 
@@ -92,9 +92,7 @@ final readonly class DeleteProjectMeeting
                 throw new ConflictHttpException('Meeting deletion is already in progress. Please retry.');
             }
 
-            if ($lockedMeeting->sync_status !== MeetingSyncStatus::Active
-                && $lockedMeeting->sync_status !== MeetingSyncStatus::UpdateFailed
-                && $lockedMeeting->sync_status !== MeetingSyncStatus::DeleteFailed) {
+            if (! in_array($lockedMeeting->sync_status, [MeetingSyncStatus::Active, MeetingSyncStatus::UpdateFailed, MeetingSyncStatus::DeleteFailed], true)) {
                 throw new RuntimeException('Meeting must be active, update_failed, or delete_failed to delete');
             }
 

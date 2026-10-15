@@ -68,7 +68,7 @@ final class RecoverPendingZoomMeetingOperationsTest extends TestCase
     /** @test */
     public function it_skips_when_another_worker_has_claim(): void
     {
-        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+        MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 123,
             'sync_status' => MeetingSyncStatus::Updating,
             'sync_operation_type' => MeetingSyncOperationType::Update,
@@ -145,7 +145,7 @@ final class RecoverPendingZoomMeetingOperationsTest extends TestCase
     /** @test */
     public function it_picks_up_unknown_operations_when_sync_available_at_is_due(): void
     {
-        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+        MeetingTestHelper::createMeeting($this->project, $this->user, [
             'meeting_id' => 123,
             'sync_status' => MeetingSyncStatus::Updating,
             'sync_operation_type' => MeetingSyncOperationType::Update,

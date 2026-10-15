@@ -31,7 +31,7 @@ final readonly class HandleMeetingUpdatedWebhook
             function (Meeting $meeting, ?string $userUuid) use ($data, $occurredAt): void {
                 $context = $this->buildContext($meeting, $data, $occurredAt, $userUuid);
 
-                if ($context === null) {
+                if (! $context instanceof MeetingUpdateWebhookContext) {
                     return;
                 }
 
