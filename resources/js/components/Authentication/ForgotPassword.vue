@@ -21,8 +21,7 @@
               name="email"
               v-model="form.email"
               required
-              autocomplete="email"
-              autofocus />
+              autocomplete="email" />
             <span class="text-danger font-italic" v-if="errors.email" v-text="errors.email[0]"></span>
           </div>
 

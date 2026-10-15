@@ -289,34 +289,40 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
 
     public function test_pending_update_is_marked_deleted_when_reconciliation_confirms_zoom_meeting_missing(): void
     {
-        $meeting = $this->createMeeting([
-            'meeting_id' => 664,
-            'sync_status' => MeetingSyncStatus::Updating,
-            'sync_operation_type' => MeetingSyncOperationType::Update,
-            'sync_operation_id' => 'pending-operation',
-            'sync_payload' => json_encode(['topic' => 'Requested Topic']),
-            'sync_claim_token' => 'claim-token',
-            'sync_lease_expires_at' => now()->addMinutes(5),
-            'sync_available_at' => now()->addMinute(),
-            'sync_reconcile_before_at' => now(),
-            'sync_started_at' => now()->subMinute(),
-        ]);
-        $this->fakeZoom()->meetingNotFound();
+        Carbon::setTestNow('2026-10-15 12:00:00');
 
-        app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
-            meetingId: 664,
-            changes: ['agenda' => 'Partial unrelated callback'],
-            requestId: 'partial-callback-for-missing-meeting',
-        ), (int) now()->subSecond()->valueOf());
+        try {
+            $meeting = $this->createMeeting([
+                'meeting_id' => 664,
+                'sync_status' => MeetingSyncStatus::Updating,
+                'sync_operation_type' => MeetingSyncOperationType::Update,
+                'sync_operation_id' => 'pending-operation',
+                'sync_payload' => json_encode(['topic' => 'Requested Topic']),
+                'sync_claim_token' => 'claim-token',
+                'sync_lease_expires_at' => now()->addMinutes(5),
+                'sync_available_at' => now()->addMinute(),
+                'sync_reconcile_before_at' => now(),
+                'sync_started_at' => now()->subMinute(),
+            ]);
+            $this->fakeZoom()->meetingNotFound();
 
-        $meeting->refresh();
-        $this->assertSame(MeetingSyncStatus::Deleted, $meeting->sync_status);
-        $this->assertNull($meeting->sync_operation_id);
-        $this->assertNull($meeting->sync_operation_type);
-        $this->assertNull($meeting->sync_payload);
-        $this->assertNull($meeting->sync_claim_token);
-        $this->assertNull($meeting->sync_lease_expires_at);
-        $this->assertNull($meeting->sync_available_at);
+            app(HandleMeetingUpdatedWebhook::class)->handle(new MeetingUpdatedWebhookData(
+                meetingId: 664,
+                changes: ['agenda' => 'Partial unrelated callback'],
+                requestId: 'partial-callback-for-missing-meeting',
+            ), (int) now()->subSecond()->valueOf());
+
+            $meeting->refresh();
+            $this->assertSame(MeetingSyncStatus::Deleted, $meeting->sync_status);
+            $this->assertNull($meeting->sync_operation_id);
+            $this->assertNull($meeting->sync_operation_type);
+            $this->assertNull($meeting->sync_payload);
+            $this->assertNull($meeting->sync_claim_token);
+            $this->assertNull($meeting->sync_lease_expires_at);
+            $this->assertNull($meeting->sync_available_at);
+        } finally {
+            Carbon::setTestNow();
+        }
     }
 
     public function test_out_of_order_update_events_cannot_overwrite_newer_event_state(): void

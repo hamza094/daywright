@@ -29,8 +29,7 @@
                 maxlength="6"
                 placeholder="6-digit code"
                 autocomplete="one-time-code"
-                required
-                autofocus />
+                required />
             </div>
             <div v-if="error" class="text-danger text-center small mb-3">{{ error }}</div>
             <button type="submit" class="btn btn-primary auth-submit w-100" :disabled="loading">
