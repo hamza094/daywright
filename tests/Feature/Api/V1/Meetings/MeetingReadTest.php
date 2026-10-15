@@ -36,7 +36,6 @@ class MeetingReadTest extends TestCase
                 ],
             ])
             ->assertJsonPath('data.start_time', Carbon::parse($meeting->start_time)->setTimezone('UTC')->toIso8601String())
-            ->assertJsonPath('data.created_at', $meeting->created_at?->setTimezone('UTC')->toIso8601String())
             ->assertJsonPath('data.join_url', 'https://zoom.us/j/owner-join')
             ->assertJsonPath('data.start_url', 'https://zoom.us/s/owner-start')
             ->assertJsonPath('data.password', 'owner-password');

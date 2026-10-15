@@ -299,6 +299,7 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
             'sync_lease_expires_at' => now()->addMinutes(5),
             'sync_available_at' => now()->addMinute(),
             'sync_reconcile_before_at' => now(),
+            'sync_started_at' => now()->subMinute(),
         ]);
         $this->fakeZoom()->meetingNotFound();
 

@@ -295,10 +295,10 @@ final class RecoverSubscriptionOperationTest extends TestCase
         $originalSub->delete();
         $replacementSub = $this->createProSubscription($user, ['paddle_id' => '112233', 'paddle_plan' => 789]);
 
-        // Operation for the original subscription
+        // Operation for the original subscription (subscription_id is null since it was deleted)
         $operation = SubscriptionOperation::factory()->swap('yearly')->unknown()->create([
             'user_id' => $user->id,
-            'subscription_id' => $originalSub->id,
+            'subscription_id' => null,
             'paddle_subscription_id' => '998877',
             'attempts' => 1,
         ]);
