@@ -205,7 +205,7 @@ final class ZoomMeetingUpdatedWebhookChangesTest extends TestCase
             timezone: $timezone,
             password: $password,
             join_before_host: $join_before_host,
-            tracking_fields: [],
+            trackingFields: [],
         );
     }
 }

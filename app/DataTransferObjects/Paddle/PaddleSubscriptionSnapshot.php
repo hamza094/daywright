@@ -7,20 +7,20 @@ namespace App\DataTransferObjects\Paddle;
 final readonly class PaddleSubscriptionSnapshot
 {
     public function __construct(
-        public string $subscription_id,
-        public string $plan_id,
+        public string $subscriptionId,
+        public string $planId,
         public string $status,
-        public ?string $cancellation_effective_date = null,
+        public ?string $cancellationEffectiveDate = null,
     ) {}
 
     /** @param array<string, mixed> $response */
     public static function fromPaddleResponse(array $response): self
     {
         return new self(
-            subscription_id: (string) ($response['subscription_id'] ?? ''),
-            plan_id: (string) ($response['plan_id'] ?? ''),
+            subscriptionId: (string) ($response['subscription_id'] ?? ''),
+            planId: (string) ($response['plan_id'] ?? ''),
             status: (string) ($response['state'] ?? ''),
-            cancellation_effective_date: isset($response['cancellation_effective_date'])
+            cancellationEffectiveDate: isset($response['cancellation_effective_date'])
                 ? (string) $response['cancellation_effective_date']
                 : null,
         );
@@ -31,7 +31,7 @@ final readonly class PaddleSubscriptionSnapshot
      */
     public function provesSwapSucceeded(string $targetPlanId): bool
     {
-        return $this->plan_id === $targetPlanId && $this->status === 'active';
+        return $this->planId === $targetPlanId && $this->status === 'active';
     }
 
     /**
@@ -40,7 +40,7 @@ final readonly class PaddleSubscriptionSnapshot
     public function provesCancelSucceeded(): bool
     {
         return $this->status === 'deleted'
-            && $this->cancellation_effective_date !== null
-            && trim($this->cancellation_effective_date) !== '';
+            && $this->cancellationEffectiveDate !== null
+            && trim($this->cancellationEffectiveDate) !== '';
     }
 }

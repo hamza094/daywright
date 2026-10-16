@@ -10,6 +10,7 @@ use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
 use App\Enums\WebhookInboxState;
+use App\Exceptions\Integrations\Zoom\ZoomWebhookStateConflictException;
 use App\Models\Meeting;
 use App\Models\WebhookInbox;
 use App\Services\Webhooks\ZoomWebhookInboxService;
@@ -700,15 +701,15 @@ final class HandleMeetingUpdatedWebhookIdempotencyTest extends TestCase
         // Concurrent local change updates the operation ID
         $meeting->update(['sync_operation_id' => 'newer-op']);
 
-        // Simulate the exception being swallowed (as it would be by the inbox retry system)
-        // and verify the DB guard held — the stale payload was never committed
+        $caught = false;
         try {
             $processor = app(\App\Services\Webhooks\ZoomMeetingUpdatedWebhookProcessor::class);
             $processor->process($meeting, $data, $timestamp, null, $context);
-        } catch (RuntimeException) {
-            // expected — inbox retry loop would catch this and requeue
+        } catch (ZoomWebhookStateConflictException) {
+            $caught = true;
         }
 
+        $this->assertTrue($caught, 'Expected ZoomWebhookStateConflictException was not thrown.');
         $meeting->refresh();
         $this->assertSame('Original Topic', $meeting->topic);
         $this->assertSame('newer-op', $meeting->sync_operation_id);

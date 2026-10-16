@@ -22,70 +22,95 @@ final readonly class HandleMeetingDeletedWebhook
     public function handle(MeetingDeletedWebhookData $data, ?int $occurredAt = null): void
     {
         $this->support->executeWithLogging(self::OPERATION, $data->meetingId, $data->requestId, function (Meeting $meeting, ?string $userUuid) use ($data, $occurredAt): void {
-            if ($occurredAt === null) {
-                // We cannot tell whether this event is old, so log the risk and process Zoom's trusted delete event.
-                $this->support->logger->logWebhookCritical(
-                    self::OPERATION,
-                    $data->meetingId,
-                    $data->requestId,
-                    'zoom_webhook_missing_event_timestamp',
-                    $userUuid,
-                    ['effect' => 'processing_delete_without_staleness_check'],
-                );
+            $this->logMissingTimestamp($data, $occurredAt, $userUuid);
+            $this->processDeleteInTransaction($meeting, $data, $occurredAt, $userUuid);
+        });
+    }
+
+    private function logMissingTimestamp(MeetingDeletedWebhookData $data, ?int $occurredAt, ?string $userUuid): void
+    {
+        if ($occurredAt === null) {
+            $this->support->logger->logWebhookCritical(
+                self::OPERATION,
+                $data->meetingId,
+                $data->requestId,
+                'zoom_webhook_missing_event_timestamp',
+                $userUuid,
+                ['effect' => 'processing_delete_without_staleness_check'],
+            );
+        }
+    }
+
+    private function processDeleteInTransaction(Meeting $meeting, MeetingDeletedWebhookData $data, ?int $occurredAt, ?string $userUuid): void
+    {
+        DB::transaction(function () use ($meeting, $data, $occurredAt, $userUuid): void {
+            $lockedMeeting = $this->support->lockMeeting($meeting);
+
+            if ($this->shouldIgnoreWebhook($lockedMeeting, $occurredAt, $data, $userUuid)) {
+                return;
             }
 
-            DB::transaction(function () use ($meeting, $userUuid, $data, $occurredAt): void {
-                // Lock the row so a delete webhook cannot race with another local meeting change.
-                $lockedMeeting = $this->support->lockMeeting($meeting);
-
-                if ($lockedMeeting->sync_status === MeetingSyncStatus::Deleted) {
-                    $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'already_deleted', $userUuid);
-
-                    return;
-                }
-
-                // If update and delete times tie, trust the delete so the meeting cannot stay active by mistake.
-                if ($occurredAt !== null && $this->support->isStaleProviderEvent($lockedMeeting, $occurredAt, allowEqualTimestamp: true)) {
-                    $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_provider_event', $userUuid);
-
-                    return;
-                }
-
-                $isPendingDelete = in_array($lockedMeeting->sync_status, [MeetingSyncStatus::Deleting, MeetingSyncStatus::DeleteFailed], true)
-                    && $lockedMeeting->sync_operation_type === MeetingSyncOperationType::Delete
-                    && $lockedMeeting->sync_operation_id !== null;
-
-                $isPendingUpdate = in_array($lockedMeeting->sync_status, [MeetingSyncStatus::Updating, MeetingSyncStatus::UpdateFailed], true)
-                    && $lockedMeeting->sync_operation_type === MeetingSyncOperationType::Update
-                    && $lockedMeeting->sync_operation_id !== null;
-
-                if (! $isPendingDelete && ! $isPendingUpdate && $lockedMeeting->sync_status !== MeetingSyncStatus::Active) {
-                    $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'inactive_sync_status', $userUuid);
-
-                    return;
-                }
-
-                // A Zoom delete cancels any unfinished local update or delete operation.
-                $updates = [
-                    'sync_status' => MeetingSyncStatus::Deleted,
-                    'sync_operation_id' => null,
-                    'sync_operation_type' => null,
-                    'sync_payload' => null,
-                    'sync_error' => null,
-                    'sync_claim_token' => null,
-                    'sync_lease_expires_at' => null,
-                    'sync_available_at' => null,
-                    'synced_at' => now(),
-                ];
-
-                if ($occurredAt !== null) {
-                    $updates['last_zoom_event_timestamp'] = $occurredAt;
-                }
-
-                $lockedMeeting->update($updates);
-
-                $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
-            });
+            $this->markMeetingAsDeleted($lockedMeeting, $occurredAt);
+            $this->support->logger->logWebhookProcessed(self::OPERATION, $data->meetingId, $data->requestId, $userUuid);
         });
+    }
+
+    private function shouldIgnoreWebhook(Meeting $meeting, ?int $occurredAt, MeetingDeletedWebhookData $data, ?string $userUuid): bool
+    {
+        if ($meeting->sync_status === MeetingSyncStatus::Deleted) {
+            $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'already_deleted', $userUuid);
+
+            return true;
+        }
+
+        if ($occurredAt !== null && $this->support->isStaleProviderEvent($meeting, $occurredAt, allowEqualTimestamp: true)) {
+            $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_provider_event', $userUuid);
+
+            return true;
+        }
+
+        if (! $this->isValidSyncStatus($meeting)) {
+            $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'inactive_sync_status', $userUuid);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private function isValidSyncStatus(Meeting $meeting): bool
+    {
+        $isPendingDelete = $this->isPendingOperation($meeting, MeetingSyncOperationType::Delete, [MeetingSyncStatus::Deleting, MeetingSyncStatus::DeleteFailed]);
+        $isPendingUpdate = $this->isPendingOperation($meeting, MeetingSyncOperationType::Update, [MeetingSyncStatus::Updating, MeetingSyncStatus::UpdateFailed]);
+
+        return $isPendingDelete || $isPendingUpdate || $meeting->sync_status === MeetingSyncStatus::Active;
+    }
+
+    private function isPendingOperation(Meeting $meeting, MeetingSyncOperationType $operationType, array $statuses): bool
+    {
+        return in_array($meeting->sync_status, $statuses, true)
+            && $meeting->sync_operation_type === $operationType
+            && $meeting->sync_operation_id !== null;
+    }
+
+    private function markMeetingAsDeleted(Meeting $meeting, ?int $occurredAt): void
+    {
+        $updates = [
+            'sync_status' => MeetingSyncStatus::Deleted,
+            'sync_operation_id' => null,
+            'sync_operation_type' => null,
+            'sync_payload' => null,
+            'sync_error' => null,
+            'sync_claim_token' => null,
+            'sync_lease_expires_at' => null,
+            'sync_available_at' => null,
+            'synced_at' => now(),
+        ];
+
+        if ($occurredAt !== null) {
+            $updates['last_zoom_event_timestamp'] = $occurredAt;
+        }
+
+        $meeting->update($updates);
     }
 }

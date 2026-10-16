@@ -8,9 +8,9 @@ use App\DataTransferObjects\Zoom\Meeting as ZoomMeeting;
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
 use App\Enums\Meeting\MeetingSyncOperationType;
 use App\Enums\Meeting\MeetingSyncStatus;
+use App\Exceptions\Integrations\Zoom\ZoomWebhookStateConflictException;
 use App\Models\Meeting;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 final readonly class ZoomMeetingUpdatedWebhookProcessor
 {
@@ -63,48 +63,101 @@ final readonly class ZoomMeetingUpdatedWebhookProcessor
         // The meeting may have changed while we were asking Zoom for its latest state.
         $lockedMeeting = $this->support->lockMeeting($meeting);
 
-        if ($this->support->isStaleProviderEvent($lockedMeeting, $occurredAt, allowEqualTimestamp: true)) {
-            $this->logIgnored($data, 'stale_provider_event', $userUuid);
-
+        if (! $this->canProcessWebhook($lockedMeeting, $data, $occurredAt, $userUuid, $context)) {
             return;
+        }
+
+        $this->processWebhookUpdate($lockedMeeting, $data, $occurredAt, $userUuid, $context);
+    }
+
+    private function canProcessWebhook(
+        Meeting $lockedMeeting,
+        MeetingUpdatedWebhookData $data,
+        ?int $occurredAt,
+        ?string $userUuid,
+        MeetingUpdateWebhookContext $context,
+    ): bool {
+        if (! $this->isValidWebhookEvent($lockedMeeting, $data, $occurredAt, $userUuid)) {
+            return false;
         }
 
         // Check that the Zoom response still belongs to the operation we started with.
         $this->checkMeetingDidNotChange($lockedMeeting, $context);
 
+        if (! $this->handleSpecialCases($lockedMeeting, $data, $occurredAt, $userUuid, $context)) {
+            return false;
+        }
+
+        return $this->ensureActiveSyncStatus($lockedMeeting, $data, $userUuid);
+    }
+
+    private function isValidWebhookEvent(
+        Meeting $lockedMeeting,
+        MeetingUpdatedWebhookData $data,
+        ?int $occurredAt,
+        ?string $userUuid,
+    ): bool {
+        if ($this->support->isStaleProviderEvent($lockedMeeting, $occurredAt, allowEqualTimestamp: true)) {
+            $this->logIgnored($data, 'stale_provider_event', $userUuid);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function handleSpecialCases(
+        Meeting $lockedMeeting,
+        MeetingUpdatedWebhookData $data,
+        ?int $occurredAt,
+        ?string $userUuid,
+        MeetingUpdateWebhookContext $context,
+    ): bool {
         // If Zoom says the meeting is gone, mark it deleted even if this webhook is incomplete.
         if ($context->isMissingAtZoom()) {
             $this->markMeetingDeleted($lockedMeeting, $occurredAt);
             $this->logProcessed($data, $userUuid);
 
-            return;
+            return false;
         }
 
         if ($this->hasPendingUpdate($lockedMeeting)) {
             // A matching event can finish this update; an unrelated event cannot.
             $this->processPendingUpdate($lockedMeeting, $data, $occurredAt, $userUuid, $context);
 
-            return;
+            return false;
         }
 
-        if (! $this->support->ensureActiveSyncStatus(
+        return true;
+    }
+
+    private function ensureActiveSyncStatus(
+        Meeting $lockedMeeting,
+        MeetingUpdatedWebhookData $data,
+        ?string $userUuid,
+    ): bool {
+        return $this->support->ensureActiveSyncStatus(
             self::OPERATION,
             $lockedMeeting,
             $data->meetingId,
             $data->requestId,
             $userUuid,
-        )) {
-            return;
-        }
+        );
+    }
 
+    private function processWebhookUpdate(
+        Meeting $lockedMeeting,
+        MeetingUpdatedWebhookData $data,
+        ?int $occurredAt,
+        ?string $userUuid,
+        MeetingUpdateWebhookContext $context,
+    ): void {
         if ($context->needsZoomCheck) {
             // The event may be close to a local change, so trust Zoom's current values over the event payload.
             $this->saveZoomSnapshot($lockedMeeting, $data, $occurredAt, $userUuid, $context);
-
-            return;
+        } else {
+            $this->saveWebhookChanges($lockedMeeting, $data, $occurredAt, $userUuid);
         }
-
-        $this->saveWebhookChanges($lockedMeeting, $data, $occurredAt, $userUuid);
     }
 
     private function checkMeetingDidNotChange(
@@ -114,7 +167,7 @@ final readonly class ZoomMeetingUpdatedWebhookProcessor
         if ($meeting->sync_operation_id !== $context->operationId
             || $meeting->sync_reconcile_before_at?->valueOf() !== $context->reconcileBefore
             || $meeting->last_zoom_event_timestamp !== $context->providerWatermark) {
-            throw new RuntimeException('Meeting state changed while reconciling the Zoom webhook.');
+            throw new ZoomWebhookStateConflictException('Meeting state changed while reconciling the Zoom webhook.');
         }
     }
 

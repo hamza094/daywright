@@ -51,7 +51,11 @@ final class SubscriptionRecoveryCommandsTest extends TestCase
         $this->cashier->shouldReceive('getSubscription')
             ->once()
             ->with('998877')
-            ->andReturn(new PaddleSubscriptionSnapshot('998877', '456', 'active'));
+            ->andReturn(new PaddleSubscriptionSnapshot(
+                subscriptionId: '998877',
+                planId: '456',
+                status: 'active',
+            ));
 
         $this->artisan('subscriptions:recover-operations', ['--limit' => 10])
             ->expectsOutputToContain('Selected: 1')
@@ -78,7 +82,11 @@ final class SubscriptionRecoveryCommandsTest extends TestCase
         $this->cashier->shouldReceive('getSubscription')
             ->once()
             ->with('998877')
-            ->andReturn(new PaddleSubscriptionSnapshot('998877', '456', 'active'));
+            ->andReturn(new PaddleSubscriptionSnapshot(
+                subscriptionId: '998877',
+                planId: '456',
+                status: 'active',
+            ));
 
         $this->artisan('subscriptions:resolve-operation', [
             'operation_uuid' => $operation->operation_uuid,

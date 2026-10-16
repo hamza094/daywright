@@ -111,6 +111,21 @@ final readonly class PerformZoomMeetingRecovery
             return;
         }
 
+        $this->handleUpdateRecovery($meeting, $user, $zoom, $requestedPayload, $currentZoomMeeting, $operationId, $claimToken);
+    }
+
+    /**
+     * @param  array<string, mixed>  $requestedPayload
+     */
+    private function handleUpdateRecovery(
+        Meeting $meeting,
+        \App\Models\User $user,
+        Zoom $zoom,
+        array $requestedPayload,
+        ZoomMeeting $currentZoomMeeting,
+        string $operationId,
+        string $claimToken,
+    ): void {
         if ($this->changes->zoomHasRequestedFields($requestedPayload, $currentZoomMeeting)) {
             // Zoom already has what we asked for — save the full Zoom snapshot (including
             // the refreshed join_url) and clear the operation.
@@ -129,44 +144,54 @@ final readonly class PerformZoomMeetingRecovery
                 },
             );
         } elseif ($this->isPasswordOperation($requestedPayload)) {
-            // For password operations the GET proved Zoom still has the old value.
-            // Consume one recovery cycle now; if the limit is reached, stop.
-            if (! $this->consumeMismatchCycle($meeting, $operationId, $claimToken)) {
-                return;
-            }
-
-            // Send the PATCH again. If it succeeds, scheduleVerification leaves the
-            // operation open for a later GET to confirm Zoom accepted the change.
-            // If the PATCH throws ZoomMeetingOperationUnknownException, the result
-            // is ambiguous: Zoom may have accepted the request before the connection
-            // dropped. Schedule a verification GET without consuming another attempt.
-            // If the PATCH is rate-limited, schedule verification after the Retry-After
-            // delay (or 60 seconds fallback) without consuming another attempt.
-            // Other ZoomExceptions bubble up to the outer handler to be retried or reviewed.
-            try {
-                $this->retryPasswordUpdate($meeting, $user, $zoom, $operationId, $claimToken);
-            } catch (ZoomMeetingOperationUnknownException $exception) {
-                report($exception);
-                $this->scheduleVerification(
-                    $meeting,
-                    $operationId,
-                    $claimToken,
-                    delaySeconds: 60,
-                    exception: $exception,
-                );
-            } catch (ZoomRateLimitException $exception) {
-                report($exception);
-                $delaySeconds = $exception->retryAfterSeconds() ?? 60;
-                $this->scheduleVerification(
-                    $meeting,
-                    $operationId,
-                    $claimToken,
-                    delaySeconds: $delaySeconds,
-                    exception: $exception,
-                );
-            }
+            $this->handlePasswordOperationRecovery($meeting, $user, $zoom, $operationId, $claimToken);
         } else {
             $this->retryUpdate($meeting, $user, $zoom, $operationId, $claimToken);
+        }
+    }
+
+    private function handlePasswordOperationRecovery(
+        Meeting $meeting,
+        \App\Models\User $user,
+        Zoom $zoom,
+        string $operationId,
+        string $claimToken,
+    ): void {
+        // For password operations the GET proved Zoom still has the old value.
+        // Consume one recovery cycle now; if the limit is reached, stop.
+        if (! $this->consumeMismatchCycle($meeting, $operationId, $claimToken)) {
+            return;
+        }
+
+        // Send the PATCH again. If it succeeds, scheduleVerification leaves the
+        // operation open for a later GET to confirm Zoom accepted the change.
+        // If the PATCH throws ZoomMeetingOperationUnknownException, the result
+        // is ambiguous: Zoom may have accepted the request before the connection
+        // dropped. Schedule a verification GET without consuming another attempt.
+        // If the PATCH is rate-limited, schedule verification after the Retry-After
+        // delay (or 60 seconds fallback) without consuming another attempt.
+        // Other ZoomExceptions bubble up to the outer handler to be retried or reviewed.
+        try {
+            $this->retryPasswordUpdate($meeting, $user, $zoom, $operationId, $claimToken);
+        } catch (ZoomMeetingOperationUnknownException $exception) {
+            report($exception);
+            $this->scheduleVerification(
+                $meeting,
+                $operationId,
+                $claimToken,
+                delaySeconds: 60,
+                exception: $exception,
+            );
+        } catch (ZoomRateLimitException $exception) {
+            report($exception);
+            $delaySeconds = $exception->retryAfterSeconds() ?? 60;
+            $this->scheduleVerification(
+                $meeting,
+                $operationId,
+                $claimToken,
+                delaySeconds: $delaySeconds,
+                exception: $exception,
+            );
         }
     }
 
@@ -205,23 +230,40 @@ final readonly class PerformZoomMeetingRecovery
     {
         $payload = $meeting->sync_payload;
 
-        if (! is_string($payload) || trim($payload) === '') {
+        if (! $this->isValidPayloadString($payload)) {
             $this->manualReview($meeting, 'invalid_payload', $operationId, $claimToken);
 
             return null;
         }
 
+        $decoded = $this->decodeJsonPayload($payload);
+
+        if ($decoded === null) {
+            $this->manualReview($meeting, 'invalid_payload', $operationId, $claimToken);
+
+            return null;
+        }
+
+        return $decoded;
+    }
+
+    private function isValidPayloadString(mixed $payload): bool
+    {
+        return is_string($payload) && trim($payload) !== '';
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function decodeJsonPayload(string $payload): ?array
+    {
         try {
             $decoded = json_decode($payload, true);
         } catch (JsonException) {
-            $this->manualReview($meeting, 'invalid_payload', $operationId, $claimToken);
-
             return null;
         }
 
         if (! is_array($decoded) || $decoded === []) {
-            $this->manualReview($meeting, 'invalid_payload', $operationId, $claimToken);
-
             return null;
         }
 

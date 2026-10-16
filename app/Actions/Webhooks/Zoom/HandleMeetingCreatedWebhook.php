@@ -53,9 +53,18 @@ final readonly class HandleMeetingCreatedWebhook
 
     private function attachRemoteMeetingId(Meeting $meeting, MeetingCreatedWebhookData $data): void
     {
+        if (! $this->shouldAttachRemoteId($meeting, $data)) {
+            return;
+        }
+
+        $this->updateMeetingWithRemoteId($meeting, $data);
+    }
+
+    private function shouldAttachRemoteId(Meeting $meeting, MeetingCreatedWebhookData $data): bool
+    {
         if ($meeting->sync_status === MeetingSyncStatus::Active) {
             if ($this->sameMeetingId($meeting->meeting_id, $data->meetingId)) {
-                return;
+                return false;
             }
 
             Log::warning(self::OPERATION.' conflict - different ID already stored', [
@@ -66,11 +75,11 @@ final readonly class HandleMeetingCreatedWebhook
                 'request_id' => $data->requestId,
             ]);
 
-            return;
+            return false;
         }
 
         if (! in_array($meeting->sync_status, [MeetingSyncStatus::Creating, MeetingSyncStatus::CreateUnknown], true)) {
-            return;
+            return false;
         }
 
         if ($meeting->meeting_id !== null) {
@@ -83,9 +92,14 @@ final readonly class HandleMeetingCreatedWebhook
                 'request_id' => $data->requestId,
             ]);
 
-            return;
+            return false;
         }
 
+        return true;
+    }
+
+    private function updateMeetingWithRemoteId(Meeting $meeting, MeetingCreatedWebhookData $data): void
+    {
         if ($meeting->sync_status === MeetingSyncStatus::Creating) {
             $meeting->transitionTo(MeetingSyncStatus::CreateUnknown, 'sync_status');
         }

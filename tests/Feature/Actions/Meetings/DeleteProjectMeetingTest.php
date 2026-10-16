@@ -10,6 +10,7 @@ use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
+use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -250,5 +251,18 @@ final class DeleteProjectMeetingTest extends TestCase
         $this->assertNull($meeting->sync_claim_token);
         $this->assertNull($meeting->sync_available_at);
         $this->assertNull($meeting->sync_payload);
+    }
+
+    /** @test */
+    public function delete_is_rejected_when_meeting_status_is_invalid(): void
+    {
+        $meeting = MeetingTestHelper::createMeeting($this->project, $this->user, [
+            'sync_status' => MeetingSyncStatus::Updating,
+        ]);
+
+        $this->expectException(InvalidStateTransitionException::class);
+        $this->expectExceptionMessage('Meeting must be active, update_failed, or delete_failed to delete');
+
+        $this->action->handle($meeting, $this->user, $this->zoom);
     }
 }

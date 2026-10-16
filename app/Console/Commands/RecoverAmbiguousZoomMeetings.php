@@ -36,6 +36,11 @@ final class RecoverAmbiguousZoomMeetings extends Command
             return 1;
         }
 
+        return $this->recoverMeetings($limit);
+    }
+
+    private function recoverMeetings(int $limit): int
+    {
         try {
             $meetings = Meeting::query()
                 ->readyForZoomRecoveryAt(now())

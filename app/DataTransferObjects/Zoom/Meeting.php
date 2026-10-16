@@ -26,7 +26,7 @@ final readonly class Meeting
         public string $password,
         public bool $join_before_host,
         /** @var array<string, string> */
-        public array $tracking_fields = [],
+        public array $trackingFields = [],
     ) {}
 
     /**
@@ -47,7 +47,7 @@ final readonly class Meeting
             timezone: self::requiredString($response, 'timezone'),
             password: self::optionalString($response, 'password'),
             join_before_host: self::optionalBool($response, 'join_before_host'),
-            tracking_fields: self::trackingFields($response),
+            trackingFields: self::trackingFields($response),
         );
     }
 

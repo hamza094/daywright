@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\FileType;
+use App\Exceptions\Integrations\StorageException;
 use App\Models\User;
 use Exception;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -15,7 +16,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
-use RuntimeException;
 use Spatie\ImageOptimizer\OptimizerChainFactory;
 
 use function Safe\parse_url;
@@ -119,7 +119,7 @@ class FileService
         $path = $disk->putFileAs($folderName, $file, $fileName, $visibility);
 
         if ($path === false) {
-            throw new RuntimeException('S3 file upload failed.');
+            throw new StorageException('S3 file upload failed.');
         }
 
         if ($fileType === FileType::AVATAR) {

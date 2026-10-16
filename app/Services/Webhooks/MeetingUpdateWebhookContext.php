@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Webhooks;
 
 use App\DataTransferObjects\Zoom\Meeting as ZoomMeeting;
-use RuntimeException;
+use App\Exceptions\Integrations\Zoom\ZoomWebhookStateConflictException;
 
 /**
  * The facts captured before reading Zoom.
@@ -31,7 +31,7 @@ final readonly class MeetingUpdateWebhookContext
     public function zoomMeetingOrFail(): ZoomMeeting
     {
         if (! $this->zoomMeeting instanceof ZoomMeeting) {
-            throw new RuntimeException('Zoom meeting snapshot is required for webhook reconciliation.');
+            throw new ZoomWebhookStateConflictException('Zoom meeting snapshot is required for webhook reconciliation.');
         }
 
         return $this->zoomMeeting;

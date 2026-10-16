@@ -26,6 +26,20 @@ final readonly class SubscriptionService implements Paddle
 {
     private const int CLAIM_LEASE_MINUTES = 5;
 
+    private const string MESSAGE_PROCESSING = 'Your request is being processed. We will confirm the result shortly.';
+
+    private const string MESSAGE_PROCESSING_SHORT = 'Your request is being processed.';
+
+    private const string MESSAGE_SWAP_SUCCESS = 'Your subscription has been successfully updated to the %s plan';
+
+    private const string MESSAGE_CANCEL_SUCCESS = 'Your subscription has been canceled successfully.';
+
+    private const string MESSAGE_SWAP_FAILED = 'Your subscription change could not be completed. Please try again or contact support.';
+
+    private const string MESSAGE_CANCEL_FAILED = 'Your subscription cancellation could not be completed. Please try again or contact support.';
+
+    private const string ERROR_NOT_SUBSCRIBED = 'You are not subscribed to a paid plan.';
+
     public function __construct(private CashierGatewayInterface $cashier) {}
 
     #[Override]
@@ -199,8 +213,7 @@ final readonly class SubscriptionService implements Paddle
         $paddleSubscriptionId = $paddleSubscription !== null ? (string) $paddleSubscription->paddle_id : '';
         $claimToken = (string) Str::uuid();
 
-        /** @var SubscriptionOperation $operation */
-        $operation = SubscriptionOperation::create([
+        return SubscriptionOperation::create([
             'operation_uuid' => (string) Str::uuid(),
             'user_id' => $user->id,
             'subscription_id' => $paddleSubscription?->id,
@@ -216,8 +229,6 @@ final readonly class SubscriptionService implements Paddle
             'claim_expires_at' => now()->addMinutes(self::CLAIM_LEASE_MINUTES),
             'provider_attempted_at' => now(),
         ]);
-
-        return $operation;
     }
 
     private function callPaddleOnce(
@@ -261,15 +272,15 @@ final readonly class SubscriptionService implements Paddle
 
             return new SubscriptionOperationResult(
                 operation: $operation->fresh(),
-                message: 'Your request is being processed. We will confirm the result shortly.',
+                message: self::MESSAGE_PROCESSING,
             );
         }
 
         return new SubscriptionOperationResult(
             operation: SubscriptionOperation::find($operation->id),
             message: $operation->type === SubscriptionOperationType::Swap
-                ? "Your subscription has been successfully updated to the {$plan} plan"
-                : 'Your subscription has been canceled successfully.',
+                ? sprintf(self::MESSAGE_SWAP_SUCCESS, $plan)
+                : self::MESSAGE_CANCEL_SUCCESS,
         );
     }
 
@@ -330,7 +341,7 @@ final readonly class SubscriptionService implements Paddle
 
         return new SubscriptionOperationResult(
             operation: SubscriptionOperation::find($operation->id),
-            message: 'Your request is being processed. We will confirm the result shortly.',
+            message: self::MESSAGE_PROCESSING,
         );
     }
 
@@ -340,7 +351,7 @@ final readonly class SubscriptionService implements Paddle
 
         if ($subscription === null) {
             throw new SubscriptionException(
-                'You are not subscribed to a paid plan.',
+                self::ERROR_NOT_SUBSCRIBED,
                 action: 'swap',
                 plan: $plan,
             );
@@ -392,7 +403,7 @@ final readonly class SubscriptionService implements Paddle
         // Now check general billing subscription status
         if (! $user->isBillingSubscribed()) {
             throw new SubscriptionException(
-                'You are not subscribed to a paid plan.',
+                self::ERROR_NOT_SUBSCRIBED,
                 action: 'swap',
                 plan: $plan,
                 currentState: $subscription->paddle_status
@@ -414,7 +425,7 @@ final readonly class SubscriptionService implements Paddle
         if (! $user->isBillingSubscribed()) {
             // No-op cancel - already canceled or never subscribed
             throw new SubscriptionException(
-                'You are not subscribed to a paid plan.',
+                self::ERROR_NOT_SUBSCRIBED,
                 action: 'cancel',
                 plan: $plan,
                 currentState: $user->subscription($user->subscriptionName())?->paddle_status
@@ -450,15 +461,15 @@ final readonly class SubscriptionService implements Paddle
     {
         return match ($status) {
             SubscriptionOperationStatus::Completed => $type === SubscriptionOperationType::Swap
-                ? "Your subscription has been successfully updated to the {$plan} plan"
-                : 'Your subscription has been canceled successfully.',
+                ? sprintf(self::MESSAGE_SWAP_SUCCESS, $plan)
+                : self::MESSAGE_CANCEL_SUCCESS,
             SubscriptionOperationStatus::Failed => $type === SubscriptionOperationType::Swap
-                ? 'Your subscription change could not be completed. Please try again or contact support.'
-                : 'Your subscription cancellation could not be completed. Please try again or contact support.',
+                ? self::MESSAGE_SWAP_FAILED
+                : self::MESSAGE_CANCEL_FAILED,
             SubscriptionOperationStatus::Processing,
             SubscriptionOperationStatus::Unknown,
-            SubscriptionOperationStatus::Pending => 'Your request is being processed. We will confirm the result shortly.',
-            default => 'Your request is being processed.',
+            SubscriptionOperationStatus::Pending => self::MESSAGE_PROCESSING,
+            default => self::MESSAGE_PROCESSING_SHORT,
         };
     }
 

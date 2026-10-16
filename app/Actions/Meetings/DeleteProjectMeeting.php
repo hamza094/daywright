@@ -12,6 +12,7 @@ use App\Exceptions\Integrations\Zoom\NotFoundException;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
+use App\Exceptions\InvalidStateTransitionException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\User;
@@ -20,7 +21,6 @@ use App\Services\Project\MeetingSyncErrorFormatter;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Throwable;
 
@@ -93,7 +93,12 @@ final readonly class DeleteProjectMeeting
             }
 
             if (! in_array($lockedMeeting->sync_status, [MeetingSyncStatus::Active, MeetingSyncStatus::UpdateFailed, MeetingSyncStatus::DeleteFailed], true)) {
-                throw new RuntimeException('Meeting must be active, update_failed, or delete_failed to delete');
+                throw new InvalidStateTransitionException(
+                    model: $lockedMeeting,
+                    currentState: $lockedMeeting->sync_status?->value ?? 'unknown',
+                    attemptedState: MeetingSyncStatus::Deleting->value,
+                    message: 'Meeting must be active, update_failed, or delete_failed to delete',
+                );
             }
 
             $lockedMeeting->update([

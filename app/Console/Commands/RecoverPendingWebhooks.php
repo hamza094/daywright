@@ -34,6 +34,11 @@ final class RecoverPendingWebhooks extends Command
             return 1;
         }
 
+        return $this->recoverWebhooks($limit);
+    }
+
+    private function recoverWebhooks(int $limit): int
+    {
         $this->info("Recovering pending webhooks (limit: {$limit})...");
 
         try {

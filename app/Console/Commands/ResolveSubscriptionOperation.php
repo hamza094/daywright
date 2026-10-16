@@ -28,6 +28,20 @@ final class ResolveSubscriptionOperation extends Command
 
     public function handle(): int
     {
+        $validated = $this->validateAndPrepareInput();
+
+        if ($validated === null) {
+            return self::FAILURE;
+        }
+
+        return $this->executeResolution($validated);
+    }
+
+    /**
+     * @return array{operation: SubscriptionOperation, uuid: string, mark_completed: bool, reference: string}|null
+     */
+    private function validateAndPrepareInput(): ?array
+    {
         $uuid = (string) $this->argument('operation_uuid');
         $markCompleted = (bool) $this->option('mark-completed');
         $markFailed = (bool) $this->option('mark-failed');
@@ -36,13 +50,13 @@ final class ResolveSubscriptionOperation extends Command
         if ($markCompleted === $markFailed) {
             $this->error('Provide exactly one of --mark-completed or --mark-failed.');
 
-            return self::FAILURE;
+            return null;
         }
 
         if ($markFailed && (! is_string($reference) || trim($reference) === '')) {
             $this->error('A ticket or incident reference is required when marking an operation failed.');
 
-            return self::FAILURE;
+            return null;
         }
 
         $operation = SubscriptionOperation::query()
@@ -52,21 +66,39 @@ final class ResolveSubscriptionOperation extends Command
         if (! $operation instanceof SubscriptionOperation) {
             $this->error("Subscription operation not found: {$uuid}");
 
-            return self::FAILURE;
+            return null;
         }
 
         if ($operation->isTerminal()) {
             $this->error("Operation {$uuid} is already in a terminal state [{$operation->status->value}].");
 
-            return self::FAILURE;
+            return null;
         }
+
+        return [
+            'operation' => $operation,
+            'uuid' => $uuid,
+            'mark_completed' => $markCompleted,
+            'reference' => (string) $reference,
+        ];
+    }
+
+    /**
+     * @param  array{operation: SubscriptionOperation, uuid: string, mark_completed: bool, reference: string}  $validated
+     */
+    private function executeResolution(array $validated): int
+    {
+        $operation = $validated['operation'];
+        $uuid = $validated['uuid'];
+        $markCompleted = $validated['mark_completed'];
+        $reference = $validated['reference'];
 
         try {
             if ($markCompleted) {
                 return $this->resolveCompleted($operation);
             }
 
-            return $this->resolveFailed($operation, (string) $reference);
+            return $this->resolveFailed($operation, $reference);
         } catch (Throwable $exception) {
             Log::error('Manual subscription operation resolution failed', [
                 'operation_uuid' => $uuid,

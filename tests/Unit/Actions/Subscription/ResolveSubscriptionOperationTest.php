@@ -76,8 +76,8 @@ final class ResolveSubscriptionOperationTest extends TestCase
             ->once()
             ->with('998877')
             ->andReturn(new PaddleSubscriptionSnapshot(
-                subscription_id: '998877',
-                plan_id: '456', // The actual plan ID from config, not the key
+                subscriptionId: '998877',
+                planId: '456', // The actual plan ID from config, not the key
                 status: 'active',
             ));
 
@@ -106,10 +106,10 @@ final class ResolveSubscriptionOperationTest extends TestCase
             ->once()
             ->with('998877')
             ->andReturn(new PaddleSubscriptionSnapshot(
-                subscription_id: '998877',
-                plan_id: '123',
+                subscriptionId: '998877',
+                planId: '123',
                 status: 'deleted',
-                cancellation_effective_date: now()->toIso8601String(),
+                cancellationEffectiveDate: now()->toIso8601String(),
             ));
 
         $resolved = $this->resolver->markCompleted($operation);
@@ -134,8 +134,8 @@ final class ResolveSubscriptionOperationTest extends TestCase
             ->once()
             ->with('998877')
             ->andReturn(new PaddleSubscriptionSnapshot(
-                subscription_id: '998877',
-                plan_id: '123', // Still monthly!
+                subscriptionId: '998877',
+                planId: '123', // Still monthly!
                 status: 'active',
             ));
 
@@ -159,8 +159,8 @@ final class ResolveSubscriptionOperationTest extends TestCase
             ->once()
             ->with('998877')
             ->andReturn(new PaddleSubscriptionSnapshot(
-                subscription_id: '998877',
-                plan_id: '123',
+                subscriptionId: '998877',
+                planId: '123',
                 status: 'active',
             ));
 
@@ -239,8 +239,8 @@ final class ResolveSubscriptionOperationTest extends TestCase
             ->once()
             ->with('998877')
             ->andReturn(new PaddleSubscriptionSnapshot(
-                subscription_id: '998877',
-                plan_id: '456',
+                subscriptionId: '998877',
+                planId: '456',
                 status: 'active',
             ));
 
@@ -269,8 +269,8 @@ final class ResolveSubscriptionOperationTest extends TestCase
             ->once()
             ->with('998877')
             ->andReturn(new PaddleSubscriptionSnapshot(
-                subscription_id: '998877',
-                plan_id: '456',
+                subscriptionId: '998877',
+                planId: '456',
                 status: 'active',
             ));
 

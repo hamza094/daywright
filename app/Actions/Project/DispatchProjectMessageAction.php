@@ -102,7 +102,7 @@ final class DispatchProjectMessageAction
                     'exception_code' => $throwable->getCode(),
                 ]);
             })
-            ->finally(function (Batch $batch) use ($message): void {
+            ->finally(function () use ($message): void {
                 // Always clear batch_id when the batch terminates so canDispatch()
                 // unlocks the message even if the queue worker crashed between the
                 // permanent job failure and the then() callback. The WHERE on batch_id

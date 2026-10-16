@@ -616,7 +616,7 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
             timezone: 'UTC',
             password: 'new-secret',
             join_before_host: false,
-            tracking_fields: [],
+            trackingFields: [],
         ));
 
         (new RecoverZoomMeetingOperationJob($meeting->id, 'op-pw-200', 'claim-pw'))
@@ -695,7 +695,7 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
             timezone: 'UTC',
             password: 'old-secret',  // old password, not new-secret
             join_before_host: false,
-            tracking_fields: [],
+            trackingFields: [],
         ));
 
         (new RecoverZoomMeetingOperationJob($meeting->id, 'op-pw-202', 'claim-pw-202'))
@@ -807,7 +807,7 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
             timezone: 'UTC',
             password: 'old-secret',
             join_before_host: false,
-            tracking_fields: [],
+            trackingFields: [],
         ));
 
         (new RecoverZoomMeetingOperationJob($meeting->id, 'op-pw-203', 'claim-pw-203'))
@@ -1065,7 +1065,7 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
             timezone: 'UTC',
             password: $password,
             join_before_host: $joinBeforeHost,
-            tracking_fields: [],
+            trackingFields: [],
         );
     }
 
@@ -1084,7 +1084,7 @@ final class RecoverZoomMeetingOperationJobTest extends TestCase
             timezone: 'UTC',
             password: '',
             join_before_host: false,
-            tracking_fields: [],
+            trackingFields: [],
         );
     }
 }

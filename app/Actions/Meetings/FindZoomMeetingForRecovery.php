@@ -68,7 +68,7 @@ final readonly class FindZoomMeetingForRecovery
 
     private function matchesOperationId(ZoomMeeting $zoomMeeting, ?string $operationId): bool
     {
-        return $this->matchesTrackingFields($zoomMeeting->tracking_fields, $operationId);
+        return $this->matchesTrackingFields($zoomMeeting->trackingFields, $operationId);
     }
 
     /**

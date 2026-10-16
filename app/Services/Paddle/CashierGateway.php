@@ -17,12 +17,9 @@ final class CashierGateway implements CashierGatewayInterface
     #[Override]
     public function generatePayLink(User $user, int $planId, string $returnUrl): string
     {
-        /** @var string $payLink */
-        $payLink = $user->newSubscription($user->subscriptionName(), $planId)
+        return $user->newSubscription($user->subscriptionName(), $planId)
             ->returnTo($returnUrl)
             ->create();
-
-        return $payLink;
     }
 
     #[Override]
@@ -40,14 +37,27 @@ final class CashierGateway implements CashierGatewayInterface
     #[Override]
     public function getSubscription(int|string $paddleSubscriptionId): ?PaddleSubscriptionSnapshot
     {
-        $vendorId = config('cashier.vendor_id');
-        $vendorAuthCode = config('cashier.vendor_auth_code');
-
-        if (empty($vendorId) || empty($vendorAuthCode)) {
+        if (! $this->hasVendorConfig()) {
             return null;
         }
 
+        return $this->fetchSubscription($paddleSubscriptionId);
+    }
+
+    private function hasVendorConfig(): bool
+    {
+        $vendorId = config('cashier.vendor_id');
+        $vendorAuthCode = config('cashier.vendor_auth_code');
+
+        return ! empty($vendorId) && ! empty($vendorAuthCode);
+    }
+
+    private function fetchSubscription(int|string $paddleSubscriptionId): ?PaddleSubscriptionSnapshot
+    {
         try {
+            $vendorId = config('cashier.vendor_id');
+            $vendorAuthCode = config('cashier.vendor_auth_code');
+
             $response = Cashier::post('/subscription/users', [
                 'vendor_id' => $vendorId,
                 'vendor_auth_code' => $vendorAuthCode,

@@ -15,13 +15,13 @@ use App\Enums\Meeting\MeetingSyncStatus;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
+use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use RuntimeException;
 use Tests\Support\Meeting\MeetingTestHelper;
 use Tests\TestCase;
 use Tests\Traits\InteractsWithZoom;
@@ -158,7 +158,7 @@ final class UpdateProjectMeetingTest extends TestCase
             topic: 'New Topic',
         );
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(InvalidStateTransitionException::class);
         $this->expectExceptionMessage('Meeting must be active or update_failed to update');
 
         $this->action->handle($meeting, $this->user, $data, $this->zoom);

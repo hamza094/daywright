@@ -198,7 +198,7 @@ final class CreateProjectMeetingRaceConditionTest extends TestCase
             timezone: 'UTC',
             password: 'metingpass',
             join_before_host: false,
-            tracking_fields: ['Daywright Operation ID' => $operationId],
+            trackingFields: ['Daywright Operation ID' => $operationId],
         );
     }
 }

@@ -17,8 +17,11 @@ class DatabaseChannel extends Channel
     {
         $data = json_encode($this->getData($notifiable, $notification));
 
-        $signature = (method_exists($notification, 'databaseSignature') ? $notification->databaseSignature($notifiable) : null)
-            ?: hash('sha256', $data);
+        $customSignature = method_exists($notification, 'databaseSignature')
+            ? $notification->databaseSignature($notifiable)
+            : null;
+
+        $signature = $customSignature ?? hash('sha256', $data);
 
         DB::table('notifications')->insertOrIgnore([
             'id' => $notification->id ?: (string) Str::uuid(),

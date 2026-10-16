@@ -45,6 +45,11 @@ final readonly class RecoverSubscriptionOperation
 
         $operation->refresh();
 
+        return $this->verifyAndCompleteOperation($operation, $claimToken);
+    }
+
+    private function verifyAndCompleteOperation(SubscriptionOperation $operation, string $claimToken): SubscriptionOperationRecoveryOutcome
+    {
         if (blank($operation->paddle_subscription_id)) {
             return $this->rescheduleAfterFailedRead($operation, $claimToken);
         }
@@ -198,7 +203,7 @@ final readonly class RecoverSubscriptionOperation
             ],
             SubscriptionOperationType::Cancel => [
                 'paddle_status' => 'deleted',
-                'ends_at' => $remoteSnapshot->cancellation_effective_date,
+                'ends_at' => $remoteSnapshot->cancellationEffectiveDate,
             ],
         };
     }

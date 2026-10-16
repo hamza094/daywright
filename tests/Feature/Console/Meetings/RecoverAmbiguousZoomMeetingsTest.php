@@ -139,7 +139,7 @@ final class RecoverAmbiguousZoomMeetingsTest extends TestCase
             timezone: 'UTC',
             password: '',
             join_before_host: false,
-            tracking_fields: ['Daywright Operation ID' => 'operation-123'],
+            trackingFields: ['Daywright Operation ID' => 'operation-123'],
         );
     }
 }

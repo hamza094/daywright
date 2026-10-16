@@ -22,12 +22,12 @@ final readonly class VerifySubscriptionOperation
         PaddleSubscriptionSnapshot $snapshot,
     ): void {
         // Validate subscription ID matches requested ID
-        if ($snapshot->subscription_id !== $requestedSubscriptionId) {
+        if ($snapshot->subscriptionId !== $requestedSubscriptionId) {
             throw new SubscriptionOperationValidationException(
                 'Remote subscription ID does not match requested ID',
                 [
                     'requested_id' => $requestedSubscriptionId,
-                    'remote_id' => $snapshot->subscription_id,
+                    'remote_id' => $snapshot->subscriptionId,
                 ]
             );
         }
@@ -53,7 +53,7 @@ final readonly class VerifySubscriptionOperation
                 'Remote snapshot does not prove swap succeeded',
                 [
                     'target_plan' => $targetPlan,
-                    'remote_plan' => $snapshot->plan_id,
+                    'remote_plan' => $snapshot->planId,
                     'remote_status' => $snapshot->status,
                 ]
             );
@@ -70,7 +70,7 @@ final readonly class VerifySubscriptionOperation
                 'Remote snapshot does not prove cancel succeeded',
                 [
                     'remote_status' => $snapshot->status,
-                    'cancellation_effective_date' => $snapshot->cancellation_effective_date,
+                    'cancellationEffectiveDate' => $snapshot->cancellationEffectiveDate,
                 ]
             );
         }

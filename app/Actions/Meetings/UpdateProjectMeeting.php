@@ -12,6 +12,7 @@ use App\Enums\Meeting\MeetingSyncStatus;
 use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
+use App\Exceptions\InvalidStateTransitionException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Models\User;
@@ -21,7 +22,6 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use RuntimeException;
 use Throwable;
 
 use function Safe\json_encode;
@@ -81,7 +81,12 @@ final readonly class UpdateProjectMeeting
 
             if ($lockedMeeting->sync_status !== MeetingSyncStatus::Active
                 && $lockedMeeting->sync_status !== MeetingSyncStatus::UpdateFailed) {
-                throw new RuntimeException('Meeting must be active or update_failed to update');
+                throw new InvalidStateTransitionException(
+                    model: $lockedMeeting,
+                    currentState: $lockedMeeting->sync_status?->value ?? 'unknown',
+                    attemptedState: MeetingSyncStatus::Updating->value,
+                    message: 'Meeting must be active or update_failed to update',
+                );
             }
 
             $lockedMeeting->update([

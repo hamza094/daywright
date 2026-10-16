@@ -695,12 +695,14 @@ Provide a unified, secure, and developer-friendly approach to throwing and rende
 ### Guidelines
 
 - ✅ Extend `App\Exceptions\ApiException` for custom business logic exceptions. It enforces `status()`, `errorCode()`, and `publicMessage()`.
+- ✅ Define dedicated, domain-specific exceptions for internal or background tasks (e.g., extending `RuntimeException`) rather than throwing generic exceptions.
 - ✅ Render all API exceptions using `ApiErrorFormatter::response()` to guarantee a strict JSON shape (`message`, `code`, `errors`, `meta`).
 - ✅ Register new exception renderables inside `HandlesApiExceptions` trait.
 - ✅ **Registration Order Matters:** Specific child exceptions (e.g., `ThrottleRequestsException`) MUST be registered before their generic parents (e.g., `HttpException`).
 - ✅ Prevent Sensitive Data Leaks: Raw `Exception` or `Throwable` messages must NOT be exposed to the user in production. `ApiErrorFormatter::publicMessage()` acts as a defense-in-depth gatekeeper against SQL leaks and stack traces.
 - ✅ Log 5xx system errors and unexpected issues; do NOT log 4xx client errors (like Validation, 404s, or Authentication errors) to prevent noise in the log stream.
 - ❌ Do not return raw HTTP responses manually when an exception can communicate the failure more cleanly.
+- ❌ Never throw generic exceptions (`\Exception`, `\RuntimeException`). Always throw a dedicated, domain-specific exception.
 
 ---
 

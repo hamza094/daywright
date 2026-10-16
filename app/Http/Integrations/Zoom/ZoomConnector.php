@@ -189,15 +189,10 @@ class ZoomConnector extends Connector
             return null;
         }
 
-        // Parse as integer seconds
+        // Parse as integer seconds and ensure positive value
         $parsed = filter_var($retryAfter, FILTER_VALIDATE_INT);
 
-        if ($parsed === false) {
-            return null;
-        }
-
-        // Ensure positive value
-        if ($parsed <= 0) {
+        if ($parsed === false || $parsed <= 0) {
             return null;
         }
 

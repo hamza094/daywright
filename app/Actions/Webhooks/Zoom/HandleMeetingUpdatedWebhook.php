@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Actions\Webhooks\Zoom;
 
 use App\DataTransferObjects\Zoom\MeetingUpdatedWebhookData;
+use App\Exceptions\Integrations\Zoom\ZoomWebhookStateConflictException;
 use App\Interfaces\Zoom;
 use App\Models\Meeting;
 use App\Services\Webhooks\MeetingUpdateWebhookContext;
 use App\Services\Webhooks\ZoomMeetingUpdatedWebhookProcessor;
 use App\Services\Webhooks\ZoomWebhookSupport;
-use RuntimeException;
 
 final readonly class HandleMeetingUpdatedWebhook
 {
@@ -66,7 +66,7 @@ final readonly class HandleMeetingUpdatedWebhook
             || $this->processor->pendingUpdateMatchesEvent($meeting, $data->changes);
 
         if ($needsZoomCheck && $meeting->meeting_id === null) {
-            throw new RuntimeException('Cannot reconcile a Zoom webhook without a Zoom meeting ID.');
+            throw new ZoomWebhookStateConflictException('Cannot reconcile a Zoom webhook without a Zoom meeting ID.');
         }
 
         // Save the current operation details so we can detect changes made during the Zoom request.

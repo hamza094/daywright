@@ -34,6 +34,11 @@ final class RecoverSubscriptionOperations extends Command
             return 1;
         }
 
+        return $this->recoverOperations($limit);
+    }
+
+    private function recoverOperations(int $limit): int
+    {
         $this->info("Recovering subscription operations (limit: {$limit})...");
 
         try {

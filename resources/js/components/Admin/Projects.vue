@@ -209,11 +209,9 @@
                     <th class="w-1">
                       No.
                       <i
-                        v-if="currentSort === 'created_at'"
-                        class="fa-solid fa-angle-up angle-pointer"
+                        :class="currentSort === 'created_at' ? 'fa-solid fa-angle-up' : 'fa-solid fa-angle-down'"
+                        class="angle-pointer"
                         @click="toggleSort()"></i>
-
-                      <i v-else class="fa-solid fa-angle-down angle-pointer" @click="toggleSort()"></i>
                     </th>
                     <th>Name</th>
                     <th>Desc</th>

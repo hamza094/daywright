@@ -90,7 +90,7 @@ final readonly class ResolveSubscriptionOperation
                 ],
                 SubscriptionOperationType::Cancel => [
                     'paddle_status' => 'deleted',
-                    'ends_at' => $remoteSub->cancellation_effective_date,
+                    'ends_at' => $remoteSub->cancellationEffectiveDate,
                 ],
             });
 

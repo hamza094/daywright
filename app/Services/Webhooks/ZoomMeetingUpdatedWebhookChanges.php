@@ -36,31 +36,13 @@ final readonly class ZoomMeetingUpdatedWebhookChanges
      */
     public function matchingOperationFields(Meeting $meeting, array $webhookChanges): ?array
     {
-        if (! is_string($meeting->sync_payload) || trim($meeting->sync_payload) === '') {
+        $payload = $this->decodePayload($meeting->sync_payload);
+
+        if ($payload === null) {
             return null;
         }
 
-        try {
-            $payload = json_decode($meeting->sync_payload, true);
-        } catch (JsonException) {
-            return null;
-        }
-
-        if (! is_array($payload) || $payload === []) {
-            return null;
-        }
-
-        // Every field we asked Zoom to change must appear with the expected value.
-        foreach ($payload as $field => $expectedValue) {
-            if (! is_string($field)
-                || ! in_array($field, self::ALLOWED_FIELDS, true)
-                || ! array_key_exists($field, $webhookChanges)
-                || ! $this->fieldValuesMatch($field, $expectedValue, $webhookChanges[$field])) {
-                return null;
-            }
-        }
-
-        return $payload;
+        return $this->validateMatchingFields($payload, $webhookChanges);
     }
 
     /**
@@ -130,26 +112,88 @@ final readonly class ZoomMeetingUpdatedWebhookChanges
         return false;
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function decodePayload(mixed $syncPayload): ?array
+    {
+        if (! is_string($syncPayload) || trim($syncPayload) === '') {
+            return null;
+        }
+
+        try {
+            $payload = json_decode($syncPayload, true);
+        } catch (JsonException) {
+            return null;
+        }
+
+        if (! is_array($payload) || $payload === []) {
+            return null;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $webhookChanges
+     * @return array<string, mixed>|null
+     */
+    private function validateMatchingFields(array $payload, array $webhookChanges): ?array
+    {
+        // Every field we asked Zoom to change must appear with the expected value.
+        foreach ($payload as $field => $expectedValue) {
+            if (! is_string($field)
+                || ! in_array($field, self::ALLOWED_FIELDS, true)
+                || ! array_key_exists($field, $webhookChanges)
+                || ! $this->fieldValuesMatch($field, $expectedValue, $webhookChanges[$field])) {
+                return null;
+            }
+        }
+
+        return $payload;
+    }
+
     private function fieldValuesMatch(string $field, mixed $expected, mixed $actual): bool
     {
         // Zoom may send times, numbers, and booleans in different formats; compare their meaning.
         if ($field === 'start_time') {
-            $expectedTime = $this->normalizedTime($expected);
-
-            return $expectedTime !== null && $expectedTime === $this->normalizedTime($actual);
+            return $this->timeValuesMatch($expected, $actual);
         }
 
         if ($field === 'duration') {
-            return is_numeric($expected) && is_numeric($actual) && (int) $expected === (int) $actual;
+            return $this->durationValuesMatch($expected, $actual);
         }
 
         if ($field === 'join_before_host') {
-            $expectedBoolean = filter_var($expected, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-
-            return $expectedBoolean !== null
-                && $expectedBoolean === filter_var($actual, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            return $this->booleanValuesMatch($expected, $actual);
         }
 
+        return $this->stringValuesMatch($expected, $actual);
+    }
+
+    private function timeValuesMatch(mixed $expected, mixed $actual): bool
+    {
+        $expectedTime = $this->normalizedTime($expected);
+
+        return $expectedTime !== null && $expectedTime === $this->normalizedTime($actual);
+    }
+
+    private function durationValuesMatch(mixed $expected, mixed $actual): bool
+    {
+        return is_numeric($expected) && is_numeric($actual) && (int) $expected === (int) $actual;
+    }
+
+    private function booleanValuesMatch(mixed $expected, mixed $actual): bool
+    {
+        $expectedBoolean = filter_var($expected, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+
+        return $expectedBoolean !== null
+            && $expectedBoolean === filter_var($actual, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    }
+
+    private function stringValuesMatch(mixed $expected, mixed $actual): bool
+    {
         return is_string($expected) && is_string($actual) && $expected === $actual;
     }
 
@@ -171,20 +215,40 @@ final readonly class ZoomMeetingUpdatedWebhookChanges
         $current = $meeting->getAttribute($field);
 
         if ($field === 'start_time') {
-            $currentIso = $current ? Carbon::parse($current)->toISOString() : null;
-            $valueIso = $value ? Carbon::parse($value)->toISOString() : null;
-
-            return $currentIso !== $valueIso;
+            return $this->timeHasChanged($current, $value);
         }
 
         if (is_bool($current) || is_bool($value)) {
-            return (bool) $value !== (bool) $current;
+            return $this->booleanHasChanged($current, $value);
         }
 
         if (is_numeric($current) && is_numeric($value)) {
-            return (int) $value !== (int) $current;
+            return $this->numericHasChanged($current, $value);
         }
 
+        return $this->valueHasChanged($current, $value);
+    }
+
+    private function timeHasChanged(mixed $current, mixed $value): bool
+    {
+        $currentIso = $current ? Carbon::parse($current)->toISOString() : null;
+        $valueIso = $value ? Carbon::parse($value)->toISOString() : null;
+
+        return $currentIso !== $valueIso;
+    }
+
+    private function booleanHasChanged(mixed $current, mixed $value): bool
+    {
+        return (bool) $value !== (bool) $current;
+    }
+
+    private function numericHasChanged(mixed $current, mixed $value): bool
+    {
+        return (int) $value !== (int) $current;
+    }
+
+    private function valueHasChanged(mixed $current, mixed $value): bool
+    {
         return $value !== $current;
     }
 }
