@@ -62,19 +62,9 @@ final readonly class HandleMeetingCreatedWebhook
 
     private function shouldAttachRemoteId(Meeting $meeting, MeetingCreatedWebhookData $data): bool
     {
-        if ($this->hasConflictingActiveMeetingId($meeting, $data)) {
-            return false;
-        }
-
-        if (! $this->isValidSyncStatus($meeting)) {
-            return false;
-        }
-
-        if ($this->hasAlreadySetMeetingId($meeting, $data)) {
-            return false;
-        }
-
-        return true;
+        return ! $this->hasConflictingActiveMeetingId($meeting, $data)
+            && $this->isValidSyncStatus($meeting)
+            && ! $this->hasAlreadySetMeetingId($meeting, $data);
     }
 
     private function hasConflictingActiveMeetingId(Meeting $meeting, MeetingCreatedWebhookData $data): bool

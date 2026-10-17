@@ -47,20 +47,12 @@ final class ResolveSubscriptionOperation extends Command
         $markFailed = (bool) $this->option('mark-failed');
         $reference = $this->option('reference');
 
-        if (! $this->validateOperationOption($markCompleted, $markFailed)) {
-            return null;
-        }
-
-        if (! $this->validateReference($markFailed, $reference)) {
-            return null;
-        }
-
+        $optionValid = $this->validateOperationOption($markCompleted, $markFailed);
+        $referenceValid = $this->validateReference($markFailed, $reference);
         $operation = $this->findOperation($uuid);
-        if ($operation === null) {
-            return null;
-        }
+        $statusValid = $operation instanceof SubscriptionOperation && $this->validateOperationStatus($operation, $uuid);
 
-        if (! $this->validateOperationStatus($operation, $uuid)) {
+        if (! $optionValid || ! $referenceValid || ! $statusValid) {
             return null;
         }
 

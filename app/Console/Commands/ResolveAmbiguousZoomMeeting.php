@@ -57,28 +57,16 @@ final class ResolveAmbiguousZoomMeeting extends Command
         $hasZoomMeetingId = is_string($zoomMeetingId) && $zoomMeetingId !== '';
 
         $meetingId = $this->validateMeetingId($meetingIdArgument);
-        if ($meetingId === null) {
-            return null;
-        }
+        $referenceValid = $this->validateReference($reference);
+        $optionValid = $this->validateZoomMeetingIdOption($hasZoomMeetingId, $markFailed);
+        $formatValid = $this->validateZoomMeetingIdFormat($hasZoomMeetingId, $zoomMeetingId);
 
-        if (! $this->validateReference($reference)) {
-            return null;
-        }
-
-        if (! $this->validateZoomMeetingIdOption($hasZoomMeetingId, $markFailed)) {
-            return null;
-        }
-
-        if (! $this->validateZoomMeetingIdFormat($hasZoomMeetingId, $zoomMeetingId)) {
+        if ($meetingId === null || ! $referenceValid || ! $optionValid || ! $formatValid) {
             return null;
         }
 
         $meeting = $this->findMeeting($meetingId);
-        if ($meeting === null) {
-            return null;
-        }
-
-        if (! $this->validateMeetingStatus($meeting)) {
+        if (! $meeting instanceof Meeting || ! $this->validateMeetingStatus($meeting)) {
             return null;
         }
 
