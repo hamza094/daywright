@@ -47,31 +47,20 @@ final class ResolveSubscriptionOperation extends Command
         $markFailed = (bool) $this->option('mark-failed');
         $reference = $this->option('reference');
 
-        if ($markCompleted === $markFailed) {
-            $this->error('Provide exactly one of --mark-completed or --mark-failed.');
-
+        if (! $this->validateOperationOption($markCompleted, $markFailed)) {
             return null;
         }
 
-        if ($markFailed && (! is_string($reference) || trim($reference) === '')) {
-            $this->error('A ticket or incident reference is required when marking an operation failed.');
-
+        if (! $this->validateReference($markFailed, $reference)) {
             return null;
         }
 
-        $operation = SubscriptionOperation::query()
-            ->where('operation_uuid', $uuid)
-            ->first();
-
-        if (! $operation instanceof SubscriptionOperation) {
-            $this->error("Subscription operation not found: {$uuid}");
-
+        $operation = $this->findOperation($uuid);
+        if ($operation === null) {
             return null;
         }
 
-        if ($operation->isTerminal()) {
-            $this->error("Operation {$uuid} is already in a terminal state [{$operation->status->value}].");
-
+        if (! $this->validateOperationStatus($operation, $uuid)) {
             return null;
         }
 
@@ -81,6 +70,52 @@ final class ResolveSubscriptionOperation extends Command
             'mark_completed' => $markCompleted,
             'reference' => (string) $reference,
         ];
+    }
+
+    private function validateOperationOption(bool $markCompleted, bool $markFailed): bool
+    {
+        if ($markCompleted === $markFailed) {
+            $this->error('Provide exactly one of --mark-completed or --mark-failed.');
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function validateReference(bool $markFailed, mixed $reference): bool
+    {
+        if ($markFailed && (! is_string($reference) || trim($reference) === '')) {
+            $this->error('A ticket or incident reference is required when marking an operation failed.');
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function findOperation(string $uuid): ?SubscriptionOperation
+    {
+        $operation = SubscriptionOperation::query()
+            ->where('operation_uuid', $uuid)
+            ->first();
+
+        if (! $operation instanceof SubscriptionOperation) {
+            $this->error("Subscription operation not found: {$uuid}");
+        }
+
+        return $operation;
+    }
+
+    private function validateOperationStatus(SubscriptionOperation $operation, string $uuid): bool
+    {
+        if ($operation->isTerminal()) {
+            $this->error("Operation {$uuid} is already in a terminal state [{$operation->status->value}].");
+
+            return false;
+        }
+
+        return true;
     }
 
     /**

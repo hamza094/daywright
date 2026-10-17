@@ -117,21 +117,41 @@ final readonly class ZoomMeetingUpdatedWebhookChanges
      */
     private function decodePayload(mixed $syncPayload): ?array
     {
-        if (! is_string($syncPayload) || trim($syncPayload) === '') {
+        if (! $this->isValidPayloadString($syncPayload)) {
             return null;
         }
 
+        $payload = $this->decodeJsonPayload($syncPayload);
+
+        if (! $this->isValidPayloadArray($payload)) {
+            return null;
+        }
+
+        return $payload;
+    }
+
+    private function isValidPayloadString(mixed $syncPayload): bool
+    {
+        return is_string($syncPayload) && trim($syncPayload) !== '';
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function decodeJsonPayload(string $syncPayload): ?array
+    {
         try {
             $payload = json_decode($syncPayload, true);
         } catch (JsonException) {
             return null;
         }
 
-        if (! is_array($payload) || $payload === []) {
-            return null;
-        }
-
         return $payload;
+    }
+
+    private function isValidPayloadArray(mixed $payload): bool
+    {
+        return is_array($payload) && $payload !== [];
     }
 
     /**
@@ -156,19 +176,12 @@ final readonly class ZoomMeetingUpdatedWebhookChanges
     private function fieldValuesMatch(string $field, mixed $expected, mixed $actual): bool
     {
         // Zoom may send times, numbers, and booleans in different formats; compare their meaning.
-        if ($field === 'start_time') {
-            return $this->timeValuesMatch($expected, $actual);
-        }
-
-        if ($field === 'duration') {
-            return $this->durationValuesMatch($expected, $actual);
-        }
-
-        if ($field === 'join_before_host') {
-            return $this->booleanValuesMatch($expected, $actual);
-        }
-
-        return $this->stringValuesMatch($expected, $actual);
+        return match ($field) {
+            'start_time' => $this->timeValuesMatch($expected, $actual),
+            'duration' => $this->durationValuesMatch($expected, $actual),
+            'join_before_host' => $this->booleanValuesMatch($expected, $actual),
+            default => $this->stringValuesMatch($expected, $actual),
+        };
     }
 
     private function timeValuesMatch(mixed $expected, mixed $actual): bool
@@ -217,15 +230,14 @@ final readonly class ZoomMeetingUpdatedWebhookChanges
             return $this->timeHasChanged($current, $value);
         }
 
-        if (is_bool($current) || is_bool($value)) {
-            return $this->booleanHasChanged($current, $value);
-        }
+        $isBoolean = is_bool($current) || is_bool($value);
+        $isNumeric = is_numeric($current) && is_numeric($value);
 
-        if (is_numeric($current) && is_numeric($value)) {
-            return $this->numericHasChanged($current, $value);
-        }
-
-        return $this->valueHasChanged($current, $value);
+        return match (true) {
+            $isBoolean => $this->booleanHasChanged($current, $value),
+            $isNumeric => $this->numericHasChanged($current, $value),
+            default => $this->valueHasChanged($current, $value),
+        };
     }
 
     private function timeHasChanged(mixed $current, mixed $value): bool

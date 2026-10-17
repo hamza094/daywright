@@ -62,38 +62,61 @@ final readonly class HandleMeetingCreatedWebhook
 
     private function shouldAttachRemoteId(Meeting $meeting, MeetingCreatedWebhookData $data): bool
     {
-        if ($meeting->sync_status === MeetingSyncStatus::Active) {
-            if ($this->sameMeetingId($meeting->meeting_id, $data->meetingId)) {
-                return false;
-            }
-
-            Log::warning(self::OPERATION.' conflict - different ID already stored', [
-                'operation' => self::OPERATION,
-                'local_meeting_id' => $meeting->id,
-                'stored_meeting_id' => $meeting->meeting_id,
-                'webhook_meeting_id' => $data->meetingId,
-                'request_id' => $data->requestId,
-            ]);
-
+        if ($this->hasConflictingActiveMeetingId($meeting, $data)) {
             return false;
         }
 
-        if (! in_array($meeting->sync_status, [MeetingSyncStatus::Creating, MeetingSyncStatus::CreateUnknown], true)) {
+        if (! $this->isValidSyncStatus($meeting)) {
             return false;
         }
 
-        if ($meeting->meeting_id !== null) {
-            Log::warning(self::OPERATION.' conflict - meeting ID already set', [
-                'operation' => self::OPERATION,
-                'local_meeting_id' => $meeting->id,
-                'sync_status' => $meeting->sync_status->value,
-                'current_meeting_id' => $meeting->meeting_id,
-                'webhook_meeting_id' => $data->meetingId,
-                'request_id' => $data->requestId,
-            ]);
-
+        if ($this->hasAlreadySetMeetingId($meeting, $data)) {
             return false;
         }
+
+        return true;
+    }
+
+    private function hasConflictingActiveMeetingId(Meeting $meeting, MeetingCreatedWebhookData $data): bool
+    {
+        if ($meeting->sync_status !== MeetingSyncStatus::Active) {
+            return false;
+        }
+
+        if ($this->sameMeetingId($meeting->meeting_id, $data->meetingId)) {
+            return false;
+        }
+
+        Log::warning(self::OPERATION.' conflict - different ID already stored', [
+            'operation' => self::OPERATION,
+            'local_meeting_id' => $meeting->id,
+            'stored_meeting_id' => $meeting->meeting_id,
+            'webhook_meeting_id' => $data->meetingId,
+            'request_id' => $data->requestId,
+        ]);
+
+        return true;
+    }
+
+    private function isValidSyncStatus(Meeting $meeting): bool
+    {
+        return in_array($meeting->sync_status, [MeetingSyncStatus::Creating, MeetingSyncStatus::CreateUnknown], true);
+    }
+
+    private function hasAlreadySetMeetingId(Meeting $meeting, MeetingCreatedWebhookData $data): bool
+    {
+        if ($meeting->meeting_id === null) {
+            return false;
+        }
+
+        Log::warning(self::OPERATION.' conflict - meeting ID already set', [
+            'operation' => self::OPERATION,
+            'local_meeting_id' => $meeting->id,
+            'sync_status' => $meeting->sync_status->value,
+            'current_meeting_id' => $meeting->meeting_id,
+            'webhook_meeting_id' => $data->meetingId,
+            'request_id' => $data->requestId,
+        ]);
 
         return true;
     }

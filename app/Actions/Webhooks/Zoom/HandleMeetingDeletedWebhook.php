@@ -57,20 +57,41 @@ final readonly class HandleMeetingDeletedWebhook
 
     private function shouldIgnoreWebhook(Meeting $meeting, ?int $occurredAt, MeetingDeletedWebhookData $data, ?string $userUuid): bool
     {
-        if ($meeting->sync_status === MeetingSyncStatus::Deleted) {
-            $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'already_deleted', $userUuid);
+        return $this->isAlreadyDeleted($meeting, $data, $userUuid)
+            || $this->isStaleEvent($meeting, $occurredAt, $data, $userUuid)
+            || $this->hasInvalidSyncStatus($meeting, $data, $userUuid);
+    }
 
-            return true;
+    private function hasInvalidSyncStatus(Meeting $meeting, MeetingDeletedWebhookData $data, ?string $userUuid): bool
+    {
+        if ($this->isValidSyncStatus($meeting)) {
+            return false;
         }
 
-        if ($occurredAt !== null && $this->support->isStaleProviderEvent($meeting, $occurredAt, allowEqualTimestamp: true)) {
+        $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'inactive_sync_status', $userUuid);
+
+        return true;
+    }
+
+    private function isAlreadyDeleted(Meeting $meeting, MeetingDeletedWebhookData $data, ?string $userUuid): bool
+    {
+        if ($meeting->sync_status !== MeetingSyncStatus::Deleted) {
+            return false;
+        }
+
+        $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'already_deleted', $userUuid);
+
+        return true;
+    }
+
+    private function isStaleEvent(Meeting $meeting, ?int $occurredAt, MeetingDeletedWebhookData $data, ?string $userUuid): bool
+    {
+        if ($occurredAt === null) {
+            return false;
+        }
+
+        if ($this->support->isStaleProviderEvent($meeting, $occurredAt, allowEqualTimestamp: true)) {
             $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'stale_provider_event', $userUuid);
-
-            return true;
-        }
-
-        if (! $this->isValidSyncStatus($meeting)) {
-            $this->support->logger->logWebhookIgnored(self::OPERATION, $data->meetingId, $data->requestId, 'inactive_sync_status', $userUuid);
 
             return true;
         }

@@ -56,7 +56,37 @@ final class ResolveAmbiguousZoomMeeting extends Command
         $reference = $this->option('reference');
         $hasZoomMeetingId = is_string($zoomMeetingId) && $zoomMeetingId !== '';
 
-        // Validate meeting_id is a positive integer string without leading zeroes or overflow
+        $meetingId = $this->validateMeetingId($meetingIdArgument);
+        if ($meetingId === null) {
+            return null;
+        }
+
+        if (! $this->validateReference($reference)) {
+            return null;
+        }
+
+        if (! $this->validateZoomMeetingIdOption($hasZoomMeetingId, $markFailed)) {
+            return null;
+        }
+
+        if (! $this->validateZoomMeetingIdFormat($hasZoomMeetingId, $zoomMeetingId)) {
+            return null;
+        }
+
+        $meeting = $this->findMeeting($meetingId);
+        if ($meeting === null) {
+            return null;
+        }
+
+        if (! $this->validateMeetingStatus($meeting)) {
+            return null;
+        }
+
+        return $this->prepareResolutionData($meeting, $meetingId, $hasZoomMeetingId, $zoomMeetingId, $reference);
+    }
+
+    private function validateMeetingId(string $meetingIdArgument): ?int
+    {
         if (! preg_match('/^[1-9]\d*$/', $meetingIdArgument)
             || filter_var($meetingIdArgument, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => PHP_INT_MAX]]) === false
         ) {
@@ -65,41 +95,69 @@ final class ResolveAmbiguousZoomMeeting extends Command
             return null;
         }
 
-        $meetingId = (int) $meetingIdArgument;
+        return (int) $meetingIdArgument;
+    }
 
+    private function validateReference(mixed $reference): bool
+    {
         if (! is_string($reference) || $reference === '') {
             $this->error('A ticket or incident reference is required.');
 
-            return null;
+            return false;
         }
 
+        return true;
+    }
+
+    private function validateZoomMeetingIdOption(bool $hasZoomMeetingId, bool $markFailed): bool
+    {
         if ($hasZoomMeetingId === $markFailed) {
             $this->error('Provide exactly one of --zoom-meeting-id or --mark-failed.');
 
-            return null;
+            return false;
         }
 
-        // Validate zoom-meeting-id is a positive integer string if provided
+        return true;
+    }
+
+    private function validateZoomMeetingIdFormat(bool $hasZoomMeetingId, mixed $zoomMeetingId): bool
+    {
         if ($hasZoomMeetingId && ! preg_match('/^[1-9]\d*$/', $zoomMeetingId)) {
             $this->error('The zoom-meeting-id must be a positive integer string.');
 
-            return null;
+            return false;
         }
 
+        return true;
+    }
+
+    private function findMeeting(int $meetingId): ?Meeting
+    {
         $meeting = Meeting::find($meetingId);
 
         if (! $meeting instanceof Meeting) {
             $this->error("Meeting not found: {$meetingId}");
-
-            return null;
         }
 
+        return $meeting;
+    }
+
+    private function validateMeetingStatus(Meeting $meeting): bool
+    {
         if (! $meeting->awaitsManualZoomRecovery()) {
             $this->error('Meeting is not awaiting manual recovery.');
 
-            return null;
+            return false;
         }
 
+        return true;
+    }
+
+    /**
+     * @return array{meeting: Meeting, meeting_id: int, zoom_meeting_id: string|null, reference: string, cancelled: bool}
+     */
+    private function prepareResolutionData(Meeting $meeting, int $meetingId, bool $hasZoomMeetingId, mixed $zoomMeetingId, string $reference): array
+    {
         if (! (bool) $this->option('force') && ! $this->confirm("Resolve meeting {$meetingId} with reference {$reference}?")) {
             $this->info('Operation cancelled.');
 
