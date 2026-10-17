@@ -51,7 +51,7 @@ class ProjectsTest extends TestCase
 
         $project = $this->createProject();
 
-        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [$project->id]])
+        $this->deleteJson($this->apiV1AdminRoute('projects.destroyMany'), ['ids' => [$project->id]])
             ->assertForbidden();
     }
 
@@ -338,7 +338,7 @@ class ProjectsTest extends TestCase
         $projects->each(fn (Project $project): bool => $project->delete());
         $ids = $projects->pluck('id')->toArray();
 
-        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => $ids])
+        $this->deleteJson($this->apiV1AdminRoute('projects.destroyMany'), ['ids' => $ids])
             ->assertOk()
             ->assertJsonPath('message', 'Projects deleted successfully.');
 
@@ -355,7 +355,7 @@ class ProjectsTest extends TestCase
         $projects->each(fn (Project $project): bool => $project->delete());
         $ids = $projects->pluck('id')->toArray();
 
-        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => $ids])
+        $this->deleteJson($this->apiV1AdminRoute('projects.destroyMany'), ['ids' => $ids])
             ->assertOk();
 
         $this->assertDatabaseHas('audit_logs', [
@@ -379,7 +379,7 @@ class ProjectsTest extends TestCase
         $project = $this->createProject();
         $project->delete();
 
-        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [$project->id]])
+        $this->deleteJson($this->apiV1AdminRoute('projects.destroyMany'), ['ids' => [$project->id]])
             ->assertOk();
 
         $this->assertDatabaseMissing('projects', ['id' => $project->id]);
@@ -390,7 +390,7 @@ class ProjectsTest extends TestCase
     {
         $activeProject = $this->createProject();
 
-        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [$activeProject->id]])
+        $this->deleteJson($this->apiV1AdminRoute('projects.destroyMany'), ['ids' => [$activeProject->id]])
             ->assertOk()
             ->assertJsonPath('message', 'Projects deleted successfully.');
 
@@ -400,21 +400,21 @@ class ProjectsTest extends TestCase
     #[Test]
     public function bulk_delete_validates_project_ids(): void
     {
-        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), [])
+        $this->deleteJson($this->apiV1AdminRoute('projects.destroyMany'), [])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('project_ids');
+            ->assertJsonValidationErrors('ids');
 
-        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), ['project_ids' => [99999]])
+        $this->deleteJson($this->apiV1AdminRoute('projects.destroyMany'), ['ids' => [99999]])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('project_ids.0');
+            ->assertJsonValidationErrors('ids.0');
 
         $project = $this->createProject();
 
-        $this->deleteJson($this->apiV1AdminRoute('projects.bulk-delete'), [
-            'project_ids' => [$project->id, $project->id],
+        $this->deleteJson($this->apiV1AdminRoute('projects.destroyMany'), [
+            'ids' => [$project->id, $project->id],
         ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('project_ids.0');
+            ->assertJsonValidationErrors('ids.0');
     }
 
     /**

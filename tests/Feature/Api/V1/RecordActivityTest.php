@@ -103,7 +103,10 @@ class RecordActivityTest extends TestCase
     {
         $task = $this->project->addTask('test task');
 
-        $this->putJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), ['title' => 'changed']);
+        $this->patchJson($this->apiV1ProjectTaskRoute('tasks.update', $this->project, $task), [
+            'title' => 'changed',
+            'version' => $task->fresh()->version,
+        ]);
 
         /** @var \App\Models\Activity $activity */
         $activity = $this->project->activities()->first();
@@ -219,5 +222,23 @@ class RecordActivityTest extends TestCase
         $activity = $this->project->activities()->first();
 
         $this->assertEquals('created_message', $activity->description);
+    }
+
+    /** @test */
+    public function does_not_record_activity_on_no_op_stage_transition(): void
+    {
+        $initialActivityCount = $this->project->activities()->count();
+        $this->project->refresh();
+        $currentStage = $this->project->stage_id;
+        $projectVersion = $this->project->version;
+
+        // Set stage to current state (no-op transition)
+        $this->patchJson(route('api.v1.projects.stage.update', ['project' => $this->project]), [
+            'stage' => $currentStage,
+            'version' => $projectVersion,
+        ])->assertOk();
+
+        // Activity count should not increase for no-op transitions
+        $this->assertEquals($initialActivityCount, $this->project->activities()->count());
     }
 }

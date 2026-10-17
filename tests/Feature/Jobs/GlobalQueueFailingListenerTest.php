@@ -39,8 +39,9 @@ class GlobalQueueFailingListenerTest extends TestCase
                     $context['queue'] === 'critical' &&
                     $context['uuid'] === 'test-uuid' &&
                     $context['attempts'] === 3 &&
-                    isset($context['exception']) &&
-                    $context['exception'] instanceof RuntimeException &&
+                    $context['exception_class'] === RuntimeException::class &&
+                    $context['exception_code'] === 0 &&
+                    ! array_key_exists('exception', $context) &&
                     $context['tags'] === ['tag1', 'tag2'])
             );
 

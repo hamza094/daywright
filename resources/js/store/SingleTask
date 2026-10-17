@@ -12,6 +12,7 @@ const state = {
             notified:'',
             status_id:'',
             search:'',
+            version: null,
           },
 };
 
@@ -21,6 +22,8 @@ const mutations = {
   },
   setTask(state,task){
    state.task=task;
+   // Store version for updates
+   state.form.version = task.version;
   },
   setStatuses(state,data){
     state.statuses=data;
@@ -54,6 +57,10 @@ const mutations = {
     if (index !== -1) {
       state.task.members.splice(index, 1);
     }
+  },
+  updateTaskVersion(state,version){
+    state.task.version = version;
+    state.form.version = version;
   },
 };
 

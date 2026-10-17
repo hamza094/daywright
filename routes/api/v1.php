@@ -25,9 +25,14 @@ Route::middleware(['auth:sanctum', 'throttle:user-ceiling', 'throttle:per-token'
     // Global Project Routes
     Route::apiResource('/projects', ProjectController::class)
         ->middlewareFor('index', 'tokenAbility:projects:read')
-        ->middlewareFor(['store', 'update'], 'tokenAbility:projects:write')
+        ->middlewareFor(['store'], 'tokenAbility:projects:write')
         ->middlewareFor(['destroy'], ['throttle:sensitive-destructive', 'tokenAbility:projects:write'])
-        ->except(['show']);
+        ->except(['show', 'update']);
+
+    // Manual PATCH route for project update (partial update semantics)
+    Route::patch('/projects/{project}', [ProjectController::class, 'update'])
+        ->middleware('tokenAbility:projects:write')
+        ->name('projects.update');
 
     // Nested Project Routes
     Route::scopeBindings()->group(function (): void {

@@ -40,7 +40,8 @@ class RemoveAbondonProjects extends Command
                     } catch (Throwable $e) {
                         Log::error('RemoveAbondonProjects command: failed to delete project', [
                             'project_id' => $project->id,
-                            'exception' => $e,
+                            'exception_class' => $e::class,
+                            'exception_code' => $e->getCode(),
                         ]);
                     }
                 });

@@ -336,4 +336,35 @@ class ProjectIndexTest extends TestCase
 
         $this->assertCount(2, $response->json('data'));
     }
+
+    /** @test */
+    public function pagination_links_preserve_filter_and_sort_parameters(): void
+    {
+        Project::factory()->create(['user_id' => $this->user->id, 'name' => 'Continuity Alpha']);
+        Project::factory()->create(['user_id' => $this->user->id, 'name' => 'Continuity Beta']);
+        Project::factory()->create(['user_id' => $this->user->id, 'name' => 'Continuity Gamma']);
+        Project::factory()->create(['user_id' => $this->user->id, 'name' => 'Unrelated Project']);
+
+        $response = $this->getJson(route('api.v1.projects.index', [
+            'filter' => ['search' => 'Continuity'],
+            'sort' => 'name',
+            'per_page' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+
+        $nextUrl = $response->json('links.next');
+        $this->assertNotNull($nextUrl);
+        $this->assertStringContainsString('page=2', $nextUrl);
+        $this->assertStringContainsString('per_page=1', $nextUrl);
+        $this->assertStringContainsString('sort=name', $nextUrl);
+        $this->assertStringContainsString('filter%5Bsearch%5D=Continuity', $nextUrl);
+
+        $nextResponse = $this->getJson($nextUrl)->assertOk();
+        $nextResponse->assertJsonCount(1, 'data')
+            ->assertJsonPath('meta.per_page', 1);
+
+        $this->assertStringContainsString('Continuity', $nextResponse->json('data.0.name'));
+    }
 }

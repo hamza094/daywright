@@ -37,10 +37,13 @@ class InvitationUserSearchTest extends TestCase
     /** @test */
     public function search_excludes_project_owner(): void
     {
+        $ownerSearchMarker = 'owner-only-'.$this->user->id;
+        $this->user->update(['name' => $ownerSearchMarker]);
+
         $response = $this->actingAs($this->user)
             ->getJson($this->apiV1Route('projects.users.search', [
                 'project' => $this->project->slug,
-                'search' => mb_substr($this->user->name, 0, 3),
+                'search' => $ownerSearchMarker,
             ]));
 
         $response->assertOk()

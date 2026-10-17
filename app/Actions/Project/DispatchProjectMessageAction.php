@@ -87,11 +87,7 @@ final class DispatchProjectMessageAction
                         ->whereKey($message->getKey())
                         ->update(['delivered' => true]);
                 } else {
-                    Message::query()
-                        ->whereKey($message->getKey())
-                        ->update(['batch_id' => null]);
-
-                    Log::warning('Message batch completed with failures, cleared batch_id for retry', [
+                    Log::warning('Message batch completed with failures', [
                         'message_id' => $message->getKey(),
                         'batch_id' => $batch->id,
                         'failed_jobs' => $batch->failedJobs,
@@ -102,8 +98,23 @@ final class DispatchProjectMessageAction
             ->catch(function (Batch $batch, Throwable $throwable): void {
                 Log::error('Message batch failed', [
                     'batch_id' => $batch->id,
-                    'exception' => $throwable,
+                    'exception_class' => $throwable::class,
+                    'exception_code' => $throwable->getCode(),
                 ]);
+            })
+            ->finally(function () use ($message): void {
+                // Always clear batch_id when the batch terminates so canDispatch()
+                // unlocks the message even if the queue worker crashed between the
+                // permanent job failure and the then() callback. The WHERE on batch_id
+                // prevents phantom resets: if delivered was already set to true (clean
+                // success path), batch_id will still be cleared on the same pass.
+                // delivered is intentionally NOT touched here — the then() callback
+                // owns that transition.
+                Message::query()
+                    ->whereKey($message->getKey())
+                    ->where('delivered', false)
+                    ->whereNotNull('batch_id')
+                    ->update(['batch_id' => null]);
             })
             ->dispatch();
     }

@@ -108,7 +108,7 @@ export default {
       status: 'all',
       auth: this.$store.state.currentUser.user,
       currentTitle: 'All Project Activities',
-      currentQuery: '',
+      currentFilter: null,
       activityTypes: activityMixins.data().activityTypes,
     };
   },
@@ -125,27 +125,29 @@ export default {
     activityColor(description) {
       return this.getColor(description);
     },
-    async getData(suffix) {
-      await axios
-        .get(`/projects/${this.$route.params.slug}/activities${suffix}`)
+
+    async fetchActivities(activity) {
+      this.status = activity.status;
+      this.currentTitle = activity.label;
+      this.currentFilter = activity.filter || null;
+      this.getResults(1);
+    },
+
+    getResults(page = 1) {
+      const params = { page };
+
+      if (this.currentFilter) {
+        params.filter = this.currentFilter;
+      }
+
+      axios
+        .get(`/projects/${this.$route.params.slug}/activities`, { params })
         .then((response) => {
           this.activities = response.data;
         })
         .catch((error) => {
           this.handleErrorResponse(error);
         });
-    },
-
-    async fetchActivities(activity) {
-      this.status = activity.status;
-      this.currentTitle = activity.label;
-      this.currentQuery = activity.query || '';
-      this.getResults(1);
-    },
-
-    getResults(page = 1) {
-      let query = this.currentQuery ? `${this.currentQuery}&page=${page}` : `?page=${page}`;
-      this.getData(query);
     },
   },
 };

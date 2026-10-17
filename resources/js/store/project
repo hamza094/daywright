@@ -5,6 +5,12 @@ const state = {
   user: {},
   members: [],
   getStage: 0,
+  form: {
+    name: '',
+    about: '',
+    notes: '',
+    version: null,
+  },
 };
 
 
@@ -14,6 +20,8 @@ const mutations = {
       state.user = project.user || {};
       state.members = Array.isArray(project.members) ? [...project.members] : [];
       state.getStage = project?.stage?.id || 0;
+      // Store version for updates
+      state.form.version = project.version;
 
       // Ensure the project owner (user) is always included in members list without duplicates
       const ownerUuid = state.user?.uuid;
@@ -64,10 +72,15 @@ const mutations = {
     state.project.stage_updated_at = data.stage_updated
     state.project.stage = data.current_stage
     state.project.postponed_reason= data.postponed_reason
+    state.project.version = data.version
     state.getStage=data.getStage
     },
     updateLimits(state, limits) {
       state.project = { ...state.project, limits };
+    },
+    updateProjectVersion(state,version){
+      state.project.version = version;
+      state.form.version = version;
     },
 
 };

@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -14,7 +15,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class QueuedPasswordResetJob implements ShouldQueue
+class QueuedPasswordResetJob implements ShouldBeEncrypted, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -65,7 +66,8 @@ class QueuedPasswordResetJob implements ShouldQueue
         Log::error('QueuedPasswordResetJob failed', [
             'user_id' => $this->userId,
             'user_uuid' => $user?->uuid,
-            'exception' => $exception,
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
         ]);
     }
 }

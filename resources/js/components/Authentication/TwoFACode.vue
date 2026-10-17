@@ -29,8 +29,7 @@
                 maxlength="6"
                 placeholder="6-digit code"
                 autocomplete="one-time-code"
-                required
-                autofocus />
+                required />
             </div>
             <div v-if="error" class="text-danger text-center small mb-3">{{ error }}</div>
             <button type="submit" class="btn btn-primary auth-submit w-100" :disabled="loading">
@@ -88,7 +87,7 @@ export default {
     },
     async fetch2FAStatus() {
       try {
-        const res = await this.$axios.get('/twofactor/fetch-user');
+        const res = await this.$axios.get('/twofactor/status');
         this.status = parseTwoFactorResponse(res).state;
       } catch {
         this.status = '';

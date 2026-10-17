@@ -134,6 +134,11 @@ class ApiController extends Controller
         ], $status);
     }
 
+    protected function respondConflict(string $message): JsonResponse
+    {
+        return $this->respondWithMessage($message, Response::HTTP_CONFLICT);
+    }
+
     protected function authenticatedUser(): User
     {
         $user = auth()->user();

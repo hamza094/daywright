@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services\Paddle;
 
+use App\DataTransferObjects\Subscription\SubscriptionOperationResult;
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Interfaces\Paddle;
+use App\Models\SubscriptionOperation;
 use App\Models\User;
 use Override;
 
@@ -18,7 +20,7 @@ final class SubscriptionServiceFake implements Paddle
     private array $invalidPlans = [];
 
     #[Override]
-    public function subscribe(User $user, string $plan): mixed
+    public function subscribe(User $user, string $plan): string
     {
         $this->validatePlanConfig($plan, 'subscribe');
 
@@ -45,11 +47,8 @@ final class SubscriptionServiceFake implements Paddle
         return 'https://fake-paylink-url.com';
     }
 
-    /**
-     * @return array{message: string}
-     */
     #[Override]
-    public function swap(User $user, string $plan): array
+    public function swap(User $user, string $plan, string $idempotencyKey): SubscriptionOperationResult
     {
         $this->validatePlanConfig($plan, 'swap');
 
@@ -76,23 +75,30 @@ final class SubscriptionServiceFake implements Paddle
 
         $this->subscriptions[$key]['plan'] = $plan;
 
-        return [
-            'message' => 'Your subscription has been successfully updated to the '.$plan.' plan (fake).',
-        ];
+        $operation = SubscriptionOperation::factory()->swap($plan)->completed()->make([
+            'user_id' => $user->id,
+        ]);
+
+        return new SubscriptionOperationResult(
+            operation: $operation,
+            message: 'Your subscription has been successfully updated to the '.$plan.' plan (fake).',
+        );
     }
 
-    /**
-     * @return array{message: string}
-     */
     #[Override]
-    public function cancel(User $user, string $plan): array
+    public function cancel(User $user, string $plan, string $idempotencyKey): SubscriptionOperationResult
     {
         $key = $user->getKey();
 
         if (! isset($this->subscriptions[$key]) || $this->subscriptions[$key]['status'] === 'canceled') {
-            return [
-                'message' => 'Your subscription has been canceled successfully (fake).',
-            ];
+            $operation = SubscriptionOperation::factory()->cancel()->completed()->make([
+                'user_id' => $user->id,
+            ]);
+
+            return new SubscriptionOperationResult(
+                operation: $operation,
+                message: 'Your subscription has been canceled successfully (fake).',
+            );
         }
 
         $currentPlan = $this->subscriptions[$key]['plan'];
@@ -108,9 +114,14 @@ final class SubscriptionServiceFake implements Paddle
 
         $this->subscriptions[$key]['status'] = 'canceled';
 
-        return [
-            'message' => 'Your subscription has been canceled successfully (fake).',
-        ];
+        $operation = SubscriptionOperation::factory()->cancel()->completed()->make([
+            'user_id' => $user->id,
+        ]);
+
+        return new SubscriptionOperationResult(
+            operation: $operation,
+            message: 'Your subscription has been canceled successfully (fake).',
+        );
     }
 
     public function setState(User $user, string $status): void

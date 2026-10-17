@@ -46,4 +46,16 @@ return [
     |
     */
     'header' => env('IDEMPOTENCY_HEADER', 'Idempotency-Key'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Idempotency Lock Timeout
+    |--------------------------------------------------------------------------
+    |
+    | Number of seconds the atomic in-flight lock is held while a request
+    | is being processed. This covers one OAuth refresh, one provider
+    | request, local persistence, and a safety margin.
+    |
+    */
+    'lock_timeout' => (int) env('IDEMPOTENCY_LOCK_TIMEOUT', 90),
 ];

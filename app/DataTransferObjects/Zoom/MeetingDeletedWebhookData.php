@@ -30,6 +30,17 @@ final readonly class MeetingDeletedWebhookData
     }
 
     /**
+     * @param  array{meetingId: int|string, requestId: ?string}  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            meetingId: $data['meetingId'],
+            requestId: $data['requestId'] ?? null,
+        );
+    }
+
+    /**
      * @return array{meetingId: int|string, requestId: ?string}
      */
     public function toArray(): array

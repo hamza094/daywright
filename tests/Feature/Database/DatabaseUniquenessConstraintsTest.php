@@ -84,4 +84,43 @@ final class DatabaseUniquenessConstraintsTest extends TestCase
             'meeting_id' => $meeting->meeting_id,
         ]);
     }
+
+    public function test_sync_operation_type_column_exists(): void
+    {
+        $this->assertTrue(
+            DB::getSchemaBuilder()->hasColumn('meetings', 'sync_operation_type'),
+            'The sync_operation_type column should exist in the meetings table'
+        );
+    }
+
+    public function test_sync_payload_column_exists(): void
+    {
+        $this->assertTrue(
+            DB::getSchemaBuilder()->hasColumn('meetings', 'sync_payload'),
+            'The sync_payload column should exist in the meetings table'
+        );
+    }
+
+    public function test_sync_operation_type_is_nullable(): void
+    {
+        $meeting = Meeting::factory()->create([
+            'sync_operation_type' => null,
+        ]);
+
+        $this->assertDatabaseHas('meetings', [
+            'id' => $meeting->id,
+            'sync_operation_type' => null,
+        ]);
+    }
+
+    public function test_sync_payload_is_nullable(): void
+    {
+        $meeting = Meeting::factory()->create([
+            'sync_payload' => null,
+        ]);
+
+        $this->assertDatabaseHas('meetings', [
+            'id' => $meeting->id,
+        ]);
+    }
 }

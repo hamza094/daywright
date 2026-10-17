@@ -8,24 +8,35 @@ use App\DataTransferObjects\OAuth\OAuthTokens;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
-use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\DataTransferObjects\Zoom\MeetingSummary;
 use App\Interfaces\Zoom;
 use App\Models\User;
 use App\Repository\OAuthConnectionRepository;
+use Closure;
 use Illuminate\Support\Collection;
 use Override;
-use PHPUnit\Framework\Assert;
+use Throwable;
 
-/**
- * @template TKey of array-key
- * @template TValue
- */
+use function random_int;
+
 final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 {
+    use ZoomServiceFakeHelpers;
+
     /**
      * @var Collection<int, array<string, mixed>>
      */
     public Collection $meetingsToCreate;
+
+    /**
+     * @var Collection<int, array<string, mixed>>
+     */
+    public Collection $meetingsToUpdate;
+
+    /**
+     * @var Collection<int, int>
+     */
+    public Collection $meetingsToDelete;
 
     public string $authorizationUrl;
 
@@ -33,13 +44,26 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 
     public string $codeVerifier;
 
-    private ?ZoomException $failureException = null;
+    private ?Throwable $failureException = null;
+
+    private ?Meeting $meetingToFind = null;
+
+    private ?Closure $beforeFindMeeting = null;
+
+    private ?Closure $beforeUpdateMeeting = null;
+
+    private ?Throwable $updateFailureException = null;
+
+    /** @var list<MeetingSummary> */
+    private array $meetingsToList = [];
 
     public function __construct(private readonly OAuthConnectionRepository $oauthRepository)
     {
         $connectorManager = new ZoomConnectorManager($this->oauthRepository);
         parent::__construct($connectorManager);
         $this->meetingsToCreate = new Collection;
+        $this->meetingsToUpdate = new Collection;
+        $this->meetingsToDelete = new Collection;
     }
 
     #[Override]
@@ -56,7 +80,7 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     public function authorize(
         AuthorizationCallbackDetails $callbackDetails
     ): OAuthTokens {
-        if ($this->failureException instanceof ZoomException) {
+        if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
 
@@ -68,40 +92,15 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     }
 
     /**
-     * @return self<array-key, array<string, mixed>>
-     */
-    public function shouldFailWithException(ZoomException $exception): self
-    {
-        $this->failureException = $exception;
-
-        return $this;
-    }
-
-    /**
-     * @return self<array-key, array<string, mixed>>
-     */
-    public function buildAuthorizationUrlUsing(
-        string $authorizationUrl,
-        string $state,
-        string $codeVerifier
-    ): self {
-        $this->authorizationUrl = $authorizationUrl;
-        $this->state = $state;
-        $this->codeVerifier = $codeVerifier;
-
-        return $this;
-    }
-
-    /**
      * @param  array<string, mixed>  $validated
      */
     #[Override]
-    public function createMeeting(array $validated, User $user): Meeting
+    public function createMeeting(array $validated, User $user, string $operationId): Meeting
     {
-        if ($this->failureException instanceof ZoomException) {
+        if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
-        $this->meetingsToCreate->push($validated);
+        $this->meetingsToCreate->push([...$validated, 'operation_id' => $operationId]);
 
         return $this->fakeMeeting();
     }
@@ -112,17 +111,37 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
     #[Override]
     public function updateMeeting(array $validated, User $user): void
     {
-        if ($this->failureException instanceof ZoomException) {
+        if ($this->beforeUpdateMeeting instanceof Closure) {
+            ($this->beforeUpdateMeeting)();
+            $this->beforeUpdateMeeting = null;
+        }
+
+        if ($this->updateFailureException instanceof Throwable) {
+            $exception = $this->updateFailureException;
+            $this->updateFailureException = null;
+
+            throw $exception;
+        }
+
+        if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
+        }
+
+        $this->meetingsToUpdate->push($validated);
+
+        if ($this->meetingToFind instanceof Meeting) {
+            $this->meetingToFind = $this->updatedMeeting($this->meetingToFind, $validated);
         }
     }
 
     #[Override]
     public function deleteMeeting(int $meetingId, User $user): void
     {
-        if ($this->failureException instanceof ZoomException) {
+        if ($this->failureException instanceof Throwable) {
             throw $this->failureException;
         }
+
+        $this->meetingsToDelete->push($meetingId);
     }
 
     #[Override]
@@ -131,19 +150,32 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
         return 'zak&token';
     }
 
-    public function assertNoMeetingsCreated(): void
+    #[Override]
+    public function getMeeting(int|string $meetingId, User $user): ?Meeting
     {
-        Assert::assertEmpty($this->meetingsToCreate, 'Meeting was not created.');
+        if ($this->beforeFindMeeting instanceof Closure) {
+            ($this->beforeFindMeeting)();
+            $this->beforeFindMeeting = null;
+        }
+
+        if ($this->failureException instanceof Throwable) {
+            throw $this->failureException;
+        }
+
+        return $this->meetingToFind;
     }
 
-    public function assertMeetingCreated(string $topic, string $agenda, int $duration): void
+    #[Override]
+    /**
+     * @return list<MeetingSummary>
+     */
+    public function listMeetings(User $user): array
     {
-        $meetingIsToBeCreated = $this->meetingsToCreate
-            ->where('topic', $topic)
-            ->where('agenda', $agenda)
-            ->where('duration', $duration)
-            ->isNotEmpty();
-        Assert::assertTrue($meetingIsToBeCreated, 'Meetings were created.');
+        if ($this->failureException instanceof Throwable) {
+            throw $this->failureException;
+        }
+
+        return $this->meetingsToList;
     }
 
     private function fakeMeeting(): Meeting
@@ -161,6 +193,29 @@ final class ZoomServiceFake extends ZoomOAuthService implements Zoom
             timezone: 'UTC',
             password: 'herpku',
             join_before_host: false,
+            trackingFields: [],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function updatedMeeting(Meeting $meeting, array $validated): Meeting
+    {
+        return new Meeting(
+            meeting_id: $meeting->meeting_id,
+            topic: $validated['topic'] ?? $meeting->topic,
+            agenda: $validated['agenda'] ?? $meeting->agenda,
+            created_at: $meeting->created_at,
+            duration: $validated['duration'] ?? $meeting->duration,
+            start_time: $validated['start_time'] ?? $meeting->start_time,
+            start_url: $meeting->start_url,
+            join_url: $meeting->join_url,
+            status: $meeting->status,
+            timezone: $validated['timezone'] ?? $meeting->timezone,
+            password: $validated['password'] ?? $meeting->password,
+            join_before_host: $validated['join_before_host'] ?? $meeting->join_before_host,
+            trackingFields: $meeting->trackingFields,
         );
     }
 }

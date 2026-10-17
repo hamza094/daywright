@@ -50,17 +50,17 @@
         <p id="profile-detail-heading" class="pro-info" role="heading" aria-level="2">Profile Detail</p>
         <div class="row">
           <div class="col-md-6">
-            <p class="crm-info">
+            <p class="crm-info" v-if="user.email">
               <b>Email</b>:
               <span> {{ user.email }} </span>
             </p>
 
-            <p class="crm-info" v-if="user.info">
-              <b>Mobile</b>:<span> {{ user.info.mobile ? user.info.mobile : 'Not Defined' }}</span>
+            <p class="crm-info" v-if="user.info && user.info.mobile">
+              <b>Mobile</b>:<span> {{ user.info.mobile }}</span>
             </p>
 
-            <p class="crm-info" v-if="user.info">
-              <b>Address</b>:<span> {{ user.info.address ? user.info.address : 'Not Defined' }}</span>
+            <p class="crm-info" v-if="user.info && user.info.address">
+              <b>Address</b>:<span> {{ user.info.address }}</span>
             </p>
 
             <p class="crm-info">
@@ -77,12 +77,8 @@
           </div>
 
           <div class="col-md-6">
-            <p class="crm-info" v-if="user.info">
-              <b>Bio</b>:<span>{{
-                user.info.bio
-                  ? user.info.bio
-                  : 'Donec in odio eget risus placerat molestie. Etiam augue turpis, tristique nec accumsan a, vehicula vitae quam. Sed imperdiet vulputate mi in molestie. Sed lacus quam, suscipit ut velit et, commodo sagittis leo.'
-              }}</span>
+            <p class="crm-info" v-if="user.info && user.info.bio">
+              <b>Bio</b>:<span>{{ user.info.bio }}</span>
             </p>
           </div>
         </div>

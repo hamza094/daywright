@@ -68,14 +68,18 @@ export default {
     ...mapState('SingleTask', ['form']),
   },
   methods: {
-    ...mapMutations('SingleTask', ['setErrors', 'updateTaskDescription']),
+    ...mapMutations('SingleTask', ['setErrors', 'updateTaskDescription', 'updateTaskVersion']),
 
     updateDescription(id) {
       if (this.form.description === this.task.description) {
         return this.$vToastify.warning('No changes made.');
       }
       axios
-        .put(url(this.slug, id), { description: this.form.description }, { useProgress: true })
+        .patch(
+          url(this.slug, id),
+          { description: this.form.description, version: this.task.version },
+          { useProgress: true },
+        )
         .then((response) => {
           const taskData = getObjectData(response);
 
@@ -83,10 +87,15 @@ export default {
           this.edit = false;
           this.setErrors({});
           this.updateTaskDescription(taskData.description);
+          this.updateTaskVersion(taskData.version);
         })
         .catch((error) => {
           this.handleErrorResponse(error);
           this.setErrors(parseApiError(error).errors);
+          // Handle version conflict (409)
+          if (error.response?.status === 409) {
+            this.$vToastify.error('Task was modified by another user. Please refresh and try again.');
+          }
         });
     },
 

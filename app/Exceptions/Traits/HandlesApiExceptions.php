@@ -35,42 +35,50 @@ trait HandlesApiExceptions
             $e->meta($request),
         ));
 
-        $this->renderable(fn (ApiException $e, Request $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            $e->publicMessage(),
-            $e->status(),
-            $e->errorCode(),
-            $e->errors(),
-            $e->meta($request),
-        ));
+        $this->renderable(function (ApiException $e, Request $request): \Illuminate\Http\JsonResponse {
+            $response = ApiErrorFormatter::response(
+                $e->publicMessage(),
+                $e->status(),
+                $e->errorCode(),
+                $e->errors(),
+                $e->meta($request),
+            );
 
-        $this->renderable(fn (ModelNotFoundException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+            return $response->withHeaders(
+                $this->publicExceptionHeaders($e->headers())
+            );
+        });
+
+        $this->renderable(fn (ModelNotFoundException $e): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Resource not found.',
             Response::HTTP_NOT_FOUND,
             'not_found',
         ));
 
-        $this->renderable(fn (NotFoundHttpException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+        $this->renderable(fn (NotFoundHttpException $e): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Resource not found.',
             Response::HTTP_NOT_FOUND,
             'not_found',
         ));
 
-        $this->renderable(fn (AuthenticationException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+        $this->renderable(fn (AuthenticationException $e): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Authentication is required.',
             Response::HTTP_UNAUTHORIZED,
             'unauthenticated',
         ));
 
-        $this->renderable(fn (AuthorizationException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+        $this->renderable(fn (AuthorizationException $e): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             ApiErrorFormatter::publicMessage($e->getMessage(), 'You are not authorized to perform this action.'),
             Response::HTTP_FORBIDDEN,
             'forbidden',
         ));
 
-        $this->renderable(fn (MethodNotAllowedHttpException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+        $this->renderable(fn (MethodNotAllowedHttpException $e): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Method not allowed.',
             Response::HTTP_METHOD_NOT_ALLOWED,
             'method_not_allowed',
+        )->withHeaders(
+            $this->publicExceptionHeaders($e->getHeaders())
         ));
 
         $this->renderable(function (ThrottleRequestsException $e): \Illuminate\Http\JsonResponse {
@@ -89,7 +97,7 @@ trait HandlesApiExceptions
             return $response->withHeaders($headers);
         });
 
-        $this->renderable(function (HttpException $e, $request): \Illuminate\Http\JsonResponse {
+        $this->renderable(function (HttpException $e): \Illuminate\Http\JsonResponse {
             $status = $e->getStatusCode();
             $defaultMessage = ApiErrorFormatter::defaultMessageForStatus($status);
             $message = $e->getMessage() !== ''
@@ -104,26 +112,38 @@ trait HandlesApiExceptions
                 $message,
                 $status,
                 ApiErrorFormatter::defaultCodeForStatus($status),
+            )->withHeaders(
+                $this->publicExceptionHeaders($e->getHeaders())
             );
         });
 
-        $this->renderable(fn (ValidationException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+        $this->renderable(fn (ValidationException $e): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Validation failed.',
             Response::HTTP_UNPROCESSABLE_ENTITY,
             'validation_error',
             $e->errors(),
         ));
 
-        $this->renderable(fn (RateLimitReachedException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
-            'Too many requests. Please try again later.',
-            Response::HTTP_TOO_MANY_REQUESTS,
-            'rate_limited',
-            meta: [
-                'retry_after_seconds' => $e->getLimit()->getRemainingSeconds(),
-            ],
-        ));
+        $this->renderable(function (RateLimitReachedException $e): \Illuminate\Http\JsonResponse {
+            $retryAfter = $e->getLimit()->getRemainingSeconds();
 
-        $this->renderable(fn (S3Exception $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+            $response = ApiErrorFormatter::response(
+                'Too many requests. Please try again later.',
+                Response::HTTP_TOO_MANY_REQUESTS,
+                'rate_limited',
+                meta: array_filter([
+                    'retry_after_seconds' => $retryAfter,
+                ], fn (int $val): bool => $val > 0),
+            );
+
+            $headers = ['Retry-After' => (string) $retryAfter];
+
+            return $response->withHeaders(
+                $this->publicExceptionHeaders($headers)
+            );
+        });
+
+        $this->renderable(fn (S3Exception $e): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'Storage request could not be completed.',
             Response::HTTP_INTERNAL_SERVER_ERROR,
             ErrorCode::STORAGE_ERROR,
@@ -132,7 +152,7 @@ trait HandlesApiExceptions
             ],
         ));
 
-        $this->renderable(fn (QueryException $e, $request): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
+        $this->renderable(fn (QueryException $e): \Illuminate\Http\JsonResponse => ApiErrorFormatter::response(
             'A database error occurred. Please try again.',
             Response::HTTP_INTERNAL_SERVER_ERROR,
             ErrorCode::DATABASE_ERROR,
@@ -149,5 +169,38 @@ trait HandlesApiExceptions
                 'internal_server_error',
             );
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $headers
+     * @return array<string, string>
+     */
+    private function publicExceptionHeaders(array $headers): array
+    {
+        $allowedHeaders = [
+            'allow' => 'Allow',
+            'retry-after' => 'Retry-After',
+        ];
+
+        $publicHeaders = [];
+
+        foreach ($headers as $name => $value) {
+            $canonicalName = $allowedHeaders[mb_strtolower($name)] ?? null;
+
+            if ($canonicalName === null || ! is_scalar($value)) {
+                continue;
+            }
+
+            $value = (string) $value;
+
+            // Reject header injection.
+            if (str_contains($value, "\r") || str_contains($value, "\n")) {
+                continue;
+            }
+
+            $publicHeaders[$canonicalName] = $value;
+        }
+
+        return $publicHeaders;
     }
 }

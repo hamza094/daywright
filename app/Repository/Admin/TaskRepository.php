@@ -25,6 +25,7 @@ class TaskRepository
             ->allowedFilters(...TaskFilterRequest::allowedFilters())
             ->allowedSorts(...TaskFilterRequest::allowedSorts())
             ->defaultSort(...TaskFilterRequest::defaultSorts())
-            ->paginate($request->perPage());
+            ->paginate($request->perPage())
+            ->appends($request->validatedPaginationQuery());
     }
 }

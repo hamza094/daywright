@@ -41,11 +41,10 @@ final readonly class PaddleEventListener
                 newValues: [
                     'paddle_event' => $eventName,
                     'subscription_id' => $subscriptionId,
-                    'alert_name' => $eventName,
-                    'user_email' => $payload['email'] ?? null,
                 ],
                 metadata: [
-                    'paddle_payload' => $payload,
+                    'provider' => 'paddle',
+                    'provider_event_id' => $payload['alert_id'] ?? null,
                 ]
             );
         }

@@ -7,6 +7,8 @@ namespace App\Enums\Meeting;
 enum MeetingSyncStatus: string
 {
     case Pending = 'pending';
+    case Creating = 'creating';
+    case CreateUnknown = 'create_unknown';
     case Active = 'active';
     case Failed = 'failed';
     case Updating = 'updating';

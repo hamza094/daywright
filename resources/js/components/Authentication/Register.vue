@@ -28,8 +28,7 @@
                   name="name"
                   v-model="form.name"
                   required
-                  autocomplete="name"
-                  autofocus />
+                  autocomplete="name" />
               </div>
               <span class="text-danger font-italic" v-if="errors.name" v-text="errors.name[0]"></span>
             </div>

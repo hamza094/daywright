@@ -12,12 +12,12 @@
       name="member"
       autocomplete="off" />
 
-    <div v-if="hasError('members')">
-      <span class="text-danger font-italic" v-for="error in getErrors('members')" :key="error">*{{ error }}</span>
+    <div v-if="hasError('user_ids')">
+      <span class="text-danger font-italic" v-for="error in getErrors('user_ids')" :key="error">*{{ error }}</span>
     </div>
 
-    <div v-if="hasError('members.0')">
-      <span class="text-danger font-italic" v-for="error in getErrors('members.0')" :key="error">*{{ error }}</span>
+    <div v-if="hasError('user_ids.0')">
+      <span class="text-danger font-italic" v-for="error in getErrors('user_ids.0')" :key="error">*{{ error }}</span>
     </div>
 
     <div class="member-list" v-if="searchResults.length > 0 && form.search">
@@ -135,7 +135,7 @@ export default {
       const memberIds = this.taskMembers.map((member) => member.id).sort((left, right) => left - right);
 
       this.assignMembersRequest
-        .patch(url(this.slug, taskId) + '/assign', { members: memberIds }, { useProgress: true })
+        .post(url(this.slug, taskId) + '/assignees', { user_ids: memberIds }, { useProgress: true })
         .then((response) => {
           this.assignSuccessfull(response);
         })

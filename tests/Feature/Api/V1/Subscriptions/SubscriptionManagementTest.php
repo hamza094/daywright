@@ -65,8 +65,9 @@ class SubscriptionManagementTest extends TestCase
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.plan', 'free')
-            ->assertJsonPath('data.subscribed', false);
+            ->assertJsonPath('data.type', 'swap')
+            ->assertJsonPath('data.status', 'completed')
+            ->assertJsonPath('data.target_plan', 'yearly');
     }
 
     #[Test]
@@ -75,13 +76,13 @@ class SubscriptionManagementTest extends TestCase
         $this->withoutMiddleware(CheckSubscription::class);
 
         $plan = 'yearly';
-        $response = $this->deleteJson($this->apiV1Route('users.me.subscription.destroy'), [
+        $response = $this->withHeaders($this->idempotencyHeaders())->deleteJson($this->apiV1Route('users.me.subscription.destroy'), [
             'plan' => $plan,
         ]);
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.plan', 'free')
-            ->assertJsonPath('data.subscribed', false);
+            ->assertJsonPath('data.type', 'cancel')
+            ->assertJsonPath('data.status', 'completed');
     }
 
     #[Test]

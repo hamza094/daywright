@@ -11,6 +11,7 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
 final class MeetingOperationLock
 {
+    // Must exceed the Zoom connector's 30-second provider request timeout.
     private const int LOCK_SECONDS = 120;
 
     private const int LOCK_WAIT_SECONDS = 10;

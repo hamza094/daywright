@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api\V1;
 
-use App\Http\Resources\Api\V1\User\InvitedUserResource;
+use App\Http\Resources\Api\V1\User\UserSummaryResource;
 use Dedoc\Scramble\Attributes\SchemaName;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Override;
@@ -51,7 +51,7 @@ class ConversationResource extends JsonResource
             /**
              * User who sent the conversation message.
              */
-            'user' => new InvitedUserResource($this->whenLoaded('user')),
+            'user' => new UserSummaryResource($this->whenLoaded('user')),
 
             /**
              * Conversation creation timestamp in UTC ISO 8601 format.

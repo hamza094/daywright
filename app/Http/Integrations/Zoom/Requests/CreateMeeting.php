@@ -27,6 +27,7 @@ class CreateMeeting extends ZoomRateLimitedRequest implements HasBody
      */
     public function __construct(
         private readonly array $validated,
+        private readonly string $operationId,
         string $limiterKey,
     ) {
         parent::__construct($limiterKey);
@@ -53,6 +54,7 @@ class CreateMeeting extends ZoomRateLimitedRequest implements HasBody
     protected function defaultBody(): array
     {
         return [
+            'type' => 2,
             'topic' => $this->validated['topic'],
             'agenda' => $this->validated['agenda'],
             'duration' => $this->validated['duration'],
@@ -60,6 +62,10 @@ class CreateMeeting extends ZoomRateLimitedRequest implements HasBody
             'join_before_host' => $this->validated['join_before_host'],
             'start_time' => (new DateTimeImmutable($this->validated['start_time']))->format('Y-m-d\TH:i:s\Z'),
             'timezone' => $this->validated['timezone'],
+            'tracking_fields' => [[
+                'field' => config('services.zoom.meeting_operation_tracking_field'),
+                'value' => $this->operationId,
+            ]],
         ];
     }
 

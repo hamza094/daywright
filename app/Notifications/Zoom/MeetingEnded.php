@@ -4,24 +4,41 @@ declare(strict_types=1);
 
 namespace App\Notifications\Zoom;
 
+use App\Channels\DatabaseChannel;
 use App\DataTransferObjects\Meeting\MeetingNotificationData;
 use App\Notifications\NotificationLink;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class MeetingEnded extends Notification implements ShouldBroadcast, ShouldQueue
+class MeetingEnded extends Notification implements ShouldBroadcast
 {
     use Queueable;
+
+    public ?int $meetingId = null;
 
     /**
      * Create a new notification instance.
      */
-    public function __construct(protected MeetingNotificationData $data) {}
+    public function __construct(
+        protected MeetingNotificationData $data,
+        ?int $meetingId = null,
+    ) {
+        $this->meetingId = $meetingId ?? $data->meetingId;
+    }
+
+    /**
+     * Get a stable database signature for deduplication.
+     */
+    public function databaseSignature(mixed $notifiable): ?string
+    {
+        return $this->meetingId !== null
+            ? hash('sha256', 'meeting:'.$this->meetingId)
+            : null;
+    }
 
     /**
      * Get the notification's delivery channels.
@@ -30,7 +47,7 @@ class MeetingEnded extends Notification implements ShouldBroadcast, ShouldQueue
      */
     public function via(mixed $notifiable): array
     {
-        return ['mail', 'database', 'broadcast'];
+        return ['mail', DatabaseChannel::class, 'broadcast'];
     }
 
     /**

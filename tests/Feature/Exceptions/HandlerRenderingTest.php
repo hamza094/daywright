@@ -8,6 +8,8 @@ use App\Exceptions\ApiException;
 use App\Exceptions\DashboardServiceException;
 use App\Exceptions\Handler;
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
+use App\Exceptions\Integrations\StorageException;
+use App\Exceptions\InvalidStateTransitionException;
 use App\Exceptions\Subscription\PlanLimitExceededException;
 use App\Exceptions\Subscription\SubscriptionRequiredException;
 use App\Models\User;
@@ -229,6 +231,48 @@ class HandlerRenderingTest extends TestCase
         $this->assertEquals(503, $response->status());
         $json = json_decode($response->getContent(), true);
         $this->assertEquals('service_unavailable', $json['code']);
+    }
+
+    #[Test]
+    public function storage_exception_returns_500_with_storage_error_code_and_safe_meta(): void
+    {
+        $exception = new StorageException('Internal S3 connection dropped');
+
+        $handler = $this->app->make(Handler::class);
+        $request = Request::create('/api/v1/users/me', 'GET');
+        $this->app->instance('request', $request);
+
+        $response = $handler->render($request, $exception);
+
+        $this->assertEquals(500, $response->status());
+        $json = json_decode($response->getContent(), true);
+        $this->assertEquals('storage_error', $json['code']);
+        $this->assertEquals('Storage request could not be completed.', $json['message']);
+        $this->assertEquals('s3', $json['meta']['provider']);
+    }
+
+    #[Test]
+    public function invalid_state_transition_exception_returns_422_with_model_metadata(): void
+    {
+        $exception = new InvalidStateTransitionException(
+            model: $this->user,
+            currentState: 'pending',
+            attemptedState: 'active',
+        );
+
+        $handler = $this->app->make(Handler::class);
+        $request = Request::create('/api/v1/users/me', 'GET');
+        $this->app->instance('request', $request);
+
+        $response = $handler->render($request, $exception);
+
+        $this->assertEquals(422, $response->status());
+        $json = json_decode($response->getContent(), true);
+        $this->assertEquals('invalid_state_transition', $json['code']);
+        $this->assertEquals('Invalid state transition from pending to active', $json['message']);
+        $this->assertEquals(User::class, $json['meta']['model']);
+        $this->assertEquals('pending', $json['meta']['current_state']);
+        $this->assertEquals('active', $json['meta']['attempted_state']);
     }
 
     // Phase 5: Custom Exception Tests

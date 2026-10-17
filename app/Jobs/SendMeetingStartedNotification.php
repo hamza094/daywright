@@ -17,7 +17,7 @@ final class SendMeetingStartedNotification extends SendMeetingNotificationJob
 
     protected function createNotification(MeetingNotificationData $data): MeetingStarted
     {
-        return new MeetingStarted($data);
+        return new MeetingStarted($data, $this->meetingId);
     }
 
     protected function hasAlreadySentNotification(Meeting $meeting): bool
@@ -29,7 +29,10 @@ final class SendMeetingStartedNotification extends SendMeetingNotificationJob
     {
         Meeting::query()
             ->where('id', $this->meetingId)
-            ->update(['started_notification_sent_at' => now()]);
+            ->update([
+                'started_notification_sent_at' => now(),
+                'started_notification_pending_at' => null,
+            ]);
     }
 
     protected function failedLogMessage(): string

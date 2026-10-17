@@ -20,6 +20,17 @@ class ZoomWebhookSigner
         ];
     }
 
+    public static function signPayloadWithTimestamp(array $payload, string $requestId, string $timestamp): array
+    {
+        $rawPayload = json_encode($payload);
+
+        return [
+            'x-zm-request-timestamp' => $timestamp,
+            'x-zm-signature' => self::buildSignature($timestamp, $rawPayload),
+            'x-zm-request-id' => $requestId,
+        ];
+    }
+
     public static function buildSignature(string $timestamp, string $payload): string
     {
         $message = 'v0:'.$timestamp.':'.$payload;

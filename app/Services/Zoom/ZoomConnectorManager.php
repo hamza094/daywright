@@ -28,7 +28,7 @@ final readonly class ZoomConnectorManager
 
     private const string REFRESH_LOCK_KEY_PREFIX = 'lock:zoom:oauth-refresh:user:';
 
-    private const int REFRESH_LOCK_SECONDS = 15;
+    private const int REFRESH_LOCK_SECONDS = 45;
 
     private const int REFRESH_LOCK_WAIT_SECONDS = 5;
 
@@ -63,7 +63,8 @@ final readonly class ZoomConnectorManager
         } catch (LockTimeoutException $exception) {
             Log::error('Zoom OAuth refresh lock timeout', [
                 'user_id' => $user->getKey(),
-                'exception' => $exception,
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
             ]);
             throw new ZoomExternalFailureException(self::REFRESH_UNAVAILABLE_MESSAGE, $exception->getCode(), previous: $exception);
         }
@@ -91,7 +92,8 @@ final readonly class ZoomConnectorManager
         } catch (UnauthorizedException $exception) {
             Log::error('Zoom OAuth refresh failed: Unauthorized, clearing tokens', [
                 'user_id' => $user->getKey(),
-                'exception' => $exception,
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
             ]);
             $this->oauthRepository->clearTokens($user, self::PROVIDER);
 
@@ -102,7 +104,8 @@ final readonly class ZoomConnectorManager
                 Log::error('Zoom OAuth refresh failed: Invalid grant/token, clearing tokens', [
                     'user_id' => $user->getKey(),
                     'error_code' => $exception->context()['error'] ?? 'unknown',
-                    'exception' => $exception,
+                    'exception_class' => $exception::class,
+                    'exception_code' => $exception->getCode(),
                 ]);
                 $this->oauthRepository->clearTokens($user, self::PROVIDER);
 

@@ -144,4 +144,63 @@ class KernelScheduleTest extends TestCase
         $this->assertTrue($recalculateHealth->withoutOverlapping);
         $this->assertTrue($recalculateHealth->onOneServer);
     }
+
+    /** @test */
+    public function recover_pending_webhooks_command_has_proper_configuration(): void
+    {
+        $schedule = app(Schedule::class);
+        $events = $schedule->events();
+
+        $recoverPending = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'webhooks:recover-pending'));
+
+        $this->assertNotNull($recoverPending, 'webhooks:recover-pending command not found in schedule');
+        $this->assertTrue($recoverPending->withoutOverlapping);
+        $this->assertTrue($recoverPending->onOneServer);
+        $this->assertNotNull($recoverPending->output);
+    }
+
+    /** @test */
+    public function recover_ambiguous_zoom_meetings_command_has_proper_configuration(): void
+    {
+        $schedule = app(Schedule::class);
+        $events = $schedule->events();
+
+        $recoverAmbiguous = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'meetings:recover-ambiguous'));
+
+        $this->assertNotNull($recoverAmbiguous, 'meetings:recover-ambiguous command not found in schedule');
+        $this->assertTrue($recoverAmbiguous->withoutOverlapping);
+        $this->assertTrue($recoverAmbiguous->onOneServer);
+        $this->assertTrue($recoverAmbiguous->runInBackground);
+        $this->assertNotNull($recoverAmbiguous->output);
+    }
+
+    /** @test */
+    public function recover_pending_zoom_operations_command_has_proper_configuration(): void
+    {
+        $schedule = app(Schedule::class);
+        $events = $schedule->events();
+
+        $recoverPending = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'meetings:recover-pending'));
+
+        $this->assertNotNull($recoverPending, 'meetings:recover-pending command not found in schedule');
+        $this->assertTrue($recoverPending->withoutOverlapping);
+        $this->assertTrue($recoverPending->onOneServer);
+        $this->assertTrue($recoverPending->runInBackground);
+        $this->assertNotNull($recoverPending->output);
+    }
+
+    /** @test */
+    public function recover_subscription_operations_command_has_proper_configuration(): void
+    {
+        $schedule = app(Schedule::class);
+        $events = $schedule->events();
+
+        $recoverSubs = collect($events)->first(fn ($event): bool => str_contains((string) $event->command, 'subscriptions:recover-operations'));
+
+        $this->assertNotNull($recoverSubs, 'subscriptions:recover-operations command not found in schedule');
+        $this->assertTrue($recoverSubs->withoutOverlapping);
+        $this->assertTrue($recoverSubs->onOneServer);
+        $this->assertTrue($recoverSubs->runInBackground);
+        $this->assertNotNull($recoverSubs->output);
+    }
 }

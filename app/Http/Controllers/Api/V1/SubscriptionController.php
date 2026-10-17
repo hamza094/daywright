@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\DataTransferObjects\Subscription\SubscriptionOperationResult;
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\SubscriptionRequest;
 use App\Interfaces\Paddle;
@@ -20,7 +21,7 @@ class SubscriptionController extends ApiController
     /**
      * Generate a subscription pay link.
      *
-     * Creates the checkout URL for the selected subscription plan. Available plans: free, pro.
+     * Creates the checkout URL for the selected subscription plan. Available plans: monthly, yearly.
      */
     #[Endpoint(operationId: 'subscription.checkout')]
     #[ScrambleResponse(
@@ -58,37 +59,68 @@ class SubscriptionController extends ApiController
      * Swap subscription plan.
      *
      * Changes the authenticated user's subscription to a different supported plan.
-     * Plan swaps take effect immediately. Available plans: free, pro.
+     * Plan swaps take effect immediately. Available plans: monthly, yearly.
+     *
+     * Returns 200 when the plan swap is confirmed, 202 when the result is unknown and recovery is scheduled.
      */
     #[Endpoint(operationId: 'subscription.update')]
     public function update(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
         $data = $request->toDto();
-        $paddle->swap($user, $data->plan);
+        $idempotencyKey = $request->header('Idempotency-Key');
 
-        return $this->respondWithData(
-            $this->subscriptionViewService->createFor($user),
-            Response::HTTP_OK,
-        );
+        if (blank($idempotencyKey)) {
+            return $this->respondWithMessage(
+                'Idempotency-Key header is required',
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $result = $paddle->swap($user, $data->plan, $idempotencyKey);
+
+        return $this->operationResponse($result);
     }
 
     /**
      * Cancel subscription.
      *
-     * Cancels the authenticated user's subscription and returns the updated subscription snapshot.
+     * Cancels the authenticated user's subscription.
      * Cancellation takes effect at the end of the current billing cycle.
+     *
+     * Returns 200 when the cancellation is confirmed, 202 when the result is unknown and recovery is scheduled.
      */
     #[Endpoint(operationId: 'subscription.cancel')]
     public function destroy(Paddle $paddle, SubscriptionRequest $request): JsonResponse
     {
         $user = $this->authenticatedUser();
         $data = $request->toDto();
-        $paddle->cancel($user, $data->plan);
+        $idempotencyKey = $request->header('Idempotency-Key');
+
+        if (blank($idempotencyKey)) {
+            return $this->respondWithMessage(
+                'Idempotency-Key header is required',
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $result = $paddle->cancel($user, $data->plan, $idempotencyKey);
+
+        return $this->operationResponse($result);
+    }
+
+    private function operationResponse(SubscriptionOperationResult $result): JsonResponse
+    {
+        $statusCode = match ($result->operation->status->value) {
+            'completed' => Response::HTTP_OK,
+            'failed' => Response::HTTP_CONFLICT, // Stable failure - client should not retry with same key
+            'processing', 'unknown', 'pending' => Response::HTTP_ACCEPTED,
+            default => Response::HTTP_ACCEPTED,
+        };
 
         return $this->respondWithData(
-            $this->subscriptionViewService->createFor($user),
-            Response::HTTP_OK,
+            $result->toResponseData(),
+            $statusCode,
         );
     }
 }

@@ -22,11 +22,14 @@ final readonly class UpdateUserData
      */
     public static function fromArray(array $payload): self
     {
-        $userKeys = ['name', 'email', 'username', 'timezone'];
+        // Note: Email is excluded from user attributes for security reasons.
+        // Email serves as a permanent account identifier to prevent account takeover attacks.
+        $userKeys = ['name', 'username', 'timezone'];
+        $excludedKeys = ['email', ...$userKeys];
 
         return new self(
             userAttributes: Arr::only($payload, $userKeys),
-            infoAttributes: Arr::except($payload, $userKeys),
+            infoAttributes: Arr::except($payload, $excludedKeys),
         );
     }
 

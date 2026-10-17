@@ -15,6 +15,7 @@ use App\Http\Requests\Api\V1\Auth\RecoveryCodesRequest;
 use App\Http\Requests\Api\V1\Auth\TwoFactorLoginRequest;
 use App\Http\Resources\Api\V1\Auth\AuthenticatedSessionResource;
 use App\Services\Auth\LoginUserService;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -36,6 +37,7 @@ class TwoFactorController extends ApiController
      *
      * Returns the current two-factor state and any in-progress setup details for the signed-in user.
      */
+    #[Endpoint(operationId: 'twofactor.status')]
     public function getUserStatus(Request $request): JsonResponse
     {
         $user = $request->user();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1\Meetings;
 
+use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -250,6 +251,32 @@ class MeetingCreateTest extends TestCase
             agenda: $postBody['agenda'],
             duration: $postBody['duration'],
         );
+    }
+
+    /** @test */
+    public function an_uncertain_creation_returns_and_replays_accepted_without_another_zoom_post(): void
+    {
+        $zoomFake = $this->fakeZoom()->shouldFailWithException(
+            new ZoomMeetingCreationUnknownException('Zoom meeting creation result is uncertain')
+        );
+        $postBody = [
+            'topic' => 'uncertain-meeting',
+            'agenda' => 'test-description',
+            'duration' => 30,
+            'password' => 'metingpass',
+            'join_before_host' => false,
+            'start_time' => Carbon::now()->addWeek()->toIso8601String(),
+            'timezone' => 'UTC',
+        ];
+        $headers = $this->idempotencyHeaders();
+
+        $first = $this->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody, $headers);
+        $second = $this->postJson(route('api.v1.meetings.store', ['project' => $this->project->slug]), $postBody, $headers);
+
+        $first->assertAccepted()->assertJsonPath('data.sync_status', 'create_unknown');
+        $second->assertAccepted()->assertHeader('Idempotency-Replayed', 'true');
+        $this->assertDatabaseCount('meetings', 1);
+        $zoomFake->assertNoMeetingsCreated();
     }
 
     /** @test */

@@ -43,6 +43,24 @@ class MeetingTestHelper
         ], $overrides));
     }
 
+    public static function createCreatingMeeting(Project $project, User $user, array $overrides = []): Meeting
+    {
+        return Meeting::factory()->for($project)->create(array_merge([
+            'user_id' => $user->id,
+            'sync_status' => MeetingSyncStatus::Creating->value,
+            'meeting_id' => null,
+        ], $overrides));
+    }
+
+    public static function createCreateUnknownMeeting(Project $project, User $user, array $overrides = []): Meeting
+    {
+        return Meeting::factory()->for($project)->create(array_merge([
+            'user_id' => $user->id,
+            'sync_status' => MeetingSyncStatus::CreateUnknown->value,
+            'meeting_id' => null,
+        ], $overrides));
+    }
+
     public static function createDeletingMeeting(Project $project, User $user, array $overrides = []): Meeting
     {
         return Meeting::factory()->for($project)->create(array_merge([

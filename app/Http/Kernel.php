@@ -9,6 +9,7 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 use Laravel\Sanctum\Http\Middleware\CheckAbilities;
 use Laravel\Sanctum\Http\Middleware\CheckForAnyAbility;
 use Override;
+use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
 class Kernel extends HttpKernel
 {
@@ -99,6 +100,7 @@ class Kernel extends HttpKernel
         Middleware\CheckSubscription::class,
         \Illuminate\Routing\Middleware\SubstituteBindings::class,
         \Illuminate\Auth\Middleware\Authorize::class,
+        Idempotent::class,
     ];
 
     #[Override]

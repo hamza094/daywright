@@ -38,6 +38,17 @@ class StageRequest extends FormRequest
     {
         return [
             /**
+             * Current project version for optimistic concurrency control.
+             * Required to prevent silent overwrites from concurrent edits.
+             *
+             * @example 5
+             */
+            'version' => [
+                'required',
+                'integer',
+                'min:1',
+            ],
+            /**
              * The stage ID to update the project to.
              *
              * @example 3

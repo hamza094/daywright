@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\Webhooks\ZoomWebhookController;
 use App\Http\Middleware\VerifyZoomWebhook;
-use WendellAdriel\Idempotency\Enums\IdempotencyScope;
-use WendellAdriel\Idempotency\Http\Middleware\Idempotent;
 
 // Zoom Webhooks
 Route::controller(ZoomWebhookController::class)
-    ->middleware([VerifyZoomWebhook::class, 'throttle:webhook-ingress', Idempotent::using(scope: IdempotencyScope::Global)])
+    ->middleware([VerifyZoomWebhook::class, 'throttle:webhook-ingress'])
     ->prefix('webhooks/zoom/meetings')
     ->as('webhooks.meetings.')
     ->group(function (): void {
+        Route::post('created', 'created')->name('created');
+
         Route::post('update', 'update')->name('update');
 
         Route::post('delete', 'delete')->name('delete');

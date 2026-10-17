@@ -9,14 +9,16 @@ use App\Actions\Project\SendProjectUpdatedNotificationAction;
 use App\DataTransferObjects\Project\ProjectCreateData;
 use App\DataTransferObjects\Project\ProjectStageUpdateData;
 use App\DataTransferObjects\Project\ProjectUpdateData;
-use App\Enums\StageStatus;
+use App\Enums\ProjectStage;
 use App\Enums\Subscription\PlanLimitType;
+use App\Exceptions\EditConflictException;
 use App\Exceptions\InvalidStateTransitionException;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\Subscription\PlanLimitService;
 use App\Services\Subscription\SubscriptionUsageService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProjectService
 {
@@ -89,11 +91,39 @@ class ProjectService
 
     public function updateProject(Project $project, ProjectUpdateData $data, User $actor): Project
     {
-        $project->update($data->attributes());
+        if ($data->version() === null) {
+            throw ValidationException::withMessages([
+                'version' => ['The version field is required.'],
+            ]);
+        }
 
-        $this->sendNotification($project, $actor);
+        $updatedProject = DB::transaction(function () use ($project, $data): Project {
+            // Re-fetch with lock to ensure fresh state and prevent race conditions
+            $freshProject = Project::query()
+                ->whereKey($project->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        return $this->loadForResponse($project);
+            // Version check for optimistic concurrency control
+            if ($freshProject->version !== $data->version()) {
+                throw new EditConflictException(
+                    expectedVersion: $data->version(),
+                    currentVersion: $freshProject->version,
+                );
+            }
+
+            // Update with version increment
+            $freshProject->update(array_merge($data->attributes(), [
+                'version' => $freshProject->version + 1,
+            ]));
+
+            return $this->loadForResponse($freshProject);
+        });
+
+        // Send notification after transaction commits
+        $this->sendNotification($updatedProject, $actor);
+
+        return $updatedProject;
     }
 
     public function deleteProject(Project $project): void
@@ -109,23 +139,84 @@ class ProjectService
     /**
      * @throws InvalidStateTransitionException
      */
-    public function updateStageStatus(Project $project, ProjectStageUpdateData $data): Project
+    public function updateStageStatus(Project $project, ProjectStageUpdateData $data, User $actor): Project
     {
-        return DB::transaction(function () use ($project, $data): Project {
+        if ($data->version() === null) {
+            throw ValidationException::withMessages([
+                'version' => ['The version field is required.'],
+            ]);
+        }
+
+        $stageChanged = false;
+
+        $updatedProject = DB::transaction(function () use ($project, $data, &$stageChanged): Project {
+            // Re-fetch with lock to ensure fresh state and prevent race conditions
+            $freshProject = Project::query()
+                ->whereKey($project->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Version check for optimistic concurrency control
+            if ($freshProject->version !== $data->version()) {
+                throw new EditConflictException(
+                    expectedVersion: $data->version(),
+                    currentVersion: $freshProject->version,
+                );
+            }
+
             // Handle stage transition using state machine
             $newStage = $data->stage();
-            $project->transitionTo($newStage, 'stage_id');
+            $currentStage = $freshProject->stage_id;
+            $isNewStagePostponed = $newStage === ProjectStage::Postponed;
+            $newPostponedReason = $this->getPostponedReason($isNewStagePostponed, $data);
+            $currentPostponedReason = $freshProject->postponed_reason;
 
-            // Update other stage-related fields
-            $project->update([
-                'postponed_reason' => $this->getPostponedReason($project, $data),
+            // Check for no-op state transition (setting to current state with same reason)
+            if ($newStage->value === $currentStage && $newPostponedReason === $currentPostponedReason) {
+                // Allow the request but skip state transition and side effects
+                // Do not increment version since nothing changed
+                $freshProject->load('stage');
+
+                return $freshProject;
+            }
+
+            // If stage is unchanged but reason changed, update only the reason and increment version
+            // Only allow reason updates when the stage is Postponed
+            if ($newStage->value === $currentStage) {
+                $freshProject->update([
+                    'postponed_reason' => $newPostponedReason,
+                    'version' => $freshProject->version + 1,
+                ]);
+                $freshProject->load('stage');
+
+                return $freshProject;
+            }
+
+            // Perform actual state transition
+            $freshProject->transitionTo($newStage, 'stage_id');
+            $stageChanged = true;
+
+            // Reload stage relationship after state change to ensure fresh data
+            $freshProject->load('stage');
+
+            // Update other stage-related fields with version increment
+            $freshProject->update([
+                'postponed_reason' => $newPostponedReason,
                 'stage_updated_at' => now(),
+                'version' => $freshProject->version + 1,
             ]);
 
-            $project->load('stage');
+            $freshProject->load('stage');
 
-            return $project;
+            return $freshProject;
         });
+
+        // Send notification only after the transaction commits and only when the stage changed.
+        if ($stageChanged) {
+            $this->sendNotification($updatedProject, $actor);
+        }
+
+        return $updatedProject;
     }
 
     public function sendNotification(Project $project, User $actor): void
@@ -138,9 +229,9 @@ class ProjectService
         return $this->forceDeleteAbandonedProjectAction->execute($project);
     }
 
-    private function getPostponedReason(Project $project, ProjectStageUpdateData $data): ?string
+    private function getPostponedReason(bool $isPostponed, ProjectStageUpdateData $data): ?string
     {
-        return ($project->stage->name === StageStatus::Postponed->value && ! in_array($data->postponedReason, [null, '', '0'], true))
+        return ($isPostponed && ! in_array($data->postponedReason, [null, '', '0'], true))
             ? $data->postponedReason
             : null;
     }

@@ -52,7 +52,7 @@ class TasksTest extends TestCase
 
         $task = $this->createTask();
 
-        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => [$task->id]])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.destroyMany'), ['ids' => [$task->id]])
             ->assertForbidden();
     }
 
@@ -269,7 +269,7 @@ class TasksTest extends TestCase
             'subject_id' => $ids[0],
         ]);
 
-        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => $ids])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.destroyMany'), ['ids' => $ids])
             ->assertOk()
             ->assertJsonPath('message', 'Tasks deleted successfully.');
 
@@ -289,7 +289,7 @@ class TasksTest extends TestCase
         $tasks = Task::factory()->count(2)->create();
         $ids = $tasks->pluck('id')->toArray();
 
-        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => $ids])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.destroyMany'), ['ids' => $ids])
             ->assertOk();
 
         $this->assertDatabaseHas('audit_logs', [
@@ -319,7 +319,7 @@ class TasksTest extends TestCase
             'user_id' => $assignee->id,
         ]);
 
-        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => [$task->id]])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.destroyMany'), ['ids' => [$task->id]])
             ->assertOk();
 
         $this->assertDatabaseMissing('task_user', [
@@ -331,21 +331,21 @@ class TasksTest extends TestCase
     #[Test]
     public function bulk_delete_validates_task_ids(): void
     {
-        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), [])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.destroyMany'), [])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('task_ids');
+            ->assertJsonValidationErrors('ids');
 
-        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), ['task_ids' => [99999]])
+        $this->deleteJson($this->apiV1AdminRoute('tasks.destroyMany'), ['ids' => [99999]])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('task_ids.0');
+            ->assertJsonValidationErrors('ids.0');
 
         $task = $this->createTask();
 
-        $this->deleteJson($this->apiV1AdminRoute('tasks.bulk-delete'), [
-            'task_ids' => [$task->id, $task->id],
+        $this->deleteJson($this->apiV1AdminRoute('tasks.destroyMany'), [
+            'ids' => [$task->id, $task->id],
         ])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('task_ids.0');
+            ->assertJsonValidationErrors('ids.0');
     }
 
     /**

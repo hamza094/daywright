@@ -47,9 +47,15 @@ setTasks(state,tasks) {
 
 const actions = {
 
-    fetchTasks({ commit }, { slug, page }) {
+    fetchTasks({ commit }, { slug, page, isArchived = false }) {
+        const params = { page };
+
+        if (isArchived) {
+            params.filter = { state: 'archived' };
+        }
+
 	    return axios.get(`/projects/${slug}/tasks`, {
-          params: { page },
+          params,
         })
         .then(response => {
           commit('setTasks', getPaginatedData(response));

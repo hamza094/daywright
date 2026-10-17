@@ -14,7 +14,7 @@ final readonly class RequireFirstPartyAuth
     /**
      * Handle an incoming request.
      *
-     * Ensures the request is authenticated via web session or official mobile app token.
+     * Ensures the request is authenticated via web session or application-issued first-party token.
      * Blocks third-party developer API keys from accessing sensitive operations like password changes.
      *
      * @param  Closure(Request): (Response)  $next
@@ -35,7 +35,7 @@ final readonly class RequireFirstPartyAuth
         /** @var \Laravel\Sanctum\PersonalAccessToken|TransientToken|null $currentToken */
         $currentToken = $user->currentAccessToken();
 
-        // Allow session-based access (no token), TransientToken (SPA sessions), and wildcard tokens (official mobile apps)
+        // Allow session-based access (no token), TransientToken (SPA sessions), and application-issued wildcard tokens.
         if ($currentToken === null || $currentToken instanceof TransientToken || $currentToken->can('*')) {
             return $next($request);
         }

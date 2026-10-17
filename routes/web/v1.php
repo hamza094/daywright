@@ -46,7 +46,8 @@ Route::prefix('twofactor')
                 ->name('confirm')
                 ->middleware('throttle:two-factor');
 
-            Route::get('fetch-user', [TwoFactorController::class, 'getUserStatus'])->name('fetch-user');
+            // REST endpoint for two-factor status
+            Route::get('status', [TwoFactorController::class, 'getUserStatus'])->name('status');
 
             Route::post('recovery-codes', [TwoFactorController::class, 'generateRecoveryCodes'])
                 ->middleware('2fa.enabled')

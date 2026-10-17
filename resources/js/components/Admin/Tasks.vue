@@ -251,8 +251,8 @@ export default {
       this.sweetAlert('Yes, Delete Selected ' + this.selectedTasks.length + ' Tasks!').then((result) => {
         if (result.value) {
           axios
-            .delete('/admin/tasks/bulk-delete', {
-              data: { task_ids: this.selectedTasks },
+            .delete('/admin/tasks', {
+              data: { ids: this.selectedTasks },
             })
             .then((response) => {
               this.$vToastify.success(getResponseMessage(response) || 'Tasks deleted successfully.');

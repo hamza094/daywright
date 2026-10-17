@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Api\V1\User;
 
 use App\Http\Controllers\Api\ApiController;
 use App\Http\Requests\Api\V1\User\InvitationUserSearchRequest;
-use App\Http\Resources\Api\V1\Task\TaskMemberResource;
+use App\Http\Resources\Api\V1\User\InvitableUserResource;
 use App\Models\Project;
 use App\Services\Project\InvitationService;
 use Dedoc\Scramble\Attributes\Endpoint;
@@ -19,10 +19,11 @@ final class InvitationUserSearchController extends ApiController
      *
      * Returns users who can be invited to the specified project,
      * excluding the project owner and existing members.
+     * Uses InvitableUserResource which includes email for invitation sending.
      */
     #[Endpoint(operationId: 'invitations.searchUsers')]
     public function __invoke(InvitationUserSearchRequest $request, Project $project, InvitationService $invitationService): AnonymousResourceCollection
     {
-        return TaskMemberResource::collection($invitationService->usersSearch($project, $request->searchTerm()));
+        return InvitableUserResource::collection($invitationService->usersSearch($project, $request->searchTerm()));
     }
 }

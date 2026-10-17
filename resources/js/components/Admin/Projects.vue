@@ -209,11 +209,9 @@
                     <th class="w-1">
                       No.
                       <i
-                        v-if="currentSort === 'created_at'"
-                        class="fa-solid fa-angle-up angle-pointer"
+                        :class="currentSort === 'created_at' ? 'fa-solid fa-angle-up' : 'fa-solid fa-angle-down'"
+                        class="angle-pointer"
                         @click="toggleSort()"></i>
-
-                      <i v-else class="fa-solid fa-angle-down angle-pointer" @click="toggleSort()"></i>
                     </th>
                     <th>Name</th>
                     <th>Desc</th>
@@ -446,8 +444,8 @@ export default {
       this.sweetAlert('Yes, Delete Selected ' + this.selectedProjects.length + ' Projects!').then((result) => {
         if (result.value) {
           axios
-            .delete('/admin/projects/bulk-delete', {
-              data: { project_ids: this.selectedProjects },
+            .delete('/admin/projects', {
+              data: { ids: this.selectedProjects },
             })
             .then((response) => {
               this.$vToastify.success(getResponseMessage(response) || 'Projects deleted successfully.');

@@ -35,6 +35,7 @@ class UserProjectListingService
     }
 
     /**
+     * @param  array<string, mixed>  $paginationQuery
      * @return LengthAwarePaginator<int, \App\Models\Project>
      */
     public function paginateUserProjects(
@@ -43,17 +44,12 @@ class UserProjectListingService
         string $sort,
         int $perPage,
         int $page,
-        string $path,
+        array $paginationQuery = [],
     ): LengthAwarePaginator {
         /** @var Builder<\App\Models\Project> $query */
         $query = $this->filterProjectsQuery($user, $filters, $sort);
 
-        $paginator = $query->paginate($perPage, ['*'], 'page', $page);
-
-        // Ensure the paginator uses the requested path for generated links.
-        $paginator->withPath($path);
-
-        return $paginator;
+        return $query->paginate($perPage, ['*'], 'page', $page)->appends($paginationQuery);
     }
 
     /**

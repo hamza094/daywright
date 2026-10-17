@@ -74,17 +74,9 @@ const idempotentRouteCoverage = [
     file: 'resources/js/components/Project/Panel/Modal/TaskMembers.vue',
     patterns: [
       /this\.assignMembersRequest = createIdempotentRequest\(\)/,
-      /this\.assignMembersRequest\s*\.patch\(url\(this\.slug, taskId\) \+ '\/assign'/,
+      /this\.assignMembersRequest\s*\.post\(url\(this\.slug, taskId\) \+ '\/assignees'/,
       /this\.assignMembersRequest\?\.reset\(\)/,
       /this\.assignMembersRequest\.reset\(\)/,
-    ],
-  },
-  {
-    file: 'resources/js/components/Project/Panel/TaskDetailModal.vue',
-    patterns: [
-      /this\.unassignMemberRequest = createIdempotentRequest\(\)/,
-      /this\.unassignMemberRequest\s*\.patch\(url\(this\.slug, taskId\) \+ '\/unassign'/,
-      /this\.unassignMemberRequest\?\.reset\(\)/,
     ],
   },
   {
@@ -114,6 +106,13 @@ test('current idempotent UI routes use dedicated helper instances and teardown r
       assert.match(source, pattern, `${file} is missing expected idempotency coverage pattern ${pattern}`);
     }
   }
+});
+
+test('task unassignment does not use idempotency middleware or headers', () => {
+  const source = readSource('resources/js/components/Project/Panel/TaskDetailModal.vue');
+
+  assert.doesNotMatch(source, /createIdempotentRequest/);
+  assert.match(source, /axios\s*\.delete\(url\(this\.slug, taskId\) \+ '\/assignees\/'/);
 });
 
 test('Idempotency-Key is only set by the shared idempotent request helper', () => {

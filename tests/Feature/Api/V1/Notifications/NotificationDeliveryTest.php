@@ -63,7 +63,10 @@ class NotificationDeliveryTest extends TestCase
 
         $this->addMember($this->project, $user);
 
-        $this->patchJson($this->apiV1ProjectRoute('projects.update', $this->project), ['notes' => 'Project notes updated.']);
+        $this->patchJson($this->apiV1ProjectRoute('projects.update', $this->project), [
+            'notes' => 'Project notes updated.',
+            'version' => $this->project->fresh()->version,
+        ]);
 
         Notification::assertSentTo($user, ProjectUpdated::class, fn (ProjectUpdated $notification): bool => $notification->toArray($user)['link'] === $expectedLink);
         Notification::assertNotSentTo($this->user, ProjectUpdated::class);

@@ -10,6 +10,7 @@ use App\Http\Requests\Api\V1\Admin\TaskBulkDeleteRequest;
 use App\Http\Requests\Api\V1\Admin\TaskFilterRequest;
 use App\Http\Resources\Api\V1\Admin\TaskResource;
 use App\Repository\Admin\TaskRepository;
+use Dedoc\Scramble\Attributes\Endpoint;
 use Illuminate\Http\JsonResponse;
 
 class TaskController extends ApiController
@@ -23,6 +24,13 @@ class TaskController extends ApiController
         return TaskResource::collection($tasks)->response();
     }
 
+    /**
+     * Bulk delete tasks
+     *
+     * Deletes multiple tasks by their IDs. Requires admin privileges and 2FA.
+     * Maximum 200 tasks per request.
+     */
+    #[Endpoint(operationId: 'admin.tasks.destroyMany')]
     public function bulkDelete(TaskBulkDeleteRequest $request, BulkDeleteTasksAction $bulkDeleteTasksAction): JsonResponse
     {
         $data = $request->toDto();

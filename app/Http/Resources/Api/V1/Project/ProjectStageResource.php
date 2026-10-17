@@ -25,6 +25,13 @@ class ProjectStageResource extends JsonResource
     {
         return [
             /**
+             * Project version for optimistic concurrency control.
+             *
+             * @example 2
+             */
+            'version' => $this->version,
+
+            /**
              * Project Name
              *
              * @example "The aura of new compass"

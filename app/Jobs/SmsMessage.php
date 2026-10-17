@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Exceptions\Integrations\Sms\SmsMissingRecipientException;
+use App\Exceptions\Integrations\Sms\SmsProviderException;
 use App\Models\Message;
 use App\Models\Project;
 use App\Services\VonageSmsService;
@@ -13,6 +15,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 final class SmsMessage implements ShouldQueue
@@ -69,10 +72,41 @@ final class SmsMessage implements ShouldQueue
                 'message_exists' => $message !== null,
             ]);
 
-            return;
+            $exception = new RuntimeException("Required models not found for SmsMessage [project: {$this->projectId}, message: {$this->messageId}]");
+            $this->fail($exception);
+
+            throw $exception;
         }
 
-        $service->send($project, $message);
+        try {
+            $service->send($project, $message);
+        } catch (SmsMissingRecipientException $e) {
+            Log::warning('SmsMessage failed permanently: missing recipient', [
+                'message_id' => $this->messageId,
+                'project_id' => $this->projectId,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->fail($e);
+
+            throw $e;
+        } catch (SmsProviderException $e) {
+            if (! $e->isTransient()) {
+                Log::error('SmsMessage failed permanently: provider rejected', [
+                    'message_id' => $this->messageId,
+                    'project_id' => $this->projectId,
+                    'provider_status' => $e->providerStatus(),
+                    'error' => $e->getMessage(),
+                ]);
+
+                $this->fail($e);
+
+                throw $e;
+            }
+
+            // Transient error: re-throw so queue worker retries up to $this->tries
+            throw $e;
+        }
     }
 
     public function failed(Throwable $exception): void
@@ -80,7 +114,9 @@ final class SmsMessage implements ShouldQueue
         Log::error('SmsMessage job failed', [
             'message_id' => $this->messageId,
             'project_id' => $this->projectId,
-            'exception' => $exception,
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
+            'exception_message' => $exception->getMessage(),
         ]);
     }
 }

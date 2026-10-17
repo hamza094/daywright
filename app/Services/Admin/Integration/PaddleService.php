@@ -28,7 +28,8 @@ final class PaddleService implements PaddleApi
         } catch (Throwable $exception) {
             Log::error('Paddle API request failed', [
                 'request_class' => SubscriptionUsersList::class,
-                'exception' => $exception,
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
             ]);
             throw new PaddleRequestException(
                 message: 'Paddle API request failed.',

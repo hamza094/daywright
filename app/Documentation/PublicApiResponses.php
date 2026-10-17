@@ -241,6 +241,7 @@ final readonly class PublicApiResponses
                 ErrorCode::SUBSCRIPTION_REQUIRED => 'PublicForbiddenErrorEnvelope',
                 ErrorCode::TASK_NOT_TRASHED => 'PublicForbiddenErrorEnvelope',
                 ErrorCode::INVALID_STATE_TRANSITION => 'PublicApiValidationErrorEnvelope',
+                ErrorCode::EDIT_CONFLICT => 'PublicConflictErrorEnvelope',
                 // Infrastructure errors
                 ErrorCode::STORAGE_ERROR => 'PublicInternalServerErrorEnvelope',
                 ErrorCode::DATABASE_ERROR => 'PublicInternalServerErrorEnvelope',

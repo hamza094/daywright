@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature\Feature\Unit\DataTransferObjects\User;
+namespace Tests\Feature\DataTransferObjects\User;
 
 use App\DataTransferObjects\User\UpdateUserData;
 use PHPUnit\Framework\Attributes\Test;
@@ -30,5 +30,29 @@ final class UpdateUserDataTest extends TestCase
                 'bio' => null,
             ],
         ], $data->toArray());
+    }
+
+    #[Test]
+    public function it_excludes_email_from_user_attributes_for_security(): void
+    {
+        $data = UpdateUserData::fromArray([
+            'name' => 'Jane Doe',
+            'email' => 'jane@example.com',
+            'timezone' => 'America/New_York',
+            'company' => 'Acme Inc.',
+        ]);
+
+        $this->assertSame([
+            'user_attributes' => [
+                'name' => 'Jane Doe',
+                'timezone' => 'America/New_York',
+            ],
+            'info_attributes' => [
+                'company' => 'Acme Inc.',
+            ],
+        ], $data->toArray());
+
+        // Verify email is excluded from user attributes
+        $this->assertArrayNotHasKey('email', $data->userAttributes());
     }
 }

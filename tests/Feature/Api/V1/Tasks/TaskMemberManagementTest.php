@@ -29,13 +29,13 @@ class TaskMemberManagementTest extends TestCase
         $expectedLink = $this->apiV1Route('projects.show', ['project' => $this->project]);
         $expectedUrl = route('api.v1.projects.show', ['project' => $this->project]);
 
-        $members = [$user->id];
+        $userIds = [$user->id];
 
         $user->members()->syncWithoutDetaching([
             $this->project->id => ['active' => true],
         ]);
 
-        $this->assignMembersToTask($task, $members)
+        $this->assignMembersToTask($task, $userIds)
             ->assertSuccessful()
             ->assertJsonPath('data.id', $task->id)
             ->assertJsonPath('data.members.0.id', $user->id)
@@ -50,9 +50,9 @@ class TaskMemberManagementTest extends TestCase
             && $notification->toMail($user)->actionUrl === $expectedUrl);
         Notification::assertNotSentTo($this->user, TaskAssigned::class);
 
-        $this->assignMembersToTask($task, $members)
+        $this->assignMembersToTask($task, $userIds)
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['members' => 'One or more users are already assigned to the task.']);
+            ->assertJsonValidationErrors(['user_ids' => 'One or more users are already assigned to the task.']);
     }
 
     /** @test */
@@ -95,7 +95,7 @@ class TaskMemberManagementTest extends TestCase
 
         $this->unassignMemberFromTask($task, $this->user->id)
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['member' => 'The selected user is not a current member of task.']);
+            ->assertJsonValidationErrors(['user' => 'The selected user is not a current member of task.']);
     }
 
     /** @test */
@@ -163,19 +163,20 @@ class TaskMemberManagementTest extends TestCase
             ->assertJsonValidationErrors(['sort', 'include', 'random']);
     }
 
-    protected function assignMembersToTask(Task $task, array $members)
+    protected function assignMembersToTask(Task $task, array $userIds)
     {
-        return $this->withHeaders($this->idempotencyHeaders())->patchJson(route('api.v1.task.assign', [
+        return $this->withHeaders($this->idempotencyHeaders())->postJson(route('api.v1.task.assignees.store', [
             'project' => $this->project->slug,
             'task' => $task->id,
-        ]), ['members' => $members]);
+        ]), ['user_ids' => $userIds]);
     }
 
-    protected function unassignMemberFromTask(Task $task, int $memberId)
+    protected function unassignMemberFromTask(Task $task, int $userId)
     {
-        return $this->withHeaders($this->idempotencyHeaders())->patchJson(route('api.v1.task.unassign', [
+        return $this->withHeaders($this->idempotencyHeaders())->deleteJson(route('api.v1.task.assignees.destroy', [
             'project' => $this->project->slug,
             'task' => $task->id,
-        ]), ['member' => $memberId]);
+            'user' => $userId,
+        ]));
     }
 }

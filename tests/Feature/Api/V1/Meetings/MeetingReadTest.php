@@ -36,7 +36,6 @@ class MeetingReadTest extends TestCase
                 ],
             ])
             ->assertJsonPath('data.start_time', Carbon::parse($meeting->start_time)->setTimezone('UTC')->toIso8601String())
-            ->assertJsonPath('data.created_at', $meeting->created_at?->setTimezone('UTC')->toIso8601String())
             ->assertJsonPath('data.join_url', 'https://zoom.us/j/owner-join')
             ->assertJsonPath('data.start_url', 'https://zoom.us/s/owner-start')
             ->assertJsonPath('data.password', 'owner-password');
@@ -89,6 +88,31 @@ class MeetingReadTest extends TestCase
             ->assertJsonStructure(['data', 'links', 'meta']);
 
         $this->assertCount(2, $response->json('data'));
+    }
+
+    /** @test */
+    public function pagination_links_preserve_previous_meeting_query(): void
+    {
+        $this->actingAs($this->user);
+
+        Meeting::factory()->count(3)->for($this->project)->for($this->user)->create([
+            'start_time' => now()->subDays(1),
+        ]);
+
+        $response = $this->getJson($this->apiV1Route('meetings.index', ['project' => $this->project], [
+            'request' => 'previous',
+            'per_page' => 1,
+        ]))->assertOk();
+
+        $nextUrl = $response->json('links.next');
+        $this->assertNotNull($nextUrl);
+        $this->assertStringContainsString('request=previous', $nextUrl);
+        $this->assertStringContainsString('per_page=1', $nextUrl);
+
+        $this->getJson($nextUrl)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('meta.per_page', 1);
     }
 
     /** @test */

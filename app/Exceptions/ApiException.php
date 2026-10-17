@@ -35,6 +35,14 @@ abstract class ApiException extends RuntimeException
         return [];
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function headers(): array
+    {
+        return [];
+    }
+
     protected function defaultMessage(): string
     {
         return ApiErrorFormatter::defaultMessageForStatus($this->status());

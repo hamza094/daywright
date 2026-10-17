@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace Tests\Feature\Exceptions;
 
 use App\Exceptions\ArchivedResourceException;
+use App\Exceptions\EditConflictException;
 use App\Exceptions\Handler;
 use App\Exceptions\Integrations\ExternalServiceUnavailableException;
+use App\Exceptions\Integrations\Zoom\ZoomException;
 use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Exceptions\Paddle\PaddleRequestException;
 use App\Exceptions\Paddle\SubscriptionException;
@@ -58,6 +62,7 @@ class HandlerReportingTest extends TestCase
             ),
             new SubscriptionException('You are already on this plan.'),
             new ZoomUserErrorException('User is not connected to Zoom.'),
+            new EditConflictException(expectedVersion: 5, currentVersion: 6),
         ];
 
         foreach ($exceptions as $exception) {
@@ -106,8 +111,8 @@ class HandlerReportingTest extends TestCase
             ->once()
             ->with(
                 'api_exception_metric',
-                Mockery::on(fn (array $context): bool => isset($context['exception'])
-                    && $context['exception'] instanceof SubscriptionRequiredException
+                Mockery::on(fn (array $context): bool => $context['exception_class'] === SubscriptionRequiredException::class
+                    && $context['exception_code'] === 0
                     && $context['code'] === 'subscription_required'
                     && $context['status'] === 403
                     && $context['message'] === 'Access denied. An active subscription is required to perform this action.'
@@ -115,7 +120,9 @@ class HandlerReportingTest extends TestCase
                     && $context['method'] === 'PATCH'
                     && $context['meta'] === [
                         'upgrade_required' => true,
-                    ])
+                    ]
+                    && ! array_key_exists('exception', $context)
+                )
             );
 
         $handler->report(new SubscriptionRequiredException);
@@ -166,13 +173,15 @@ class HandlerReportingTest extends TestCase
             ->once()
             ->with(
                 'api_exception_metric',
-                Mockery::on(fn (array $context): bool => isset($context['exception'])
-                    && $context['exception'] instanceof ZoomUserErrorException
+                Mockery::on(fn (array $context): bool => $context['exception_class'] === ZoomUserErrorException::class
+                    && $context['exception_code'] === 429
                     && $context['code'] === 'zoom_error'
                     && $context['status'] === 400
                     && $context['message'] === 'Zoom request failed.'
                     && $context['path'] === 'api/v1/oauth/zoom/callback'
-                    && $context['method'] === 'GET')
+                    && $context['method'] === 'GET'
+                    && ! array_key_exists('exception', $context)
+                )
             );
 
         $handler->report(
@@ -191,5 +200,151 @@ class HandlerReportingTest extends TestCase
         Log::shouldReceive('info')->never();
 
         $handler->report(new NotFoundHttpException);
+    }
+
+    #[Test]
+    public function exception_metrics_uses_class_and_code_instead_of_raw_exception_object(): void
+    {
+        $handler = $this->app->make(Handler::class);
+
+        $request = Request::create('/api/v1/projects', 'POST');
+        $this->app->instance('request', $request);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('exception_metrics')
+            ->andReturnSelf();
+
+        Log::shouldReceive('info')
+            ->once()
+            ->with(
+                'api_exception_metric',
+                Mockery::on(fn (array $context): bool =>
+                    // Should have exception_class and exception_code
+                    $context['exception_class'] === SubscriptionRequiredException::class
+                    && $context['exception_code'] === 0
+                    // Should NOT have raw exception object
+                    && ! array_key_exists('exception', $context)
+                    // Should still have other safe fields
+                    && isset($context['code'])
+                    && isset($context['status'])
+                    && isset($context['message'])
+                    && isset($context['path'])
+                    && isset($context['method'])
+                )
+            );
+
+        $handler->report(new SubscriptionRequiredException);
+    }
+
+    #[Test]
+    public function zoom_exception_meta_allows_only_approved_fields(): void
+    {
+        $request = Request::create('/api/v1/meetings', 'POST');
+        $this->app->instance('request', $request);
+
+        $exception = (new ZoomException)->withContext([
+            'provider' => 'zoom',
+            'reason' => 'rate_limited',
+            'retry_after_seconds' => 30,
+            'sensitive_data' => 'should_not_be_exposed',
+            'user_email' => 'user@example.com',
+        ]);
+
+        $meta = $exception->meta($request);
+
+        $this->assertSame('zoom', $meta['provider']);
+        $this->assertSame('rate_limited', $meta['reason']);
+        $this->assertSame(30, $meta['retry_after_seconds']);
+        $this->assertArrayNotHasKey('sensitive_data', $meta);
+        $this->assertArrayNotHasKey('user_email', $meta);
+    }
+
+    #[Test]
+    public function zoom_infrastructure_exceptions_are_logged_to_zoom_channel_and_do_not_bleed_to_default_logger(): void
+    {
+        $handler = $this->app->make(Handler::class);
+
+        $previous = new RuntimeException('Secret token in previous exception: secret_12345');
+        $exception = new ZoomExternalFailureException('Zoom API request failed.', previous: $previous);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom')
+            ->andReturnSelf();
+
+        Log::shouldReceive('error')
+            ->once()
+            ->with(
+                'zoom_request_failed',
+                Mockery::on(fn (array $context): bool => $context['provider'] === 'zoom'
+                    && $context['exception_class'] === ZoomExternalFailureException::class
+                    && ! array_key_exists('exception', $context)
+                    && ! array_key_exists('previous', $context)
+                )
+            );
+
+        $handler->report($exception);
+    }
+
+    #[Test]
+    public function zoom_meeting_creation_unknown_exception_does_not_leak_previous_chain_to_default_logger(): void
+    {
+        $handler = $this->app->make(Handler::class);
+
+        $previous = new RuntimeException('Secret token: sentinel_create_abc123');
+        $exception = new ZoomMeetingCreationUnknownException(previous: $previous);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom')
+            ->andReturnSelf();
+
+        Log::shouldReceive('warning')
+            ->once()
+            ->with(
+                'zoom_request_failed',
+                Mockery::on(fn (array $context): bool => $context['provider'] === 'zoom'
+                    && $context['exception_class'] === ZoomMeetingCreationUnknownException::class
+                    && $context['code'] === 'zoom_meeting_creation_unknown'
+                    && ! array_key_exists('exception', $context)
+                    && ! array_key_exists('previous', $context)
+                )
+            );
+
+        // The default logger must never receive the raw exception or its previous chain.
+        Log::shouldReceive('channel')->with('exception_metrics')->never();
+
+        $handler->report($exception);
+    }
+
+    #[Test]
+    public function zoom_meeting_operation_unknown_exception_does_not_leak_previous_chain_to_default_logger(): void
+    {
+        $handler = $this->app->make(Handler::class);
+
+        $previous = new RuntimeException('Secret token: sentinel_operation_xyz789');
+        $exception = new ZoomMeetingOperationUnknownException(previous: $previous);
+
+        Log::shouldReceive('channel')
+            ->once()
+            ->with('zoom')
+            ->andReturnSelf();
+
+        Log::shouldReceive('warning')
+            ->once()
+            ->with(
+                'zoom_request_failed',
+                Mockery::on(fn (array $context): bool => $context['provider'] === 'zoom'
+                    && $context['exception_class'] === ZoomMeetingOperationUnknownException::class
+                    && $context['code'] === 'zoom_meeting_operation_unknown'
+                    && ! array_key_exists('exception', $context)
+                    && ! array_key_exists('previous', $context)
+                )
+            );
+
+        Log::shouldReceive('channel')->with('exception_metrics')->never();
+
+        $handler->report($exception);
     }
 }

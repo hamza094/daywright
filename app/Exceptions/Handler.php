@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Exceptions;
 
 use App\Exceptions\Integrations\Zoom\ZoomException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
 use App\Exceptions\Integrations\Zoom\ZoomUserErrorException;
 use App\Exceptions\Paddle\SubscriptionException;
 use App\Exceptions\Subscription\PlanLimitExceededException;
@@ -51,6 +53,7 @@ class Handler extends ExceptionHandler
         ModelNotFoundException::class,
         NotFoundHttpException::class,
         MethodNotAllowedHttpException::class,
+        EditConflictException::class,
     ];
 
     /**
@@ -68,6 +71,25 @@ class Handler extends ExceptionHandler
     {
         if ($e instanceof ZoomException) {
             $this->recordZoomException($e);
+
+            // Return early so the raw exception object never reaches the default
+            // logger via parent::report(). ZoomUserErrorException is also a
+            // ZoomException, so its metrics path is handled inside recordZoomException
+            // or via shouldRecordExceptionMetric below — but the raw object stops here.
+            if (! $this->shouldRecordExceptionMetric($e)) {
+                return;
+            }
+        }
+
+        // ZoomMeetingCreationUnknownException and ZoomMeetingOperationUnknownException
+        // extend ApiException (not ZoomException). ZoomService attaches the original
+        // provider exception as $previous. Route them through a sanitised path so
+        // neither the raw exception nor its previous chain reaches parent::report(),
+        // the daily log, or Bugsnag.
+        if ($this->isZoomUncertainResultException($e)) {
+            $this->recordZoomUncertainResultException($e);
+
+            return;
         }
 
         if ($this->shouldRecordExceptionMetric($e)) {
@@ -130,10 +152,52 @@ class Handler extends ExceptionHandler
             || $e instanceof ZoomUserErrorException;
     }
 
+    /**
+     * Returns true for the two uncertain-result Zoom exceptions that extend
+     * ApiException rather than ZoomException. These carry a $previous exception
+     * from the Zoom driver that may contain raw HTTP secrets.
+     *
+     * @phpstan-assert-if-true ZoomMeetingCreationUnknownException|ZoomMeetingOperationUnknownException $e
+     */
+    private function isZoomUncertainResultException(Throwable $e): bool
+    {
+        return $e instanceof ZoomMeetingCreationUnknownException
+            || $e instanceof ZoomMeetingOperationUnknownException;
+    }
+
+    /**
+     * Log fixed diagnostic fields to the zoom channel without touching the
+     * raw exception object or its previous chain. Never calls parent::report().
+     */
+    private function recordZoomUncertainResultException(ApiException $e): void
+    {
+        /** @var mixed $request */
+        $request = request();
+
+        $context = [
+            'provider' => 'zoom',
+            'exception_class' => $e::class,
+            'code' => $e->errorCode(),
+            'status' => $e->status(),
+            'message' => $e->publicMessage(),
+        ];
+
+        if ($request instanceof Request) {
+            $context['path'] = $request->path();
+            $context['method'] = $request->method();
+        }
+
+        Log::channel(self::ZOOM_CHANNEL)->warning(
+            self::ZOOM_REQUEST_FAILED_EVENT,
+            $context,
+        );
+    }
+
     private function recordExceptionMetric(ApiException $e): void
     {
         $context = [
-            'exception' => $e,
+            'exception_class' => $e::class,
+            'exception_code' => $e->getCode(),
             'code' => $e->errorCode(),
             'status' => $e->status(),
             'message' => $e->publicMessage(),
@@ -164,7 +228,8 @@ class Handler extends ExceptionHandler
             ? ZoomLogContext::forRequest($request, $e)
             : ['provider' => 'zoom'];
 
-        $context['exception'] = $e;
+        $context['exception_class'] = $e::class;
+        $context['exception_code'] = $e->getCode();
         $context['code'] = $e->errorCode();
         $context['status'] = $e->status();
         $context['message'] = $e->publicMessage();

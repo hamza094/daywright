@@ -1,0 +1,74 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Console\Commands;
+
+use App\Actions\Subscription\RecoverSubscriptionOperations as BatchRecoverAction;
+use App\Console\Commands\Concerns\ValidatesLimitOption;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
+final class RecoverSubscriptionOperations extends Command
+{
+    use ValidatesLimitOption;
+
+    private const int MAX_LIMIT = 100;
+
+    protected $signature = 'subscriptions:recover-operations {--limit=25}';
+
+    protected $description = 'Recover due unknown and expired processing subscription operations';
+
+    public function __construct(
+        private readonly BatchRecoverAction $batchRecover,
+    ) {
+        parent::__construct();
+    }
+
+    public function handle(): int
+    {
+        $limit = $this->parseLimit(self::MAX_LIMIT);
+
+        if ($limit === null) {
+            return 1;
+        }
+
+        return $this->recoverOperations($limit);
+    }
+
+    private function recoverOperations(int $limit): int
+    {
+        $this->info("Recovering subscription operations (limit: {$limit})...");
+
+        try {
+            $result = $this->batchRecover->execute($limit);
+
+            $this->info("Selected: {$result['selected']}");
+            $this->info("Recovered: {$result['recovered']}");
+            $this->info("Unresolved: {$result['unresolved']}");
+            $this->info("Manual review: {$result['manual_review']}");
+            $this->info("Skipped: {$result['skipped']}");
+            $this->info("Failed: {$result['failed']}");
+
+            if ($result['failed'] > 0) {
+                $this->warn('Some subscription operations failed to recover.');
+
+                return 1;
+            }
+
+            $this->info('Subscription operations recovery completed successfully.');
+
+            return 0;
+        } catch (Throwable $exception) {
+            Log::error('Subscription recovery command failed', [
+                'exception_class' => $exception::class,
+                'exception_code' => $exception->getCode(),
+            ]);
+
+            $this->error('Subscription recovery failed: '.$exception::class);
+
+            return 1;
+        }
+    }
+}

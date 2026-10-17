@@ -309,10 +309,10 @@ class ScrambleDocsTest extends TestCase
         // Routes that use auth:sanctum middleware should have 401 responses
         $authSanctumRoutes = [
             '/v1/projects' => ['get', 'post'],
-            '/v1/projects/{project}' => ['get', 'put', 'delete'],
+            '/v1/projects/{project}' => ['get', 'patch', 'delete'],
             '/v1/projects/{project}/tasks' => ['get', 'post'],
             '/v1/users/me' => ['get'],
-            '/v1/users/{user}' => ['get', 'put', 'delete'],
+            '/v1/users/{user}' => ['get', 'put', 'patch'], // DELETE requires firstParty.auth
         ];
 
         foreach ($authSanctumRoutes as $path => $methods) {
@@ -322,6 +322,10 @@ class ScrambleDocsTest extends TestCase
                     "Missing 401 response for auth:sanctum route {$httpMethod} {$path}");
             }
         }
+
+        // First-party-only destructive routes are intentionally omitted from the public contract.
+        $this->assertArrayNotHasKey('delete', $paths['/v1/users/{user}'] ?? []);
+        $this->assertArrayNotHasKey('/v1/users/{user}/force', $paths);
     }
 
     public function test_docs_json_middleware_derived_error_responses(): void
@@ -349,9 +353,14 @@ class ScrambleDocsTest extends TestCase
         // POST /v1/projects/{project}/conversations should have idempotency headers and error responses
         $conversationPost = $paths['/v1/projects/{project}/conversations']['post'] ?? [];
 
-        // The operation description remains business context, while the header is generated from middleware.
-        $this->assertStringContainsString('Idempotency-Key', $conversationPost['description'] ?? '',
-            'Idempotency-Key should be documented in description');
+        // Scramble may place controller documentation in either summary or description.
+        $operationDocumentation = implode("\n", array_filter([
+            $conversationPost['summary'] ?? null,
+            $conversationPost['description'] ?? null,
+        ], is_string(...)));
+
+        $this->assertStringContainsString('Idempotency-Key', $operationDocumentation,
+            'Idempotency-Key should be documented in the operation summary or description');
 
         $idempotencyHeaders = array_values(array_filter(
             $conversationPost['parameters'] ?? [],
@@ -508,7 +517,7 @@ class ScrambleDocsTest extends TestCase
             ['/v1/projects', 'post', '403', 'plan_limit_exceeded'],
             ['/v1/projects/{project}/stage', 'patch', '422', 'invalid_state_transition'],
             ['/v1/projects/{project}/tasks', 'post', '403', 'plan_limit_exceeded'],
-            ['/v1/projects/{project}/tasks/{task}', 'put', '422', 'invalid_state_transition'],
+            ['/v1/projects/{project}/tasks/{task}', 'patch', '422', 'invalid_state_transition'],
             ['/v1/projects/{project}/tasks/{task}', 'delete', '403', 'task_not_trashed'],
             ['/v1/projects/{project}/tasks/{task}/restore', 'patch', '403', 'task_not_trashed'],
             ['/v1/dashboard/insights', 'get', '403', 'subscription_required'],
@@ -537,13 +546,7 @@ class ScrambleDocsTest extends TestCase
             '/v1/projects/{project}',
             '/v1/projects/{project}/tasks/{task}',
         ] as $path) {
-            $this->assertArrayHasKey('put', $paths[$path] ?? [], "{$path} should document PUT");
             $this->assertArrayHasKey('patch', $paths[$path] ?? [], "{$path} should document PATCH");
-            $this->assertNotSame(
-                $paths[$path]['put']['operationId'] ?? null,
-                $paths[$path]['patch']['operationId'] ?? null,
-                "{$path} PUT and PATCH should have distinct operation IDs"
-            );
         }
     }
 
@@ -577,7 +580,7 @@ class ScrambleDocsTest extends TestCase
             '/v1/projects/{project}/conversations' => 'post', // binds {project}
             '/v1/projects/{project}/activities' => 'get', // binds {project}
             '/v1/projects/{project}/tasks' => 'post', // binds {project}
-            '/v1/projects/{project}/tasks/{task}' => 'put', // Scramble publishes the resource update as PUT
+            '/v1/projects/{project}/tasks/{task}' => 'patch',
         ];
 
         foreach ($nonTrashedRoutes as $path => $method) {
@@ -603,7 +606,7 @@ class ScrambleDocsTest extends TestCase
         $projectDescription = $paths['/v1/projects/{project}/conversations']['post']['responses']['409']['description'] ?? '';
         $this->assertStringContainsString('project_archived', $projectDescription);
 
-        $taskDescription = $paths['/v1/projects/{project}/tasks/{task}']['put']['responses']['409']['description'] ?? '';
+        $taskDescription = $paths['/v1/projects/{project}/tasks/{task}']['patch']['responses']['409']['description'] ?? '';
         $this->assertStringContainsString('project_archived', $taskDescription);
         $this->assertStringContainsString('task_archived', $taskDescription);
 

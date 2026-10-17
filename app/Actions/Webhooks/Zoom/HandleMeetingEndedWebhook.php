@@ -44,6 +44,7 @@ final readonly class HandleMeetingEndedWebhook
             ->where('status', '!=', MeetingState::ENDS->value)
             ->update([
                 'status' => MeetingState::ENDS->value,
+                'ended_notification_pending_at' => now(),
             ]);
 
         if ($updated === 0) {
@@ -71,6 +72,7 @@ final readonly class HandleMeetingEndedWebhook
             'start_time' => $startTime,
             'end_time' => $endTime,
             'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
+            'meeting_id' => $meeting->id,
         ]);
 
         SendMeetingEndedNotification::dispatch($meeting->id, $notificationData);

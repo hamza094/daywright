@@ -21,7 +21,12 @@
 
             <form-input label="Username:" v-model="form.username" :error="errors.username" id="username" />
 
-            <form-input label="Email:" v-model="form.email" :error="errors.email" id="email" />
+            <!-- Email is permanent and cannot be changed for security reasons -->
+            <div class="form-group">
+              <label class="label-name">Email:</label>
+              <span class="form-control-plaintext">{{ user.email }}</span>
+              <small class="text-muted">Email address is permanent for account security</small>
+            </div>
 
             <form-input label="Company:" v-model="form.company" :error="errors.company" id="company" />
 
@@ -86,7 +91,6 @@ export default {
       form: {
         name: '',
         username: '',
-        email: '',
         company: '',
         mobile: '',
         position: '',
@@ -100,7 +104,6 @@ export default {
   mounted() {
     this.form.name = this.user.name;
     this.form.username = this.user.username;
-    this.form.email = this.user.email;
     this.form.company = this.user.info.company;
     this.form.mobile = this.user.info.mobile;
     this.form.position = this.user.info.position;
@@ -156,7 +159,6 @@ export default {
       this.form = {
         name: this.user.name,
         username: this.user.username,
-        email: this.user.email,
         company: this.user.info.company,
         mobile: this.user.info.mobile,
         position: this.user.info.position,
@@ -174,5 +176,17 @@ export default {
 .eye-icon {
   cursor: pointer;
   margin-left: 10px;
+}
+
+.form-control-plaintext {
+  display: block;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #212529;
+  background-color: transparent;
+  border: solid transparent;
+  border-width: 1px 0;
 }
 </style>

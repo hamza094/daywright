@@ -11,6 +11,9 @@ use Illuminate\Support\Str;
 use JsonSerializable;
 use Override;
 
+/**
+ * @mixin \App\Models\Task
+ */
 class TaskResource extends JsonResource
 {
     /**
@@ -24,6 +27,7 @@ class TaskResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'version' => $this->version,
             'title' => $this->title,
             'description' => Str::limit($this->description, 50),
             'status_id' => $this->status_id,
@@ -33,7 +37,7 @@ class TaskResource extends JsonResource
 
             'notified' => $this->notified,
             'owner' => new AdminUserSummaryResource($this->whenLoaded('owner')),
-            'due_at' => $this->when($this->due_at, fn (): string => $this->due_at->toIso8601String()),
+            'due_at' => $this->when($this->due_at !== null, fn (): string => $this->due_at->toIso8601String()),
             'state' => $this->state(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),

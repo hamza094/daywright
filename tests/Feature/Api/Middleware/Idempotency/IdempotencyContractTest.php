@@ -4,21 +4,18 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\Middleware\Idempotency;
 
+use App\DataTransferObjects\Subscription\SubscriptionOperationResult;
 use App\Interfaces\Paddle;
 use App\Interfaces\Zoom;
-use App\Jobs\Webhooks\Zoom\UpdateMeetingWebhook;
 use App\Models\Meeting;
 use App\Models\Message;
+use App\Models\SubscriptionOperation;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Cache\Lock;
 use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Str;
-use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Mockery\MockInterface;
 use PHPUnit\Framework\Attributes\Test;
@@ -121,21 +118,25 @@ final class IdempotencyContractTest extends TestCase
         {
             public int $subscribeCalls = 0;
 
-            public function subscribe(User $user, string $plan): mixed
+            public function subscribe(User $user, string $plan): string
             {
                 $this->subscribeCalls++;
 
                 return 'https://phase-seven-paylink.test';
             }
 
-            public function swap(User $user, string $plan): array
+            public function swap(User $user, string $plan, string $idempotencyKey): SubscriptionOperationResult
             {
-                return ['message' => 'unused'];
+                return new SubscriptionOperationResult(
+                    operation: SubscriptionOperation::factory()->swap()->make(),
+                );
             }
 
-            public function cancel(User $user, string $plan): array
+            public function cancel(User $user, string $plan, string $idempotencyKey): SubscriptionOperationResult
             {
-                return ['message' => 'unused'];
+                return new SubscriptionOperationResult(
+                    operation: SubscriptionOperation::factory()->cancel()->make(),
+                );
             }
         };
 
@@ -153,47 +154,6 @@ final class IdempotencyContractTest extends TestCase
             ->assertOk();
 
         $this->assertSame(1, $provider->subscribeCalls);
-    }
-
-    #[Test]
-    public function subscription_update_replays_without_calling_the_provider_twice(): void
-    {
-        $provider = new class implements Paddle
-        {
-            public int $swapCalls = 0;
-
-            public function subscribe(User $user, string $plan): mixed
-            {
-                return 'unused';
-            }
-
-            public function swap(User $user, string $plan): array
-            {
-                $this->swapCalls++;
-
-                return ['message' => 'unused'];
-            }
-
-            public function cancel(User $user, string $plan): array
-            {
-                return ['message' => 'unused'];
-            }
-        };
-
-        $this->swap(Paddle::class, $provider);
-
-        $headers = $this->idempotencyHeaders('phase-six-subscription-update');
-        $payload = ['plan' => 'yearly'];
-
-        $this->withHeaders($headers)
-            ->patchJson($this->apiV1Route('users.me.subscription.update'), $payload)
-            ->assertOk();
-
-        $this->withHeaders($headers)
-            ->patchJson($this->apiV1Route('users.me.subscription.update'), $payload)
-            ->assertOk();
-
-        $this->assertSame(1, $provider->swapCalls);
     }
 
     #[Test]
@@ -217,48 +177,6 @@ final class IdempotencyContractTest extends TestCase
             'project_id' => $this->project->id,
             'user_id' => $invitedUser->id,
             'active' => false,
-        ]);
-    }
-
-    #[Test]
-    public function invitation_accept_replays_without_reprocessing_the_membership(): void
-    {
-        /** @var User $invitedUser */
-        $invitedUser = User::factory()->create();
-        $this->project->invite($invitedUser);
-        Sanctum::actingAs($invitedUser);
-
-        $headers = $this->idempotencyHeaders('phase-six-invitation-accept');
-        $route = $this->apiV1ProjectRoute('accept.invitation', $this->project);
-
-        $this->withHeaders($headers)->postJson($route)->assertOk();
-        $this->withHeaders($headers)->postJson($route)->assertOk();
-
-        $this->assertSame(1, $this->project->members()->whereKey($invitedUser->id)->count());
-        $this->assertDatabaseHas('project_members', [
-            'project_id' => $this->project->id,
-            'user_id' => $invitedUser->id,
-            'active' => true,
-        ]);
-    }
-
-    #[Test]
-    public function invitation_reject_replays_without_recreating_the_membership(): void
-    {
-        /** @var User $invitedUser */
-        $invitedUser = User::factory()->create();
-        $this->project->invite($invitedUser);
-        Sanctum::actingAs($invitedUser);
-
-        $headers = $this->idempotencyHeaders('phase-six-invitation-reject');
-        $route = $this->apiV1ProjectRoute('reject.invitation', $this->project);
-
-        $this->withHeaders($headers)->postJson($route)->assertOk();
-        $this->withHeaders($headers)->postJson($route)->assertOk();
-
-        $this->assertDatabaseMissing('project_members', [
-            'project_id' => $this->project->id,
-            'user_id' => $invitedUser->id,
         ]);
     }
 
@@ -299,14 +217,14 @@ final class IdempotencyContractTest extends TestCase
         ]);
 
         $headers = $this->idempotencyHeaders('phase-six-task-assign');
-        $route = route('api.v1.task.assign', [
+        $route = route('api.v1.task.assignees.store', [
             'project' => $this->project->slug,
             'task' => $task->id,
         ]);
-        $payload = ['members' => [$member->id]];
+        $payload = ['user_ids' => [$member->id]];
 
-        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
-        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+        $this->withHeaders($headers)->postJson($route, $payload)->assertOk();
+        $this->withHeaders($headers)->postJson($route, $payload)->assertOk();
 
         $this->assertSame(1, $task->assignee()->whereKey($member->id)->count());
         $this->assertDatabaseHas('task_user', [
@@ -316,20 +234,18 @@ final class IdempotencyContractTest extends TestCase
     }
 
     #[Test]
-    public function task_unassign_replays_without_error_after_the_first_removal(): void
+    public function task_unassign_succeeds_on_first_removal(): void
     {
         $task = $this->project->addTask('phase six task unassign');
         $task->assignee()->attach($this->user);
 
-        $headers = $this->idempotencyHeaders('phase-six-task-unassign');
-        $route = route('api.v1.task.unassign', [
+        $route = route('api.v1.task.assignees.destroy', [
             'project' => $this->project->slug,
             'task' => $task->id,
+            'user' => $this->user->id,
         ]);
-        $payload = ['member' => $this->user->id];
 
-        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
-        $this->withHeaders($headers)->patchJson($route, $payload)->assertOk();
+        $this->deleteJson($route)->assertOk();
 
         $this->assertDatabaseMissing('task_user', [
             'task_id' => $task->id,
@@ -390,38 +306,6 @@ final class IdempotencyContractTest extends TestCase
         ]);
     }
 
-    #[Test]
-    public function zoom_webhook_update_replays_without_queuing_the_job_twice(): void
-    {
-        config(['services.zoom.webhook_secret' => 'secret']);
-
-        Queue::fake([
-            UpdateMeetingWebhook::class,
-        ]);
-
-        Meeting::factory()->create(['meeting_id' => 813]);
-
-        $payload = File::json(
-            path: base_path('tests/Fixtures/Webhooks/Zoom/meeting_update.json'),
-            flags: JSON_THROW_ON_ERROR,
-        );
-
-        $headers = $this->zoomWebhookHeaders($payload, 'phase-seven-zoom-update-'.Str::uuid());
-
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $payload, $headers)
-            ->assertOk();
-
-        $this->postJson(route('api.v1.webhooks.meetings.update'), $payload, $headers)
-            ->assertAccepted()
-            ->assertExactJson(['message' => 'Webhook accepted']);
-
-        $object = $payload['payload']['object'];
-        $meetingId = $object['id'];
-
-        Queue::assertPushed(UpdateMeetingWebhook::class, fn ($job): bool => $job->getMeetingId() === $meetingId);
-        Queue::assertPushed(UpdateMeetingWebhook::class, 1);
-    }
-
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -457,7 +341,10 @@ final class IdempotencyContractTest extends TestCase
 
         $this->assertInstanceOf(LockProvider::class, $store);
 
-        $lock = $store->lock(app(IdempotencyCache::class)->lockKey($storageKey), 10);
+        $lock = $store->lock(
+            app(IdempotencyCache::class)->lockKey($storageKey),
+            config()->integer('idempotency.lock_timeout'),
+        );
 
         $this->assertTrue($lock->get());
 
@@ -478,28 +365,5 @@ final class IdempotencyContractTest extends TestCase
             'start_time' => Carbon::now()->addWeek()->toIso8601String(),
             'timezone' => 'UTC',
         ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     * @return array<string, string>
-     */
-    private function zoomWebhookHeaders(array $payload, string $requestId): array
-    {
-        $timestamp = (string) time();
-        $rawPayload = json_encode($payload);
-
-        return [
-            'x-zm-request-timestamp' => $timestamp,
-            'x-zm-signature' => $this->buildSignature($timestamp, $rawPayload),
-            'x-zm-request-id' => $requestId,
-        ];
-    }
-
-    private function buildSignature(string $timestamp, string $payload): string
-    {
-        $message = 'v0:'.$timestamp.':'.$payload;
-
-        return 'v0='.hash_hmac('sha256', $message, (string) config('services.zoom.webhook_secret'));
     }
 }

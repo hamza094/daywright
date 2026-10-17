@@ -41,7 +41,7 @@ class MeetingUpdatedWebhookRequest extends FormRequest
     {
         return [
             'event' => ['required', 'string', Rule::in(['meeting.updated'])],
-            'event_ts' => ['sometimes', 'integer'],
+            'event_ts' => ['required', 'integer'],
             'payload' => ['required', 'array'],
             'payload.object' => ['required', 'array'],
             'payload.object.id' => ['required', 'numeric'],

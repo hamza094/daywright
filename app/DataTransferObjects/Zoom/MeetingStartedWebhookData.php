@@ -23,4 +23,28 @@ final readonly class MeetingStartedWebhookData
             requestId: $requestId,
         );
     }
+
+    /**
+     * @param  array{meetingId: int|string, startTime: ?string, requestId: ?string}  $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            meetingId: $data['meetingId'],
+            startTime: $data['startTime'] ?? null,
+            requestId: $data['requestId'] ?? null,
+        );
+    }
+
+    /**
+     * @return array{meetingId: int|string, startTime: ?string, requestId: ?string}
+     */
+    public function toArray(): array
+    {
+        return [
+            'meetingId' => $this->meetingId,
+            'startTime' => $this->startTime,
+            'requestId' => $this->requestId,
+        ];
+    }
 }

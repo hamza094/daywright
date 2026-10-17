@@ -8,14 +8,25 @@ use App\DataTransferObjects\OAuth\OAuthTokens;
 use App\DataTransferObjects\Zoom\AuthorizationCallbackDetails;
 use App\DataTransferObjects\Zoom\AuthorizationRedirectDetails;
 use App\DataTransferObjects\Zoom\Meeting;
+use App\DataTransferObjects\Zoom\MeetingSummary;
+use App\Exceptions\Integrations\Zoom\NotFoundException;
+use App\Exceptions\Integrations\Zoom\ZoomExternalFailureException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingCreationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomMeetingOperationUnknownException;
+use App\Exceptions\Integrations\Zoom\ZoomRateLimitException;
 use App\Http\Integrations\Zoom\Requests\CreateMeeting;
 use App\Http\Integrations\Zoom\Requests\DeleteMeeting;
+use App\Http\Integrations\Zoom\Requests\GetMeeting;
 use App\Http\Integrations\Zoom\Requests\GetZakToken;
+use App\Http\Integrations\Zoom\Requests\ListMeetings;
 use App\Http\Integrations\Zoom\Requests\UpdateMeeting;
 use App\Http\Integrations\Zoom\ZoomConnector;
 use App\Interfaces\Zoom;
 use App\Models\User;
 use Override;
+use Saloon\Exceptions\Request\FatalRequestException;
+use Saloon\RateLimitPlugin\Exceptions\RateLimitReachedException;
+use Throwable;
 
 final readonly class ZoomService implements Zoom
 {
@@ -41,11 +52,27 @@ final readonly class ZoomService implements Zoom
      * @param  array<string, mixed>  $validated
      */
     #[Override]
-    public function createMeeting(array $validated, User $user): Meeting
+    public function createMeeting(array $validated, User $user, string $operationId): Meeting
     {
-        return $this->connectedConnector($user)
-            ->send(new CreateMeeting($validated, $this->limiterKey($user)))
-            ->dtoOrFail();
+        try {
+            $response = $this->connectedConnector($user)
+                ->send(new CreateMeeting($validated, $operationId, $this->limiterKey($user)));
+            $response->throw();
+
+            return $response->dto();
+        } catch (RateLimitReachedException $exception) {
+            throw $this->applicationRateLimit($exception);
+        } catch (ZoomExternalFailureException|FatalRequestException $exception) {
+            if ($this->isUncertainOutcome($exception)) {
+                throw new ZoomMeetingCreationUnknownException(
+                    'Zoom meeting creation result is uncertain',
+                    $exception->getCode(),
+                    $exception,
+                );
+            }
+
+            throw $exception;
+        }
     }
 
     /**
@@ -54,17 +81,47 @@ final readonly class ZoomService implements Zoom
     #[Override]
     public function updateMeeting(array $validated, User $user): void
     {
-        $this->connectedConnector($user)
-            ->send(new UpdateMeeting($validated, $this->limiterKey($user)))
-            ->throw();
+        try {
+            $this->connectedConnector($user)
+                ->send(new UpdateMeeting($validated, $this->limiterKey($user)))
+                ->throw();
+        } catch (RateLimitReachedException $exception) {
+            throw $this->applicationRateLimit($exception);
+        } catch (ZoomExternalFailureException|FatalRequestException $exception) {
+            if ($this->isUncertainOutcome($exception)) {
+                throw new ZoomMeetingOperationUnknownException(
+                    'Zoom meeting update result is uncertain',
+                    $exception->getCode(),
+                    previous: $exception
+                );
+            }
+
+            throw $exception;
+        }
     }
 
     #[Override]
     public function deleteMeeting(int $meetingId, User $user): void
     {
-        $this->connectedConnector($user)
-            ->send(new DeleteMeeting($meetingId, $this->limiterKey($user)))
-            ->throw();
+        try {
+            $this->connectedConnector($user)
+                ->send(new DeleteMeeting($meetingId, $this->limiterKey($user)))
+                ->throw();
+        } catch (NotFoundException) {
+            return;
+        } catch (RateLimitReachedException $exception) {
+            throw $this->applicationRateLimit($exception);
+        } catch (ZoomExternalFailureException|FatalRequestException $exception) {
+            if ($this->isUncertainOutcome($exception)) {
+                throw new ZoomMeetingOperationUnknownException(
+                    'Zoom meeting deletion result is uncertain',
+                    $exception->getCode(),
+                    previous: $exception
+                );
+            }
+
+            throw $exception;
+        }
     }
 
     #[Override]
@@ -75,6 +132,76 @@ final readonly class ZoomService implements Zoom
             ->json();
 
         return $response['token'];
+    }
+
+    #[Override]
+    public function getMeeting(int|string $meetingId, User $user): ?Meeting
+    {
+        try {
+            $response = $this->connectedConnector($user)
+                ->send(new GetMeeting($meetingId, $this->limiterKey($user)));
+            $response->throw();
+
+            return Meeting::fromResponse($response->json());
+        } catch (NotFoundException) {
+            return null;
+        } catch (RateLimitReachedException $exception) {
+            throw $this->applicationRateLimit($exception);
+        }
+    }
+
+    #[Override]
+    /**
+     * @return list<MeetingSummary>
+     */
+    public function listMeetings(User $user): array
+    {
+        $meetings = [];
+        $nextPageToken = null;
+
+        try {
+            do {
+                $response = $this->connectedConnector($user)
+                    ->send(new ListMeetings($this->limiterKey($user), $nextPageToken));
+                $response->throw();
+
+                $items = $response->json('meetings', []);
+
+                if (! is_array($items)) {
+                    break;
+                }
+
+                foreach ($items as $item) {
+                    if (is_array($item)) {
+                        $meetings[] = MeetingSummary::fromResponse($item);
+                    }
+                }
+
+                $token = $response->json('next_page_token');
+                $nextPageToken = is_string($token) && $token !== '' ? $token : null;
+            } while ($nextPageToken !== null);
+        } catch (RateLimitReachedException $exception) {
+            throw $this->applicationRateLimit($exception);
+        }
+
+        return $meetings;
+    }
+
+    private function applicationRateLimit(RateLimitReachedException $exception): ZoomRateLimitException
+    {
+        return new ZoomRateLimitException(
+            $exception->getLimit()->getRemainingSeconds(),
+            'The application Zoom request limit was reached.',
+            previous: $exception,
+            source: ZoomRateLimitException::SOURCE_APPLICATION,
+        );
+    }
+
+    private function isUncertainOutcome(Throwable $exception): bool
+    {
+        $code = $exception->getCode();
+
+        return $exception instanceof FatalRequestException || $code >= 500 || $code === 0;
     }
 
     private function connectedConnector(User $user): ZoomConnector

@@ -46,8 +46,8 @@ class SendPasswordUpdateEmail implements ShouldQueue
     {
         Log::error('Failed to send password update email', [
             'user_uuid' => $event->user->uuid,
-            'error' => $exception->getMessage(),
-            'trace' => $exception->getTraceAsString(),
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
         ]);
     }
 }

@@ -38,9 +38,28 @@ class ZoomException extends ApiException
     #[Override]
     public function meta(Request $request): array
     {
+        $allowedFields = ['provider', 'reason', 'retry_after_seconds'];
+
+        return array_intersect_key(
+            array_merge(['provider' => 'zoom'], $this->context),
+            array_flip($allowedFields)
+        );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Override]
+    public function headers(): array
+    {
+        $retryAfter = $this->context['retry_after_seconds'] ?? null;
+
+        if (! is_int($retryAfter) || $retryAfter <= 0) {
+            return [];
+        }
+
         return [
-            'provider' => 'zoom',
-            ...$this->context,
+            'Retry-After' => (string) $retryAfter,
         ];
     }
 

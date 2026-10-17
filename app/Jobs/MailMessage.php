@@ -92,7 +92,8 @@ final class MailMessage implements ShouldQueue
             'message_id' => $this->messageId,
             'project_id' => $this->projectId,
             'user_uuid' => $this->userUuid,
-            'exception' => $exception,
+            'exception_class' => $exception::class,
+            'exception_code' => $exception->getCode(),
         ]);
     }
 }

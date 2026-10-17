@@ -59,8 +59,8 @@ class TaskNotify extends Command
                     'assignee_ids' => $task->assignee->pluck('id')->toArray(),
                     'notification_type' => 'TaskDue',
                     'notified' => $task->notified,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
+                    'exception_class' => $e::class,
+                    'exception_code' => $e->getCode(),
                 ]);
             }
         }

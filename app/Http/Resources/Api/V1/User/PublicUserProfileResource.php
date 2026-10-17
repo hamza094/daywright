@@ -19,12 +19,16 @@ class PublicUserProfileResource extends JsonResource
      * Transform the resource into an array.
      * This resource is used for the /users/{user} endpoint and shows information
      * appropriate for collaborators (shared project/team members) and the profile owner.
+     * Private fields (email, mobile, address) are only shown to the profile owner.
      *
      * @return array<string, mixed>
      */
     #[Override]
     public function toArray(Request $request): array
     {
+        $canViewPrivateProfile = $request->user()
+            ?->can('viewPrivateProfile', $this->resource) ?? false;
+
         return [
             /**
              * Internal numeric user identifier.
@@ -69,17 +73,21 @@ class PublicUserProfileResource extends JsonResource
              */
             'timezone' => $this->timezone ?? config('app.timezone', 'UTC'),
             /**
-             * Primary email address.
+             * Primary email address (private field - only visible to profile owner).
              *
              * @format email
              *
              * @example berry@example.com
              */
-            'email' => $this->email,
+            'email' => $this->when($canViewPrivateProfile, $this->email),
             /**
              * Extended profile information (mobile, address, company, position, bio).
+             * Entire info object is private and only visible to profile owner.
              */
-            'info' => new UserInfoResource($this->info),
+            'info' => $this->when(
+                $canViewPrivateProfile,
+                fn (): UserInfoResource => new UserInfoResource($this->info),
+            ),
             /**
              * Profile creation timestamp in UTC ISO 8601 format.
              *

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\FileType;
+use App\Exceptions\Integrations\StorageException;
 use App\Models\User;
 use Exception;
 use Illuminate\Filesystem\FilesystemAdapter;
@@ -68,7 +69,8 @@ class FileService
                 } catch (Exception $exception) {
                     Log::error('S3 file deletion failed', [
                         'file_path' => $filePath,
-                        'exception' => $exception,
+                        'exception_class' => $exception::class,
+                        'exception_code' => $exception->getCode(),
                     ]);
                     report($exception);
                 }
@@ -114,18 +116,10 @@ class FileService
         $disk = $this->disk();
         $visibility = $fileType === FileType::AVATAR ? 'public' : 'private';
 
-        try {
-            $path = $disk->putFileAs($folderName, $file, $fileName, $visibility);
-        } catch (Exception $e) {
-            Log::error('S3 file upload failed', [
-                'folder' => $folderName,
-                'file_name' => $fileName,
-                'exception' => $e,
-            ]);
-            report($e);
-            throw ValidationException::withMessages([
-                'file' => ['File upload failed. Please try again.'],
-            ]);
+        $path = $disk->putFileAs($folderName, $file, $fileName, $visibility);
+
+        if ($path === false) {
+            throw new StorageException('S3 file upload failed.');
         }
 
         if ($fileType === FileType::AVATAR) {

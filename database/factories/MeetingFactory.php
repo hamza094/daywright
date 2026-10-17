@@ -23,7 +23,7 @@ class MeetingFactory extends Factory
         return [
             'user_id' => User::factory(),
             'project_id' => Project::factory(),
-            'meeting_id' => $this->faker->unique()->numberBetween(1000000000, 9999999999),
+            'meeting_id' => $this->faker->unique()->numberBetween(10000000, 99999999),
             'topic' => $this->faker->sentence(4),
             'agenda' => $this->faker->sentence(8),
             'duration' => $this->faker->randomElement([15, 30, 45, 60]),

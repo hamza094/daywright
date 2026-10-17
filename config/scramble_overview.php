@@ -50,6 +50,10 @@ Content-Type: application/json
 - Where timestamps are accepted, the API expects ISO 8601 timestamps with a timezone offset, for example `2025-12-31T23:59:59+00:00`.
 - Selected filter requests normalize boolean-like query values, but JSON booleans are preferred.
 
+## Concurrent Updates
+
+Task and project update requests require the resource's current `version` as internal concurrency metadata. Clients should read and store the version from the resource response, include it in the next PATCH request, store the returned version after success, and reload or reconcile before retrying after a `409 edit_conflict` response. This resource version is separate from the `/api/v1` API path version.
+
 ## Query Contract
 
 Released collection and collection-like read endpoints use a strict query contract unless an endpoint description explicitly documents an exception.
@@ -278,7 +282,7 @@ DayWright exposes Zoom meeting webhooks under `/api/v1/webhooks/zoom/meetings/*`
     - `x-zm-request-timestamp`
 - Invalid webhook signatures return `403 Forbidden`.
 - Missing required webhook headers return `400 Bad Request`.
-- The Zoom request ID is reused as the idempotency key so duplicate deliveries can be safely deduplicated.
+- A deterministic fingerprint (SHA256 of signature + timestamp + body) is used for deduplication via a database unique constraint.
 - Accepted webhook deliveries return:
 
 ```json

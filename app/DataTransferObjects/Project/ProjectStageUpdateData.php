@@ -12,6 +12,7 @@ final readonly class ProjectStageUpdateData
     public function __construct(
         public int $stageId,
         public ?string $postponedReason,
+        public ?int $version = null,
     ) {}
 
     /**
@@ -28,6 +29,7 @@ final readonly class ProjectStageUpdateData
             postponedReason: array_key_exists('postponed_reason', $payload)
                 ? (string) ($payload['postponed_reason'] ?? '')
                 : null,
+            version: isset($payload['version']) && is_numeric($payload['version']) ? (int) $payload['version'] : null,
         );
     }
 
@@ -45,5 +47,10 @@ final readonly class ProjectStageUpdateData
     public function stage(): ProjectStage
     {
         return ProjectStage::from($this->stageId);
+    }
+
+    public function version(): ?int
+    {
+        return $this->version;
     }
 }

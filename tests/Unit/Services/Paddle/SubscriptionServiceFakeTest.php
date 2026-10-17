@@ -64,7 +64,7 @@ final class SubscriptionServiceFakeTest extends TestCase
         $this->expectException(SubscriptionException::class);
         $this->expectExceptionMessage('The invalid_plan plan is not configured. Please contact support.');
 
-        $this->fake->swap($user, 'invalid_plan');
+        $this->fake->swap($user, 'invalid_plan', 'invalid-plan-key');
     }
 
     #[Test]
@@ -75,7 +75,7 @@ final class SubscriptionServiceFakeTest extends TestCase
         $this->expectException(SubscriptionException::class);
         $this->expectExceptionMessage('You are not subscribed to a paid plan.');
 
-        $this->fake->swap($user, 'yearly');
+        $this->fake->swap($user, 'yearly', 'swap-key');
     }
 
     #[Test]
@@ -84,10 +84,11 @@ final class SubscriptionServiceFakeTest extends TestCase
         $user = User::factory()->create();
         $this->fake->setState($user, 'active');
 
-        $firstCancel = $this->fake->cancel($user, 'monthly');
-        $secondCancel = $this->fake->cancel($user, 'monthly');
+        $firstCancel = $this->fake->cancel($user, 'monthly', 'cancel-key');
+        $secondCancel = $this->fake->cancel($user, 'monthly', 'cancel-key');
 
-        $this->assertSame($firstCancel, $secondCancel);
+        $this->assertSame($firstCancel->operation->status, $secondCancel->operation->status);
+        $this->assertSame($firstCancel->message, $secondCancel->message);
     }
 
     #[Test]
@@ -95,9 +96,9 @@ final class SubscriptionServiceFakeTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $result = $this->fake->cancel($user, 'monthly');
+        $result = $this->fake->cancel($user, 'monthly', 'cancel-key');
 
-        $this->assertArrayHasKey('message', $result);
+        $this->assertNotNull($result->message);
     }
 
     #[Test]

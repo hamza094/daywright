@@ -82,6 +82,10 @@ return [
         'client_secret' => env('ZOOM_CLIENT_SECRET') ?: env('ZOOM_TEST_CLIENT_SECRET'),
         'redirect' => env('ZOOM_REDIRECT_URI', $appUrl.'/oauth/zoom/callback'),
         'webhook_secret' => env('ZOOM_WEBHOOK_SECRET_TOKEN'),
+        'meeting_operation_tracking_field' => env(
+            'ZOOM_MEETING_OPERATION_TRACKING_FIELD',
+            'Daywright Operation ID',
+        ),
     ],
 
 ];

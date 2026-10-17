@@ -99,6 +99,37 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->everyThirtyMinutes()
             ->appendOutputTo($this->schedulerLogPath());
+
+        $schedule->command('webhooks:recover-pending')
+            ->name('recover-pending-webhooks')
+            ->onOneServer()
+            ->withoutOverlapping(5)
+            ->everyMinute()
+            ->appendOutputTo($this->schedulerLogPath());
+
+        $schedule->command('meetings:recover-ambiguous --limit=25')
+            ->name('recover-ambiguous-zoom-meetings')
+            ->onOneServer()
+            ->withoutOverlapping(15) // 25 calls × 30 s worst-case = 12.5 min; 15 min covers with margin
+            ->runInBackground()
+            ->everyMinute()
+            ->appendOutputTo($this->schedulerLogPath());
+
+        $schedule->command('meetings:recover-pending --limit=25')
+            ->name('recover-pending-zoom-operations')
+            ->onOneServer()
+            ->withoutOverlapping(5)
+            ->runInBackground()
+            ->everyMinute()
+            ->appendOutputTo($this->schedulerLogPath());
+
+        $schedule->command('subscriptions:recover-operations --limit=25')
+            ->name('recover-subscription-operations')
+            ->onOneServer()
+            ->withoutOverlapping(5)
+            ->runInBackground()
+            ->everyMinute()
+            ->appendOutputTo($this->schedulerLogPath());
     }
 
     /**

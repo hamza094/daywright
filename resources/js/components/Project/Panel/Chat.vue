@@ -52,7 +52,6 @@
                 class="form-control"
                 placeholder="Type your message here..."
                 v-model="message"
-                autofocus
                 @keypress.enter.exact.prevent="send()"
                 @keydown="isTyping"
                 row="1">

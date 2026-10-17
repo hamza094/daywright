@@ -21,13 +21,19 @@ final class UpdateProjectStageController extends ApiController
      *
      * Updates the stage of a specified project. The new stage is provided in the request payload.
      * Stage changes trigger notifications to all project members.
+     * Setting the stage to its current state succeeds without side effects (no notifications) for idempotency.
+     * Version increments only when the stage actually changes, not for no-op transitions.
      */
     #[Endpoint(operationId: 'projects.updateStage')]
     #[ApiError(ErrorCode::INVALID_STATE_TRANSITION)]
+    #[ApiError(ErrorCode::EDIT_CONFLICT)]
     public function __invoke(Project $project, StageRequest $request, ProjectService $projectService): JsonResponse
     {
-        $project = $projectService->updateStageStatus($project, $request->projectStageUpdateData());
-        $projectService->sendNotification($project, $this->authenticatedUser());
+        $project = $projectService->updateStageStatus(
+            $project,
+            $request->projectStageUpdateData(),
+            $this->authenticatedUser(),
+        );
 
         return $this->respondUpdated(new ProjectStageResource($project));
     }

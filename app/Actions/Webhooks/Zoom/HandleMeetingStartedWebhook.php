@@ -45,6 +45,7 @@ final readonly class HandleMeetingStartedWebhook
             ->where('status', '!=', MeetingState::ENDS->value)
             ->update([
                 'status' => MeetingState::START->value,
+                'started_notification_pending_at' => now(),
             ]);
 
         if ($updated === 0) {
@@ -72,6 +73,7 @@ final readonly class HandleMeetingStartedWebhook
             'start_time' => $startTime,
             'end_time' => null,
             'notifier' => NotificationActorData::fromUser($meeting->project->user)->toArray(),
+            'meeting_id' => $meeting->id,
         ]);
 
         SendMeetingStartedNotification::dispatch($meeting->id, $notificationData);

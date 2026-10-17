@@ -14,6 +14,7 @@ final readonly class ProjectActivityListingService
     public function __construct(private ActivityRepository $activityRepository) {}
 
     /**
+     * @param  array<string, mixed>  $paginationQuery
      * @return LengthAwarePaginator<int, Activity>
      */
     public function paginate(
@@ -22,7 +23,7 @@ final readonly class ProjectActivityListingService
         ?int $actorId,
         int $perPage,
         int $page,
-        string $path,
+        array $paginationQuery = [],
     ): LengthAwarePaginator {
         $activitiesQuery = $this->activityRepository->filterActivities(
             $project->activities()->getQuery(),
@@ -34,9 +35,6 @@ final readonly class ProjectActivityListingService
         ]);
 
         /** @var \Illuminate\Database\Eloquent\Builder<Activity> $activitiesQuery */
-        $paginator = $activitiesQuery->paginate($perPage, ['*'], 'page', $page);
-        $paginator->withPath($path);
-
-        return $paginator;
+        return $activitiesQuery->paginate($perPage, ['*'], 'page', $page)->appends($paginationQuery);
     }
 }

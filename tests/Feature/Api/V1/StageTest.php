@@ -67,6 +67,7 @@ class StageTest extends TestCase
         $response = $this->withoutExceptionHandling()
             ->patchJson($this->apiV1ProjectRoute('projects.stage.update', $this->project), [
                 'stage' => $newStageId,
+                'version' => $this->project->fresh()->version,
             ]);
 
         $this->assertDatabaseHas('projects', ['id' => $this->project->id, 'stage_id' => $newStageId]);
@@ -88,6 +89,7 @@ class StageTest extends TestCase
         $response = $this->withoutExceptionHandling()->patchJson($this->apiV1ProjectRoute('projects.stage.update', $this->project), [
             'stage' => 7,
             'postponed_reason' => $postponed_reason,
+            'version' => $this->project->fresh()->version,
         ]);
 
         $this->project->refresh();

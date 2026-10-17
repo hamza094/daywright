@@ -309,12 +309,14 @@ export default {
   mounted() {
     this.subscribeRequest = createIdempotentRequest();
     this.swapSubscriptionRequest = createIdempotentRequest();
+    this.cancelSubscriptionRequest = createIdempotentRequest();
     this.fetchSubscription();
   },
 
   beforeDestroy() {
     this.subscribeRequest?.reset();
     this.swapSubscriptionRequest?.reset();
+    this.cancelSubscriptionRequest?.reset();
   },
 
   // Methods
@@ -392,7 +394,7 @@ export default {
       if (result.value) {
         this.$Progress.start();
         try {
-          const response = await axios.delete('/users/me/subscription', { data: { plan } });
+          const response = await this.cancelSubscriptionRequest.delete('/users/me/subscription', { plan });
           this.setSubscription(getObjectData(response));
           toastInfo('Subscription canceled successfully.');
         } catch (error) {
