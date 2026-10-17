@@ -143,8 +143,7 @@ final readonly class ZoomMeetingUpdatedWebhookChanges
     {
         // Every field we asked Zoom to change must appear with the expected value.
         foreach ($payload as $field => $expectedValue) {
-            if (! is_string($field)
-                || ! in_array($field, self::ALLOWED_FIELDS, true)
+            if (! in_array($field, self::ALLOWED_FIELDS, true)
                 || ! array_key_exists($field, $webhookChanges)
                 || ! $this->fieldValuesMatch($field, $expectedValue, $webhookChanges[$field])) {
                 return null;

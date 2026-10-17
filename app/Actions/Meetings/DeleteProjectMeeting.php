@@ -95,7 +95,7 @@ final readonly class DeleteProjectMeeting
             if (! in_array($lockedMeeting->sync_status, [MeetingSyncStatus::Active, MeetingSyncStatus::UpdateFailed, MeetingSyncStatus::DeleteFailed], true)) {
                 throw new InvalidStateTransitionException(
                     model: $lockedMeeting,
-                    currentState: $lockedMeeting->sync_status?->value ?? 'unknown',
+                    currentState: $lockedMeeting->sync_status->value,
                     attemptedState: MeetingSyncStatus::Deleting->value,
                     message: 'Meeting must be active, update_failed, or delete_failed to delete',
                 );

@@ -86,6 +86,9 @@ final readonly class HandleMeetingDeletedWebhook
         return $isPendingDelete || $isPendingUpdate || $meeting->sync_status === MeetingSyncStatus::Active;
     }
 
+    /**
+     * @param  array<MeetingSyncStatus>  $statuses
+     */
     private function isPendingOperation(Meeting $meeting, MeetingSyncOperationType $operationType, array $statuses): bool
     {
         return in_array($meeting->sync_status, $statuses, true)

@@ -83,7 +83,7 @@ final readonly class UpdateProjectMeeting
                 && $lockedMeeting->sync_status !== MeetingSyncStatus::UpdateFailed) {
                 throw new InvalidStateTransitionException(
                     model: $lockedMeeting,
-                    currentState: $lockedMeeting->sync_status?->value ?? 'unknown',
+                    currentState: $lockedMeeting->sync_status->value,
                     attemptedState: MeetingSyncStatus::Updating->value,
                     message: 'Meeting must be active or update_failed to update',
                 );

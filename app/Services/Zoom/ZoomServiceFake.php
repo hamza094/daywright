@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
 use Override;
 use Throwable;
 
-use function Safe\random_int;
+use function random_int;
 
 final class ZoomServiceFake extends ZoomOAuthService implements Zoom
 {
