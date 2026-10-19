@@ -104,7 +104,7 @@ import TwoFactorAuth from './TwoFactorAuth.vue';
 import ChangePasswordModal from './Partials/ChangePasswordModal.vue';
 import FeatureDropdown from '../FeatureDropdown.vue';
 import { mapState, mapMutations } from 'vuex';
-import { getResponseData } from '../../utils/apiResponse.js';
+import { getResponseData, getResponseMessage } from '../../utils/apiResponse.js';
 
 export default {
   components: {
@@ -157,7 +157,7 @@ export default {
           axios
             .delete('/users/' + encodeURIComponent(this.user.uuid) + '/avatar')
             .then((response) => {
-              this.$vToastify.info(response.data.message);
+              this.$vToastify.info(getResponseMessage(response) || 'Avatar removed successfully.');
               this.user.avatar = null;
               this.userAvatar = null;
             })
@@ -177,7 +177,7 @@ export default {
           axios
             .delete('/users/' + encodeURIComponent(this.user.uuid))
             .then((response) => {
-              this.$vToastify.success(response.data.message);
+              this.$vToastify.success(getResponseMessage(response) || 'Profile deleted successfully.');
               this.$store.dispatch('currentUser/deleteUser');
             })
             .catch((error) => {
