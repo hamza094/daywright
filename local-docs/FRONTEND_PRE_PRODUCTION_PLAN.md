@@ -104,18 +104,33 @@ This document outlines all **mandatory frontend fixes, performance enhancements,
 
 ### Tasks
 
-1. **Frontend Sentry Integration (`@sentry/vue`)**
+1. **Frontend Sentry Integration (`@sentry/vue`)** ✅ Completed & Hardened
    - **Target Files:** `package.json`, `resources/js/app.js`
    - **Action:** Install `@sentry/vue` and initialize in `resources/js/app.js` conditioned on `import.meta.env.PROD` or `VITE_SENTRY_DSN`:
      - Bind `Vue` instance and `router` for automatic route tracking and transaction tracing.
      - Capture breadcrumbs (user clicks, route changes, Axios network failures).
      - Set an appropriate production sample rate (e.g. `tracesSampleRate: 0.2`).
-2. **Global Vue & Window Error Handlers (Anti-White-Screen Boundary)**
+   - **Hardening (2026-10-20):**
+     - Removed raw Vue component props from error events (sensitive data protection)
+     - Added explicit environment configuration (`VITE_APP_ENV`)
+     - Configured Session Replay with `maskAllText: true` and `blockAllMedia: true`
+     - Reduced replay sampling rates (5% session, 50% error)
+2. **Global Vue & Window Error Handlers (Anti-White-Screen Boundary)** ✅ Completed & Hardened
    - **Target File:** `resources/js/app.js`
    - **Action:** Add `Vue.config.errorHandler` and `window.addEventListener('unhandledrejection')`:
      - Capture unhandled errors and report to Sentry with component context.
      - Provide a non-intrusive toast notification (`$vToastify.error(...)`) advising the user to refresh rather than leaving them on a frozen blank screen.
-3. **Automated Playwright "Golden Path" E2E Smoke Tests**
+   - **Hardening (2026-10-20):**
+     - Removed propsData from error context (sensitive data protection)
+     - Only sends component name and error info
+3. **Source Maps Upload Configuration** ✅ Completed
+   - **Target Files:** `vite.config.js`, `package.json`
+   - **Action:** Install `@sentry/vite-plugin` and configure source map upload:
+     - Added Sentry Vite plugin to build pipeline
+     - Enabled source maps in build (`sourcemap: true`)
+     - Configured artifact cleanup (`cleanArtifacts: true`)
+     - Requires `SENTRY_AUTH_TOKEN` in CI/CD secrets (not yet configured)
+4. **Automated Playwright "Golden Path" E2E Smoke Tests**
    - **Target Files:** `playwright.config.js`, `tests/e2e/auth.spec.js`, `tests/e2e/projects-tasks.spec.js`, `tests/e2e/error-handling.spec.js`
    - **Action:** Install `@playwright/test` and create 3 fast, targeted headless test specs covering the 4 vital product loops:
      - [ ] **Workflow 1: Authentication (`tests/e2e/auth.spec.js`)**
@@ -136,8 +151,15 @@ This document outlines all **mandatory frontend fixes, performance enhancements,
 
 ### Review & Verification Gate
 
-- [ ] Verify build passes with Sentry initialized and tree-shaken in production.
-- [ ] Trigger a test error on staging; confirm event arrives in Sentry dashboard with full stack trace and breadcrumbs.
+- [x] Verify build passes with Sentry initialized and tree-shaken in production.
+- [ ] Set `SENTRY_AUTH_TOKEN` in CI/CD secrets for source map upload.
+- [ ] Configure `VITE_APP_ENV` environment variable for staging and production.
+- [ ] Trigger a test error on staging; confirm event arrives in Sentry dashboard with:
+  - Correct environment label (staging/production)
+  - No sensitive data (no propsData, tokens, or private content)
+  - Masked text in session replay (if enabled)
+- [ ] Verify source maps are uploaded and stack traces are readable in Sentry dashboard.
+- [ ] Verify source maps are not publicly accessible.
 - [ ] Execute `npm run test:e2e` against staging and confirm all 3 spec suites pass.
 
 ---
@@ -182,3 +204,5 @@ This document outlines all **mandatory frontend fixes, performance enhancements,
 - **2026-10-19 Implementation:** Phase 2 Task 1 & Task 3 completed - Explicit imports added for SweetAlert2, Chart.js, and alertNotice response handling refactored.
 - **2026-10-20 Implementation:** Phase 1 completed - Fixed SingleTask `setForm` mutation (`state.form = form`), disabled Vuex persistence, added `localStorage.removeItem('vuex')` on logout.
 - **2026-10-20 Implementation:** Route code splitting completed - All 20 routes dynamically imported; bundle chunked into separate assets.
+- **2026-10-20 Implementation:** Phase 4 Task 1 & Task 2 completed - Sentry integration with browser tracing and replay, global Vue error handler, and unhandled promise rejection handler implemented. Build verification passed.
+- **2026-10-20 Implementation:** Phase 4 hardening completed - Removed sensitive data (propsData) from error events, added environment separation (VITE_APP_ENV), configured Session Replay privacy (maskAllText, blockAllMedia), reduced replay sampling rates, added source maps configuration with Sentry Vite plugin, removed test button. Lint and build verification passed.

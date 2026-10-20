@@ -51,6 +51,71 @@ window.moment = momenttz;
 
 import router from './router.js';
 import store from './store';
+import * as Sentry from '@sentry/vue';
+
+// Initialize Sentry for production error monitoring
+if (import.meta.env.PROD || import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    Vue,
+    dsn: 'https://2f90f36c8ae7fafe99409d1d0e0fa336@o4512289084407808.ingest.de.sentry.io/4512289179500624',
+    environment: import.meta.env.VITE_APP_ENV || import.meta.env.MODE,
+    integrations: [
+      Sentry.browserTracingIntegration({ router }),
+      Sentry.replayIntegration({
+        maskAllText: true,
+        blockAllMedia: true,
+      }),
+    ],
+    tracesSampleRate: 0.2,
+    tracePropagationTargets: ['localhost', /^https:\/\/.*\.daywright\.com\/api/],
+    replaysSessionSampleRate: 0.05,
+    replaysOnErrorSampleRate: 0.5,
+    beforeSend(event, hint) {
+      if (event.exception) {
+        event.contexts = {
+          ...event.contexts,
+          vue: {
+            componentName: hint.componentName || 'Unknown',
+          },
+        };
+      }
+      return event;
+    },
+  });
+}
+
+// Global Vue error handler - prevents white-screen crashes
+Vue.config.errorHandler = (err, vm, info) => {
+  console.error('Vue error:', err, info);
+
+  if (import.meta.env.PROD || import.meta.env.VITE_SENTRY_DSN) {
+    Sentry.captureException(err, {
+      contexts: {
+        vue: {
+          componentName: vm?.$options?.name || 'Unknown',
+          info,
+        },
+      },
+    });
+  }
+
+  if (vm && vm.$vToastify) {
+    vm.$vToastify.error('An unexpected error occurred. Please refresh the page.', 'Error');
+  }
+};
+
+// Global unhandled promise rejection handler
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+
+  if (import.meta.env.PROD || import.meta.env.VITE_SENTRY_DSN) {
+    Sentry.captureException(event.reason);
+  }
+
+  if (Vue.prototype.$vToastify) {
+    Vue.prototype.$vToastify.error('An unexpected error occurred. Please refresh the page.', 'Error');
+  }
+});
 
 Vue.mixin(alertNotice);
 Vue.mixin(conversation);
