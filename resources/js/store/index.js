@@ -16,7 +16,11 @@ import notifications from './notifications';
 Vue.use(Vuex);
 
 export default new Vuex.Store({
-  plugins: [createPersistedState()],
+  plugins: [
+    createPersistedState({
+      paths: [], // Disable persistence to prevent cross-account data leakage
+    }),
+  ],
   modules: {
     currentUser,
     subscribeUser,

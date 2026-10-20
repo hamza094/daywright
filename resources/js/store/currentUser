@@ -18,7 +18,7 @@ const normalizeUser = (user, features = null) => {
   };
 };
 
-const resetAuthState = (commit, dispatch, { notify = true } = {}) => {
+const resetAuthState = (commit, dispatch, { notify = true, clearStorage = false } = {}) => {
   commit('setUser', {});
   commit('loggedIn', false);
   commit('clearErrors');
@@ -26,6 +26,9 @@ const resetAuthState = (commit, dispatch, { notify = true } = {}) => {
     dispatch('subscribeUser/userLogout', null, { root: true });
   }
   clearTwoFaState();
+  if (clearStorage) {
+    localStorage.removeItem('vuex');
+  }
 };
 
 const state = {
@@ -90,13 +93,13 @@ const actions = {
     } catch (error) {
       Vue.prototype.$vToastify.error(getErrorMessage(error, 'Unable to log out.'));
     } finally {
-      resetAuthState(commit, dispatch);
+      resetAuthState(commit, dispatch, { clearStorage: true });
       pushRoute(null, '/login', router);
     }
   },
 
   deleteUser({ commit, dispatch }) {
-    resetAuthState(commit, dispatch);
+    resetAuthState(commit, dispatch, { clearStorage: true });
     router.push('/dashboard');
   },
 
@@ -121,10 +124,10 @@ const actions = {
         return user;
       }
 
-      resetAuthState(commit, dispatch, { notify: false });
+      resetAuthState(commit, dispatch, { notify: false, clearStorage: true });
       return null;
     } catch {
-      resetAuthState(commit, dispatch, { notify: false });
+      resetAuthState(commit, dispatch, { notify: false, clearStorage: true });
       return null;
     } finally {
       commit('setBootstrapped', true);
