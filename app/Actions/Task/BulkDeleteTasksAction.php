@@ -45,12 +45,10 @@ final readonly class BulkDeleteTasksAction
 
             $this->auditLogService->log(
                 event: 'destruction.bulk_tasks_deleted',
-                auditable: null,
                 oldValues: [
                     'task_ids' => $deletedTaskIds,
                     'count' => count($deletedTaskIds),
                 ],
-                newValues: null,
                 metadata: [
                     'bulk_operation' => true,
                 ]

@@ -30,7 +30,6 @@ final readonly class CreateApiTokenAction
             $this->auditLogService->log(
                 event: 'security.api_token_created',
                 auditable: $user,
-                oldValues: null,
                 newValues: [
                     'token_name' => $name,
                     'token_id' => $token->accessToken->id,

@@ -56,7 +56,7 @@ final class Iso8601Timestamp implements ValidationRule
         $parsedDateTime = DateTimeImmutable::createFromFormat($format, $normalizedValue);
         $errors = DateTimeImmutable::getLastErrors();
 
-        if ($parsedDateTime !== false && ! (is_array($errors) && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+        if ($parsedDateTime !== false && (! is_array($errors) || $errors['warning_count'] <= 0 && $errors['error_count'] <= 0)) {
             $dateTime = $parsedDateTime;
         }
 
