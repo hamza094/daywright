@@ -45,6 +45,7 @@
     "wendelladriel/laravel-idempotency": "^1.0"
   },
   "require-dev": {
+    "baer-software/larabeacon": "^3.3.1",
     "fakerphp/faker": "^1.23",
     "kitloong/laravel-migrations-generator": "^7.2",
     "larastan/larastan": "^3.0",
