@@ -7,6 +7,8 @@ namespace App\Services\Project;
 use App\Models\Activity;
 use App\Models\Project;
 use App\Repository\ActivityRepository;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 final readonly class ProjectActivityListingService
@@ -31,7 +33,7 @@ final readonly class ProjectActivityListingService
             $actorId,
         )->with([
             'user:id,uuid,name,username,avatar_path',
-            'subject' => fn ($query) => $query->withTrashed(),
+            'subject' => fn (Relation $relation) => $relation instanceof MorphTo ? $relation->withTrashed() : $relation,
         ]);
 
         /** @var \Illuminate\Database\Eloquent\Builder<Activity> $activitiesQuery */

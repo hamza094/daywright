@@ -36,8 +36,6 @@ final readonly class PaddleEventListener
         if ($auditEvent) {
             $this->auditLogService->log(
                 event: $auditEvent,
-                auditable: null,
-                oldValues: null,
                 newValues: [
                     'paddle_event' => $eventName,
                     'subscription_id' => $subscriptionId,

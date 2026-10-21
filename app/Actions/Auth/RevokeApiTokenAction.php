@@ -33,7 +33,6 @@ final readonly class RevokeApiTokenAction
                         'token_id' => $token->id,
                         'expires_at' => $token->expires_at?->toIso8601String(),
                     ],
-                    newValues: null,
                     metadata: [
                         'abilities' => $token->abilities,
                     ]

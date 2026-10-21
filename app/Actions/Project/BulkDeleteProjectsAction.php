@@ -41,12 +41,10 @@ final readonly class BulkDeleteProjectsAction
 
             $this->auditLogService->log(
                 event: 'destruction.bulk_projects_deleted',
-                auditable: null,
                 oldValues: [
                     'project_ids' => $deletedProjectIds,
                     'count' => count($deletedProjectIds),
                 ],
-                newValues: null,
                 metadata: [
                     'bulk_operation' => true,
                 ]
