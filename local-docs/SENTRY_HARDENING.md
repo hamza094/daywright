@@ -126,14 +126,15 @@ export default defineConfig({
       org: 'hik-tech',
       project: 'daywright',
       authToken: process.env.SENTRY_AUTH_TOKEN, // ⚠️ Must be set in CI
+      cleanArtifacts: true,
+      disable: !process.env.SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        filesToDeleteAfterUpload: ['public/build/**/*.map'], // Delete source maps after upload
+      },
     }),
   ],
   build: {
-    sourcemap: true, // Generate source maps
-  },
-  sentry: {
-    disableClientReports: true,
-    cleanArtifacts: true, // Clean up old artifacts
+    sourcemap: 'hidden', // Generate source maps but don't reference them in JS
   },
 });
 ```
@@ -240,6 +241,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VITE_APP_ENV: production
+      VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@v3

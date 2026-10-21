@@ -139,21 +139,4 @@ final class LogChannelSanitizationTest extends TestCase
         $this->assertSame('********', $logEntry['context']['headers']['Authorization']);
         $this->assertSame('********', $logEntry['context']['provider']['access_token']);
     }
-
-    #[Test]
-    public function bugsnag_has_required_redacted_keys(): void
-    {
-        $keys = config('bugsnag.redacted_keys');
-
-        $this->assertIsArray($keys);
-        $this->assertContains('access_token', $keys);
-        $this->assertContains('refresh_token', $keys);
-        $this->assertContains('authorization', $keys);
-        $this->assertContains('client_secret', $keys);
-        $this->assertContains('code_verifier', $keys);
-        $this->assertContains('vendor_auth_code', $keys);
-        $this->assertContains('webhook_secret', $keys);
-        $this->assertContains('password', $keys);
-        $this->assertContains('current_password', $keys);
-    }
 }

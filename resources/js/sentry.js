@@ -47,10 +47,12 @@ export function initSentry(Vue, router) {
       ],
       beforeSend(event, hint) {
         if (event.exception) {
+          const existingVueContext = event.contexts?.vue || {};
           event.contexts = {
             ...event.contexts,
             vue: {
-              componentName: hint?.componentName || 'Unknown',
+              ...existingVueContext,
+              componentName: existingVueContext.componentName || hint?.componentName || 'Unknown',
             },
           };
         }
@@ -131,7 +133,7 @@ export function setupUnhandledRejectionHandler(Vue) {
  */
 export function setSentryUser(user) {
   if (!user || !user.id) {
-    Sentry.setUser(null);
+    clearSentryUser();
     return;
   }
 
@@ -140,16 +142,10 @@ export function setSentryUser(user) {
     id: String(user.id),
   });
 
-  // Diagnostic tags
-  if (user.company_id) {
-    Sentry.setTag('company_id', user.company_id);
-  }
-  if (user.is_admin !== undefined) {
-    Sentry.setTag('is_admin', Boolean(user.is_admin));
-  }
-  if (user.timezone) {
-    Sentry.setTag('timezone', user.timezone);
-  }
+  // Explicitly set or clear tags so previous user values don't leak
+  Sentry.setTag('company_id', user.company_id || undefined);
+  Sentry.setTag('is_admin', user.is_admin !== undefined ? Boolean(user.is_admin) : undefined);
+  Sentry.setTag('timezone', user.timezone || undefined);
 }
 
 /**
@@ -158,6 +154,9 @@ export function setSentryUser(user) {
  */
 export function clearSentryUser() {
   Sentry.setUser(null);
+  Sentry.setTag('company_id', undefined);
+  Sentry.setTag('is_admin', undefined);
+  Sentry.setTag('timezone', undefined);
 }
 
 /**

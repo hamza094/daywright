@@ -143,7 +143,7 @@ Add to your `appspec.yml` or deployment script:
 
 ```bash
 export VITE_SENTRY_RELEASE=$(git rev-parse --short HEAD)
-export SENTRY_AUTH_TOKEN="your_token"
+export SENTRY_AUTH_TOKEN="$SENTRY_AUTH_TOKEN"
 npm run build
 ```
 
@@ -156,7 +156,7 @@ commands:
   01_build_frontend:
     command: |
       export VITE_SENTRY_RELEASE=$(git rev-parse --short HEAD)
-      export SENTRY_AUTH_TOKEN="your_token"
+      export SENTRY_AUTH_TOKEN="$SENTRY_AUTH_TOKEN"
       npm run build
 ```
 
@@ -416,11 +416,8 @@ AWS_BUCKET=
 ### Quick Rollback Commands
 
 ```bash
-# Revert to previous commit
-git revert HEAD
-
-# Or checkout previous commit
-git checkout previous-commit-hash
+# Revert to previous commit (creates a new commit that undoes the last one)
+git revert HEAD --no-edit
 
 # Redeploy
 git push origin main

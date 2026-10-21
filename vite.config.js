@@ -17,6 +17,9 @@ export default defineConfig({
       authToken: process.env.SENTRY_AUTH_TOKEN,
       cleanArtifacts: true,
       disable: !process.env.SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        filesToDeleteAfterUpload: ['public/build/**/*.map'],
+      },
     }),
   ],
   resolve: {

@@ -11,7 +11,6 @@
     "cweagans/composer-patches": "^2.0",
     "php": "^8.3",
     "barryvdh/laravel-debugbar": "^3.5",
-    "bugsnag/bugsnag-laravel": "^2.0",
     "cviebrock/eloquent-sluggable": "^12.0",
     "dedoc/scramble": "^0.13.2",
     "doctrine/dbal": "^3.7",

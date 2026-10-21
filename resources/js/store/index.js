@@ -15,6 +15,15 @@ import notifications from './notifications';
 
 Vue.use(Vuex);
 
+// Purge legacy persisted state to prevent cross-account data leakage
+// createPersistedState with paths: [] prevents writing new data,
+// but existing localStorage.getItem('vuex') is still read on app load
+try {
+  localStorage.removeItem('vuex');
+} catch {
+  // Ignore storage errors in restricted browser contexts (Safari private browsing, etc.)
+}
+
 export default new Vuex.Store({
   plugins: [
     createPersistedState({

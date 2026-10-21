@@ -148,10 +148,7 @@ class Kernel extends ConsoleKernel
     #[Override]
     protected function bootstrappers()
     {
-        return array_merge(
-            [\Bugsnag\BugsnagLaravel\OomBootstrapper::class],
-            parent::bootstrappers(),
-        );
+        return parent::bootstrappers();
     }
 
     private function schedulerLogPath(): string

@@ -29,7 +29,11 @@ const resetAuthState = (commit, dispatch, { notify = true, clearStorage = false 
   }
   clearTwoFaState();
   if (clearStorage) {
-    localStorage.removeItem('vuex');
+    try {
+      localStorage.removeItem('vuex');
+    } catch {
+      // Storage unavailable or blocked; ignore safely
+    }
   }
 };
 
