@@ -15,6 +15,8 @@ export default defineConfig({
       org: 'hik-tech',
       project: 'daywright',
       authToken: process.env.SENTRY_AUTH_TOKEN,
+      cleanArtifacts: true,
+      disable: !process.env.SENTRY_AUTH_TOKEN,
     }),
   ],
   resolve: {
@@ -27,13 +29,9 @@ export default defineConfig({
   },
   build: {
     manifest: true,
-    sourcemap: true,
+    sourcemap: 'hidden',
     rollupOptions: {
       input: 'resources/js/app.js',
     },
-  },
-  sentry: {
-    disableClientReports: true,
-    cleanArtifacts: true,
   },
 });

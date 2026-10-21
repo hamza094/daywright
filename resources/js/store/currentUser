@@ -3,6 +3,7 @@ import Vue from 'vue';
 import { clearTwoFaState, markTwoFaPending, pushRoute, getErrorMessage } from '../utils/auth.js';
 import { parseApiError } from '../utils/apiResponse.js';
 import { isTwoFactorChallenge, parseAuthSession } from '../utils/authResponse.js';
+import { setSentryUser, clearSentryUser } from '../sentry.js';
 
 const normalizeFeatureFlags = (features) => {
   return features !== null && typeof features === 'object' && !Array.isArray(features) ? features : {};
@@ -22,6 +23,7 @@ const resetAuthState = (commit, dispatch, { notify = true, clearStorage = false 
   commit('setUser', {});
   commit('loggedIn', false);
   commit('clearErrors');
+  clearSentryUser(); // Clear user on logout or expired session
   if (notify) {
     dispatch('subscribeUser/userLogout', null, { root: true });
   }
@@ -48,6 +50,9 @@ const actions = {
     commit('setUser', normalizeUser(user, features));
     commit('loggedIn', true);
     commit('clearErrors');
+
+    // Set Sentry user context on login
+    setSentryUser(user);
 
     dispatch('subscribeUser/userSubscription', null, { root: true });
     if (toastMsg && vm?.$vToastify) vm.$vToastify.success(toastMsg);
@@ -116,6 +121,10 @@ const actions = {
         commit('setUser', normalizeUser(user, features));
         commit('loggedIn', true);
         commit('clearErrors');
+
+        // Set Sentry user context on page load / session bootstrap
+        setSentryUser(user);
+
         try {
           await dispatch('subscribeUser/userSubscription', null, { root: true });
         } catch {
