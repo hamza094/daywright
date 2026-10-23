@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue2';
 import path from 'path';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 export default defineConfig({
   plugins: [
@@ -10,6 +11,16 @@ export default defineConfig({
       refresh: true,
     }),
     vue(),
+    sentryVitePlugin({
+      org: 'hik-tech',
+      project: 'daywright',
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      cleanArtifacts: true,
+      disable: !process.env.SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        filesToDeleteAfterUpload: ['public/build/**/*.map'],
+      },
+    }),
   ],
   resolve: {
     alias: {
@@ -21,6 +32,7 @@ export default defineConfig({
   },
   build: {
     manifest: true,
+    sourcemap: 'hidden',
     rollupOptions: {
       input: 'resources/js/app.js',
     },

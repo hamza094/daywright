@@ -51,6 +51,10 @@ window.moment = momenttz;
 
 import router from './router.js';
 import store from './store';
+import { setupSentry } from './sentry';
+
+// Initialize Sentry error monitoring
+setupSentry(Vue, router);
 
 Vue.mixin(alertNotice);
 Vue.mixin(conversation);
@@ -197,6 +201,12 @@ const initializeApp = async () => {
     store.commit('currentUser/loggedIn', false);
     store.commit('currentUser/clearErrors');
     store.commit('currentUser/setBootstrapped', true);
+    store.dispatch('subscribeUser/userLogout');
+    try {
+      localStorage.removeItem('vuex');
+    } catch {
+      // Storage unavailable or blocked; ignore safely
+    }
   }
 
   new Vue({

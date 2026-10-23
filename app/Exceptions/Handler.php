@@ -84,8 +84,8 @@ class Handler extends ExceptionHandler
         // ZoomMeetingCreationUnknownException and ZoomMeetingOperationUnknownException
         // extend ApiException (not ZoomException). ZoomService attaches the original
         // provider exception as $previous. Route them through a sanitised path so
-        // neither the raw exception nor its previous chain reaches parent::report(),
-        // the daily log, or Bugsnag.
+        // neither the raw exception nor its previous chain reaches parent::report()
+        // or the daily log.
         if ($this->isZoomUncertainResultException($e)) {
             $this->recordZoomUncertainResultException($e);
 

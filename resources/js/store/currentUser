@@ -3,6 +3,7 @@ import Vue from 'vue';
 import { clearTwoFaState, markTwoFaPending, pushRoute, getErrorMessage } from '../utils/auth.js';
 import { parseApiError } from '../utils/apiResponse.js';
 import { isTwoFactorChallenge, parseAuthSession } from '../utils/authResponse.js';
+import { setSentryUser, clearSentryUser } from '../sentry.js';
 
 const normalizeFeatureFlags = (features) => {
   return features !== null && typeof features === 'object' && !Array.isArray(features) ? features : {};
@@ -18,14 +19,18 @@ const normalizeUser = (user, features = null) => {
   };
 };
 
-const resetAuthState = (commit, dispatch, { notify = true } = {}) => {
+const resetAuthState = (commit, dispatch) => {
   commit('setUser', {});
   commit('loggedIn', false);
   commit('clearErrors');
-  if (notify) {
-    dispatch('subscribeUser/userLogout', null, { root: true });
-  }
+  clearSentryUser(); // Clear user on logout or expired session
+  dispatch('subscribeUser/userLogout', null, { root: true });
   clearTwoFaState();
+  try {
+    localStorage.removeItem('vuex');
+  } catch {
+    // Storage unavailable or blocked; ignore safely
+  }
 };
 
 const state = {
@@ -38,13 +43,26 @@ const state = {
 const getters = {};
 
 const actions = {
-  finalizeLogin({ commit, dispatch }, { response, vm, toastMsg }) {
+  finalizeLogin({ commit, dispatch, state }, { response, vm, toastMsg }) {
     const { user, features } = parseAuthSession(response);
 
+    // If an account was previously loaded and differs, reset module state before logging in new user
+    if (state.user?.id && state.user.id !== user?.id) {
+      dispatch('subscribeUser/userLogout', null, { root: true });
+    }
+
     clearTwoFaState();
+    try {
+      localStorage.removeItem('vuex');
+    } catch {
+      // Storage unavailable or blocked; ignore safely
+    }
     commit('setUser', normalizeUser(user, features));
     commit('loggedIn', true);
     commit('clearErrors');
+
+    // Set Sentry user context on login
+    setSentryUser(user);
 
     dispatch('subscribeUser/userSubscription', null, { root: true });
     if (toastMsg && vm?.$vToastify) vm.$vToastify.success(toastMsg);
@@ -104,15 +122,24 @@ const actions = {
     commit('setUserVerified', isVerified);
   },
 
-  async bootstrapSession({ commit, dispatch }) {
+  async bootstrapSession({ commit, dispatch, state }) {
     try {
       const response = await axios.get('/users/me');
       const { user, features } = parseAuthSession(response);
 
       if (user) {
+        // If switching accounts or re-bootstrapping for a different user, clear prior module state
+        if (state.user?.id && state.user.id !== user.id) {
+          dispatch('subscribeUser/userLogout', null, { root: true });
+        }
+
         commit('setUser', normalizeUser(user, features));
         commit('loggedIn', true);
         commit('clearErrors');
+
+        // Set Sentry user context on page load / session bootstrap
+        setSentryUser(user);
+
         try {
           await dispatch('subscribeUser/userSubscription', null, { root: true });
         } catch {
@@ -121,10 +148,10 @@ const actions = {
         return user;
       }
 
-      resetAuthState(commit, dispatch, { notify: false });
+      resetAuthState(commit, dispatch);
       return null;
     } catch {
-      resetAuthState(commit, dispatch, { notify: false });
+      resetAuthState(commit, dispatch);
       return null;
     } finally {
       commit('setBootstrapped', true);

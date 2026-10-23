@@ -22,9 +22,19 @@ final class LogChannelSanitizationTest extends TestCase
     }
 
     #[Test]
-    public function webhook_channel_has_scrub_sensitive_data_tap(): void
+    public function zoom_webhook_failed_channel_has_scrub_sensitive_data_tap(): void
     {
-        $config = Config::get('logging.channels.webhook');
+        $config = Config::get('logging.channels.zoom_webhook_failed_file');
+
+        $this->assertIsArray($config);
+        $this->assertArrayHasKey('tap', $config);
+        $this->assertContains(\App\Logging\ScrubSensitiveData::class, $config['tap']);
+    }
+
+    #[Test]
+    public function queue_critical_channel_has_scrub_sensitive_data_tap(): void
+    {
+        $config = Config::get('logging.channels.queue_critical_file');
 
         $this->assertIsArray($config);
         $this->assertArrayHasKey('tap', $config);
@@ -138,22 +148,5 @@ final class LogChannelSanitizationTest extends TestCase
         $this->assertSame('request-visible-123', $logEntry['context']['request_id']);
         $this->assertSame('********', $logEntry['context']['headers']['Authorization']);
         $this->assertSame('********', $logEntry['context']['provider']['access_token']);
-    }
-
-    #[Test]
-    public function bugsnag_has_required_redacted_keys(): void
-    {
-        $keys = config('bugsnag.redacted_keys');
-
-        $this->assertIsArray($keys);
-        $this->assertContains('access_token', $keys);
-        $this->assertContains('refresh_token', $keys);
-        $this->assertContains('authorization', $keys);
-        $this->assertContains('client_secret', $keys);
-        $this->assertContains('code_verifier', $keys);
-        $this->assertContains('vendor_auth_code', $keys);
-        $this->assertContains('webhook_secret', $keys);
-        $this->assertContains('password', $keys);
-        $this->assertContains('current_password', $keys);
     }
 }

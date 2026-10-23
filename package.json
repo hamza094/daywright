@@ -3,6 +3,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:production": "vite build",
     "test": "node --test resources/js/**/*.test.js",
     "lint": "eslint *.js resources",
     "format": "prettier --write '**/*.{js,vue,css,scss,json,yml,md}'",
@@ -12,6 +13,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@sentry/vite-plugin": "^11.8.0",
     "@vitejs/plugin-vue2": "^2.3.3",
     "axios": "^1.13",
     "bootstrap": "^4.6.0",
@@ -42,6 +44,7 @@
     "@fortawesome/fontawesome-free": "^7.1.0",
     "@popperjs/core": "^2.11.8",
     "@saeris/vue-spinners": "^1.0.8",
+    "@sentry/vue": "^11.8.0",
     "@tabler/core": "^1.0.0-beta20",
     "@zoom/meetingsdk": "^4.1.0",
     "animate.css": "^4.1.1",
