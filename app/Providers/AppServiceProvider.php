@@ -140,7 +140,7 @@ class AppServiceProvider extends ServiceProvider
 
         // 5. Nightwatch Configuration
         if (class_exists(\Laravel\Nightwatch\Nightwatch::class)) {
-            \Laravel\Nightwatch\Nightwatch::user(fn (\Illuminate\Contracts\Auth\Authenticatable $user) => [
+            \Laravel\Nightwatch\Nightwatch::user(fn (User $user): array => [
                 'id' => $user->id,
                 'uuid' => $user->uuid,
                 'name' => $user->name,

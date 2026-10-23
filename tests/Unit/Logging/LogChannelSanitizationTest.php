@@ -22,9 +22,19 @@ final class LogChannelSanitizationTest extends TestCase
     }
 
     #[Test]
-    public function webhook_channel_has_scrub_sensitive_data_tap(): void
+    public function zoom_webhook_failed_channel_has_scrub_sensitive_data_tap(): void
     {
-        $config = Config::get('logging.channels.webhook');
+        $config = Config::get('logging.channels.zoom_webhook_failed_file');
+
+        $this->assertIsArray($config);
+        $this->assertArrayHasKey('tap', $config);
+        $this->assertContains(\App\Logging\ScrubSensitiveData::class, $config['tap']);
+    }
+
+    #[Test]
+    public function queue_critical_channel_has_scrub_sensitive_data_tap(): void
+    {
+        $config = Config::get('logging.channels.queue_critical_file');
 
         $this->assertIsArray($config);
         $this->assertArrayHasKey('tap', $config);

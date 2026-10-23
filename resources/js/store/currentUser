@@ -19,21 +19,17 @@ const normalizeUser = (user, features = null) => {
   };
 };
 
-const resetAuthState = (commit, dispatch, { notify = true, clearStorage = false } = {}) => {
+const resetAuthState = (commit, dispatch) => {
   commit('setUser', {});
   commit('loggedIn', false);
   commit('clearErrors');
   clearSentryUser(); // Clear user on logout or expired session
-  if (notify) {
-    dispatch('subscribeUser/userLogout', null, { root: true });
-  }
+  dispatch('subscribeUser/userLogout', null, { root: true });
   clearTwoFaState();
-  if (clearStorage) {
-    try {
-      localStorage.removeItem('vuex');
-    } catch {
-      // Storage unavailable or blocked; ignore safely
-    }
+  try {
+    localStorage.removeItem('vuex');
+  } catch {
+    // Storage unavailable or blocked; ignore safely
   }
 };
 
@@ -47,10 +43,20 @@ const state = {
 const getters = {};
 
 const actions = {
-  finalizeLogin({ commit, dispatch }, { response, vm, toastMsg }) {
+  finalizeLogin({ commit, dispatch, state }, { response, vm, toastMsg }) {
     const { user, features } = parseAuthSession(response);
 
+    // If an account was previously loaded and differs, reset module state before logging in new user
+    if (state.user?.id && state.user.id !== user?.id) {
+      dispatch('subscribeUser/userLogout', null, { root: true });
+    }
+
     clearTwoFaState();
+    try {
+      localStorage.removeItem('vuex');
+    } catch {
+      // Storage unavailable or blocked; ignore safely
+    }
     commit('setUser', normalizeUser(user, features));
     commit('loggedIn', true);
     commit('clearErrors');
@@ -102,13 +108,13 @@ const actions = {
     } catch (error) {
       Vue.prototype.$vToastify.error(getErrorMessage(error, 'Unable to log out.'));
     } finally {
-      resetAuthState(commit, dispatch, { clearStorage: true });
+      resetAuthState(commit, dispatch);
       pushRoute(null, '/login', router);
     }
   },
 
   deleteUser({ commit, dispatch }) {
-    resetAuthState(commit, dispatch, { clearStorage: true });
+    resetAuthState(commit, dispatch);
     router.push('/dashboard');
   },
 
@@ -116,12 +122,17 @@ const actions = {
     commit('setUserVerified', isVerified);
   },
 
-  async bootstrapSession({ commit, dispatch }) {
+  async bootstrapSession({ commit, dispatch, state }) {
     try {
       const response = await axios.get('/users/me');
       const { user, features } = parseAuthSession(response);
 
       if (user) {
+        // If switching accounts or re-bootstrapping for a different user, clear prior module state
+        if (state.user?.id && state.user.id !== user.id) {
+          dispatch('subscribeUser/userLogout', null, { root: true });
+        }
+
         commit('setUser', normalizeUser(user, features));
         commit('loggedIn', true);
         commit('clearErrors');
@@ -137,10 +148,10 @@ const actions = {
         return user;
       }
 
-      resetAuthState(commit, dispatch, { notify: false, clearStorage: true });
+      resetAuthState(commit, dispatch);
       return null;
     } catch {
-      resetAuthState(commit, dispatch, { notify: false, clearStorage: true });
+      resetAuthState(commit, dispatch);
       return null;
     } finally {
       commit('setBootstrapped', true);

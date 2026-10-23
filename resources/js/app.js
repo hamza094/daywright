@@ -201,6 +201,12 @@ const initializeApp = async () => {
     store.commit('currentUser/loggedIn', false);
     store.commit('currentUser/clearErrors');
     store.commit('currentUser/setBootstrapped', true);
+    store.dispatch('subscribeUser/userLogout');
+    try {
+      localStorage.removeItem('vuex');
+    } catch {
+      // Storage unavailable or blocked; ignore safely
+    }
   }
 
   new Vue({
