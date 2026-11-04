@@ -55,8 +55,11 @@ No additional code changes needed.
 - [ ] `.env` production variables set
 - [ ] Laravel `APP_KEY` generated
 - [ ] Database migrations tested
-- [ ] Queue workers configured
-- [ ] Scheduler (cron) configured
+- [ ] Queue workers running via Laravel Horizon (`php artisan horizon`)
+- [ ] Linux process supervisor (Supervisor or Docker) keeps Horizon running 24/7 with auto-restart
+- [ ] Deployment script executes `php artisan horizon:terminate` for zero-downtime worker reloads
+- [ ] PHP CLI `pcntl` extension verified enabled for worker signal/timeout enforcement
+- [ ] Scheduler (cron) configured (`* * * * * cd /path/to/daywright && php artisan schedule:run >> /dev/null 2>&1`)
 - [ ] File permissions correct
 - [ ] Logging configured
 
@@ -99,7 +102,9 @@ No additional code changes needed.
 - [ ] Real-time features work (Echo/Pusher)
 - [ ] File uploads work
 - [ ] Cron jobs run
-- [ ] Queue workers process jobs
+- [ ] Horizon dashboard accessible at `/horizon` by authorized `ADMIN_EMAILS` (verified under `config:cache`)
+- [ ] All 4 Horizon supervisors active (`supervisor-auth`, `supervisor-default`, `supervisor-webhooks`, `supervisor-metrics`)
+- [ ] Queue workers successfully process jobs across `critical`, `default`, `webhooks`, and `metrics` queues
 
 ### Sentry Verification
 
@@ -162,6 +167,10 @@ SENTRY_AUTH_TOKEN=  # CI/CD secret only
 
 # Nightwatch
 NIGHTWATCH_LOG_LEVEL=warning
+
+# Queues & Horizon
+QUEUE_CONNECTION=redis
+ADMIN_EMAILS=admin@example.com
 ```
 
 ---

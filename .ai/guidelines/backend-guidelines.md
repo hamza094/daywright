@@ -551,6 +551,13 @@ Jobs encapsulate work to be queued and processed asynchronously.
 ### Guidelines
 
 - ✅ Use standard traits: `Dispatchable`, `InteractsWithQueue`, `Queueable`, `SerializesModels`
+- ✅ **Explicit Queue Assignment**: Always assign jobs and queued notifications to one of DayWright's four designated queues (`$this->onQueue(...)` in constructor or `$queue` property). Never rely on implicit queue defaults.
+  - `critical`: Auth and immediate-response actions (password resets, email verifications).
+  - `default`: Core business operations (messages, notifications, Zoom meetings/cancellations/recoveries).
+  - `webhooks`: Inbound third-party webhook processing (`ProcessZoomWebhookInbox`).
+  - `metrics`: Heavy analytical and score recalculation tasks (`RecalculateProjectHealth`).
+- ✅ **Timeout Hierarchy Rule**: Job `$timeout` must never exceed the Horizon supervisor timeout (120s) and must strictly be less than Redis `retry_after` (150s) to prevent double-execution race conditions:
+  $$\text{Job Timeout} \le \text{Supervisor Timeout (120s)} < \text{Redis } \mathtt{retry\_after} \text{ (150s)}$$
 - ✅ Define `$tries`, `$timeout`, and `backoff()`
 - ✅ Use method injection in `handle()` for dependencies
 - ✅ Implement `failed()` for failure handling

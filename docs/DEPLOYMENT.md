@@ -63,9 +63,8 @@ DB_DATABASE=daywright
 DB_USERNAME=your_db_user
 DB_PASSWORD=your_db_password
 
-# Queue - IMPORTANT: Do not use 'sync' in production
-QUEUE_CONNECTION=database
-# Alternative: QUEUE_CONNECTION=redis
+# Queue - Use Redis with Laravel Horizon in production
+QUEUE_CONNECTION=redis
 
 # Cache and Session - Use Redis for production
 CACHE_DRIVER=redis
@@ -174,41 +173,34 @@ This saves the dataset to disk if:
 - At least 10 keys changed in 300 seconds
 - At least 10000 keys changed in 60 seconds
 
-## Queue Workers
+## Queue Workers (Laravel Horizon)
 
-### Queue Architecture
+### Queue Architecture & Supervisor Isolation
 
-DayWright uses multiple queues for different priorities:
+DayWright uses **Laravel Horizon** over Redis with four dedicated supervisors for capacity isolation:
 
-| Queue      | Purpose                                                 | Priority |
-| ---------- | ------------------------------------------------------- | -------- |
-| `critical` | Password resets, email verification, auth notifications | Highest  |
-| `default`  | Messages, notifications, Zoom operations                | Normal   |
-| `metrics`  | Analytics and reporting                                 | Lower    |
-| `webhooks` | Zoom webhook processing                                 | Normal   |
+| Queue      | Supervisor            | Purpose                                                                | Sizing Strategy                                |
+| :--------- | :-------------------- | :--------------------------------------------------------------------- | :--------------------------------------------- |
+| `critical` | `supervisor-auth`     | Password resets, email verification, security notices                  | 1 dedicated process (zero waiting)             |
+| `default`  | `supervisor-default`  | Team messages, notifications, Zoom cancellations & recoveries          | 2-4 processes (auto-scaling on wait time)      |
+| `webhooks` | `supervisor-webhooks` | Zoom webhook event processing (`ProcessZoomWebhookInbox`)              | 1 dedicated process                            |
+| `metrics`  | `supervisor-metrics`  | Nightly project health score calculations (`RecalculateProjectHealth`) | 1 fixed process (hard-capped to protect MySQL) |
 
-### Worker Commands
+Horizon worker configuration is centralized in `config/horizon.php`.
 
-Run these workers using Supervisor (see Supervisor Setup section):
+### Running Horizon
+
+In development (via Laravel Sail):
 
 ```bash
-# Critical and default queues
-php artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --timeout=120 --max-time=3600
-
-# Metrics queue
-php artisan queue:work database --queue=metrics --sleep=3 --tries=2 --timeout=120 --max-time=3600
-
-# Webhooks queue
-php artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=120 --max-time=3600
+./vendor/bin/sail artisan horizon
 ```
 
-### Worker Flags Explained
+In production (managed via Linux Supervisor or Docker):
 
-- `--queue`: Queue priority order (left = highest priority)
-- `--sleep=3`: Wait 3 seconds between jobs if queue is empty
-- `--tries=3`: Default retry count (jobs can override this)
-- `--timeout=120`: Maximum execution time per job (must be < retry_after)
-- `--max-time=3600`: Restart worker after 1 hour (prevents memory leaks)
+```bash
+php artisan horizon
+```
 
 ### PCNTL Requirement & Job Timeout Precedence
 
@@ -257,9 +249,9 @@ During incident recovery, if an abandoned lock blocks scheduled commands after a
 php artisan schedule:clear-cache
 ```
 
-## Supervisor Setup
+## Supervisor Setup (Keeping Horizon Alive)
 
-Supervisor keeps queue workers running and restarts them if they crash.
+In production, use Linux Supervisor (or a Docker container restart policy) to manage the single Horizon master process. Horizon internally manages all 4 worker supervisors and pools.
 
 ### Install Supervisor
 
@@ -273,40 +265,17 @@ sudo yum install supervisor
 
 ### Configuration
 
-Create `/etc/supervisor/conf.d/daywright-worker.conf`:
+Create `/etc/supervisor/conf.d/daywright-horizon.conf`:
 
 ```ini
-[program:daywright-worker-critical]
-process_name=%(program_name)s_%(process_num)02d
-command=php /path/to/daywright/artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --timeout=120 --max-time=3600
+[program:daywright-horizon]
+process_name=%(program_name)s
+command=php /path/to/daywright/artisan horizon
 autostart=true
 autorestart=true
 user=www-data
-numprocs=2
 redirect_stderr=true
-stdout_logfile=/var/log/daywright-worker-critical.log
-stopwaitsecs=3600
-
-[program:daywright-worker-metrics]
-process_name=%(program_name)s_%(process_num)02d
-command=php /path/to/daywright/artisan queue:work database --queue=metrics --sleep=3 --tries=2 --timeout=120 --max-time=3600
-autostart=true
-autorestart=true
-user=www-data
-numprocs=1
-redirect_stderr=true
-stdout_logfile=/var/log/daywright-worker-metrics.log
-stopwaitsecs=3600
-
-[program:daywright-worker-webhooks]
-process_name=%(program_name)s_%(process_num)02d
-command=php /path/to/daywright/artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=120 --max-time=3600
-autostart=true
-autorestart=true
-user=www-data
-numprocs=1
-redirect_stderr=true
-stdout_logfile=/var/log/daywright-worker-webhooks.log
+stdout_logfile=/var/log/daywright-horizon.log
 stopwaitsecs=3600
 ```
 
@@ -319,8 +288,8 @@ sudo supervisorctl reread
 # Update Supervisor
 sudo supervisorctl update
 
-# Start all workers
-sudo supervisorctl start daywright-worker-*
+# Start Horizon
+sudo supervisorctl start daywright-horizon
 
 # Check status
 sudo supervisorctl status
@@ -355,11 +324,10 @@ sudo supervisorctl status
    php artisan view:cache
    ```
 
-5. **Restart queue workers** (loads new code):
+5. **Restart queue workers** (gracefully reloads Horizon with new code):
 
    ```bash
-   php artisan queue:restart
-   sudo supervisorctl restart daywright-worker-*
+   php artisan horizon:terminate
    ```
 
 6. **Clear any running scheduler tasks** (if needed):
@@ -403,18 +371,17 @@ php artisan queue:flush
 
 Failed jobs are automatically pruned after 7 days by the scheduler. To adjust this, modify the scheduler command in `app/Console/Kernel.php`.
 
-### Queue Monitoring
+### Horizon Dashboard & Queue Monitoring
 
-Monitor queue depth:
-
-```bash
-# Check queue size (database queue)
-php artisan tinker
->>> DB::table('jobs')->count();
-
-# Check failed jobs count
->>> DB::table('failed_jobs')->count();
-```
+- **Horizon Dashboard**: Access real-time throughput, supervisor status, queue wait times, and job metrics at:
+  `https://your-domain.com/horizon`
+  _(Access is protected by `ADMIN_EMAILS` in production)_
+- **CLI Horizon Status**:
+  ```bash
+  php artisan horizon:status
+  ```
+- **Failed Jobs**:
+  Failed jobs appear directly in the Horizon UI and are recorded in the `failed_jobs` database table.
 
 ### Log Monitoring
 
