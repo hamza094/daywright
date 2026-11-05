@@ -165,13 +165,19 @@ Configure Redis persistence in `redis.conf`:
 save 900 1
 save 300 10
 save 60 10000
+
+# Optional: For stronger queue durability with minimal job loss on unexpected restarts
+appendonly yes
+appendfsync everysec
 ```
 
-This saves the dataset to disk if:
+This saves the dataset to disk via RDB snapshots if:
 
 - At least 1 key changed in 900 seconds
 - At least 10 keys changed in 300 seconds
 - At least 10000 keys changed in 60 seconds
+
+> **Note**: Standard RDB snapshots are sufficient for DayWright because scheduled and recovery tasks are re-dispatchable and idempotent. For stronger durability with a minimal loss window (up to ~1 second on abrupt failure), enable AOF (`appendonly yes` with `appendfsync everysec`).
 
 ## Queue Workers (Laravel Horizon)
 
@@ -296,6 +302,17 @@ sudo supervisorctl status
 ```
 
 ## Deployment Process
+
+### Database to Redis Queue Cutover (One-Time Migration)
+
+If migrating an existing deployment from `QUEUE_CONNECTION=database` to Redis/Horizon:
+
+1. **Drain pending database queue jobs** across all queues before switching:
+   ```bash
+   php artisan queue:work database --queue=critical,default,webhooks,metrics --stop-when-empty
+   ```
+2. Verify the `jobs` table is completely empty.
+3. Switch `.env` to `QUEUE_CONNECTION=redis` and proceed with standard deployment.
 
 ### Standard Deployment
 

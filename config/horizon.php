@@ -291,6 +291,22 @@ return [
             ],
         ],
 
+        'staging' => [
+            // Staging environment mirrors local development process limits (Total: 5 workers)
+            'supervisor-auth' => [
+                'processes' => 1,
+            ],
+            'supervisor-default' => [
+                'processes' => 2,
+            ],
+            'supervisor-webhooks' => [
+                'processes' => 1,
+            ],
+            'supervisor-metrics' => [
+                'processes' => 1,
+            ],
+        ],
+
         'local' => [
             // Fixed process counts for local development (Total: 5 workers)
             'supervisor-auth' => [
