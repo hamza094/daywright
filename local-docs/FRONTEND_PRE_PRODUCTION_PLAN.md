@@ -133,7 +133,7 @@ This document outlines all **mandatory frontend fixes, performance enhancements,
 4. **Automated Playwright "Golden Path" E2E Smoke Tests**
    - **Target Files:** `playwright.config.js`, `tests/e2e/auth.spec.js`, `tests/e2e/projects-tasks.spec.js`, `tests/e2e/error-handling.spec.js`
    - **Action:** Install `@playwright/test` and create 3 fast, targeted headless test specs covering the 4 vital product loops:
-     - [ ] **Workflow 1: Authentication (`tests/e2e/auth.spec.js`)**
+     - [x] **Workflow 1: Authentication (`tests/e2e/auth.spec.js`)** ✅ Completed
        - Login with valid credentials → asserts redirect to `/dashboard` and session cookie stored.
        - Route guards redirect unauthenticated guests to `/login`.
        - Logout purges local storage/session and redirects to `/login`.

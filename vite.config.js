@@ -5,6 +5,15 @@ import path from 'path';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 export default defineConfig({
+  server: {
+    host: '0.0.0.0',
+    hmr: {
+      host: 'localhost',
+    },
+    watch: {
+      usePolling: true,
+    },
+  },
   plugins: [
     laravel({
       input: ['resources/sass/app.scss', 'resources/js/app.js'],
@@ -31,10 +40,7 @@ export default defineConfig({
     },
   },
   build: {
-    manifest: true,
+    manifest: 'manifest.json',
     sourcemap: 'hidden',
-    rollupOptions: {
-      input: 'resources/js/app.js',
-    },
   },
 });

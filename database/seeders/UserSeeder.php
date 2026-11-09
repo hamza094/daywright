@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\Project;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -14,13 +16,13 @@ class UserSeeder extends Seeder
     public function run(): void
     {
 
-        /*User::factory()->count(14)
-               ->has(Project::factory()
-                   ->state(['stage_id' => 1])
-                   ->count(6))
-               ->create();*/
+        User::factory()->count(14)
+            ->has(Project::factory()
+                ->state(['stage_id' => 1])
+                ->count(6))
+            ->create();
 
-        $now = now();
+        /*$now = now();
         $password = Hash::make('Berry@999');
 
         foreach (range(1, 10) as $chunk) {
@@ -49,6 +51,6 @@ class UserSeeder extends Seeder
             }
 
             DB::table('users')->insert($rows);
-        }
+        }*/
     }
 }

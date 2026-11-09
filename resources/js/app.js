@@ -162,23 +162,23 @@ axios.defaults.useProgress = false;
 import safeHtml from './directives/safeHtml';
 Vue.directive('safe-html', safeHtml);
 
-const components = [
-  ['project-button', './components/ProjectButton.vue'],
-  ['archive-tasks', './components/Project/Panel/ArchiveTasks.vue'],
-  ['project-chat', './components/Project/Panel/ProjectChatPanel.vue'],
-  ['project-form', './components/ProjectForm.vue'],
-  ['project-status', './components/Project/Status.vue'],
-  ['project-features', './components/Project/Feature/FeatureSection.vue'],
-  ['project-stage', './components/Project/Stage.vue'],
-  ['notifications', './components/Notification.vue'],
-  ['profile', './components/Profile/ProfilePge.vue'],
-  ['plan-limit-modal', './components/PlanLimitModal.vue'],
-  ['navbar', './components/Navbar.vue'],
-  ['sidebar-nav-panel', './components/layouts/SidebarNavPanel.vue'],
-];
+const componentLoaders = {
+  'project-button': () => import('./components/ProjectButton.vue'),
+  'archive-tasks': () => import('./components/Project/Panel/ArchiveTasks.vue'),
+  'project-chat': () => import('./components/Project/Panel/ProjectChatPanel.vue'),
+  'project-form': () => import('./components/ProjectForm.vue'),
+  'project-status': () => import('./components/Project/Status.vue'),
+  'project-features': () => import('./components/Project/Feature/FeatureSection.vue'),
+  'project-stage': () => import('./components/Project/Stage.vue'),
+  notifications: () => import('./components/Notification.vue'),
+  profile: () => import('./components/Profile/ProfilePage.vue'),
+  'plan-limit-modal': () => import('./components/PlanLimitModal.vue'),
+  navbar: () => import('./components/Navbar.vue'),
+  'sidebar-nav-panel': () => import('./components/layouts/SidebarNavPanel.vue'),
+};
 
-components.forEach(([name, path]) => {
-  Vue.component(name, () => import(`${path}`).then((m) => m.default));
+Object.entries(componentLoaders).forEach(([name, loader]) => {
+  Vue.component(name, () => loader().then((m) => m.default));
 });
 
 import LaravelVuePagination from 'laravel-vue-pagination';

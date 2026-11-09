@@ -5,6 +5,7 @@
     "build": "vite build",
     "build:production": "vite build",
     "test": "node --test resources/js/**/*.test.js",
+    "test:e2e": "playwright test tests/e2e",
     "lint": "eslint *.js resources",
     "format": "prettier --write '**/*.{js,vue,css,scss,json,yml,md}'",
     "stylelint": "stylelint \"resources/sass/**/*.scss\"",
@@ -91,5 +92,8 @@
       "php vendor/bin/pint"
     ]
   },
-  "type": "module"
+  "type": "module",
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.67.5"
+  }
 }

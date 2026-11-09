@@ -81,7 +81,7 @@ const actions = {
   async loginUser({ commit, dispatch }, user) {
     Vue.prototype.$Progress.start();
     try {
-      await axios.get('/sanctum/csrf-cookie');
+      await axios.get('/sanctum/csrf-cookie', { baseURL: '' });
       const response = await axios.post('/session/login', user);
       dispatch('handleLoginResponse', response);
       Vue.prototype.$Progress.finish();
@@ -106,7 +106,12 @@ const actions = {
     try {
       await axios.post('/session/logout');
     } catch (error) {
-      Vue.prototype.$vToastify.error(getErrorMessage(error, 'Unable to log out.'));
+      const status = error?.response?.status;
+      // 401 (Unauthenticated) or 419 (CSRF/Session Expired) means session is already terminated;
+      // no error toast needed since user is intentionally logging out.
+      if (status !== 401 && status !== 419) {
+        Vue.prototype.$vToastify.error(getErrorMessage(error, 'Unable to log out.'));
+      }
     } finally {
       resetAuthState(commit, dispatch);
       pushRoute(null, '/login', router);

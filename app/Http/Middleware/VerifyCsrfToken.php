@@ -15,5 +15,7 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'paddle/*',
+        'api/*/session/logout',
+        'session/logout',
     ];
 }

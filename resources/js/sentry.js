@@ -108,12 +108,21 @@ export function setupUnhandledRejectionHandler(Vue) {
     // Skip already-handled API errors
     if (reason?.__globalApiHandled) return;
 
-    // Skip standard non-crash HTTP client responses (401, 403, 404, 422, 429)
+    // Skip standard non-crash HTTP client responses (401, 403, 404, 419, 422, 429)
     const status = reason?.response?.status;
-    if (status && [401, 403, 404, 422, 429].includes(status)) return;
+    if (status && [401, 403, 404, 419, 422, 429].includes(status)) return;
 
     // Skip aborted/canceled requests
     if (reason?.code === 'ERR_CANCELED' || reason?.name === 'CanceledError') return;
+
+    // Skip harmless Vue Router navigation redirects / duplicate navigations
+    if (
+      reason?.name === 'NavigationDuplicated' ||
+      reason?._isRouter ||
+      reason?.message?.includes('Avoided redundant navigation')
+    ) {
+      return;
+    }
 
     console.error('Unhandled promise rejection:', reason);
 
