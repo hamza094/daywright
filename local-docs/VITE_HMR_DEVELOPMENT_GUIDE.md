@@ -82,7 +82,7 @@ _(If `public/hot` remains on disk when Vite is off, the browser will spin waitin
   Remove-Item public/hot -Force -ErrorAction SilentlyContinue
   ```
 
-### Step 3: Run the Build (If you modified frontend files)
+### Step 3: Run the Build
 
 ```bash
 ./vendor/bin/sail npm run build

@@ -179,6 +179,40 @@ This saves the dataset to disk via RDB snapshots if:
 
 > **Note**: Standard RDB snapshots are sufficient for DayWright because scheduled and recovery tasks are re-dispatchable and idempotent. For stronger durability with a minimal loss window (up to ~1 second on abrupt failure), enable AOF (`appendonly yes` with `appendfsync everysec`).
 
+### Redis Maintenance & Queue Quiescing
+
+When restarting Redis or performing maintenance on the Redis server in production, **quiesce** the queue first to avoid losing in-flight jobs or notification dispatches:
+
+1. **Pause queue workers** (stops Horizon from consuming new jobs):
+
+   ```bash
+   php artisan horizon:pause
+   ```
+
+2. **Wait for active jobs to complete**:
+   Check the Horizon dashboard or CLI status until active jobs reach `0`:
+
+   ```bash
+   php artisan horizon:status
+   ```
+
+3. **Force a snapshot of memory to disk**:
+
+   ```bash
+   redis-cli bgsave
+   ```
+
+4. **Perform Redis maintenance or restart**:
+
+   ```bash
+   sudo systemctl restart redis
+   ```
+
+5. **Resume queue workers**:
+   ```bash
+   php artisan horizon:continue
+   ```
+
 ## Queue Workers (Laravel Horizon)
 
 ### Queue Architecture & Supervisor Isolation

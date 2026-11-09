@@ -2,11 +2,7 @@
   <div class="container-fluid">
     <div class="row">
       <div class="col-lg-2 panel-left d-none d-lg-block">
-        <sidebar-nav-menu
-          :user="user"
-          :logged-in="loggedIn"
-          :on-sign-out="() => handleSignOut()"
-          @sign-out="handleSignOut">
+        <sidebar-nav-menu :user="user" :logged-in="loggedIn" :on-sign-out="() => handleSignOut()">
           <template #new-project>
             <project-button></project-button>
           </template>

@@ -94,16 +94,6 @@ export function handleGlobalApiError(error, { modal, toast, router } = {}) {
     return true;
   }
 
-  // Do not show global error toasts if session logout or unauthenticated cleanup encountered 401/419
-  if (
-    error?.config?.url?.includes('/session/logout') ||
-    (response?.status === 419 && !router?.app?.$store?.state?.currentUser?.loggedIn)
-  ) {
-    markGlobalApiHandled(error);
-
-    return true;
-  }
-
   if (!response && error?.request) {
     const surfaced = showToastError(toast, 'Unable to reach the server. Please check your connection and try again.');
 

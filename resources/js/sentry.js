@@ -46,6 +46,11 @@ export function initSentry(Vue, router) {
         /Failed to fetch dynamically imported module/i,
       ],
       beforeSend(event, hint) {
+        // Redact password-reset tokens from URLs
+        if (event.request?.url) {
+          event.request.url = event.request.url.replace(/\/password\/reset\/[^/?#]+/, '/password/reset/[REDACTED]');
+        }
+
         if (event.exception) {
           const existingVueContext = event.contexts?.vue || {};
           event.contexts = {
@@ -119,7 +124,7 @@ export function setupUnhandledRejectionHandler(Vue) {
     if (
       reason?.name === 'NavigationDuplicated' ||
       reason?._isRouter ||
-      reason?.message?.includes('Avoided redundant navigation')
+      (typeof reason?.message === 'string' && reason.message.includes('Avoided redundant navigation'))
     ) {
       return;
     }

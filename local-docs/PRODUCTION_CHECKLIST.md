@@ -135,6 +135,7 @@ No additional code changes needed.
 
 - [ ] Database backups configured
 - [ ] Backup restoration tested
+- [ ] Redis maintenance quiesce procedure documented (`horizon:pause` -> `bgsave` -> restart -> `horizon:continue`)
 - [ ] Disaster recovery plan documented
 - [ ] Rollback procedure tested
 
@@ -200,3 +201,20 @@ git revert HEAD --no-edit
 # Redeploy
 git push origin main
 ```
+
+---
+
+## Post-Launch Hardening & Technical Debt
+
+Items identified during code review to address in dedicated maintenance PRs:
+
+### 1. Reliable S3 File Deletion in Conversations (`ConversationService`)
+
+- [ ] **Current State:** `ConversationService::deleteConversation()` uses Laravel's `defer(fn () => $this->deleteFileIfExists(...))` to delete attachments from Amazon S3.
+- [ ] **Risk:** If the AWS S3 network connection times out or fails during `defer()`, the database record is already deleted and the file remains orphaned in S3 storage without retry.
+- [ ] **Action:** Migrate file deletion to a queued job (e.g. `DeleteConversationAttachmentJob`) dispatched on the `default` queue with 3 retries and failed-job logging.
+
+### 2. Playwright E2E Tests in CI/CD Pipeline
+
+- [ ] **Current State:** Playwright auth smoke tests run locally against Sail / Docker.
+- [ ] **Action:** Configure GitHub Actions with service containers (MySQL 8.4 + Redis) or point Playwright tests against an active Staging server URL so E2E checks run automatically on release or PR merges.
