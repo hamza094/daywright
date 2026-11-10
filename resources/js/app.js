@@ -162,11 +162,13 @@ axios.defaults.useProgress = false;
 import safeHtml from './directives/safeHtml';
 Vue.directive('safe-html', safeHtml);
 
+import ProjectForm from './components/ProjectForm.vue';
+Vue.component('ProjectForm', ProjectForm);
+
 const componentLoaders = {
   'project-button': () => import('./components/ProjectButton.vue'),
   'archive-tasks': () => import('./components/Project/Panel/ArchiveTasks.vue'),
   'project-chat': () => import('./components/Project/Panel/ProjectChatPanel.vue'),
-  'project-form': () => import('./components/ProjectForm.vue'),
   'project-status': () => import('./components/Project/Status.vue'),
   'project-features': () => import('./components/Project/Feature/FeatureSection.vue'),
   'project-stage': () => import('./components/Project/Stage.vue'),

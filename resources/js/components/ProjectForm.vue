@@ -111,6 +111,7 @@ const buildInitialForm = () => ({
 });
 
 export default {
+  name: 'ProjectForm',
   data() {
     return {
       form: buildInitialForm(),
