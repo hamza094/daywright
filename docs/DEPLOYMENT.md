@@ -181,36 +181,51 @@ This saves the dataset to disk via RDB snapshots if:
 
 ### Redis Maintenance & Queue Quiescing
 
-When restarting Redis or performing maintenance on the Redis server in production, **quiesce** the queue first to avoid losing in-flight jobs or notification dispatches:
+When restarting Redis or performing maintenance on the Redis server in production, **quiesce** producers and workers first to avoid losing in-flight jobs or notification dispatches:
 
-1. **Pause queue workers** (stops Horizon from consuming new jobs):
+1. **Quiesce job producers (Enter Maintenance Mode)**:
+   Prevent web traffic and scheduler commands from enqueueing new jobs while Redis is serviced:
+
+   ```bash
+   php artisan down --retry=60
+   ```
+
+2. **Pause Horizon queue workers on all worker nodes**:
+
+   > **Note**: `horizon:pause` signals master supervisors only on the local host. Run this command on **every** Horizon worker host or container in multi-node deployments.
 
    ```bash
    php artisan horizon:pause
    ```
 
-2. **Wait for active jobs to complete**:
-   Check the Horizon dashboard or CLI status until active jobs reach `0`:
+3. **Wait for active jobs to complete**:
+   Verify active jobs have drained to `0` via the Horizon UI dashboard or inspect Redis queue lengths:
 
    ```bash
-   php artisan horizon:status
+   # Confirm queue lists are drained
+   redis-cli llen horizon:default
+   redis-cli llen horizon:critical
    ```
 
-3. **Force a snapshot of memory to disk**:
+4. **Trigger background snapshot and wait for completion**:
+   `BGSAVE` returns immediately while the dump finishes in the background. Wait until `rdb_bgsave_in_progress` returns `0` before restarting:
 
    ```bash
    redis-cli bgsave
+   # Poll until background save completes
+   while [ $(redis-cli info persistence | grep -c "rdb_bgsave_in_progress:1") -eq 1 ]; do sleep 1; done
    ```
 
-4. **Perform Redis maintenance or restart**:
+5. **Perform Redis maintenance or restart**:
 
    ```bash
    sudo systemctl restart redis
    ```
 
-5. **Resume queue workers**:
+6. **Resume queue workers on all nodes and bring site back up**:
    ```bash
    php artisan horizon:continue
+   php artisan up
    ```
 
 ## Queue Workers (Laravel Horizon)

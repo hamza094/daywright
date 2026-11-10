@@ -46,9 +46,12 @@ export function initSentry(Vue, router) {
         /Failed to fetch dynamically imported module/i,
       ],
       beforeSend(event, hint) {
-        // Redact password-reset tokens from URLs
+        // Redact password-reset tokens from URLs and transactions
         if (event.request?.url) {
           event.request.url = event.request.url.replace(/\/password\/reset\/[^/?#]+/, '/password/reset/[REDACTED]');
+        }
+        if (typeof event.transaction === 'string') {
+          event.transaction = event.transaction.replace(/\/password\/reset\/[^/?#]+/, '/password/reset/[REDACTED]');
         }
 
         if (event.exception) {
@@ -69,8 +72,28 @@ export function initSentry(Vue, router) {
           if (breadcrumb.data) {
             delete breadcrumb.data.body;
             delete breadcrumb.data.response;
+            if (typeof breadcrumb.data.url === 'string') {
+              breadcrumb.data.url = breadcrumb.data.url.replace(
+                /\/password\/reset\/[^/?#]+/,
+                '/password/reset/[REDACTED]',
+              );
+            }
           }
         }
+
+        // Redact password reset tokens from navigation and route breadcrumbs
+        if (breadcrumb.category === 'navigation' && breadcrumb.data) {
+          if (typeof breadcrumb.data.from === 'string') {
+            breadcrumb.data.from = breadcrumb.data.from.replace(
+              /\/password\/reset\/[^/?#]+/,
+              '/password/reset/[REDACTED]',
+            );
+          }
+          if (typeof breadcrumb.data.to === 'string') {
+            breadcrumb.data.to = breadcrumb.data.to.replace(/\/password\/reset\/[^/?#]+/, '/password/reset/[REDACTED]');
+          }
+        }
+
         return breadcrumb;
       },
     });

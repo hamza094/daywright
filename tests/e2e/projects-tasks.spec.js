@@ -126,13 +126,17 @@ test.describe('Workflow 2: Projects & Tasks', () => {
     // 3. Wait for the project task card to render and click to open TaskDetailModal
     const taskCard = taskSection.locator('.task-card_style').first();
     await expect(taskCard).toBeVisible({ timeout: 35000 });
-    await Promise.all([
+    const [taskResponse] = await Promise.all([
       page.waitForResponse(
         (res) => res.url().includes('/tasks/') && res.request().method() === 'GET',
         { timeout: 45000 },
       ),
       taskCard.click(),
     ]);
+
+    expect(taskResponse.ok()).toBeTruthy();
+    const taskDetails = await taskResponse.json();
+    const initialVersion = taskDetails?.data?.version ?? 0;
 
     // 4. Verify modal is visible
     const taskModal = page.locator('.task-modal');
@@ -163,7 +167,8 @@ test.describe('Workflow 2: Projects & Tasks', () => {
 
     // Assert optimistic concurrency version incremented on backend
     const newVersion = patchData?.data?.version;
-    expect(typeof newVersion === 'number' && newVersion >= 1).toBeTruthy();
+    expect(typeof newVersion === 'number').toBeTruthy();
+    expect(newVersion).toBe(initialVersion + 1);
 
     // 7. Assert title is updated optimistically in the modal
     await expect(taskModal.locator('.task-modal_title')).toHaveText(updatedTitle, { timeout: 25000 });
@@ -194,22 +199,18 @@ test.describe('Workflow 2: Projects & Tasks', () => {
       //    We specifically wait for the API XHR (/api/v1/projects/{slug}) which enforces
       //    authorization, not the HTML page document (/projects/{slug}) which serves the SPA shell (200).
       const [apiResponse] = await Promise.all([
-        userBPage
-          .waitForResponse(
-            (res) =>
-              res.url().includes('/api/v1/projects/') &&
-              res.url().includes(targetSlug) &&
-              res.request().method() === 'GET',
-            { timeout: 45000 },
-          )
-          .catch(() => null),
+        userBPage.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/projects/') &&
+            res.url().includes(targetSlug) &&
+            res.request().method() === 'GET',
+          { timeout: 45000 },
+        ),
         userBPage.goto(`/projects/${targetSlug}`, { timeout: 60000, waitUntil: 'domcontentloaded' }),
       ]);
 
       // 3. Assert the backend DENIED access (403 Forbidden for existing private project, or 404 if slug doesn't exist)
-      if (apiResponse) {
-        expect([403, 404]).toContain(apiResponse.status());
-      }
+      expect([403, 404]).toContain(apiResponse.status());
 
       // 4. Assert private project workspace content is never rendered to User B
       const privateProjectContent = userBPage.locator('.project-page-wrapper');
