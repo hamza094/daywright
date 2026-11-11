@@ -1,1 +1,1 @@
-npx lint-staged
+./vendor/bin/sail npm exec -- lint-staged

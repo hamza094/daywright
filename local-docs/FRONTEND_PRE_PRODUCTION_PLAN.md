@@ -10,8 +10,8 @@ This document outlines all **mandatory frontend fixes, performance enhancements,
 
 **In Progress — High Readiness.**
 
-- **Completed:** Phase 0 (Transport/XSRF/TLS), Phase 1 (Vuex State Integrity & Storage Purge), Phase 2 (Runtime Crash Fixes & Contract Alignment), and Route Code Splitting (Dynamic Imports).
-- **Remaining Before Launch:** Error Monitoring (Sentry & Vue errorHandler), E2E Golden Path Smoke Test, and Staging Runtime Verification Gate.
+- **Completed:** Phase 0 (Transport/XSRF/TLS), Phase 1 (Vuex State Integrity & Storage Purge), Phase 2 (Runtime Crash Fixes & Contract Alignment), Route Code Splitting (Dynamic Imports), Sentry Error Monitoring & Safety Boundaries (Phase 4 Tasks 1–3), and all 4 Playwright E2E Workflows (Auth, Projects/Tasks, Tenant Isolation, Error Handling & Anti-White-Screen).
+- **Remaining Before Launch:** Sentry Staging Configuration/Verification Gate and Staging Runtime Verification Gate (Phase 5).
 
 ---
 
@@ -137,12 +137,12 @@ This document outlines all **mandatory frontend fixes, performance enhancements,
        - Login with valid credentials → asserts redirect to `/dashboard` and session cookie stored.
        - Route guards redirect unauthenticated guests to `/login`.
        - Logout purges local storage/session and redirects to `/login`.
-     - [ ] **Workflow 2: Projects & Tasks (`tests/e2e/projects-tasks.spec.js`)**
+     - [x] **Workflow 2: Projects & Tasks (`tests/e2e/projects-tasks.spec.js`)** ✅ Completed
        - Create project → verifies project card renders on Dashboard.
        - Open task modal → update title → verifies optimistic update and version increment.
-     - [ ] **Workflow 3: Authorization & Tenant Isolation (`tests/e2e/projects-tasks.spec.js`)**
+     - [x] **Workflow 3: Authorization & Tenant Isolation (`tests/e2e/projects-tasks.spec.js`)** ✅ Completed
        - User B attempts direct URL navigation to User A’s private project (`/projects/{user-a-slug}`) → asserts redirected or 403 error displayed, preventing cross-tenant data leakage.
-     - [ ] **Workflow 4: Critical Failure States & Anti-White-Screen (`tests/e2e/error-handling.spec.js`)**
+     - [x] **Workflow 4: Critical Failure States & Anti-White-Screen (`tests/e2e/error-handling.spec.js`)** ✅ Completed
        - Intercept API mutation with simulated 409 conflict or network drop → asserts toast notification appears without crashing the UI or blanking the page.
    - **Deferred for Manual Staging Check:**
      - Team invitation emails (verified manually in staging to avoid mailhog fixture overhead).
@@ -206,3 +206,5 @@ This document outlines all **mandatory frontend fixes, performance enhancements,
 - **2026-10-20 Implementation:** Route code splitting completed - All 20 routes dynamically imported; bundle chunked into separate assets.
 - **2026-10-20 Implementation:** Phase 4 Task 1 & Task 2 completed - Sentry integration with browser tracing and replay, global Vue error handler, and unhandled promise rejection handler implemented. Build verification passed.
 - **2026-10-20 Implementation:** Phase 4 hardening completed - Removed sensitive data (propsData) from error events, added environment separation (VITE_APP_ENV), configured Session Replay privacy (maskAllText, blockAllMedia), reduced replay sampling rates, added source maps configuration with Sentry Vite plugin, removed test button. Lint and build verification passed.
+- **2026-11-10 Implementation:** Phase 4 Task 4 (Workflows 2 & 3) completed — Implemented E2E test suite in `tests/e2e/projects-tasks.spec.js` covering project creation, dashboard rendering, task title updates with optimistic concurrency version increments, and cross-tenant authorization isolation.
+- **2026-11-10 Implementation:** Phase 4 Task 4 (Workflow 4) completed — Implemented `tests/e2e/error-handling.spec.js` verifying 409 concurrency conflict handling, simulated network connection failure toasts, and global error boundary anti-white-screen stability.
