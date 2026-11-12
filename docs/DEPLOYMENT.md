@@ -201,7 +201,7 @@ When restarting Redis or performing maintenance on the Redis server in productio
    ```
 
 3. **Wait for active in-flight jobs to finish**:
-   Verify currently active/in-flight jobs have finished via the Horizon UI dashboard (`/horizon/api/monitoring`).
+   Verify currently active/in-flight jobs have finished via the Horizon UI dashboard (`/horizon/dashboard`) or check that active workers have drained to `0`.
 
    > **Note**: Once workers are paused, pending jobs remain safely preserved in Redis and will resume when workers continue. Do not wait for pending queue lists to reach zero while workers are paused.
 
@@ -215,13 +215,15 @@ When restarting Redis or performing maintenance on the Redis server in productio
    redis-cli llen queues:metrics
    ```
 
-4. **Trigger background snapshot and wait for completion**:
-   `BGSAVE` returns immediately while the dump finishes in the background. Wait until `rdb_bgsave_in_progress` returns `0` before restarting:
+4. **Trigger background snapshot and verify success**:
+   `BGSAVE` returns immediately while the dump finishes in the background. Wait until `rdb_bgsave_in_progress` returns `0` and verify that `rdb_last_bgsave_status` reports `ok` before restarting:
 
    ```bash
    redis-cli bgsave
    # Poll until background save completes
    while [ $(redis-cli info persistence | grep -c "rdb_bgsave_in_progress:1") -eq 1 ]; do sleep 1; done
+   # Confirm snapshot succeeded without errors
+   redis-cli info persistence | grep "rdb_last_bgsave_status:ok"
    ```
 
 5. **Perform Redis maintenance or restart**:

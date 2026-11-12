@@ -42,7 +42,7 @@ async function openFirstTaskModal(page) {
 
   // If no task exists in this project yet (fresh/wiped database), create a starter task fixture
   const taskCard = taskSection.locator('.task-card_style').first();
-  const hasTask = await taskCard.isVisible({ timeout: 3000 }).catch(() => false);
+  const hasTask = await taskCard.waitFor({ state: 'visible', timeout: 3000 }).then(() => true).catch(() => false);
   if (!hasTask) {
     const newTaskInput = taskSection.locator('input[name="title"]');
     await expect(newTaskInput).toBeVisible({ timeout: 15000 });
