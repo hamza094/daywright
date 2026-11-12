@@ -20,6 +20,7 @@ async function loginUser(page, email, password) {
 /**
  * Ensures user is on a project page with an open task detail modal.
  * Waits for existing projects to load on the Dashboard and navigates to the first project.
+ * If the selected project has no tasks (e.g. on a freshly seeded database), creates one on the fly.
  */
 async function openFirstTaskModal(page) {
   // Wait for project cards on Dashboard to render asynchronously
@@ -39,8 +40,23 @@ async function openFirstTaskModal(page) {
   }
   await expect(taskSection).toBeVisible({ timeout: 25000 });
 
-  // Open first task card
+  // If no task exists in this project yet (fresh/wiped database), create a starter task fixture
   const taskCard = taskSection.locator('.task-card_style').first();
+  const hasTask = await taskCard.isVisible({ timeout: 3000 }).catch(() => false);
+  if (!hasTask) {
+    const newTaskInput = taskSection.locator('input[name="title"]');
+    await expect(newTaskInput).toBeVisible({ timeout: 15000 });
+    await newTaskInput.fill(`Fixture Task ${Date.now()}`);
+    await Promise.all([
+      page.waitForResponse(
+        (res) => res.url().includes('/tasks') && res.request().method() === 'POST' && [200, 201].includes(res.status()),
+        { timeout: 30000 },
+      ),
+      newTaskInput.press('Enter'),
+    ]);
+  }
+
+  // Open first task card
   await expect(taskCard).toBeVisible({ timeout: 35000 });
   await taskCard.click();
 
@@ -75,14 +91,17 @@ test.describe('Workflow 4: Critical Failure States & Anti-White-Screen', () => {
     const { taskModal } = await openFirstTaskModal(page);
 
     // 3. Intercept the task PATCH mutation to simulate a 409 Conflict from concurrent editor
+    // Real backend API response shape from App\Exceptions\Support\ErrorCode::EDIT_CONFLICT
     await page.route('**/tasks/**', async (route) => {
       if (route.request().method() === 'PATCH') {
         await route.fulfill({
           status: 409,
           contentType: 'application/json',
           body: JSON.stringify({
-            message: 'Task was modified by another user. Please refresh and try again.',
-            error: 'edit_conflict',
+            message: 'The resource was modified by another user.',
+            code: 'edit_conflict',
+            errors: {},
+            meta: { expected_version: 1, current_version: 2 },
           }),
         });
       } else {

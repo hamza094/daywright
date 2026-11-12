@@ -186,6 +186,8 @@ When restarting Redis or performing maintenance on the Redis server in productio
 1. **Quiesce job producers (Enter Maintenance Mode)**:
    Prevent web traffic and scheduler commands from enqueueing new jobs while Redis is serviced:
 
+   > **Note**: In multi-server deployments behind a load balancer, run `php artisan down` on **every web node** (or configure your load balancer to redirect traffic to a maintenance page) because Laravel's file-based maintenance mode affects only the local node.
+
    ```bash
    php artisan down --retry=60
    ```
@@ -198,13 +200,19 @@ When restarting Redis or performing maintenance on the Redis server in productio
    php artisan horizon:pause
    ```
 
-3. **Wait for active jobs to complete**:
-   Verify active jobs have drained to `0` via the Horizon UI dashboard or inspect Redis queue lengths:
+3. **Wait for active in-flight jobs to finish**:
+   Verify currently active/in-flight jobs have finished via the Horizon UI dashboard (`/horizon/api/monitoring`).
+
+   > **Note**: Once workers are paused, pending jobs remain safely preserved in Redis and will resume when workers continue. Do not wait for pending queue lists to reach zero while workers are paused.
+
+   If you need to inspect queue lengths directly in Redis, check Laravel's actual queue keys across all four configured queues (accounting for any configured Redis client prefix, e.g. `daywright_database_`):
 
    ```bash
-   # Confirm queue lists are drained
-   redis-cli llen horizon:default
-   redis-cli llen horizon:critical
+   # Inspect pending job lists across all 4 configured queues (append client prefix if configured)
+   redis-cli llen queues:critical
+   redis-cli llen queues:default
+   redis-cli llen queues:webhooks
+   redis-cli llen queues:metrics
    ```
 
 4. **Trigger background snapshot and wait for completion**:
@@ -223,8 +231,12 @@ When restarting Redis or performing maintenance on the Redis server in productio
    ```
 
 6. **Resume queue workers on all nodes and bring site back up**:
+
    ```bash
+   # Resume workers across all worker hosts
    php artisan horizon:continue
+
+   # Bring web nodes back online across all web hosts
    php artisan up
    ```
 
