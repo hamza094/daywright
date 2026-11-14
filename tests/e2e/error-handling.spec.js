@@ -76,7 +76,7 @@ async function openFirstTaskModal(page) {
 test.describe('Workflow 4: Critical Failure States & Anti-White-Screen', () => {
   test.setTimeout(120000);
 
-  const testEmail = process.env.E2E_USER_EMAIL || 'little.marilie@example.com';
+  const testEmail = process.env.E2E_USER_EMAIL || 'e2e-user-a@daywright.test';
   const testPassword = process.env.E2E_USER_PASSWORD || 'Berry@999';
 
   test.beforeEach(async ({ page }) => {

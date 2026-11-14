@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
  * Covers guest route guards, login, session storage, and logout.
  */
 test.describe('Workflow 1: Authentication', () => {
-  const testEmail = process.env.E2E_USER_EMAIL || 'little.marilie@example.com';
+  const testEmail = process.env.E2E_USER_EMAIL || 'e2e-user-a@daywright.test';
   const testPassword = process.env.E2E_USER_PASSWORD || 'Berry@999';
 
   test.beforeEach(async ({ page }) => {

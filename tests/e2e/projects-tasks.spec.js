@@ -31,10 +31,10 @@ test.describe('Workflow 2: Projects & Tasks', () => {
   /** @type {import('@playwright/test').Page} */
   let page;
 
-  const userAEmail = process.env.E2E_USER_EMAIL || 'vincenzo53@example.com';
+  const userAEmail = process.env.E2E_USER_EMAIL || 'e2e-user-a@daywright.test';
   const userAPassword = process.env.E2E_USER_PASSWORD || 'Berry@999';
 
-  const userBEmail = process.env.E2E_USER_B_EMAIL || 'abergstrom@example.net';
+  const userBEmail = process.env.E2E_USER_B_EMAIL || 'e2e-user-b@daywright.test';
   const userBPassword = process.env.E2E_USER_PASSWORD || 'Berry@999';
 
   let createdProjectSlug = '';
