@@ -6,6 +6,15 @@ const sentryEnvironment = VALID_ENVIRONMENTS.includes(rawEnv) ? rawEnv : import.
 const isMonitored = import.meta.env.PROD || Boolean(import.meta.env.VITE_SENTRY_DSN);
 const isProduction = sentryEnvironment === 'production';
 
+// Trace propagation targets: 'localhost', production API hosts, and the
+// current deployment origin so staging on any hostname/IP/platform domain
+// still links frontend-to-backend traces.
+const sentryTraceTargets = ['localhost', /^https:\/\/.*\.daywright\.com\/api/];
+if (typeof window !== 'undefined' && window.location?.origin) {
+  const escapedOrigin = window.location.origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  sentryTraceTargets.push(new RegExp(`^${escapedOrigin}`));
+}
+
 /**
  * Initialize Sentry error monitoring
  * Only initializes in production or when VITE_SENTRY_DSN is set
@@ -25,7 +34,7 @@ export function initSentry(Vue, router) {
       ],
       // 100% traces in staging for QA; 20% in production to save quota
       tracesSampleRate: isProduction ? 0.2 : 1.0,
-      tracePropagationTargets: ['localhost', /^https:\/\/.*\.daywright\.com\/api/],
+      tracePropagationTargets: sentryTraceTargets,
 
       // 100% error replays in staging; conservative in production
       replaysSessionSampleRate: isProduction ? 0.05 : 0.1,
