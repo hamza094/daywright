@@ -410,19 +410,20 @@ If migrating an existing deployment from `QUEUE_CONNECTION=database` to Redis/Ho
    ```bash
    php artisan down --retry=60
    ```
-2. **Drain pending database queue jobs** across all queues before switching:
+2. **Drain pending database queue jobs** across all queues before switching. `--force` is required: `queue:work` refuses to run while the app is down for maintenance.
    ```bash
-   php artisan queue:work database --queue=critical,default,webhooks,metrics --stop-when-empty
+   php artisan queue:work database --queue=critical,default,webhooks,metrics --stop-when-empty --force
    ```
-3. **Verify nothing is left behind.** `--stop-when-empty` only covers _available_ jobs. Also check for reserved/delayed jobs and unretried failures:
+3. **Verify nothing is left behind.** `--stop-when-empty` only covers _available_ jobs. Also check for reserved and delayed jobs and unretried failures:
    ```bash
-   # Should all return 0
+   # All of these should return 0
    php artisan tinker --execute="echo \DB::table('jobs')->count();"
    php artisan tinker --execute="echo \DB::table('jobs')->whereNotNull('reserved_at')->count();"
    php artisan tinker --execute="echo \DB::table('jobs')->where('attempts', '>', 0)->count();"
+   php artisan tinker --execute="echo \DB::table('jobs')->where('available_at', '>', time())->count();"
    php artisan queue:failed   # review; retry or delete intentionally — do NOT bulk-retry blindly
    ```
-   If reserved or delayed rows remain, wait for their workers or release them before switching. Decide explicitly what happens to `failed_jobs` rows: they stay in the `failed_jobs` table regardless of queue driver and can be retried after the switch with `php artisan queue:retry all`.
+   If reserved or delayed rows remain, wait for their workers or release them before switching. Decide explicitly what happens to `failed_jobs` rows: they stay in the `failed_jobs` table regardless of queue driver. Note that `queue:retry` re-dispatches each failed job on **its original connection and queue** — retrying a database-era failure after the switch puts it back on the database driver, so drain or consciously requeue those before cutover.
 4. Switch `.env` to `QUEUE_CONNECTION=redis` and proceed with standard deployment.
 5. **Rollback path:** if Redis/Horizon misbehaves after cutover, switch `QUEUE_CONNECTION` back to `database` — pending Redis jobs remain in Redis lists and can be re-driven later, but jobs enqueued during the Redis window will NOT appear in the `jobs` table. Prefer a forward fix; treat rollback as last resort.
 6. Leave maintenance mode only after Horizon is confirmed processing (`php artisan horizon:status`) and `redis-cli llen queues:default` is draining.
@@ -481,7 +482,9 @@ exist in the faker-generated `UserSeeder` output. After deploying to staging:
 
 ```bash
 # 1. Seed the dedicated E2E accounts (idempotent, safe to re-run)
-php artisan db:seed --class=E2eUserSeeder
+#    Note: after `php artisan config:cache`, .env is not loaded — pass the
+#    password inline if it is not already a real environment variable:
+E2E_USER_PASSWORD="<password>" php artisan db:seed --class=E2eUserSeeder
 
 # 2. Run the suite against the staging URL
 PLAYWRIGHT_BASE_URL="https://<staging-domain>" \

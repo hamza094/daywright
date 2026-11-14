@@ -10,7 +10,10 @@ const isProduction = sentryEnvironment === 'production';
 // current deployment origin so staging on any hostname/IP/platform domain
 // still links frontend-to-backend traces. The `(?=[/?#]|$)` boundary prevents
 // lookalike hosts (e.g. staging.example.attacker.test) from matching.
-const sentryTraceTargets = [/^https?:\/\/localhost(?::\d+)?(?:[/?#]|$)/, /^https:\/\/.*\.daywright\.com\/api/];
+const sentryTraceTargets = [
+  /^https?:\/\/localhost(?::\d+)?(?:[/?#]|$)/,
+  /^https?:\/\/(?:[a-z0-9-]+\.)*daywright\.com(?::\d+)?\/api/,
+];
 if (typeof window !== 'undefined' && window.location?.origin) {
   const escapedOrigin = window.location.origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   sentryTraceTargets.push(new RegExp(`^${escapedOrigin}(?=[/?#]|$)`));

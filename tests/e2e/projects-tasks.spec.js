@@ -55,7 +55,19 @@ test.describe('Workflow 2: Projects & Tasks', () => {
     // a cleanup failure must not fail the suite.
     if (createdProjectSlug) {
       try {
-        await page.request.delete(`/api/v1/projects/${createdProjectSlug}`);
+        // Use the app's own axios instance: it sends the session cookies,
+        // Origin/Referer (Sanctum stateful) AND the X-XSRF-TOKEN header that
+        // Sanctum's VerifyCsrfToken requires on mutating requests. A raw
+        // fetch would fail with 419; page.request would be non-stateful (401).
+        const status = await page.evaluate(async (slug) => {
+          try {
+            const res = await window.axios.delete(`/projects/${slug}`);
+            return res.status;
+          } catch (err) {
+            return err.response?.status || 0;
+          }
+        }, createdProjectSlug);
+        console.log(`E2E cleanup: DELETE project ${createdProjectSlug} -> HTTP ${status}`);
       } catch (cleanupError) {
         console.log('E2E cleanup: failed to delete project', createdProjectSlug, cleanupError);
       }

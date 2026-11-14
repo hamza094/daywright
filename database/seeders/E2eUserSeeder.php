@@ -35,7 +35,18 @@ class E2eUserSeeder extends Seeder
             return;
         }
 
-        $password = Hash::make((string) env('E2E_USER_PASSWORD', 'Berry@999'));
+        // Outside local/testing the password must be set explicitly — a public
+        // fallback would leave known credentials on shared staging.
+        $plainPassword = (string) env('E2E_USER_PASSWORD');
+        if ($plainPassword === '') {
+            if (! app()->environment(['local', 'testing'])) {
+                $this->command?->error('E2E_USER_PASSWORD must be set explicitly outside local/testing.');
+
+                return;
+            }
+            $plainPassword = 'Berry@999';
+        }
+        $password = Hash::make($plainPassword);
 
         $userA = User::updateOrCreate(
             ['email' => (string) env('E2E_USER_EMAIL', 'e2e-user-a@daywright.test')],
@@ -77,20 +88,25 @@ class E2eUserSeeder extends Seeder
      */
     private function seedFixtureProjects(User $userA): void
     {
-        Project::withTrashed()
-            ->where('user_id', $userA->id)
-            ->where(function ($query): void {
-                $query->where('name', 'like', 'E2E Smoke Project %')
-                    ->orWhere('name', 'like', 'Smoke Project %');
-            })
-            ->forceDelete();
-
         $stageId = Stage::query()->orderBy('id')->value('id');
         if ($stageId === null) {
             $this->command?->error('No stages found. Run `php artisan db:seed` first.');
 
             return;
         }
+
+        // Only remove rows that are unambiguously E2E fixtures: matching name
+        // prefix AND an E2E marker in `about`. This covers legacy fixtures
+        // ('E2E Smoke Project'), spec-created rows ('Smoke Project {ts}'),
+        // trashed rows, and cannot hit a legitimate project.
+        Project::withTrashed()
+            ->where('user_id', $userA->id)
+            ->where('about', 'like', '%E2E%')
+            ->where(function ($query): void {
+                $query->where('name', 'like', 'E2E Smoke Project%')
+                    ->orWhere('name', 'like', 'Smoke Project %');
+            })
+            ->forceDelete();
 
         foreach (['Alpha', 'Beta'] as $suffix) {
             Project::factory()->create([
