@@ -33,7 +33,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '/resources/js'),
+      '@': path.resolve(__dirname, 'resources/js'),
       '@fonts': path.resolve(__dirname, 'resources/fonts'),
       vue: 'vue/dist/vue.esm.js', // Required for Vue 2
       '~bootstrap': path.resolve(__dirname, 'node_modules/bootstrap'),
