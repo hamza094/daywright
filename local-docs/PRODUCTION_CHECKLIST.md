@@ -40,8 +40,8 @@ No additional code changes needed.
 ### Nightwatch Configuration
 
 - [ ] `NIGHTWATCH_LOG_LEVEL=warning` set in production `.env`
-- [ ] Nightwatch DSN configured
-- [ ] User context verified in dashboard
+- [ ] `NIGHTWATCH_TOKEN` configured in production `.env`
+- [ ] Nightwatch user context verified in dashboard
 
 ### Infrastructure Configuration
 
@@ -88,6 +88,7 @@ No additional code changes needed.
 - [ ] E2E tests passed (Playwright)
 - [ ] Load testing completed
 - [ ] Security scan completed
+- [ ] Phase 5 Zoom integration remediation: production/staging evidence recorded for the 11 completed remediation tickets (implementation plan removed after completion; see `local-docs/audits/2026-09-06/implementation/phase-4-production-readiness.md` for the sign-off format)
 
 ---
 
@@ -139,6 +140,10 @@ No additional code changes needed.
 - [ ] Disaster recovery plan documented
 - [ ] Rollback procedure tested
 
+### Operational References
+
+- **Webhook inbox / Zoom recovery:** `docs/WEBHOOK_INBOX.md` is the operational source of truth for webhook behavior — timestamp normalization, provider watermark ordering, update/delete ties, timestamp-less deletes, and recovery commands (`webhooks:recover-pending`, `meetings:recover-ambiguous`, `meetings:recover-pending`, `subscriptions:recover-operations`). The completed Phase 5 Zoom remediation plan was removed after all 11 tickets were implemented; consult git history if implementation rationale is needed.
+
 ---
 
 ## Environment Variables Reference
@@ -152,10 +157,10 @@ APP_DEBUG=false
 APP_KEY=
 APP_URL=https://your-domain.com
 
-# Database
-DB_CONNECTION=pgsql
+# Database (MySQL 8.4 — matches CI and DEPLOYMENT.md)
+DB_CONNECTION=mysql
 DB_HOST=
-DB_PORT=5432
+DB_PORT=3306
 DB_DATABASE=
 DB_USERNAME=
 DB_PASSWORD=
@@ -163,11 +168,20 @@ DB_PASSWORD=
 # Sentry
 VITE_SENTRY_DSN=
 VITE_APP_ENV=production
-VITE_SENTRY_RELEASE=  # Set by CI/CD
-SENTRY_AUTH_TOKEN=  # CI/CD secret only
+SENTRY_AUTH_TOKEN=  # CI/CD secret only (vite build source map upload)
 
 # Nightwatch
+NIGHTWATCH_TOKEN=
 NIGHTWATCH_LOG_LEVEL=warning
+NIGHTWATCH_REQUEST_SAMPLE_RATE=0.1
+
+# Real-time broadcasting (Pusher / Laravel Echo)
+PUSHER_APP_ID=
+PUSHER_APP_KEY=
+PUSHER_APP_SECRET=
+PUSHER_APP_CLUSTER=
+VITE_PUSHER_APP_KEY=
+VITE_PUSHER_APP_CLUSTER=
 
 # Queues & Horizon
 QUEUE_CONNECTION=redis

@@ -1,24 +1,62 @@
 name: Playwright Tests
+
+# Runs the E2E smoke suite against the staging deployment.
+#
+# Required GitHub configuration (Settings → Secrets and variables → Actions):
+#   vars.PLAYWRIGHT_BASE_URL   – staging origin, e.g. https://staging.daywright.com
+#   vars.E2E_USER_EMAIL        – optional, defaults to e2e-user-a@daywright.test
+#   vars.E2E_USER_B_EMAIL      – optional, defaults to e2e-user-b@daywright.test
+#   secrets.E2E_USER_PASSWORD  – password matching `php artisan db:seed --class=E2eUserSeeder`
+#
+# The staging database must already be seeded with:
+#   php artisan db:seed --class=E2eUserSeeder
+#
+# Triggers:
+#   - workflow_dispatch: manual run from the Actions tab
+#   - push to master: post-merge smoke check against staging
+#   - schedule: daily safety net at 06:00 UTC
 on:
+  workflow_dispatch:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
+  schedule:
+    - cron: '0 6 * * *'
+
 jobs:
-  test:
-    timeout-minutes: 60
+  e2e-staging:
+    name: E2E smoke tests (staging)
+    timeout-minutes: 30
     runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ vars.PLAYWRIGHT_BASE_URL }}
+      E2E_USER_EMAIL: ${{ vars.E2E_USER_EMAIL || 'e2e-user-a@daywright.test' }}
+      E2E_USER_B_EMAIL: ${{ vars.E2E_USER_B_EMAIL || 'e2e-user-b@daywright.test' }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD || 'Berry@999' }}
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Verify staging URL is configured
+        run: |
+          if [ -z "$PLAYWRIGHT_BASE_URL" ]; then
+            echo "::error::Set the PLAYWRIGHT_BASE_URL repository variable to your staging URL."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
         with:
-          node-version: lts/*
+          node-version: 20
+          cache: npm
+
       - name: Install dependencies
         run: npm ci
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-      - name: Run Playwright tests
-        run: npx playwright test
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests against staging
+        run: npx playwright test --project=chromium
+
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
