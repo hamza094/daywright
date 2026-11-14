@@ -406,12 +406,26 @@ sudo supervisorctl status
 
 If migrating an existing deployment from `QUEUE_CONNECTION=database` to Redis/Horizon:
 
-1. **Drain pending database queue jobs** across all queues before switching:
+1. **Enter maintenance mode** to stop new jobs from being enqueued:
+   ```bash
+   php artisan down --retry=60
+   ```
+2. **Drain pending database queue jobs** across all queues before switching:
    ```bash
    php artisan queue:work database --queue=critical,default,webhooks,metrics --stop-when-empty
    ```
-2. Verify the `jobs` table is completely empty.
-3. Switch `.env` to `QUEUE_CONNECTION=redis` and proceed with standard deployment.
+3. **Verify nothing is left behind.** `--stop-when-empty` only covers _available_ jobs. Also check for reserved/delayed jobs and unretried failures:
+   ```bash
+   # Should all return 0
+   php artisan tinker --execute="echo \DB::table('jobs')->count();"
+   php artisan tinker --execute="echo \DB::table('jobs')->whereNotNull('reserved_at')->count();"
+   php artisan tinker --execute="echo \DB::table('jobs')->where('attempts', '>', 0)->count();"
+   php artisan queue:failed   # review; retry or delete intentionally — do NOT bulk-retry blindly
+   ```
+   If reserved or delayed rows remain, wait for their workers or release them before switching. Decide explicitly what happens to `failed_jobs` rows: they stay in the `failed_jobs` table regardless of queue driver and can be retried after the switch with `php artisan queue:retry all`.
+4. Switch `.env` to `QUEUE_CONNECTION=redis` and proceed with standard deployment.
+5. **Rollback path:** if Redis/Horizon misbehaves after cutover, switch `QUEUE_CONNECTION` back to `database` — pending Redis jobs remain in Redis lists and can be re-driven later, but jobs enqueued during the Redis window will NOT appear in the `jobs` table. Prefer a forward fix; treat rollback as last resort.
+6. Leave maintenance mode only after Horizon is confirmed processing (`php artisan horizon:status`) and `redis-cli llen queues:default` is draining.
 
 ### Standard Deployment
 

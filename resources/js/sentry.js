@@ -6,13 +6,14 @@ const sentryEnvironment = VALID_ENVIRONMENTS.includes(rawEnv) ? rawEnv : import.
 const isMonitored = import.meta.env.PROD || Boolean(import.meta.env.VITE_SENTRY_DSN);
 const isProduction = sentryEnvironment === 'production';
 
-// Trace propagation targets: 'localhost', production API hosts, and the
+// Trace propagation targets: localhost, production API hosts, and the
 // current deployment origin so staging on any hostname/IP/platform domain
-// still links frontend-to-backend traces.
-const sentryTraceTargets = ['localhost', /^https:\/\/.*\.daywright\.com\/api/];
+// still links frontend-to-backend traces. The `(?=[/?#]|$)` boundary prevents
+// lookalike hosts (e.g. staging.example.attacker.test) from matching.
+const sentryTraceTargets = [/^https?:\/\/localhost(?::\d+)?(?:[/?#]|$)/, /^https:\/\/.*\.daywright\.com\/api/];
 if (typeof window !== 'undefined' && window.location?.origin) {
   const escapedOrigin = window.location.origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  sentryTraceTargets.push(new RegExp(`^${escapedOrigin}`));
+  sentryTraceTargets.push(new RegExp(`^${escapedOrigin}(?=[/?#]|$)`));
 }
 
 /**
