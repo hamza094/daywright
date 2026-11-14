@@ -87,13 +87,31 @@ MAIL_FROM_ADDRESS=noreply@your-domain.com
 MAIL_FROM_NAME="${APP_NAME}"
 
 # SMS Configuration (if using Vonage)
-VONAGE_API_KEY=your-api-key
-VONAGE_API_SECRET=your-api-secret
+VONAGE_KEY=your-api-key
+VONAGE_SECRET=your-api-secret
 VONAGE_SMS_FROM=your-phone-number
 
 # Zoom Integration
-ZOOM_API_KEY=your-zoom-api-key
-ZOOM_API_SECRET=your-zoom-api-secret
+ZOOM_CLIENT_ID=your-zoom-client-id
+ZOOM_CLIENT_SECRET=your-zoom-client-secret
+ZOOM_WEBHOOK_SECRET_TOKEN=your-zoom-webhook-secret-token
+
+# Real-time (Pusher / Laravel Echo)
+PUSHER_APP_ID=your-pusher-app-id
+PUSHER_APP_KEY=your-pusher-app-key
+PUSHER_APP_SECRET=your-pusher-app-secret
+PUSHER_APP_CLUSTER=mt1
+VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+
+# Frontend error monitoring (Sentry)
+VITE_APP_ENV=production
+VITE_SENTRY_DSN=your-sentry-dsn
+# SENTRY_AUTH_TOKEN is a CI/CD secret only — used by vite build for source map upload, never in the app runtime env
+
+# Backend monitoring (Laravel Nightwatch)
+NIGHTWATCH_TOKEN=your-nightwatch-token
+NIGHTWATCH_REQUEST_SAMPLE_RATE=0.1
 
 # Admin Emails (comma-separated)
 ADMIN_EMAILS=admin@example.com,security@example.com
@@ -302,11 +320,29 @@ Add this to your crontab (`crontab -e`):
 
 ### Scheduled Tasks
 
-The scheduler handles:
+The scheduler (`app/Console/Kernel.php`) handles the following, all guarded by `onOneServer()` and `withoutOverlapping()`:
 
-- **Scheduled message dispatching**: Sends messages at their scheduled delivery time
-- **Failed job pruning**: Automatically removes failed jobs older than 7 days
-- **Zoom recovery commands**: `webhooks:recover-pending` and `meetings:recover-pending --limit=25` run every minute with `withoutOverlapping(5)`. The 5-minute expiry prevents crashes from locking out recovery for Laravel's default 24-hour lock window.
+**Every minute / few minutes:**
+
+- `schedule:message` — dispatches scheduled team messages (only when messages are pending)
+- `tasks:notify` — sends due task notifications (every 2 minutes, only when due)
+- `webhooks:recover-pending` — retries incomplete webhook inbox events (`withoutOverlapping(5)`)
+- `meetings:recover-ambiguous --limit=25` — reconciles Zoom meetings with uncertain creation state (`withoutOverlapping(15)`, runs in background)
+- `meetings:recover-pending --limit=25` — retries pending Zoom meeting operations (`withoutOverlapping(5)`, background)
+- `subscriptions:recover-operations --limit=25` — retries pending Paddle subscription operations (`withoutOverlapping(5)`, background)
+
+**Every 30 minutes:**
+
+- `meetings:check-unsent-notifications` — recovers meeting notifications that were not marked sent
+
+**Daily:**
+
+- `remove:abandon` — removes abandoned records
+- `queue:prune-batches --hours=48 --unfinished=72` and `queue:prune-failed --hours=720` — prunes old queue batches and failed jobs (failed jobs kept 30 days)
+- `backup:clean` (01:00) and `backup:run` (01:30) — database backup cleanup and creation
+- `telescope:prune --hours=10` — prunes Telescope entries
+- `user:profile-delete` — deletes user profiles scheduled for removal
+- `projects:recalculate-health --queue=metrics` (02:00) — nightly project health score recalculation on the `metrics` queue
 
 ### Scheduler Locks & Incident Recovery
 
@@ -424,6 +460,30 @@ For zero-downtime deployments:
 3. Restart workers after symlink switch
 4. Old directory can be removed after verification
 
+## E2E Smoke Tests (Staging)
+
+The Playwright suite (`tests/e2e`) requires deterministic accounts that do NOT
+exist in the faker-generated `UserSeeder` output. After deploying to staging:
+
+```bash
+# 1. Seed the dedicated E2E accounts (idempotent, safe to re-run)
+php artisan db:seed --class=E2eUserSeeder
+
+# 2. Run the suite against the staging URL
+PLAYWRIGHT_BASE_URL="https://<staging-domain>" \
+E2E_USER_EMAIL="e2e-user-a@daywright.test" \
+E2E_USER_B_EMAIL="e2e-user-b@daywright.test" \
+E2E_USER_PASSWORD="<password>" \
+npx playwright test tests/e2e --project=chromium
+```
+
+`E2eUserSeeder` is intentionally excluded from `DatabaseSeeder` so known
+credentials are never created by a routine `db:seed`. It creates `e2e-user-a`
+(with fixture projects) and `e2e-user-b` (a separate tenant for the
+isolation spec). Default credentials are `e2e-user-a@daywright.test` /
+`e2e-user-b@daywright.test` with password `Berry@999`; override via the env
+vars above on both the seeder and the test runner.
+
 ## Monitoring and Maintenance
 
 ### Failed Job Monitoring
@@ -449,7 +509,7 @@ php artisan queue:flush
 
 ### Failed Job Retention
 
-Failed jobs are automatically pruned after 7 days by the scheduler. To adjust this, modify the scheduler command in `app/Console/Kernel.php`.
+Failed jobs are automatically pruned after 30 days (`queue:prune-failed --hours=720`) by the scheduler. To adjust this, modify the scheduler command in `app/Console/Kernel.php`.
 
 ### Horizon Dashboard & Queue Monitoring
 
