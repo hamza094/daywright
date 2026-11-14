@@ -50,6 +50,16 @@ test.describe('Workflow 2: Projects & Tasks', () => {
   });
 
   test.afterAll(async () => {
+    // Free plan allows only 3 owned projects; remove the spec-created project
+    // so repeated runs do not hit PlanLimitExceededException. Best-effort:
+    // a cleanup failure must not fail the suite.
+    if (createdProjectSlug) {
+      try {
+        await page.request.delete(`/api/v1/projects/${createdProjectSlug}`);
+      } catch (cleanupError) {
+        console.log('E2E cleanup: failed to delete project', createdProjectSlug, cleanupError);
+      }
+    }
     await page?.close();
   });
 

@@ -21,11 +21,20 @@ use Illuminate\Support\Facades\Hash;
  *
  * Credentials default to the values the specs fall back to and can be
  * overridden via E2E_USER_EMAIL, E2E_USER_B_EMAIL and E2E_USER_PASSWORD.
+ *
+ * Safety: refuses to run in production. Because updateOrCreate keys on the
+ * configured email, never point E2E_USER_EMAIL at a real user account.
  */
 class E2eUserSeeder extends Seeder
 {
     public function run(): void
     {
+        if (app()->environment('production')) {
+            $this->command?->error('E2eUserSeeder must never run in production.');
+
+            return;
+        }
+
         $password = Hash::make((string) env('E2E_USER_PASSWORD', 'Berry@999'));
 
         $userA = User::updateOrCreate(
@@ -52,22 +61,44 @@ class E2eUserSeeder extends Seeder
             ],
         );
 
-        // User A needs at least one dashboard project card: the error-handling
-        // spec navigates to the first project and creates a fixture task if
-        // the project has none.
-        $stageId = Stage::query()->orderBy('id')->value('id') ?? Stage::factory()->create()->id;
+        $this->seedFixtureProjects($userA);
+    }
 
-        foreach (['e2e-smoke-project-alpha', 'e2e-smoke-project-beta'] as $slug) {
-            Project::firstOrCreate(
-                ['slug' => $slug],
-                [
-                    'user_id' => $userA->id,
-                    'stage_id' => $stageId,
-                    'name' => 'E2E Smoke Project',
-                    'about' => 'Deterministic fixture project for Playwright E2E smoke tests.',
-                    'stage_updated_at' => now(),
-                ],
-            );
+    /**
+     * Reset User A's test projects and create fresh fixtures.
+     *
+     * Project slugs are regenerated from `name` by the Sluggable package
+     * (onUpdate: true) and soft-deleted rows keep their slug reserved, so
+     * keying fixtures on slug is unreliable. Instead we remove every project
+     * the E2E suite may have created for this dedicated test account — both
+     * seeder fixtures and spec-created "Smoke Project ..." rows, including
+     * trashed ones — then recreate a clean pair. The free plan allows only
+     * 3 owned projects, so leftovers would break subsequent runs.
+     */
+    private function seedFixtureProjects(User $userA): void
+    {
+        Project::withTrashed()
+            ->where('user_id', $userA->id)
+            ->where(function ($query): void {
+                $query->where('name', 'like', 'E2E Smoke Project %')
+                    ->orWhere('name', 'like', 'Smoke Project %');
+            })
+            ->forceDelete();
+
+        $stageId = Stage::query()->orderBy('id')->value('id');
+        if ($stageId === null) {
+            $this->command?->error('No stages found. Run `php artisan db:seed` first.');
+
+            return;
+        }
+
+        foreach (['Alpha', 'Beta'] as $suffix) {
+            Project::factory()->create([
+                'user_id' => $userA->id,
+                'stage_id' => $stageId,
+                'name' => "E2E Smoke Project {$suffix}",
+                'about' => 'Deterministic fixture project for Playwright E2E smoke tests.',
+            ]);
         }
     }
 }

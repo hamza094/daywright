@@ -6,7 +6,9 @@ name: Playwright Tests
 #   vars.PLAYWRIGHT_BASE_URL   – staging origin, e.g. https://staging.daywright.com
 #   vars.E2E_USER_EMAIL        – optional, defaults to e2e-user-a@daywright.test
 #   vars.E2E_USER_B_EMAIL      – optional, defaults to e2e-user-b@daywright.test
-#   secrets.E2E_USER_PASSWORD  – password matching `php artisan db:seed --class=E2eUserSeeder`
+#   secrets.E2E_USER_PASSWORD  – REQUIRED. Password matching
+#                                 `php artisan db:seed --class=E2eUserSeeder` on staging.
+#                                 The job fails if this secret is not set.
 #
 # The staging database must already be seeded with:
 #   php artisan db:seed --class=E2eUserSeeder
@@ -31,13 +33,17 @@ jobs:
       PLAYWRIGHT_BASE_URL: ${{ vars.PLAYWRIGHT_BASE_URL }}
       E2E_USER_EMAIL: ${{ vars.E2E_USER_EMAIL || 'e2e-user-a@daywright.test' }}
       E2E_USER_B_EMAIL: ${{ vars.E2E_USER_B_EMAIL || 'e2e-user-b@daywright.test' }}
-      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD || 'Berry@999' }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
 
     steps:
-      - name: Verify staging URL is configured
+      - name: Verify staging configuration
         run: |
           if [ -z "$PLAYWRIGHT_BASE_URL" ]; then
             echo "::error::Set the PLAYWRIGHT_BASE_URL repository variable to your staging URL."
+            exit 1
+          fi
+          if [ -z "$E2E_USER_PASSWORD" ]; then
+            echo "::error::Set the E2E_USER_PASSWORD repository secret (must match the staging E2eUserSeeder password)."
             exit 1
           fi
 
