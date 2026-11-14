@@ -68,7 +68,7 @@
               class="modal-design"
               :click-to-close="false"
               @modal-closed="closeModal">
-              <TaskDetailModal :slug="slug" :state="state"></TaskDetailModal>
+              <TaskDetailModal :slug="projectSlug" :state="state"></TaskDetailModal>
             </modal>
 
             <pagination :data="tasks" @pagination-change-page="getResults"></pagination>
@@ -107,6 +107,9 @@ export default {
   },
   computed: {
     ...mapState('task', ['tasks', 'message']),
+    projectSlug() {
+      return this.slug || this.$route.params.slug || '';
+    },
   },
   created() {
     this.getResults(1);
@@ -135,7 +138,7 @@ export default {
         disableBgClick: true,
         keepAlive: true,
         props: {
-          slug: this.slug,
+          slug: this.projectSlug,
         },
       });
       panel1Handle.promise.then(() => {});
@@ -144,7 +147,7 @@ export default {
     openModal(task) {
       //this.$Progress.start();
       axios
-        .get('/projects/' + this.slug + '/tasks/' + task.id, { useProgress: true })
+        .get('/projects/' + this.projectSlug + '/tasks/' + task.id, { useProgress: true })
         .then((response) => {
           //this.$Progress.finish();
           this.setTask(getObjectData(response));
@@ -161,13 +164,13 @@ export default {
         return;
       }
       axios
-        .post('/projects/' + this.slug + '/tasks', this.form, { useProgress: true })
+        .post('/projects/' + this.projectSlug + '/tasks', this.form, { useProgress: true })
         .then(() => {
           this.$vToastify.success('Project Task added');
           this.form.title = '';
           this.getResults(1);
           this.addScore(this.task_score);
-          this.refreshLimits(this.slug);
+          this.refreshLimits(this.projectSlug);
         })
         .catch((error) => {
           this.handleErrorResponse(error);

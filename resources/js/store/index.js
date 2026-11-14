@@ -1,7 +1,6 @@
 import Vue from 'vue';
 import Vuex from 'vuex';
 
-import createPersistedState from 'vuex-persistedstate';
 import currentUser from './currentUser';
 import subscribeUser from './subscribeUser.js';
 import profile from './profile';
@@ -15,8 +14,14 @@ import notifications from './notifications';
 
 Vue.use(Vuex);
 
+// Purge legacy persisted state to prevent cross-account data leakage
+try {
+  localStorage.removeItem('vuex');
+} catch {
+  // Ignore storage errors in restricted browser contexts (Safari private browsing, etc.)
+}
+
 export default new Vuex.Store({
-  plugins: [createPersistedState()],
   modules: {
     currentUser,
     subscribeUser,

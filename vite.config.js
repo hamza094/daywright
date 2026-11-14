@@ -2,27 +2,45 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue2';
 import path from 'path';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 
 export default defineConfig({
+  server: {
+    host: '0.0.0.0',
+    hmr: {
+      host: 'localhost',
+    },
+    watch: {
+      usePolling: true,
+    },
+  },
   plugins: [
     laravel({
       input: ['resources/sass/app.scss', 'resources/js/app.js'],
       refresh: true,
     }),
     vue(),
+    sentryVitePlugin({
+      org: 'hik-tech',
+      project: 'daywright',
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      cleanArtifacts: true,
+      disable: !process.env.SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        filesToDeleteAfterUpload: ['public/build/**/*.map'],
+      },
+    }),
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, '/resources/js'),
+      '@': path.resolve(__dirname, 'resources/js'),
       '@fonts': path.resolve(__dirname, 'resources/fonts'),
       vue: 'vue/dist/vue.esm.js', // Required for Vue 2
       '~bootstrap': path.resolve(__dirname, 'node_modules/bootstrap'),
     },
   },
   build: {
-    manifest: true,
-    rollupOptions: {
-      input: 'resources/js/app.js',
-    },
+    manifest: 'manifest.json',
+    sourcemap: 'hidden',
   },
 });

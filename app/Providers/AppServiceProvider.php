@@ -36,6 +36,7 @@ use Opcodes\LogViewer\Facades\LogViewer;
 use Override;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -136,6 +137,21 @@ class AppServiceProvider extends ServiceProvider
             Context::add('job_id', $event->job->getJobId());
             Context::add('job_name', $event->job->resolveName());
         });
+
+        // 5. Nightwatch Configuration
+        if (class_exists(\Laravel\Nightwatch\Nightwatch::class)) {
+            \Laravel\Nightwatch\Nightwatch::user(fn (User $user): array => [
+                'id' => $user->id,
+                'uuid' => $user->uuid,
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_admin' => $user->is_admin,
+            ]);
+
+            \Laravel\Nightwatch\Nightwatch::handleUnrecoverableExceptionsUsing(function (Throwable $e): void {
+                Log::channel('daily')->error('Nightwatch agent failed', ['exception' => $e]);
+            });
+        }
     }
 
     // Scramble/OpenAPI related methods extracted to ScrambleServiceProvider

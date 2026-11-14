@@ -46,6 +46,6 @@ class ActivityLogged implements ShouldBroadcast
      */
     public function broadcastQueue(): string
     {
-        return 'activities';
+        return 'default';
     }
 }

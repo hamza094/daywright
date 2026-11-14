@@ -39,13 +39,8 @@ return [
     'channels' => [
         'stack' => [
             'driver' => 'stack',
-            'channels' => ['daily', 'bugsnag'],
+            'channels' => ['daily', 'nightwatch'],
             'ignore_exceptions' => false,
-        ],
-
-        // Create a bugsnag logging channel:
-        'bugsnag' => [
-            'driver' => 'bugsnag',
         ],
 
         'single' => [
@@ -124,19 +119,20 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
-        'webhook' => [
-            'driver' => 'single',
-            'path' => storage_path('logs/webhook.log'),
-            'level' => 'debug',
-            'tap' => [App\Logging\ScrubSensitiveData::class],
-        ],
         'zoom' => [
-            'driver' => 'single',
+            'driver' => 'daily',
             'path' => storage_path('logs/zoom.log'),
             'level' => env('LOG_ZOOM_LEVEL', 'info'),
+            'days' => 30,
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
             'tap' => [App\Logging\ScrubSensitiveData::class],
         ],
         'zoom_webhook_failed' => [
+            'driver' => 'stack',
+            'channels' => ['zoom_webhook_failed_file', 'nightwatch'],
+            'ignore_exceptions' => false,
+        ],
+        'zoom_webhook_failed_file' => [
             'driver' => 'daily',
             'path' => storage_path('logs/zoom-webhook-failed.log'),
             'level' => 'error',
@@ -155,6 +151,11 @@ return [
         ],
 
         'queue_critical' => [
+            'driver' => 'stack',
+            'channels' => ['queue_critical_file', 'nightwatch'],
+            'ignore_exceptions' => false,
+        ],
+        'queue_critical_file' => [
             'driver' => 'daily',
             'path' => storage_path('logs/queue-critical.log'),
             'level' => 'error',

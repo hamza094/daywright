@@ -4,27 +4,6 @@ import store from './store';
 
 Vue.use(Router);
 
-import Register from './components/Authentication/Register.vue';
-import Login from './components/Authentication/Login.vue';
-import TwoFACode from './components/Authentication/TwoFACode.vue';
-import OAuth from './components/Authentication/OAuth.vue';
-import ZoomAuth from './components/Authentication/ZoomAuth.vue';
-import Dashboard from './components/Dashboard/Dashboard.vue';
-import ForgotPassword from './components/Authentication/ForgotPassword.vue';
-import ResetPassword from './components/Authentication/ResetPassword.vue';
-import VerifyPassword from './components/Authentication/VerifyPassword.vue';
-import ProjectPage from './components/Project/ProjectPage.vue';
-import Activities from './components/Project/Activities.vue';
-import Projects from './components/Projects.vue';
-import Profile from './components/Profile/ProfilePage.vue';
-import Subscription from './components/Subscription.vue';
-import AdminPanel from './components/Admin/Dashboard.vue';
-import ProjectPanel from './components/Admin/Projects.vue';
-import TaskPanel from './components/Admin/Tasks.vue';
-import UserPanel from './components/Admin/Users.vue';
-import NotFound from './components/Error.vue';
-import UserNotification from './components/UserNotification.vue';
-
 const guest = (to, from, next) => {
   if (!store.state.currentUser.loggedIn) {
     return next();
@@ -83,126 +62,126 @@ let router = new Router({
   routes: [
     {
       path: '*',
-      component: NotFound,
+      component: () => import('./components/Error.vue'),
     },
     {
       path: '/auth/callback/:provider',
-      component: OAuth,
+      component: () => import('./components/Authentication/OAuth.vue'),
       name: 'OAuth',
       beforeEnter: guest,
       meta: { layout: 'auth' },
     },
     {
       path: '/oauth/zoom/callback',
-      component: ZoomAuth,
+      component: () => import('./components/Authentication/ZoomAuth.vue'),
       name: 'ZoomAuth',
       beforeEnter: auth,
     },
     {
       path: '/admin/panel',
-      component: AdminPanel,
+      component: () => import('./components/Admin/Dashboard.vue'),
       name: 'AdminPanel',
       beforeEnter: admin,
     },
     {
       path: '/admin/projects',
-      component: ProjectPanel,
+      component: () => import('./components/Admin/Projects.vue'),
       name: 'ProjectPanel',
       beforeEnter: admin,
     },
     {
       path: '/admin/tasks',
-      component: TaskPanel,
+      component: () => import('./components/Admin/Tasks.vue'),
       name: 'TaskPanel',
       beforeEnter: admin,
     },
     {
       path: '/admin/users',
-      component: UserPanel,
+      component: () => import('./components/Admin/Users.vue'),
       name: 'UserPanel',
       beforeEnter: admin,
     },
     {
       path: '/register',
-      component: Register,
+      component: () => import('./components/Authentication/Register.vue'),
       name: 'Register',
       beforeEnter: guest,
       meta: { layout: 'auth' },
     },
     {
       path: '/login',
-      component: Login,
+      component: () => import('./components/Authentication/Login.vue'),
       name: 'Login',
       beforeEnter: guest,
       meta: { layout: 'auth' },
     },
     {
       path: '/2fa/code',
-      component: TwoFACode,
+      component: () => import('./components/Authentication/TwoFACode.vue'),
       name: 'TwoFACode',
       beforeEnter: twofaGuard,
       meta: { layout: 'auth' },
     },
     {
       path: '/forgot-password',
-      component: ForgotPassword,
+      component: () => import('./components/Authentication/ForgotPassword.vue'),
       name: 'Forgot',
       beforeEnter: guest,
       meta: { layout: 'auth' },
     },
     {
       path: '/api/v1/password/reset/:token',
-      component: ResetPassword,
+      component: () => import('./components/Authentication/ResetPassword.vue'),
       name: 'Reset',
       beforeEnter: guest,
       meta: { layout: 'auth' },
     },
     {
       path: '/api/v1/email/verify/:user',
-      component: VerifyPassword,
+      component: () => import('./components/Authentication/VerifyPassword.vue'),
       name: 'verification.verify',
       meta: { layout: 'auth' },
     },
     {
       path: '/dashboard',
-      component: Dashboard,
+      component: () => import('./components/Dashboard/Dashboard.vue'),
       name: 'Dashboard',
       beforeEnter: auth,
     },
     {
       path: '/projects/:slug',
-      component: ProjectPage,
+      component: () => import('./components/Project/ProjectPage.vue'),
       name: 'ProjectPage',
       beforeEnter: auth,
     },
     {
       path: '/project/:name/:slug/activities',
-      component: Activities,
+      component: () => import('./components/Project/Activities.vue'),
       name: 'Activities',
       props: true,
       beforeEnter: auth,
     },
     {
       path: '/projects',
-      component: Projects,
+      component: () => import('./components/Projects.vue'),
       name: 'Projects',
       beforeEnter: auth,
     },
     {
       path: '/user/:uuid/profile',
-      component: Profile,
+      component: () => import('./components/Profile/ProfilePage.vue'),
       name: 'Profile',
       beforeEnter: auth,
     },
     {
       path: '/subscriptions',
-      component: Subscription,
+      component: () => import('./components/Subscription.vue'),
       name: 'Subscription',
       beforeEnter: auth,
     },
     {
       path: '/user-notifications',
-      component: UserNotification,
+      component: () => import('./components/UserNotification.vue'),
       name: 'UserNotification',
       beforeEnter: auth,
     },

@@ -104,6 +104,8 @@
 </template>
 
 <script>
+import Swal from 'sweetalert2';
+
 export default {
   data() {
     return {
@@ -126,7 +128,7 @@ export default {
         .post('/register', this.form)
         .then(() => {
           this.$Progress.finish();
-          swal.fire('Account Registered', 'Please Verify your account and login', 'success');
+          Swal.fire('Account Registered', 'Please Verify your account and login', 'success');
           this.$router.push('/login');
         })
         .catch((error) => {

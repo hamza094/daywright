@@ -8,9 +8,11 @@ use App\Jobs\CancelZoomMeetingsJob;
 use App\Jobs\MailMessage;
 use App\Jobs\QueuedPasswordResetJob;
 use App\Jobs\QueuedVerifyEmailJob;
+use App\Jobs\RecoverZoomMeetingOperationJob;
 use App\Jobs\SendMeetingEndedNotification;
 use App\Jobs\SendMeetingStartedNotification;
 use App\Jobs\SmsMessage;
+use App\Jobs\Webhooks\ProcessZoomWebhookInbox;
 use App\Mail\ProjectMail;
 use App\Models\Message;
 use App\Models\User;
@@ -163,5 +165,29 @@ class JobsTest extends TestCase
         dispatch($job);
 
         Queue::assertPushed(CancelZoomMeetingsJob::class, fn ($job): bool => $job->queue === 'default');
+    }
+
+    /** @test */
+    public function recover_zoom_meeting_operation_job_uses_default_queue(): void
+    {
+        Queue::fake();
+
+        $job = new RecoverZoomMeetingOperationJob(123, 'op-test-id', 'claim-test-token');
+
+        dispatch($job);
+
+        Queue::assertPushed(RecoverZoomMeetingOperationJob::class, fn ($job): bool => $job->queue === 'default');
+    }
+
+    /** @test */
+    public function process_zoom_webhook_inbox_job_uses_webhooks_queue(): void
+    {
+        Queue::fake();
+
+        $job = new ProcessZoomWebhookInbox(456);
+
+        dispatch($job);
+
+        Queue::assertPushed(ProcessZoomWebhookInbox::class, fn ($job): bool => $job->queue === 'webhooks');
     }
 }

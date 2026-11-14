@@ -63,9 +63,8 @@ DB_DATABASE=daywright
 DB_USERNAME=your_db_user
 DB_PASSWORD=your_db_password
 
-# Queue - IMPORTANT: Do not use 'sync' in production
-QUEUE_CONNECTION=database
-# Alternative: QUEUE_CONNECTION=redis
+# Queue - Use Redis with Laravel Horizon in production
+QUEUE_CONNECTION=redis
 
 # Cache and Session - Use Redis for production
 CACHE_DRIVER=redis
@@ -88,13 +87,31 @@ MAIL_FROM_ADDRESS=noreply@your-domain.com
 MAIL_FROM_NAME="${APP_NAME}"
 
 # SMS Configuration (if using Vonage)
-VONAGE_API_KEY=your-api-key
-VONAGE_API_SECRET=your-api-secret
+VONAGE_KEY=your-api-key
+VONAGE_SECRET=your-api-secret
 VONAGE_SMS_FROM=your-phone-number
 
 # Zoom Integration
-ZOOM_API_KEY=your-zoom-api-key
-ZOOM_API_SECRET=your-zoom-api-secret
+ZOOM_CLIENT_ID=your-zoom-client-id
+ZOOM_CLIENT_SECRET=your-zoom-client-secret
+ZOOM_WEBHOOK_SECRET_TOKEN=your-zoom-webhook-secret-token
+
+# Real-time (Pusher / Laravel Echo)
+PUSHER_APP_ID=your-pusher-app-id
+PUSHER_APP_KEY=your-pusher-app-key
+PUSHER_APP_SECRET=your-pusher-app-secret
+PUSHER_APP_CLUSTER=mt1
+VITE_PUSHER_APP_KEY="${PUSHER_APP_KEY}"
+VITE_PUSHER_APP_CLUSTER="${PUSHER_APP_CLUSTER}"
+
+# Frontend error monitoring (Sentry)
+VITE_APP_ENV=production
+VITE_SENTRY_DSN=your-sentry-dsn
+# SENTRY_AUTH_TOKEN is a CI/CD secret only — used by vite build for source map upload, never in the app runtime env
+
+# Backend monitoring (Laravel Nightwatch)
+NIGHTWATCH_TOKEN=your-nightwatch-token
+NIGHTWATCH_REQUEST_SAMPLE_RATE=0.1
 
 # Admin Emails (comma-separated)
 ADMIN_EMAILS=admin@example.com,security@example.com
@@ -166,49 +183,111 @@ Configure Redis persistence in `redis.conf`:
 save 900 1
 save 300 10
 save 60 10000
+
+# Optional: For stronger queue durability with minimal job loss on unexpected restarts
+appendonly yes
+appendfsync everysec
 ```
 
-This saves the dataset to disk if:
+This saves the dataset to disk via RDB snapshots if:
 
 - At least 1 key changed in 900 seconds
 - At least 10 keys changed in 300 seconds
 - At least 10000 keys changed in 60 seconds
 
-## Queue Workers
+> **Note**: Standard RDB snapshots are sufficient for DayWright because scheduled and recovery tasks are re-dispatchable and idempotent. For stronger durability with a minimal loss window (up to ~1 second on abrupt failure), enable AOF (`appendonly yes` with `appendfsync everysec`).
 
-### Queue Architecture
+### Redis Maintenance & Queue Quiescing
 
-DayWright uses multiple queues for different priorities:
+When restarting Redis or performing maintenance on the Redis server in production, **quiesce** producers and workers first to avoid losing in-flight jobs or notification dispatches:
 
-| Queue      | Purpose                                                 | Priority |
-| ---------- | ------------------------------------------------------- | -------- |
-| `critical` | Password resets, email verification, auth notifications | Highest  |
-| `default`  | Messages, notifications, Zoom operations                | Normal   |
-| `metrics`  | Analytics and reporting                                 | Lower    |
-| `webhooks` | Zoom webhook processing                                 | Normal   |
+1. **Quiesce job producers (Enter Maintenance Mode)**:
+   Prevent web traffic and scheduler commands from enqueueing new jobs while Redis is serviced:
 
-### Worker Commands
+   > **Note**: In multi-server deployments behind a load balancer, run `php artisan down` on **every web node** (or configure your load balancer to redirect traffic to a maintenance page) because Laravel's file-based maintenance mode affects only the local node.
 
-Run these workers using Supervisor (see Supervisor Setup section):
+   ```bash
+   php artisan down --retry=60
+   ```
+
+2. **Pause Horizon queue workers on all worker nodes**:
+
+   > **Note**: `horizon:pause` signals master supervisors only on the local host. Run this command on **every** Horizon worker host or container in multi-node deployments.
+
+   ```bash
+   php artisan horizon:pause
+   ```
+
+3. **Wait for active in-flight jobs to finish**:
+   Verify currently active/in-flight jobs have finished via the Horizon UI dashboard (`/horizon/dashboard`) or check that active workers have drained to `0`.
+
+   > **Note**: Once workers are paused, pending jobs remain safely preserved in Redis and will resume when workers continue. Do not wait for pending queue lists to reach zero while workers are paused.
+
+   If you need to inspect queue lengths directly in Redis, check Laravel's actual queue keys across all four configured queues (accounting for any configured Redis client prefix, e.g. `daywright_database_`):
+
+   ```bash
+   # Inspect pending job lists across all 4 configured queues (append client prefix if configured)
+   redis-cli llen queues:critical
+   redis-cli llen queues:default
+   redis-cli llen queues:webhooks
+   redis-cli llen queues:metrics
+   ```
+
+4. **Trigger background snapshot and verify success**:
+   `BGSAVE` returns immediately while the dump finishes in the background. Wait until `rdb_bgsave_in_progress` returns `0` and verify that `rdb_last_bgsave_status` reports `ok` before restarting:
+
+   ```bash
+   redis-cli bgsave
+   # Poll until background save completes
+   while [ $(redis-cli info persistence | grep -c "rdb_bgsave_in_progress:1") -eq 1 ]; do sleep 1; done
+   # Confirm snapshot succeeded without errors
+   redis-cli info persistence | grep "rdb_last_bgsave_status:ok"
+   ```
+
+5. **Perform Redis maintenance or restart**:
+
+   ```bash
+   sudo systemctl restart redis
+   ```
+
+6. **Resume queue workers on all nodes and bring site back up**:
+
+   ```bash
+   # Resume workers across all worker hosts
+   php artisan horizon:continue
+
+   # Bring web nodes back online across all web hosts
+   php artisan up
+   ```
+
+## Queue Workers (Laravel Horizon)
+
+### Queue Architecture & Supervisor Isolation
+
+DayWright uses **Laravel Horizon** over Redis with four dedicated supervisors for capacity isolation:
+
+| Queue      | Supervisor            | Purpose                                                                | Sizing Strategy                                |
+| :--------- | :-------------------- | :--------------------------------------------------------------------- | :--------------------------------------------- |
+| `critical` | `supervisor-auth`     | Password resets, email verification, security notices                  | 1 dedicated process (zero waiting)             |
+| `default`  | `supervisor-default`  | Team messages, notifications, Zoom cancellations & recoveries          | 2-4 processes (auto-scaling on wait time)      |
+| `webhooks` | `supervisor-webhooks` | Zoom webhook event processing (`ProcessZoomWebhookInbox`)              | 1 dedicated process                            |
+| `metrics`  | `supervisor-metrics`  | Nightly project health score calculations (`RecalculateProjectHealth`) | 1 fixed process (hard-capped to protect MySQL) |
+
+Horizon worker configuration is centralized in `config/horizon.php`.
+
+### Running Horizon
+
+In development (via Laravel Sail):
 
 ```bash
-# Critical and default queues
-php artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --timeout=120 --max-time=3600
-
-# Metrics queue
-php artisan queue:work database --queue=metrics --sleep=3 --tries=2 --timeout=120 --max-time=3600
-
-# Webhooks queue
-php artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=120 --max-time=3600
+./vendor/bin/sail artisan horizon
 ```
 
-### Worker Flags Explained
+In production (managed via Linux Supervisor or Docker):
 
-- `--queue`: Queue priority order (left = highest priority)
-- `--sleep=3`: Wait 3 seconds between jobs if queue is empty
-- `--tries=3`: Default retry count (jobs can override this)
-- `--timeout=120`: Maximum execution time per job (must be < retry_after)
-- `--max-time=3600`: Restart worker after 1 hour (prevents memory leaks)
+```bash
+php artisan horizon
+```
 
 ### PCNTL Requirement & Job Timeout Precedence
 
@@ -241,11 +320,29 @@ Add this to your crontab (`crontab -e`):
 
 ### Scheduled Tasks
 
-The scheduler handles:
+The scheduler (`app/Console/Kernel.php`) handles the following, all guarded by `onOneServer()` and `withoutOverlapping()`:
 
-- **Scheduled message dispatching**: Sends messages at their scheduled delivery time
-- **Failed job pruning**: Automatically removes failed jobs older than 7 days
-- **Zoom recovery commands**: `webhooks:recover-pending` and `meetings:recover-pending --limit=25` run every minute with `withoutOverlapping(5)`. The 5-minute expiry prevents crashes from locking out recovery for Laravel's default 24-hour lock window.
+**Every minute / few minutes:**
+
+- `schedule:message` — dispatches scheduled team messages (only when messages are pending)
+- `tasks:notify` — sends due task notifications (every 2 minutes, only when due)
+- `webhooks:recover-pending` — retries incomplete webhook inbox events (`withoutOverlapping(5)`)
+- `meetings:recover-ambiguous --limit=25` — reconciles Zoom meetings with uncertain creation state (`withoutOverlapping(15)`, runs in background)
+- `meetings:recover-pending --limit=25` — retries pending Zoom meeting operations (`withoutOverlapping(5)`, background)
+- `subscriptions:recover-operations --limit=25` — retries pending Paddle subscription operations (`withoutOverlapping(5)`, background)
+
+**Every 30 minutes:**
+
+- `meetings:check-unsent-notifications` — recovers meeting notifications that were not marked sent
+
+**Daily:**
+
+- `remove:abandon` — removes abandoned records
+- `queue:prune-batches --hours=48 --unfinished=72` and `queue:prune-failed --hours=720` — prunes old queue batches and failed jobs (failed jobs kept 30 days)
+- `backup:clean` (01:00) and `backup:run` (01:30) — database backup cleanup and creation
+- `telescope:prune --hours=10` — prunes Telescope entries
+- `user:profile-delete` — deletes user profiles scheduled for removal
+- `projects:recalculate-health --queue=metrics` (02:00) — nightly project health score recalculation on the `metrics` queue
 
 ### Scheduler Locks & Incident Recovery
 
@@ -257,9 +354,9 @@ During incident recovery, if an abandoned lock blocks scheduled commands after a
 php artisan schedule:clear-cache
 ```
 
-## Supervisor Setup
+## Supervisor Setup (Keeping Horizon Alive)
 
-Supervisor keeps queue workers running and restarts them if they crash.
+In production, use Linux Supervisor (or a Docker container restart policy) to manage the single Horizon master process. Horizon internally manages all 4 worker supervisors and pools.
 
 ### Install Supervisor
 
@@ -273,40 +370,17 @@ sudo yum install supervisor
 
 ### Configuration
 
-Create `/etc/supervisor/conf.d/daywright-worker.conf`:
+Create `/etc/supervisor/conf.d/daywright-horizon.conf`:
 
 ```ini
-[program:daywright-worker-critical]
-process_name=%(program_name)s_%(process_num)02d
-command=php /path/to/daywright/artisan queue:work database --queue=critical,default --sleep=3 --tries=3 --timeout=120 --max-time=3600
+[program:daywright-horizon]
+process_name=%(program_name)s
+command=php /path/to/daywright/artisan horizon
 autostart=true
 autorestart=true
 user=www-data
-numprocs=2
 redirect_stderr=true
-stdout_logfile=/var/log/daywright-worker-critical.log
-stopwaitsecs=3600
-
-[program:daywright-worker-metrics]
-process_name=%(program_name)s_%(process_num)02d
-command=php /path/to/daywright/artisan queue:work database --queue=metrics --sleep=3 --tries=2 --timeout=120 --max-time=3600
-autostart=true
-autorestart=true
-user=www-data
-numprocs=1
-redirect_stderr=true
-stdout_logfile=/var/log/daywright-worker-metrics.log
-stopwaitsecs=3600
-
-[program:daywright-worker-webhooks]
-process_name=%(program_name)s_%(process_num)02d
-command=php /path/to/daywright/artisan queue:work database --queue=webhooks --sleep=3 --tries=3 --timeout=120 --max-time=3600
-autostart=true
-autorestart=true
-user=www-data
-numprocs=1
-redirect_stderr=true
-stdout_logfile=/var/log/daywright-worker-webhooks.log
+stdout_logfile=/var/log/daywright-horizon.log
 stopwaitsecs=3600
 ```
 
@@ -319,14 +393,39 @@ sudo supervisorctl reread
 # Update Supervisor
 sudo supervisorctl update
 
-# Start all workers
-sudo supervisorctl start daywright-worker-*
+# Start Horizon
+sudo supervisorctl start daywright-horizon
 
 # Check status
 sudo supervisorctl status
 ```
 
 ## Deployment Process
+
+### Database to Redis Queue Cutover (One-Time Migration)
+
+If migrating an existing deployment from `QUEUE_CONNECTION=database` to Redis/Horizon:
+
+1. **Enter maintenance mode** to stop new jobs from being enqueued:
+   ```bash
+   php artisan down --retry=60
+   ```
+2. **Drain pending database queue jobs** across all queues before switching:
+   ```bash
+   php artisan queue:work database --queue=critical,default,webhooks,metrics --stop-when-empty
+   ```
+3. **Verify nothing is left behind.** `--stop-when-empty` only covers _available_ jobs. Also check for reserved/delayed jobs and unretried failures:
+   ```bash
+   # Should all return 0
+   php artisan tinker --execute="echo \DB::table('jobs')->count();"
+   php artisan tinker --execute="echo \DB::table('jobs')->whereNotNull('reserved_at')->count();"
+   php artisan tinker --execute="echo \DB::table('jobs')->where('attempts', '>', 0)->count();"
+   php artisan queue:failed   # review; retry or delete intentionally — do NOT bulk-retry blindly
+   ```
+   If reserved or delayed rows remain, wait for their workers or release them before switching. Decide explicitly what happens to `failed_jobs` rows: they stay in the `failed_jobs` table regardless of queue driver and can be retried after the switch with `php artisan queue:retry all`.
+4. Switch `.env` to `QUEUE_CONNECTION=redis` and proceed with standard deployment.
+5. **Rollback path:** if Redis/Horizon misbehaves after cutover, switch `QUEUE_CONNECTION` back to `database` — pending Redis jobs remain in Redis lists and can be re-driven later, but jobs enqueued during the Redis window will NOT appear in the `jobs` table. Prefer a forward fix; treat rollback as last resort.
+6. Leave maintenance mode only after Horizon is confirmed processing (`php artisan horizon:status`) and `redis-cli llen queues:default` is draining.
 
 ### Standard Deployment
 
@@ -355,11 +454,10 @@ sudo supervisorctl status
    php artisan view:cache
    ```
 
-5. **Restart queue workers** (loads new code):
+5. **Restart queue workers** (gracefully reloads Horizon with new code):
 
    ```bash
-   php artisan queue:restart
-   sudo supervisorctl restart daywright-worker-*
+   php artisan horizon:terminate
    ```
 
 6. **Clear any running scheduler tasks** (if needed):
@@ -375,6 +473,30 @@ For zero-downtime deployments:
 2. Switch symlink to new directory
 3. Restart workers after symlink switch
 4. Old directory can be removed after verification
+
+## E2E Smoke Tests (Staging)
+
+The Playwright suite (`tests/e2e`) requires deterministic accounts that do NOT
+exist in the faker-generated `UserSeeder` output. After deploying to staging:
+
+```bash
+# 1. Seed the dedicated E2E accounts (idempotent, safe to re-run)
+php artisan db:seed --class=E2eUserSeeder
+
+# 2. Run the suite against the staging URL
+PLAYWRIGHT_BASE_URL="https://<staging-domain>" \
+E2E_USER_EMAIL="e2e-user-a@daywright.test" \
+E2E_USER_B_EMAIL="e2e-user-b@daywright.test" \
+E2E_USER_PASSWORD="<password>" \
+npx playwright test tests/e2e --project=chromium
+```
+
+`E2eUserSeeder` is intentionally excluded from `DatabaseSeeder` so known
+credentials are never created by a routine `db:seed`. It creates `e2e-user-a`
+(with fixture projects) and `e2e-user-b` (a separate tenant for the
+isolation spec). Default credentials are `e2e-user-a@daywright.test` /
+`e2e-user-b@daywright.test` with password `Berry@999`; override via the env
+vars above on both the seeder and the test runner.
 
 ## Monitoring and Maintenance
 
@@ -401,20 +523,19 @@ php artisan queue:flush
 
 ### Failed Job Retention
 
-Failed jobs are automatically pruned after 7 days by the scheduler. To adjust this, modify the scheduler command in `app/Console/Kernel.php`.
+Failed jobs are automatically pruned after 30 days (`queue:prune-failed --hours=720`) by the scheduler. To adjust this, modify the scheduler command in `app/Console/Kernel.php`.
 
-### Queue Monitoring
+### Horizon Dashboard & Queue Monitoring
 
-Monitor queue depth:
-
-```bash
-# Check queue size (database queue)
-php artisan tinker
->>> DB::table('jobs')->count();
-
-# Check failed jobs count
->>> DB::table('failed_jobs')->count();
-```
+- **Horizon Dashboard**: Access real-time throughput, supervisor status, queue wait times, and job metrics at:
+  `https://your-domain.com/horizon`
+  _(Access is protected by `ADMIN_EMAILS` in production)_
+- **CLI Horizon Status**:
+  ```bash
+  php artisan horizon:status
+  ```
+- **Failed Jobs**:
+  Failed jobs appear directly in the Horizon UI and are recorded in the `failed_jobs` database table.
 
 ### Log Monitoring
 
