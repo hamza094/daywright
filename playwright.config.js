@@ -1,7 +1,7 @@
 // @ts-check
 import { defineConfig, devices } from '@playwright/test';
 import dotenv from 'dotenv';
-import path from 'path';
+import path from 'node:path';
 
 // Load environment variables from .env file if present
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
@@ -26,7 +26,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests to keep sequential tenant and auth state predictable */
-  workers: process.env.CI ? 1 : 1,
+  workers: 1,
   /* Reporter: terminal list for instant CLI feedback + HTML artifact */
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   /* Shared settings for all the projects below */

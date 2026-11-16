@@ -34,6 +34,6 @@ class TrustProxies extends Middleware
         // must be trusted or Laravel treats requests as HTTP. Set
         // TRUSTED_PROXIES to specific IPs/CIDRs in production; '*' trusts all.
         $proxies = (string) env('TRUSTED_PROXIES', '*');
-        $this->proxies = $proxies === '*' ? '*' : array_map('trim', explode(',', $proxies));
+        $this->proxies = $proxies === '*' ? '*' : array_map(trim(...), explode(',', $proxies));
     }
 }

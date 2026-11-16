@@ -15,7 +15,7 @@ const sentryTraceTargets = [
   /^https?:\/\/(?:[a-z0-9-]+\.)*daywright\.com(?::\d+)?\/api/,
 ];
 if (typeof window !== 'undefined' && window.location?.origin) {
-  const escapedOrigin = window.location.origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const escapedOrigin = window.location.origin.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
   sentryTraceTargets.push(new RegExp(`^${escapedOrigin}(?=[/?#]|$)`));
 }
 
@@ -132,7 +132,7 @@ export function setupVueErrorHandler(Vue) {
       });
     }
 
-    if (vm && vm.$vToastify) {
+    if (vm?.$vToastify) {
       vm.$vToastify.error('An unexpected error occurred. Please refresh the page.', 'Error');
     }
   };
@@ -182,7 +182,7 @@ export function setupUnhandledRejectionHandler(Vue) {
  * Associates errors with a specific user ID for impact analysis
  */
 export function setSentryUser(user) {
-  if (!user || !user.id) {
+  if (!user?.id) {
     clearSentryUser();
     return;
   }
