@@ -426,7 +426,7 @@ If migrating an existing deployment from `QUEUE_CONNECTION=database` to Redis/Ho
    If reserved or delayed rows remain, wait for their workers or release them before switching. Decide explicitly what happens to `failed_jobs` rows: they stay in the `failed_jobs` table regardless of queue driver. Note that `queue:retry` re-dispatches each failed job on **its original connection and queue** — retrying a database-era failure after the switch puts it back on the database driver, so drain or consciously requeue those before cutover.
 4. Switch `.env` to `QUEUE_CONNECTION=redis` and proceed with standard deployment.
 5. **Rollback path:** if Redis/Horizon misbehaves after cutover, switch `QUEUE_CONNECTION` back to `database` — pending Redis jobs remain in Redis lists and can be re-driven later, but jobs enqueued during the Redis window will NOT appear in the `jobs` table. Prefer a forward fix; treat rollback as last resort.
-6. Leave maintenance mode only after Horizon is confirmed processing (`php artisan horizon:status`) and `redis-cli llen queues:default` is draining.
+6. Bring the site back up only after verifying workers actually process jobs — `horizon:status` proves Horizon is running, not that jobs flow (workers pause during maintenance mode). With traffic still blocked, resume workers (`php artisan horizon:continue` if paused), dispatch a controlled test job, confirm it completes, then `php artisan up`. Also confirm `redis-cli llen queues:default` is draining.
 
 ### Standard Deployment
 
