@@ -9,10 +9,12 @@ use Monolog\Handler\SyslogUdpHandler;
 $jsonFormatter = Monolog\Formatter\JsonFormatter::class;
 $scrubTap = [App\Logging\ScrubSensitiveData::class];
 
-// Shared shape for rotating JSON file channels; override path/level/days per channel.
-$dailyJsonDefaults = [
+// Factory for rotating JSON file channels; pass file name, retention days, and level.
+$dailyJson = fn (string $file, int $days, string $level = 'debug'): array => [
     'driver' => 'daily',
-    'level' => 'debug',
+    'path' => storage_path('logs/'.$file),
+    'level' => $level,
+    'days' => $days,
     'formatter' => $jsonFormatter,
     'tap' => $scrubTap,
 ];
@@ -65,15 +67,9 @@ return [
             'tap' => $scrubTap,
         ],
 
-        'daily' => array_merge($dailyJsonDefaults, [
-            'path' => storage_path('logs/laravel.log'),
-            'days' => 3,
-        ]),
+        'daily' => $dailyJson('laravel.log', 3),
 
-        'daily_json' => array_merge($dailyJsonDefaults, [
-            'path' => storage_path('logs/laravel.log'),
-            'days' => 14,
-        ]),
+        'daily_json' => $dailyJson('laravel.log', 14),
 
         'slack' => [
             'driver' => 'slack',
@@ -125,30 +121,14 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
-        'zoom' => array_merge($dailyJsonDefaults, [
-            'path' => storage_path('logs/zoom.log'),
-            'level' => env('LOG_ZOOM_LEVEL', 'info'),
-            'days' => 30,
-        ]),
+        'zoom' => $dailyJson('zoom.log', 30, env('LOG_ZOOM_LEVEL', 'info')),
         'zoom_webhook_failed' => $nightwatchStack('zoom_webhook_failed_file'),
-        'zoom_webhook_failed_file' => array_merge($dailyJsonDefaults, [
-            'path' => storage_path('logs/zoom-webhook-failed.log'),
-            'level' => 'error',
-            'days' => 30,
-        ]),
+        'zoom_webhook_failed_file' => $dailyJson('zoom-webhook-failed.log', 30, 'error'),
 
-        'exception_metrics' => array_merge($dailyJsonDefaults, [
-            'path' => storage_path('logs/exception-metrics.log'),
-            'level' => 'info',
-            'days' => 14,
-        ]),
+        'exception_metrics' => $dailyJson('exception-metrics.log', 14, 'info'),
 
         'queue_critical' => $nightwatchStack('queue_critical_file'),
-        'queue_critical_file' => array_merge($dailyJsonDefaults, [
-            'path' => storage_path('logs/queue-critical.log'),
-            'level' => 'error',
-            'days' => 30,
-        ]),
+        'queue_critical_file' => $dailyJson('queue-critical.log', 30, 'error'),
     ],
 
 ];

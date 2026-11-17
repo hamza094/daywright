@@ -20,6 +20,27 @@ $devSupervisors = [
     ],
 ];
 
+// Builds a Redis queue worker supervisor; shared keys live here so each
+// supervisor only declares the queue, processes, tries, and timeout.
+$supervisor = fn (
+    array $queue,
+    int $processes,
+    int $tries,
+    int $timeout,
+    int $maxJobs = 1000,
+): array => [
+    'connection' => 'redis',
+    'queue' => $queue,
+    'balance' => 'simple',
+    'processes' => $processes,
+    'maxTime' => 3600,
+    'maxJobs' => $maxJobs,
+    'memory' => 128,
+    'tries' => $tries,
+    'timeout' => $timeout,
+    'nice' => 0,
+];
+
 return [
 
     /*
@@ -232,54 +253,12 @@ return [
     */
 
     'defaults' => [
-        'supervisor-auth' => [
-            'connection' => 'redis',
-            'queue' => ['critical'],
-            'balance' => 'simple',
-            'processes' => 1,
-            'maxTime' => 3600,
-            'maxJobs' => 1000,
-            'memory' => 128,
-            'tries' => 3,
-            'timeout' => 30,
-            'nice' => 0,
-        ],
-        'supervisor-default' => [
-            'connection' => 'redis',
-            'queue' => ['default'],
-            'balance' => 'simple',
-            'processes' => 2,
-            'maxTime' => 3600,
-            'maxJobs' => 1000,
-            'memory' => 128,
-            'tries' => 3,
-            'timeout' => 120, // Must remain strictly < redis retry_after (150s)
-            'nice' => 0,
-        ],
-        'supervisor-webhooks' => [
-            'connection' => 'redis',
-            'queue' => ['webhooks'],
-            'balance' => 'simple',
-            'processes' => 1,
-            'maxTime' => 3600,
-            'maxJobs' => 1000,
-            'memory' => 128,
-            'tries' => 1, // Webhook errors are recovered by webhooks:recover-pending
-            'timeout' => 60,
-            'nice' => 0,
-        ],
-        'supervisor-metrics' => [
-            'connection' => 'redis',
-            'queue' => ['metrics'],
-            'balance' => 'simple',
-            'processes' => 1,
-            'maxTime' => 3600,
-            'maxJobs' => 500,
-            'memory' => 128,
-            'tries' => 2,
-            'timeout' => 120,
-            'nice' => 0,
-        ],
+        'supervisor-auth' => $supervisor(['critical'], 1, 3, 30),
+        // Timeout must remain strictly < redis retry_after (150s)
+        'supervisor-default' => $supervisor(['default'], 2, 3, 120),
+        // Tries is 1: webhook errors are recovered by webhooks:recover-pending
+        'supervisor-webhooks' => $supervisor(['webhooks'], 1, 1, 60),
+        'supervisor-metrics' => $supervisor(['metrics'], 1, 2, 120, 500),
     ],
 
     'environments' => [
