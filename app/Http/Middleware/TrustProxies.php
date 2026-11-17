@@ -33,7 +33,7 @@ class TrustProxies extends Middleware
         // Behind AWS ALB / Cloudflare / any reverse proxy, forwarded headers
         // must be trusted or Laravel treats requests as HTTP. Set
         // TRUSTED_PROXIES to specific IPs/CIDRs in production; '*' trusts all.
-        $proxies = (string) env('TRUSTED_PROXIES', '*');
+        $proxies = (string) config('app.trusted_proxies', '*');
         $this->proxies = $proxies === '*' ? '*' : array_map(trim(...), explode(',', $proxies));
     }
 }
