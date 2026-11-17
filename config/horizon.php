@@ -4,6 +4,22 @@ declare(strict_types=1);
 
 use Illuminate\Support\Str;
 
+// Staging mirrors local development: fixed process counts, 5 workers total.
+$devSupervisors = [
+    'supervisor-auth' => [
+        'processes' => 1,
+    ],
+    'supervisor-default' => [
+        'processes' => 2,
+    ],
+    'supervisor-webhooks' => [
+        'processes' => 1,
+    ],
+    'supervisor-metrics' => [
+        'processes' => 1,
+    ],
+];
+
 return [
 
     /*
@@ -291,37 +307,9 @@ return [
             ],
         ],
 
-        'staging' => [
-            // Staging environment mirrors local development process limits (Total: 5 workers)
-            'supervisor-auth' => [
-                'processes' => 1,
-            ],
-            'supervisor-default' => [
-                'processes' => 2,
-            ],
-            'supervisor-webhooks' => [
-                'processes' => 1,
-            ],
-            'supervisor-metrics' => [
-                'processes' => 1,
-            ],
-        ],
+        'staging' => $devSupervisors,
 
-        'local' => [
-            // Fixed process counts for local development (Total: 5 workers)
-            'supervisor-auth' => [
-                'processes' => 1,
-            ],
-            'supervisor-default' => [
-                'processes' => 2,
-            ],
-            'supervisor-webhooks' => [
-                'processes' => 1,
-            ],
-            'supervisor-metrics' => [
-                'processes' => 1,
-            ],
-        ],
+        'local' => $devSupervisors,
     ],
 
     /*

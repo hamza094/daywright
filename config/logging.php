@@ -6,6 +6,24 @@ use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 
+$jsonFormatter = Monolog\Formatter\JsonFormatter::class;
+$scrubTap = [App\Logging\ScrubSensitiveData::class];
+
+// Shared shape for rotating JSON file channels; override path/level/days per channel.
+$dailyJsonDefaults = [
+    'driver' => 'daily',
+    'level' => 'debug',
+    'formatter' => $jsonFormatter,
+    'tap' => $scrubTap,
+];
+
+// Stack channels that mirror to Nightwatch alongside a file channel.
+$nightwatchStack = fn (string $fileChannel): array => [
+    'driver' => 'stack',
+    'channels' => [$fileChannel, 'nightwatch'],
+    'ignore_exceptions' => false,
+];
+
 return [
 
     /*
@@ -37,37 +55,25 @@ return [
     */
 
     'channels' => [
-        'stack' => [
-            'driver' => 'stack',
-            'channels' => ['daily', 'nightwatch'],
-            'ignore_exceptions' => false,
-        ],
+        'stack' => $nightwatchStack('daily'),
 
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => 'debug',
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
-            'tap' => [App\Logging\ScrubSensitiveData::class],
+            'formatter' => $jsonFormatter,
+            'tap' => $scrubTap,
         ],
 
-        'daily' => [
-            'driver' => 'daily',
+        'daily' => array_merge($dailyJsonDefaults, [
             'path' => storage_path('logs/laravel.log'),
-            'level' => 'debug',
             'days' => 3,
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
-            'tap' => [App\Logging\ScrubSensitiveData::class],
-        ],
+        ]),
 
-        'daily_json' => [
-            'driver' => 'daily',
+        'daily_json' => array_merge($dailyJsonDefaults, [
             'path' => storage_path('logs/laravel.log'),
-            'level' => 'debug',
             'days' => 14,
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
-            'tap' => [App\Logging\ScrubSensitiveData::class],
-        ],
+        ]),
 
         'slack' => [
             'driver' => 'slack',
@@ -75,7 +81,7 @@ return [
             'username' => 'Laravel Log',
             'emoji' => ':boom:',
             'level' => 'critical',
-            'tap' => [App\Logging\ScrubSensitiveData::class],
+            'tap' => $scrubTap,
         ],
 
         'papertrail' => [
@@ -86,7 +92,7 @@ return [
                 'host' => env('PAPERTRAIL_URL'),
                 'port' => env('PAPERTRAIL_PORT'),
             ],
-            'tap' => [App\Logging\ScrubSensitiveData::class],
+            'tap' => $scrubTap,
         ],
 
         'stderr' => [
@@ -96,19 +102,19 @@ return [
             'with' => [
                 'stream' => 'php://stderr',
             ],
-            'tap' => [App\Logging\ScrubSensitiveData::class],
+            'tap' => $scrubTap,
         ],
 
         'syslog' => [
             'driver' => 'syslog',
             'level' => 'debug',
-            'tap' => [App\Logging\ScrubSensitiveData::class],
+            'tap' => $scrubTap,
         ],
 
         'errorlog' => [
             'driver' => 'errorlog',
             'level' => 'debug',
-            'tap' => [App\Logging\ScrubSensitiveData::class],
+            'tap' => $scrubTap,
         ],
 
         'null' => [
@@ -119,50 +125,30 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
-        'zoom' => [
-            'driver' => 'daily',
+        'zoom' => array_merge($dailyJsonDefaults, [
             'path' => storage_path('logs/zoom.log'),
             'level' => env('LOG_ZOOM_LEVEL', 'info'),
             'days' => 30,
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
-            'tap' => [App\Logging\ScrubSensitiveData::class],
-        ],
-        'zoom_webhook_failed' => [
-            'driver' => 'stack',
-            'channels' => ['zoom_webhook_failed_file', 'nightwatch'],
-            'ignore_exceptions' => false,
-        ],
-        'zoom_webhook_failed_file' => [
-            'driver' => 'daily',
+        ]),
+        'zoom_webhook_failed' => $nightwatchStack('zoom_webhook_failed_file'),
+        'zoom_webhook_failed_file' => array_merge($dailyJsonDefaults, [
             'path' => storage_path('logs/zoom-webhook-failed.log'),
             'level' => 'error',
             'days' => 30,
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
-            'tap' => [App\Logging\ScrubSensitiveData::class],
-        ],
+        ]),
 
-        'exception_metrics' => [
-            'driver' => 'daily',
+        'exception_metrics' => array_merge($dailyJsonDefaults, [
             'path' => storage_path('logs/exception-metrics.log'),
             'level' => 'info',
             'days' => 14,
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
-            'tap' => [App\Logging\ScrubSensitiveData::class],
-        ],
+        ]),
 
-        'queue_critical' => [
-            'driver' => 'stack',
-            'channels' => ['queue_critical_file', 'nightwatch'],
-            'ignore_exceptions' => false,
-        ],
-        'queue_critical_file' => [
-            'driver' => 'daily',
+        'queue_critical' => $nightwatchStack('queue_critical_file'),
+        'queue_critical_file' => array_merge($dailyJsonDefaults, [
             'path' => storage_path('logs/queue-critical.log'),
             'level' => 'error',
             'days' => 30,
-            'formatter' => Monolog\Formatter\JsonFormatter::class,
-            'tap' => [App\Logging\ScrubSensitiveData::class],
-        ],
+        ]),
     ],
 
 ];
