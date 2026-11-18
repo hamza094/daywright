@@ -1,5 +1,5 @@
 <template>
-  <div class="edit-border-top p-3 task-modal">
+  <div class="edit-border-top p-3 task-modal" v-if="task && task.id">
     <TopPanel :task="task" :state="state" :slug="slug" :errors="errors"> </TopPanel>
 
     <div class="panel-form mt-2">
@@ -8,9 +8,13 @@
           <div class="task-feature">
             <p>
               <small><b>Label</b> </small>:
-              <span class="task-option_labels-component" :style="{ backgroundColor: task.status.color }">{{
-                task.status.label
-              }}</span>
+              <span
+                v-if="task.status"
+                class="task-option_labels-component"
+                :style="{ backgroundColor: task.status.color }">
+                {{ task.status.label }}
+              </span>
+              <span v-else class="text-muted font-italic">No label</span>
 
               <small class="ml-2"><b>Members:</b></small>
 

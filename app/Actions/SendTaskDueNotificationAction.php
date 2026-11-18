@@ -15,10 +15,10 @@ final class SendTaskDueNotificationAction
     private const int TRANSACTION_RETRY_ATTEMPTS = 5;
 
     /**
-     * The notify_sent field indicates that a notification has been queued for delivery.
-     * It is set to true AFTER the notification is dispatched to the queue.
-     * This ensures that if notification dispatch fails, notify_sent is not set and the task can be retried.
-     * The transaction ensures atomicity: if dispatch fails, the flag is not committed.
+     * The notify_sent field indicates that a notification has been marked for queued delivery.
+     * Notifications use after-commit dispatch (QueuesAfterCommit trait), ensuring jobs are only
+     * enqueued after the database transaction successfully commits.
+     * If the database transaction rolls back, neither the flag nor the queued notifications persist.
      */
     public function execute(Task $task): bool
     {

@@ -38,6 +38,7 @@
 
 <script>
 import { Bar } from 'vue-chartjs';
+import Chart from 'chart.js';
 
 export default {
   name: 'ProjectChart',

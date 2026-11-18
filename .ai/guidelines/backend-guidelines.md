@@ -551,6 +551,13 @@ Jobs encapsulate work to be queued and processed asynchronously.
 ### Guidelines
 
 - ✅ Use standard traits: `Dispatchable`, `InteractsWithQueue`, `Queueable`, `SerializesModels`
+- ✅ **Explicit Queue Assignment**: Always assign jobs and queued notifications to one of DayWright's four designated queues (`$this->onQueue(...)` in constructor or `$queue` property). Never rely on implicit queue defaults.
+  - `critical`: Auth and immediate-response actions (password resets, email verifications).
+  - `default`: Core business operations (messages, notifications, Zoom meetings/cancellations/recoveries).
+  - `webhooks`: Inbound third-party webhook processing (`ProcessZoomWebhookInbox`).
+  - `metrics`: Heavy analytical and score recalculation tasks (`RecalculateProjectHealth`).
+- ✅ **Timeout Hierarchy Rule**: Job `$timeout` must never exceed the Horizon supervisor timeout (120s) and must strictly be less than Redis `retry_after` (150s) to prevent double-execution race conditions:
+  $$\text{Job Timeout} \le \text{Supervisor Timeout (120s)} < \text{Redis } \mathtt{retry\_after} \text{ (150s)}$$
 - ✅ Define `$tries`, `$timeout`, and `backoff()`
 - ✅ Use method injection in `handle()` for dependencies
 - ✅ Implement `failed()` for failure handling
@@ -723,7 +730,7 @@ Ensure the application is 100% "2 AM Debuggable". When production breaks, system
 - ✅ **Wrap External Boundaries**: All third-party API SDK calls (e.g., Vonage, Paddle) must be wrapped in `try/catch`. Log the failure with context before re-throwing. Do not let SDK exceptions bubble up silently.
 - ✅ **Protect Loops in Commands**: When processing chunks in Console Commands, wrap the inner loop logic in a `try/catch`. A single corrupt row must never crash the entire cron job silently. Log the error and `continue`.
 - ✅ **Log Silent Early Returns**: In queue jobs, if a required model is missing (e.g., deleted before job runs), log a warning/error before `return;`. Do not fail silently. (Exception: pure idempotency checks).
-- ✅ **Redact Sensitive Data Everywhere**: Attach `ScrubSensitiveData` to every first-party log channel and configure Bugsnag's native `redacted_keys`. Apply the same redaction in every environment. Never log credentials, authorization/cookie headers, OAuth codes, provider payloads, or raw SQL bindings.
+- ✅ **Redact Sensitive Data Everywhere**: Attach `ScrubSensitiveData` to every first-party log channel. Apply the same redaction in every environment. Never log credentials, authorization/cookie headers, OAuth codes, provider payloads, or raw SQL bindings.
 - ✅ **Allowlist Audit Metadata**: Pass only identifiers required for investigation to `AuditLogService`. Do not persist raw provider requests, headers, signatures, or third-party responses in logs or audit records. A durable webhook inbox may persist the minimum normalized metadata and encrypted payload required for recovery. The service-level sanitizer is a final safety boundary, not a substitute for caller allowlists.
 - ✅ **Preserve Correlation Data**: Keep safe identifiers such as request ID, provider event ID, actor ID, resource ID, operation, status, and attempt count so sanitized failures remain diagnosable.
 - ✅ **Use JSON Formatting**: Always use `JsonFormatter` in production log channels (e.g., `daily`) to ensure structured, queryable logs.

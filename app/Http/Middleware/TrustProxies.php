@@ -27,4 +27,13 @@ class TrustProxies extends Middleware
         Request::HEADER_X_FORWARDED_PORT |
         Request::HEADER_X_FORWARDED_PROTO |
         Request::HEADER_X_FORWARDED_AWS_ELB;
+
+    public function __construct()
+    {
+        // Behind AWS ALB / Cloudflare / any reverse proxy, forwarded headers
+        // must be trusted or Laravel treats requests as HTTP. Set
+        // TRUSTED_PROXIES to specific IPs/CIDRs in production; '*' trusts all.
+        $proxies = (string) config('app.trusted_proxies', '*');
+        $this->proxies = $proxies === '*' ? '*' : array_map(trim(...), explode(',', $proxies));
+    }
 }

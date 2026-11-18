@@ -4,7 +4,7 @@ Complete these checks in the actual release environment or a staging environment
 
 ## P5.1: one repeatable release procedure
 
-Update `docs/DEPLOYMENT.md` from the current `composer.json`, `.env.example`, `config/queue.php`, and `app/Console/Kernel.php`. Document the actual PHP/extensions, install from `composer.lock`, required secret names, migration order, cache/build steps, worker restart, scheduler invocation, and a post-deploy smoke check. Check that worker timeouts and queue retry settings allow the Zoom and Paddle recovery leases to work. Run `composer check-platform-reqs --no-dev`, `php artisan route:list`, and `php artisan schedule:list` on the release build. Avoid a new deploy script if the hosting platform already performs these steps reliably.
+Update `docs/DEPLOYMENT.md` from the current `composer.json`, `.env.example`, `config/queue.php`, `config/horizon.php`, and `app/Console/Kernel.php`. Document the actual PHP/extensions, install from `composer.lock`, required secret names, migration order, cache/build steps, worker restart, scheduler invocation, and a post-deploy smoke check. Check that worker timeouts and queue retry settings allow the Zoom and Paddle recovery leases to work. Run `composer check-platform-reqs --no-dev`, `php artisan route:list`, and `php artisan schedule:list` on the release build. Avoid a new deploy script if the hosting platform already performs these steps reliably.
 
 **Phase 5 webhook migration:**
 
@@ -15,7 +15,7 @@ Update `docs/DEPLOYMENT.md` from the current `composer.json`, `.env.example`, `c
 
 - Confirm the deployed values, rather than relying on repository defaults: Zoom HTTP request timeout `30s`; `RecoverZoomMeetingOperationJob` timeout `90s`; queue-worker timeout `120s`; per-meeting cache lock `120s`; queue retry or visibility timeout greater than `120s` (currently `150s` for configured database, Redis, and Beanstalkd connections); and recovery claim lease `300s`.
 - Confirm PCNTL is enabled in each PHP CLI worker runtime so Laravel can enforce the job timeout. Confirm the cache driver is shared Redis for workers and scheduler nodes; file or array cache cannot coordinate these locks across processes.
-- Confirm `webhooks:recover-pending` and `meetings:recover-pending --limit=25` use a five-minute `withoutOverlapping` expiry. Record the worker command, Supervisor or platform restart behavior, scheduler command, cache store, queue driver, and effective timeout values in the release record.
+- Confirm `webhooks:recover-pending` and `meetings:recover-pending --limit=25` use a five-minute `withoutOverlapping` expiry. Record the process manager running Horizon (`php artisan horizon`), deployment restart behavior (`php artisan horizon:terminate`), scheduler command, cache store, queue driver (`redis`), and effective supervisor timeout values in the release record.
 - This limits the stale-worker window but does not fence Zoom itself: Zoom does not receive an application claim token. Keep that limitation in the operator runbook.
 
 ## P5.2: detect broken dependencies and stopped work

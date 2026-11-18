@@ -24,7 +24,9 @@ final class RecoverZoomMeetingOperationJob implements ShouldQueue
         private readonly int $meetingId,
         private readonly string $operationId,
         private readonly string $claimToken,
-    ) {}
+    ) {
+        $this->onQueue('default');
+    }
 
     public function handle(Zoom $zoom, PerformZoomMeetingRecovery $recovery): void
     {

@@ -51,6 +51,10 @@ window.moment = momenttz;
 
 import router from './router.js';
 import store from './store';
+import { setupSentry } from './sentry';
+
+// Initialize Sentry error monitoring
+setupSentry(Vue, router);
 
 Vue.mixin(alertNotice);
 Vue.mixin(conversation);
@@ -158,23 +162,25 @@ axios.defaults.useProgress = false;
 import safeHtml from './directives/safeHtml';
 Vue.directive('safe-html', safeHtml);
 
-const components = [
-  ['project-button', './components/ProjectButton.vue'],
-  ['archive-tasks', './components/Project/Panel/ArchiveTasks.vue'],
-  ['project-chat', './components/Project/Panel/ProjectChatPanel.vue'],
-  ['project-form', './components/ProjectForm.vue'],
-  ['project-status', './components/Project/Status.vue'],
-  ['project-features', './components/Project/Feature/FeatureSection.vue'],
-  ['project-stage', './components/Project/Stage.vue'],
-  ['notifications', './components/Notification.vue'],
-  ['profile', './components/Profile/ProfilePge.vue'],
-  ['plan-limit-modal', './components/PlanLimitModal.vue'],
-  ['navbar', './components/Navbar.vue'],
-  ['sidebar-nav-panel', './components/layouts/SidebarNavPanel.vue'],
-];
+import ProjectForm from './components/ProjectForm.vue';
+Vue.component('ProjectForm', ProjectForm);
 
-components.forEach(([name, path]) => {
-  Vue.component(name, () => import(`${path}`).then((m) => m.default));
+const componentLoaders = {
+  'project-button': () => import('./components/ProjectButton.vue'),
+  'archive-tasks': () => import('./components/Project/Panel/ArchiveTasks.vue'),
+  'project-chat': () => import('./components/Project/Panel/ProjectChatPanel.vue'),
+  'project-status': () => import('./components/Project/Status.vue'),
+  'project-features': () => import('./components/Project/Feature/FeatureSection.vue'),
+  'project-stage': () => import('./components/Project/Stage.vue'),
+  notifications: () => import('./components/Notification.vue'),
+  profile: () => import('./components/Profile/ProfilePage.vue'),
+  'plan-limit-modal': () => import('./components/PlanLimitModal.vue'),
+  navbar: () => import('./components/Navbar.vue'),
+  'sidebar-nav-panel': () => import('./components/layouts/SidebarNavPanel.vue'),
+};
+
+Object.entries(componentLoaders).forEach(([name, loader]) => {
+  Vue.component(name, () => loader().then((m) => m.default));
 });
 
 import LaravelVuePagination from 'laravel-vue-pagination';
@@ -197,6 +203,12 @@ const initializeApp = async () => {
     store.commit('currentUser/loggedIn', false);
     store.commit('currentUser/clearErrors');
     store.commit('currentUser/setBootstrapped', true);
+    store.dispatch('subscribeUser/userLogout');
+    try {
+      localStorage.removeItem('vuex');
+    } catch {
+      // Storage unavailable or blocked; ignore safely
+    }
   }
 
   new Vue({

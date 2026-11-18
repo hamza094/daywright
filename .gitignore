@@ -20,3 +20,10 @@ phpstan.neon.tmp
 storage/framework/laravel-excel/*
 /bootstrap/cache/*.php
 
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

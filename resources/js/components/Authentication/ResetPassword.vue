@@ -68,6 +68,8 @@
 </template>
 
 <script>
+import Swal from 'sweetalert2';
+
 export default {
   data() {
     return {
@@ -99,7 +101,7 @@ export default {
         })
         .then(() => {
           this.$Progress.finish();
-          swal.fire('Password Changed', 'Please Login to continue', 'success');
+          Swal.fire('Password Changed', 'Please Login to continue', 'success');
           this.$router.push('/login');
         })
         .catch((error) => {

@@ -1,5 +1,6 @@
 import Swal from 'sweetalert2';
 import 'sweetalert2/dist/sweetalert2.min.css';
+import { getResponseMessage } from '../utils/apiResponse.js';
 
 export default {
   methods: {
@@ -15,13 +16,14 @@ export default {
       });
     },
 
-    performAction($message, $axiosCall) {
+    performAction($message, $axiosCall, redirectPath = '/dashboard') {
       this.sweetAlert($message).then((result) => {
         if (result.isConfirmed) {
           $axiosCall
             .then((response) => {
-              this.$vToastify.success(response.data.message);
-              this.$router.push('/dashboard');
+              const message = getResponseMessage(response) || 'Action completed successfully.';
+              this.$vToastify.success(message);
+              this.$router.push(redirectPath);
             })
             .catch((error) => {
               // show a helpful message and log the error for debugging

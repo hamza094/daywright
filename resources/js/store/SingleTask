@@ -18,7 +18,7 @@ const state = {
 
 const mutations = {
   setForm(state,form){
-    state.task=form;
+    state.form=form;
   },
   setTask(state,task){
    state.task=task;

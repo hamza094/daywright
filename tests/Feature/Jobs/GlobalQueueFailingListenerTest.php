@@ -20,6 +20,7 @@ class GlobalQueueFailingListenerTest extends TestCase
         $job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
         $job->shouldReceive('resolveName')->andReturn('App\\Jobs\\TestJob');
         $job->shouldReceive('getQueue')->andReturn('critical');
+        $job->shouldReceive('getJobId')->andReturn('test-job-id');
         $job->shouldReceive('uuid')->andReturn('test-uuid');
         $job->shouldReceive('attempts')->andReturn(3);
         $job->shouldReceive('payload')->andReturn(['tags' => ['tag1', 'tag2']]);

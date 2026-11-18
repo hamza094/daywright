@@ -1,7 +1,7 @@
 <template>
   <div class="panel">
     <a href="/" class="panel-brand" aria-label="DayWright home">
-      <img src="/img/D1.png" class="main-img" alt="DayWright" />
+      <img :src="'/img/D1.png'" class="main-img" alt="DayWright" />
     </a>
 
     <nav v-if="loggedIn" class="panel-menu" aria-label="Primary navigation">
@@ -94,6 +94,7 @@ export default {
       if (typeof this.onSignOut === 'function') {
         this.onSignOut();
       }
+      this.$emit('sign-out');
       this.handleNavigate();
     },
     handleNewProject() {

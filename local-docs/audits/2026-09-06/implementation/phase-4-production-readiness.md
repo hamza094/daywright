@@ -22,11 +22,11 @@ Check the release candidate against the intended MySQL engine and shared Redis. 
 
 ## Ticket 2 — P4.1b: Run a real worker and scheduler
 
-**Start with:** `app/Console/Kernel.php`, `config/queue.php`, and the existing Zoom/Paddle recovery commands.
+**Start with:** `app/Console/Kernel.php`, `config/queue.php`, `config/horizon.php`, and the existing Zoom/Paddle recovery commands.
 
-In isolated staging, run a worker in a separate process and run the scheduler every minute. Dispatch one controlled job and confirm that the worker processes it. Confirm `webhooks:recover-pending`, `meetings:recover-ambiguous`, `meetings:recover-pending --limit=25`, and `subscriptions:recover-operations` are scheduled and can execute. Verify that all scheduler nodes share Redis so `onOneServer()` and `withoutOverlapping()` coordinate correctly. Use the deployment platform's existing worker and scheduler facilities where suitable.
+In isolated staging, run Laravel Horizon (`php artisan horizon`) in a separate process and run the scheduler every minute. Confirm that all four Horizon supervisors (`supervisor-auth`, `supervisor-default`, `supervisor-webhooks`, `supervisor-metrics`) are active. Dispatch controlled jobs across each of DayWright's four queues (`critical`, `default`, `webhooks`, `metrics`) and confirm each supervisor processes its assigned work. Confirm `webhooks:recover-pending`, `meetings:recover-ambiguous`, `meetings:recover-pending --limit=25`, and `subscriptions:recover-operations` are scheduled and can execute. Verify that all scheduler nodes share Redis so `onOneServer()` and `withoutOverlapping()` coordinate correctly. Use the deployment platform's existing worker and scheduler facilities where suitable.
 
-**Done when:** the worker process, scheduled invocations, processed job, resolved configuration, and commands are recorded. A successful `schedule:list` by itself is insufficient.
+**Done when:** the Horizon process and all 4 active supervisors, scheduled invocations, processed jobs across all 4 queues, resolved configuration, and commands are recorded. A successful `schedule:list` or single-queue worker by itself is insufficient.
 
 ## Ticket 3 — P4.2a: Race task and project edits
 

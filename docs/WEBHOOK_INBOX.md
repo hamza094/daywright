@@ -314,6 +314,13 @@ php artisan test tests/Feature/Api/Middleware/Zoom/
 php artisan test tests/Unit/Console/KernelScheduleTest.php
 ```
 
+## Related Recovery Commands
+
+This document covers only the webhook inbox (`webhooks:recover-pending`). Two related but separate recovery subsystems exist and are documented in [DEPLOYMENT.md](DEPLOYMENT.md):
+
+- `meetings:recover-ambiguous` / `meetings:recover-pending` — Zoom meeting operation recovery
+- `subscriptions:recover-operations` — Paddle subscription operation recovery
+
 ## Adding Another Provider
 
 Do not copy Zoom's verification or event parsing into shared classes. Follow the provider onboarding checklist, keep provider-specific code at the integration boundary, and reuse the inbox reliability behavior only where the provider's delivery semantics allow it.
