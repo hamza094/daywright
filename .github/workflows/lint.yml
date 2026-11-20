@@ -22,7 +22,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: 8.3
+          php-version: '8.3'
           extensions: mbstring, bcmath, intl
           tools: composer
 
@@ -30,19 +30,7 @@ jobs:
         run: composer install --no-progress --no-interaction --prefer-dist
 
       - name: Run Laravel Pint
-        uses: aglipanci/laravel-pint-action@36de00d5f5a8a4e12d443e01671daa12a18f4c79
-        with:
-          configPath: pint.json
-          pintVersion: '1.25.0'
-
-      - name: Check for uncommitted changes
-        run: |
-          status=$(git status --porcelain)
-          if [ -n "$status" ]; then
-            echo -e "🛑 Laravel Pint found formatting changes:\n$status"
-            echo "::error::Please run 'vendor/bin/pint' locally and commit the fixes."
-            exit 1
-          fi
+        run: vendor/bin/pint --test --config=pint.json
 
       - name: Run Composer security audit
         run: composer audit --no-dev
