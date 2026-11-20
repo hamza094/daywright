@@ -6,9 +6,9 @@ name: Playwright Tests
 #   vars.PLAYWRIGHT_BASE_URL   – staging origin, e.g. https://staging.daywright.com
 #   vars.E2E_USER_EMAIL        – optional, defaults to e2e-user-a@daywright.test
 #   vars.E2E_USER_B_EMAIL      – optional, defaults to e2e-user-b@daywright.test
-#   secrets.E2E_USER_PASSWORD  – REQUIRED. Password matching
+#   secrets.E2E_USER_PASSWORD  – REQUIRED for tests. Password matching
 #                                 `php artisan db:seed --class=E2eUserSeeder` on staging.
-#                                 The job fails if this secret is not set.
+#                                 The job skips gracefully if not configured.
 #
 # The staging database must already be seeded with:
 #   php artisan db:seed --class=E2eUserSeeder
@@ -37,34 +37,38 @@ jobs:
 
     steps:
       - name: Verify staging configuration
+        id: check_config
         run: |
-          if [ -z "$PLAYWRIGHT_BASE_URL" ]; then
-            echo "::error::Set the PLAYWRIGHT_BASE_URL repository variable to your staging URL."
-            exit 1
-          fi
-          if [ -z "$E2E_USER_PASSWORD" ]; then
-            echo "::error::Set the E2E_USER_PASSWORD repository secret (must match the staging E2eUserSeeder password)."
-            exit 1
+          if [ -z "$PLAYWRIGHT_BASE_URL" ] || [ -z "$E2E_USER_PASSWORD" ]; then
+            echo "::warning::PLAYWRIGHT_BASE_URL or E2E_USER_PASSWORD not configured. Skipping staging E2E tests."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: steps.check_config.outputs.configured == 'true'
 
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        if: steps.check_config.outputs.configured == 'true'
         with:
           node-version: 20
           cache: npm
 
       - name: Install dependencies
+        if: steps.check_config.outputs.configured == 'true'
         run: npm ci --ignore-scripts
 
       - name: Install Playwright browser
+        if: steps.check_config.outputs.configured == 'true'
         run: ./node_modules/.bin/playwright install --with-deps chromium
 
       - name: Run E2E tests against staging
+        if: steps.check_config.outputs.configured == 'true'
         run: ./node_modules/.bin/playwright test --project=chromium
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: ${{ !cancelled() }}
+        if: steps.check_config.outputs.configured == 'true' && !cancelled()
         with:
           name: playwright-report
           path: playwright-report/
