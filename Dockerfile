@@ -20,6 +20,14 @@ COPY vite.config.js ./
 COPY resources/ ./resources/
 COPY public/ ./public/
 
+# Public Vite build-time variables (inlined into JS bundle during npm run build)
+ARG VITE_API_BASE_URL=/api/v1
+ARG VITE_APP_ENV=production
+ARG VITE_PUSHER_APP_KEY=""
+ARG VITE_PUSHER_APP_CLUSTER=mt1
+ARG VITE_ZOOM_SDK_KEY=""
+ARG VITE_SENTRY_DSN=""
+
 # Compile production assets into public/build
 ENV NODE_ENV=production
 RUN npm run build
@@ -150,7 +158,7 @@ RUN php artisan package:discover --ansi
 RUN php artisan storage:link --no-interaction
 
 # Ensure storage and cache directory structures exist with correct permissions
-RUN mkdir -p storage/framework/{cache,sessions,views} storage/logs bootstrap/cache \
+RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache
 

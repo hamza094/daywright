@@ -162,8 +162,9 @@ services:
       - storage-framework:/var/www/html/storage/framework
 
     # Horizon's graceful shutdown: SIGTERM → Horizon drains current jobs, exits.
+    # Exceeds longest configured supervisor timeout (120s in config/horizon.php) + overhead.
     stop_signal: SIGTERM
-    stop_grace_period: 60s
+    stop_grace_period: 135s
 
     healthcheck:
       test: ["CMD", "php", "/var/www/html/artisan", "horizon:status"]
@@ -253,8 +254,8 @@ services:
       --save 900 1
       --save 300 10
       --save 60 10000
-      --maxmemory 128mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory 192mb
+      --maxmemory-policy noeviction
       --loglevel notice
 
     volumes:
@@ -280,7 +281,7 @@ services:
       resources:
         limits:
           cpus: "0.25"
-          memory: "192M"
+          memory: "256M"
 
 # ==============================================================================
 # Networks

@@ -66,8 +66,13 @@ cp .env.production.example .env.production
 nano .env.production   # Fill in APP_KEY, DB_*, AWS_*, PADDLE_*, MAIL_*, etc.
 chmod 600 .env .env.production
 
-# 5. Build immutable tagged images (and optionally tag :latest)
-docker build --target runtime -t daywright-app:${TAG} -t daywright-app:latest .
+# 5. Build immutable tagged images (pass public VITE_* build args if used by frontend)
+docker build --target runtime \
+  --build-arg VITE_PUSHER_APP_KEY=your_key \
+  --build-arg VITE_PUSHER_APP_CLUSTER=mt1 \
+  --build-arg VITE_ZOOM_SDK_KEY=your_zoom_key \
+  --build-arg VITE_SENTRY_DSN=your_sentry_dsn \
+  -t daywright-app:${TAG} -t daywright-app:latest .
 docker build --target web     -t daywright-web:${TAG} -t daywright-web:latest .
 
 # 6. Validate Compose config & start all services.
@@ -82,17 +87,16 @@ docker compose -f compose.production.yaml up -d
 #    to bind port 80 — which Nginx already holds — and silently fail.
 #
 #    certbot reconfigure updates the saved renewal configuration to use the
-#    webroot authenticator and validates the change against the Let's Encrypt
-#    staging server (--staging) so no rate-limit is consumed.
+#    webroot authenticator and validates the configuration automatically.
+#    (Do NOT pass --staging when reconfiguring an existing production certificate.)
 #
 sudo certbot reconfigure \
   --cert-name yourdomain.com \
   --authenticator webroot \
-  --webroot-path /var/www/certbot \
-  --staging
+  --webroot-path /var/www/certbot
 
-#    After reconfigure succeeds, verify that automatic renewal will work:
-sudo certbot renew --dry-run
+#    After reconfigure succeeds, verify automatic renewal AND the Nginx reload hook:
+sudo certbot renew --dry-run --run-deploy-hooks
 
 # 8. Verify RDS connectivity & run initial migrations manually
 docker compose -f compose.production.yaml exec app php artisan db:monitor
@@ -100,10 +104,7 @@ docker compose -f compose.production.yaml exec app php artisan migrate --force
 ```
 
 > [!NOTE]
-> **Certbot version requirement:** `certbot reconfigure` was introduced in Certbot 2.3.0 (February 2023). Check your version with `certbot --version`. On Ubuntu 22.04+ the `snap`-installed Certbot is kept up to date automatically and will be ≥ 2.3.0. On older systems installed via `apt`, upgrade with `sudo snap install --classic certbot` or consult the [Certbot documentation](https://eff-certbot.readthedocs.io/) for the equivalent manual procedure.
-
-> [!IMPORTANT]
-> The `--staging` flag in `certbot reconfigure` tests against Let's Encrypt's staging server. This validates that Nginx correctly serves the ACME challenge from `/var/www/certbot` without consuming a production rate-limit. The certificate is not replaced — only the renewal configuration is updated and verified.
+> **Certbot version requirement:** `certbot reconfigure` was introduced in Certbot 2.3.0 (February 2023), and staging-test behavior was refined in 2.9.0. Check your version with `certbot --version`. On Ubuntu 22.04+ the `snap`-installed Certbot is kept up to date automatically. On older systems installed via `apt`, upgrade with `sudo snap install --classic certbot` or consult the [Certbot documentation](https://eff-certbot.readthedocs.io/) for the equivalent manual procedure.
 
 ---
 
@@ -126,10 +127,10 @@ EOF
 sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-daywright-nginx.sh
 ```
 
-**Step B — Verify that automatic renewal will succeed** (safe, no rate-limit consumed):
+**Step B — Verify that automatic renewal AND the deploy hook will succeed** (safe, no rate-limit consumed):
 
 ```bash
-sudo certbot renew --dry-run
+sudo certbot renew --dry-run --run-deploy-hooks
 ```
 
 A successful dry-run confirms that:
@@ -152,7 +153,11 @@ Always tag images with the Git commit SHA (or release tag) so the previous image
 
 ```bash
 cd /home/ubuntu/daywright
-git fetch origin && git checkout <target-branch-or-tag> && git pull --ff-only
+git fetch origin --tags
+# Option A: deploying a branch
+git checkout main && git pull --ff-only
+# Option B: deploying an immutable release tag (do NOT run git pull on a tag)
+# git checkout v1.2.3
 
 export NEW_TAG=$(git rev-parse --short HEAD)
 
@@ -166,14 +171,18 @@ docker build --target web     -t daywright-web:${NEW_TAG} .
 #      --db-instance-identifier daywright-prod \
 #      --db-snapshot-identifier "daywright-pre-${NEW_TAG}-$(date +%Y%m%d%H%M)"
 
-# 3. Update IMAGE_TAG in .env and recreate services
+# 3. Update IMAGE_TAG in .env
 sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${NEW_TAG}/" .env
+
+# 4. Run additive (backward-compatible) migrations from the new image BEFORE starting
+#    the new containers, so old containers stay healthy while the schema updates.
+#    (For destructive migrations that rename/drop columns, stop web/horizon/scheduler first.)
+docker compose -f compose.production.yaml run --rm app php artisan migrate --force
+
+# 5. Recreate services with the new image
 docker compose -f compose.production.yaml up -d
 
-# 4. Run database migrations explicitly (never automatic on boot)
-docker compose -f compose.production.yaml exec app php artisan migrate --force
-
-# 5. Verify healthchecks and logs
+# 6. Verify healthchecks and logs
 docker compose -f compose.production.yaml ps
 docker compose -f compose.production.yaml logs --tail=50 app horizon web
 ```
@@ -211,4 +220,4 @@ Safe migration & recovery rules:
 2. **Prefer backward-compatible (expand-and-contract) migrations** — add nullable columns or new tables first, deploy code, and only drop old columns in a later release once rollback is no longer needed.
 3. **If a migration fails or breaks the previous app version:**
    - For minor additive migrations with a `down()` method, you may run `docker compose -f compose.production.yaml exec app php artisan migrate:rollback --step=1 --force` _before_ switching back to the old code (verify the `down()` method is non-destructive first).
-   - For destructive or irreversible schema/data migrations, **restore the pre-migration AWS RDS snapshot** (and update `DB_HOST` in `.env.production` if restoring to a new RDS instance endpoint), then roll `IMAGE_TAG` back to `<PREVIOUS_TAG>`.
+   - For destructive or irreversible schema/data migrations, **stop writes first** (`docker compose -f compose.production.yaml stop web horizon scheduler` or enable maintenance mode), **restore the pre-migration AWS RDS snapshot** (and update `DB_HOST` in `.env.production` if restoring to a new RDS instance endpoint), reconcile any critical post-snapshot writes if needed, roll `IMAGE_TAG` back to `<PREVIOUS_TAG>`, and restart services.

@@ -76,11 +76,13 @@ class Kernel extends ConsoleKernel
             ->daily()
             ->at('01:30');
 
-        $schedule->command('telescope:prune --hours=10')
-            ->name('telescope-prune')
-            ->onOneServer()
-            ->withoutOverlapping()
-            ->daily();
+        if (class_exists(\Laravel\Telescope\Telescope::class)) {
+            $schedule->command('telescope:prune --hours=10')
+                ->name('telescope-prune')
+                ->onOneServer()
+                ->withoutOverlapping()
+                ->daily();
+        }
         $schedule->command('user:profile-delete')
             ->name('user-profile-delete')
             ->onOneServer()
