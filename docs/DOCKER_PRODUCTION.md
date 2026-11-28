@@ -77,21 +77,19 @@ export VITE_ARGS="--build-arg VITE_PUSHER_APP_KEY=your_key \
 docker build --target runtime ${VITE_ARGS} -t daywright-app:${TAG} -t daywright-app:latest .
 docker build --target web     ${VITE_ARGS} -t daywright-web:${TAG} -t daywright-web:latest .
 
-# 6. Validate Compose config, start Redis, verify RDS connectivity, and run initial migrations
-#    BEFORE starting app, web, horizon, and scheduler (so workers do not query missing tables).
+# 6. Validate Compose config, start Redis, verify RDS connectivity, run initial migrations,
+#    and ONLY THEN start all services (chained with && so any failure stops startup).
 #    (Override entrypoint so Artisan runs instead of starting php-fpm.)
-docker compose -f compose.production.yaml config --quiet
-docker compose -f compose.production.yaml up -d --wait redis
+#    Nginx then occupies port 80 and serves ACME challenges from /var/www/certbot.
+docker compose -f compose.production.yaml config --quiet && \
+docker compose -f compose.production.yaml up -d --wait redis && \
 docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
-  --entrypoint php app artisan db:monitor
+  --entrypoint php app artisan db:monitor && \
 docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
-  --entrypoint php app artisan migrate --force
-
-# 7. Start all services.
-#    Nginx now occupies port 80 and serves ACME challenges from /var/www/certbot.
+  --entrypoint php app artisan migrate --force && \
 docker compose -f compose.production.yaml up -d
 
-# 8. Switch renewal authenticator from standalone → webroot (Certbot 2.3.0+).
+# 7. Switch renewal authenticator from standalone → webroot (Certbot 2.3.0+).
 #
 #    The initial --standalone issuance writes "authenticator = standalone" into
 #    /etc/letsencrypt/renewal/yourdomain.com.conf. Auto-renewal would then try
@@ -113,7 +111,7 @@ sudo certbot reconfigure \
 
 ## 4. Automatic TLS Renewal & Zero-Downtime Nginx Reload
 
-After completing step 8 of the initial setup (`certbot reconfigure`), Certbot's saved renewal configuration uses the **webroot authenticator**. All future automatic renewals write challenge tokens into `/var/www/certbot` on the host; Nginx serves them from the matching container mount over HTTP without vacating port 80. HTTPS traffic is never interrupted.
+After completing step 7 of the initial setup (`certbot reconfigure`), Certbot's saved renewal configuration uses the **webroot authenticator**. All future automatic renewals write challenge tokens into `/var/www/certbot` on the host; Nginx serves them from the matching container mount over HTTP without vacating port 80. HTTPS traffic is never interrupted.
 
 `compose.production.yaml` mounts the complete `/etc/letsencrypt` directory read-only into the Nginx container so `live/<domain>/*.pem` symlinks to `../../archive/<domain>/*.pem` remain valid after every renewal. Certbot rotates the archive files and updates the symlinks; Nginx reads the new certificate on reload without a container restart.
 
@@ -210,7 +208,8 @@ cd /home/ubuntu/daywright
 # 1. List available local immutable image tags
 docker images daywright-app --format "table {{.Tag}}\t{{.CreatedAt}}\t{{.Size}}"
 
-# 2. Set IMAGE_TAG in .env back to the previous known-good tag
+# 2. Clear any stale exported IMAGE_TAG and set IMAGE_TAG in .env back to the previous known-good tag
+unset IMAGE_TAG
 sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=<PREVIOUS_TAG>/" .env
 
 # 3. Recreate containers using the previous image
@@ -228,5 +227,15 @@ Safe migration & recovery rules:
 1. **Always take an RDS snapshot before running `php artisan migrate --force`** on any release that alters tables/columns.
 2. **Prefer backward-compatible (expand-and-contract) migrations** — add nullable columns or new tables first, deploy code, and only drop old columns in a later release once rollback is no longer needed.
 3. **If a migration fails or breaks the previous app version:**
-   - For minor additive migrations with a `down()` method, you may run `docker compose -f compose.production.yaml exec app php artisan migrate:rollback --step=1 --force` _before_ switching back to the old code (verify the `down()` method is non-destructive first).
-   - For destructive or irreversible schema/data migrations, **stop writes first** (`docker compose -f compose.production.yaml stop web horizon scheduler` or enable maintenance mode), **restore the pre-migration AWS RDS snapshot** (and update `DB_HOST` in `.env.production` if restoring to a new RDS instance endpoint), reconcile any critical post-snapshot writes if needed, roll `IMAGE_TAG` back to `<PREVIOUS_TAG>`, and restart services.
+   - **First, inspect migration status** using a one-off container from the image that ran the migration (do **not** use `exec app`, because on a failed release `app` is still running `<PREVIOUS_TAG>` and lacks the new migration files):
+     ```bash
+     docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
+       --entrypoint php app artisan migrate:status
+     ```
+   - For minor additive migrations where a new migration actually completed and has a verified non-destructive `down()` method, roll back using that same `run --rm` command (using the image containing that migration) _before_ restoring `<PREVIOUS_TAG>`:
+     ```bash
+     docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
+       --entrypoint php app artisan migrate:rollback --step=1 --force
+     ```
+   - For destructive or irreversible schema/data migrations, **stop writes first** (`docker compose -f compose.production.yaml stop web horizon scheduler` or enable maintenance mode), **restore the pre-migration AWS RDS snapshot** (and update `DB_HOST` in `.env.production` if restoring to a new RDS instance endpoint), and reconcile any critical post-snapshot writes if needed.
+   - **Always restore `IMAGE_TAG` after an aborted release:** run `unset IMAGE_TAG && sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=<PREVIOUS_TAG>/" .env` so a subsequent `docker compose up -d` does not unintentionally start the failed new image, then restart/verify services as needed.

@@ -10,8 +10,9 @@
 # Usage:
 #   export DOMAIN=yourdomain.com          # or put DOMAIN=... and IMAGE_TAG=... in .env
 #   export IMAGE_TAG=$(git rev-parse --short HEAD)
+#   docker compose -f compose.production.yaml up -d --wait redis && \
+#   docker compose -f compose.production.yaml run --rm --no-deps --user www-data --entrypoint php app artisan migrate --force && \
 #   docker compose -f compose.production.yaml up -d
-#   docker compose -f compose.production.yaml exec app php artisan migrate --force
 #   docker compose -f compose.production.yaml logs -f
 #
 # Docker Compose automatically loads .env from the project root for variable
