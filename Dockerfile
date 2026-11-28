@@ -120,8 +120,8 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 RUN { \
     echo '[PHP]'; \
     echo 'memory_limit = 512M'; \
-    echo 'upload_max_filesize = 50M'; \
-    echo 'post_max_size = 50M'; \
+    echo 'upload_max_filesize = 10M'; \
+    echo 'post_max_size = 12M'; \
     echo 'max_execution_time = 60'; \
     echo 'expose_php = Off'; \
     echo 'date.timezone = UTC'; \

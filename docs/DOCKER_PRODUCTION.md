@@ -66,14 +66,16 @@ cp .env.production.example .env.production
 nano .env.production   # Fill in APP_KEY, DB_*, AWS_*, PADDLE_*, MAIL_*, etc.
 chmod 600 .env .env.production
 
-# 5. Build immutable tagged images (pass public VITE_* build args if used by frontend)
-docker build --target runtime \
-  --build-arg VITE_PUSHER_APP_KEY=your_key \
+# 5. Build immutable tagged images
+#    Pass public VITE_* build arguments to BOTH builds so the Vue asset bundle
+#    and the Vite manifest stay in sync across app and web images.
+export VITE_ARGS="--build-arg VITE_PUSHER_APP_KEY=your_key \
   --build-arg VITE_PUSHER_APP_CLUSTER=mt1 \
   --build-arg VITE_ZOOM_SDK_KEY=your_zoom_key \
-  --build-arg VITE_SENTRY_DSN=your_sentry_dsn \
-  -t daywright-app:${TAG} -t daywright-app:latest .
-docker build --target web     -t daywright-web:${TAG} -t daywright-web:latest .
+  --build-arg VITE_SENTRY_DSN=your_sentry_dsn"
+
+docker build --target runtime ${VITE_ARGS} -t daywright-app:${TAG} -t daywright-app:latest .
+docker build --target web     ${VITE_ARGS} -t daywright-web:${TAG} -t daywright-web:latest .
 
 # 6. Validate Compose config & start all services.
 #    Nginx now occupies port 80 and serves ACME challenges from /var/www/certbot.
@@ -83,24 +85,22 @@ docker compose -f compose.production.yaml up -d
 # 7. Switch renewal authenticator from standalone → webroot (Certbot 2.3.0+).
 #
 #    The initial --standalone issuance writes "authenticator = standalone" into
-#    /etc/letsencrypt/renewal/yourdomain.com.conf.  Auto-renewal would then try
+#    /etc/letsencrypt/renewal/yourdomain.com.conf. Auto-renewal would then try
 #    to bind port 80 — which Nginx already holds — and silently fail.
 #
 #    certbot reconfigure updates the saved renewal configuration to use the
-#    webroot authenticator and validates the configuration automatically.
-#    (Do NOT pass --staging when reconfiguring an existing production certificate.)
+#    webroot authenticator without touching an existing certificate.
 #
 sudo certbot reconfigure \
   --cert-name yourdomain.com \
   --authenticator webroot \
   --webroot-path /var/www/certbot
 
-#    After reconfigure succeeds, verify automatic renewal AND the Nginx reload hook:
-sudo certbot renew --dry-run --run-deploy-hooks
-
-# 8. Verify RDS connectivity & run initial migrations manually
+# 8. Verify RDS connectivity & run initial migrations
+#    (Override entrypoint so migrations run instead of starting php-fpm)
 docker compose -f compose.production.yaml exec app php artisan db:monitor
-docker compose -f compose.production.yaml exec app php artisan migrate --force
+docker compose -f compose.production.yaml run --rm --no-deps \
+  --entrypoint php app artisan migrate --force
 ```
 
 > [!NOTE]
@@ -161,9 +161,14 @@ git checkout main && git pull --ff-only
 
 export NEW_TAG=$(git rev-parse --short HEAD)
 
-# 1. Build new immutable images (old tagged images remain intact)
-docker build --target runtime -t daywright-app:${NEW_TAG} .
-docker build --target web     -t daywright-web:${NEW_TAG} .
+# 1. Build new immutable images (pass identical VITE_* args to both images)
+export VITE_ARGS="--build-arg VITE_PUSHER_APP_KEY=your_key \
+  --build-arg VITE_PUSHER_APP_CLUSTER=mt1 \
+  --build-arg VITE_ZOOM_SDK_KEY=your_zoom_key \
+  --build-arg VITE_SENTRY_DSN=your_sentry_dsn"
+
+docker build --target runtime ${VITE_ARGS} -t daywright-app:${NEW_TAG} .
+docker build --target web     ${VITE_ARGS} -t daywright-web:${NEW_TAG} .
 
 # 2. If this release includes database migrations, take an RDS snapshot FIRST!
 #    Example via AWS CLI (or create a manual snapshot in the AWS RDS Console):
@@ -176,8 +181,9 @@ sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${NEW_TAG}/" .env
 
 # 4. Run additive (backward-compatible) migrations from the new image BEFORE starting
 #    the new containers, so old containers stay healthy while the schema updates.
-#    (For destructive migrations that rename/drop columns, stop web/horizon/scheduler first.)
-docker compose -f compose.production.yaml run --rm app php artisan migrate --force
+#    (We override the entrypoint with php artisan migrate --force)
+docker compose -f compose.production.yaml run --rm --no-deps \
+  --entrypoint php app artisan migrate --force
 
 # 5. Recreate services with the new image
 docker compose -f compose.production.yaml up -d
