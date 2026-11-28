@@ -1,0 +1,312 @@
+# ==============================================================================
+# DayWright — Production Docker Compose Orchestration
+#
+# Target:  Single AWS EC2 instance, no ALB, no Kubernetes.
+# Images:  daywright-app (PHP-FPM/Laravel) · daywright-web (Nginx)
+# DB:      AWS RDS for MySQL — external, NOT in Compose.
+# Storage: AWS S3 — all file uploads via FileService → S3.
+# TLS:     Nginx terminates TLS directly (certs mounted as volume).
+#
+# Usage:
+#   export DOMAIN=yourdomain.com          # or put DOMAIN=... and IMAGE_TAG=... in .env
+#   export IMAGE_TAG=$(git rev-parse --short HEAD)
+#   docker compose -f compose.production.yaml up -d --wait redis && \
+#   docker compose -f compose.production.yaml run --rm --no-deps --user www-data --entrypoint php app artisan migrate --force && \
+#   docker compose -f compose.production.yaml up -d
+#   docker compose -f compose.production.yaml logs -f
+#
+# Docker Compose automatically loads .env from the project root for variable
+# substitution (${DOMAIN}, ${IMAGE_TAG}, ${LETSENCRYPT_DIR}, ${CERTBOT_WEBROOT}).
+# See docs/DOCKER_PRODUCTION.md for TLS issuance, renewal, release, and rollback.
+#
+# NEVER commit .env.production or .env to version control.
+# ==============================================================================
+
+services:
+
+  # ============================================================================
+  # web — Nginx reverse proxy + TLS terminator
+  #
+  # Public-facing. Terminates HTTPS, serves static assets from its own
+  # /var/www/html/public copy, proxies PHP requests to app:9000.
+  # ============================================================================
+  web:
+    image: daywright-web:${IMAGE_TAG:-latest}
+    container_name: daywright-web
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env or shell}
+      NGINX_ENVSUBST_FILTER: ^DOMAIN$
+
+    volumes:
+      # Complete Let's Encrypt directory mounted read-only so live/<domain>/*
+      # symlinks to ../../archive/<domain>/* remain valid across renewals.
+      # On EC2: sudo certbot certonly --standalone -d yourdomain.com
+      - ${LETSENCRYPT_DIR:-/etc/letsencrypt}:/etc/letsencrypt:ro
+      # Shared persistent host webroot for Certbot HTTP-01 ACME challenges.
+      - ${CERTBOT_WEBROOT:-/var/www/certbot}:/var/www/certbot:ro
+
+    depends_on:
+      app:
+        condition: service_healthy
+
+    networks:
+      - daywright
+
+    # Nginx is stateless — no env_file needed here.
+    # Healthcheck: ask Nginx to serve its local health endpoint on port 80.
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "-T", "5", "http://127.0.0.1/nginx-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "128M"
+
+  # ============================================================================
+  # app — Laravel PHP-FPM application
+  #
+  # Internal only — port 9000 is NEVER exposed to the host.
+  # Runs entrypoint.sh which: waits for Redis, warms caches, then execs php-fpm.
+  # ============================================================================
+  app:
+    image: daywright-app:${IMAGE_TAG:-latest}
+    container_name: daywright-app
+    restart: unless-stopped
+
+    # No ports: section — PHP-FPM must NEVER be publicly reachable.
+    # Nginx reaches it at app:9000 over the daywright Docker network.
+
+    env_file:
+      - .env.production
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+    networks:
+      - daywright
+
+    volumes:
+      # Scheduler writes logs to storage/logs/scheduler.log inside the container.
+      # Persist across container restarts so logs survive deployments.
+      - storage-logs:/var/www/html/storage/logs
+      # framework/{sessions,cache,views} — persist across container restarts.
+      - storage-framework:/var/www/html/storage/framework
+
+    healthcheck:
+      test: ["CMD", "php-fpm", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "10"
+
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "512M"
+
+  # ============================================================================
+  # horizon — Laravel Horizon queue worker
+  #
+  # Reuses daywright-app image. Overrides the CMD to run Horizon.
+  # Horizon manages its own worker processes (supervisor-* pools defined in
+  # config/horizon.php under the 'production' environment).
+  # ============================================================================
+  horizon:
+    image: daywright-app:${IMAGE_TAG:-latest}
+    container_name: daywright-horizon
+    restart: unless-stopped
+    user: "www-data"
+
+    # Override entrypoint — Horizon does not need PHP-FPM.
+    # It waits for Redis in its own startup logic via config/horizon.php.
+    entrypoint: []
+    command: ["php", "/var/www/html/artisan", "horizon"]
+
+    env_file:
+      - .env.production
+
+    depends_on:
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - daywright
+
+    volumes:
+      - storage-logs:/var/www/html/storage/logs
+      - storage-framework:/var/www/html/storage/framework
+
+    # Horizon's graceful shutdown: SIGTERM → Horizon drains current jobs, exits.
+    # Exceeds longest configured supervisor timeout (120s in config/horizon.php) + overhead.
+    stop_signal: SIGTERM
+    stop_grace_period: 135s
+
+    healthcheck:
+      test: ["CMD", "php", "/var/www/html/artisan", "horizon:status"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "10"
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: "384M"
+
+  # ============================================================================
+  # scheduler — Laravel command scheduler
+  #
+  # Reuses daywright-app image. Runs `php artisan schedule:work` which loops
+  # every minute and dispatches due commands (defined in Kernel.php).
+  # Uses ->onOneServer() with Redis cache lock so only one scheduler instance
+  # runs at a time (safe for future horizontal scaling).
+  # ============================================================================
+  scheduler:
+    image: daywright-app:${IMAGE_TAG:-latest}
+    container_name: daywright-scheduler
+    restart: unless-stopped
+    user: "www-data"
+
+    entrypoint: []
+    command: ["php", "/var/www/html/artisan", "schedule:work"]
+
+    env_file:
+      - .env.production
+
+    depends_on:
+      app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - daywright
+
+    volumes:
+      - storage-logs:/var/www/html/storage/logs
+      - storage-framework:/var/www/html/storage/framework
+
+    # schedule:work does not handle SIGTERM natively — give it time to finish
+    # the current minute's jobs before Docker kills the process.
+    stop_grace_period: 90s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "5"
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "256M"
+
+  # ============================================================================
+  # redis — In-container Redis for queues, cache and sessions
+  #
+  # Port 6379 is NOT exposed to the host — all access is internal.
+  # AOF persistence (appendonly yes) means Horizon job data survives a Redis
+  # container restart. RDB snapshots are also kept as a secondary safety net.
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: daywright-redis
+    restart: unless-stopped
+
+    # No ports: — Redis must NEVER be publicly reachable.
+
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --maxmemory 192mb
+      --maxmemory-policy noeviction
+      --loglevel notice
+
+    volumes:
+      - redis-data:/data
+
+    networks:
+      - daywright
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: "256M"
+
+# ==============================================================================
+# Networks
+#
+# Single bridge network. All containers communicate by service name.
+# Only 'web' binds host ports (80, 443).
+# ==============================================================================
+networks:
+  daywright:
+    driver: bridge
+    name: daywright
+
+# ==============================================================================
+# Volumes
+#
+# Named volumes survive `docker compose down` (data is preserved).
+# Use `docker compose down -v` ONLY when you intentionally want to wipe data.
+# ==============================================================================
+volumes:
+  redis-data:
+    driver: local
+  storage-logs:
+    driver: local
+  storage-framework:
+    driver: local

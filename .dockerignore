@@ -1,0 +1,147 @@
+# ==============================================================================
+# DayWright Production .dockerignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Dependencies (installed natively inside Docker build stages)
+# ------------------------------------------------------------------------------
+/vendor
+/node_modules
+
+# ------------------------------------------------------------------------------
+# Frontend & Vite Build Artifacts
+# Note: public/ is preserved for static assets; only built/runtime files ignored
+# ------------------------------------------------------------------------------
+/public/build
+/public/hot
+/public/storage
+
+# ------------------------------------------------------------------------------
+# Environment, Credentials & Keys
+# ------------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+/storage/*.key
+
+# ------------------------------------------------------------------------------
+# Bootstrap Cache
+# Preserve directory structure via .gitkeep; exclude host-generated php caches
+# ------------------------------------------------------------------------------
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitkeep
+
+# ------------------------------------------------------------------------------
+# Laravel Storage Runtime, Backups & Logs
+# Exclude local logs (browser.log is ~70MB), backups, sessions, and test S3 disks
+# Retain directory structure via .gitignore negations
+# ------------------------------------------------------------------------------
+/storage/app/*
+!/storage/app/.gitignore
+!/storage/app/public/
+/storage/app/public/*
+!/storage/app/public/.gitignore
+
+/storage/debugbar/*
+!/storage/debugbar/.gitignore
+
+/storage/framework/cache/*
+!/storage/framework/cache/.gitignore
+!/storage/framework/cache/data/
+/storage/framework/cache/data/*
+!/storage/framework/cache/data/.gitignore
+
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitignore
+
+/storage/framework/testing/*
+!/storage/framework/testing/.gitignore
+
+/storage/framework/views/*
+!/storage/framework/views/.gitignore
+
+/storage/framework/laravel-excel/*
+
+/storage/logs/*
+!/storage/logs/.gitignore
+
+# ------------------------------------------------------------------------------
+# Testing Frameworks & E2E Suites
+# ------------------------------------------------------------------------------
+/tests
+/test-results
+/playwright-report
+/blob-report
+/playwright
+playwright.config.js
+phpunit.xml
+.phpunit.result.cache
+
+# ------------------------------------------------------------------------------
+# Code Quality, Static Analysis & Linters
+# ------------------------------------------------------------------------------
+phpstan*.neon
+.phpstan-cache
+.phpstan
+.phpstan-result
+phpstan.neon.tmp
+pint.json
+rector.php
+eslint.config.js
+stylelint.config.mjs
+.prettierrc.json
+.prettierignore
+.editorconfig
+sonar-project.properties
+
+# ------------------------------------------------------------------------------
+# Local Development Tools, Generators & Stubs
+# Note: patches/ and patches.lock.json are deliberately KEPT for composer-patches
+# ------------------------------------------------------------------------------
+/tools
+/stubs
+/scripts
+server.php
+api.json
+.scramble-baseline.json
+boost.json
+database/*.sqlite*
+
+# ------------------------------------------------------------------------------
+# Version Control & CI/CD
+# ------------------------------------------------------------------------------
+.git
+.github
+.husky
+.gitignore
+.gitattributes
+
+# ------------------------------------------------------------------------------
+# Documentation & AI Guides
+# ------------------------------------------------------------------------------
+/docs
+/local-docs
+/.ai
+*.md
+LICENSE
+
+# ------------------------------------------------------------------------------
+# Docker Build & Orchestration Files
+# Prevents Dockerfile / compose edits from invalidating build cache
+# ------------------------------------------------------------------------------
+.dockerignore
+Dockerfile*
+compose*.yaml
+compose*.yml
+docker-compose*.yaml
+docker-compose*.yml
+
+# ------------------------------------------------------------------------------
+# Logs & System Temp Files
+# ------------------------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
