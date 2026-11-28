@@ -139,6 +139,7 @@ services:
     image: daywright-app:${IMAGE_TAG:-latest}
     container_name: daywright-horizon
     restart: unless-stopped
+    user: "www-data"
 
     # Override entrypoint — Horizon does not need PHP-FPM.
     # It waits for Redis in its own startup logic via config/horizon.php.
@@ -197,6 +198,7 @@ services:
     image: daywright-app:${IMAGE_TAG:-latest}
     container_name: daywright-scheduler
     restart: unless-stopped
+    user: "www-data"
 
     entrypoint: []
     command: ["php", "/var/www/html/artisan", "schedule:work"]

@@ -77,12 +77,21 @@ export VITE_ARGS="--build-arg VITE_PUSHER_APP_KEY=your_key \
 docker build --target runtime ${VITE_ARGS} -t daywright-app:${TAG} -t daywright-app:latest .
 docker build --target web     ${VITE_ARGS} -t daywright-web:${TAG} -t daywright-web:latest .
 
-# 6. Validate Compose config & start all services.
-#    Nginx now occupies port 80 and serves ACME challenges from /var/www/certbot.
+# 6. Validate Compose config, start Redis, verify RDS connectivity, and run initial migrations
+#    BEFORE starting app, web, horizon, and scheduler (so workers do not query missing tables).
+#    (Override entrypoint so Artisan runs instead of starting php-fpm.)
 docker compose -f compose.production.yaml config --quiet
+docker compose -f compose.production.yaml up -d --wait redis
+docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
+  --entrypoint php app artisan db:monitor
+docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
+  --entrypoint php app artisan migrate --force
+
+# 7. Start all services.
+#    Nginx now occupies port 80 and serves ACME challenges from /var/www/certbot.
 docker compose -f compose.production.yaml up -d
 
-# 7. Switch renewal authenticator from standalone → webroot (Certbot 2.3.0+).
+# 8. Switch renewal authenticator from standalone → webroot (Certbot 2.3.0+).
 #
 #    The initial --standalone issuance writes "authenticator = standalone" into
 #    /etc/letsencrypt/renewal/yourdomain.com.conf. Auto-renewal would then try
@@ -95,12 +104,6 @@ sudo certbot reconfigure \
   --cert-name yourdomain.com \
   --authenticator webroot \
   --webroot-path /var/www/certbot
-
-# 8. Verify RDS connectivity & run initial migrations
-#    (Override entrypoint so migrations run instead of starting php-fpm)
-docker compose -f compose.production.yaml exec app php artisan db:monitor
-docker compose -f compose.production.yaml run --rm --no-deps \
-  --entrypoint php app artisan migrate --force
 ```
 
 > [!NOTE]
@@ -110,7 +113,7 @@ docker compose -f compose.production.yaml run --rm --no-deps \
 
 ## 4. Automatic TLS Renewal & Zero-Downtime Nginx Reload
 
-After completing step 7 of the initial setup (`certbot reconfigure`), Certbot's saved renewal configuration uses the **webroot authenticator**. All future automatic renewals write challenge tokens into `/var/www/certbot` on the host; Nginx serves them from the matching container mount over HTTP without vacating port 80. HTTPS traffic is never interrupted.
+After completing step 8 of the initial setup (`certbot reconfigure`), Certbot's saved renewal configuration uses the **webroot authenticator**. All future automatic renewals write challenge tokens into `/var/www/certbot` on the host; Nginx serves them from the matching container mount over HTTP without vacating port 80. HTTPS traffic is never interrupted.
 
 `compose.production.yaml` mounts the complete `/etc/letsencrypt` directory read-only into the Nginx container so `live/<domain>/*.pem` symlinks to `../../archive/<domain>/*.pem` remain valid after every renewal. Certbot rotates the archive files and updates the symlinks; Nginx reads the new certificate on reload without a container restart.
 
@@ -176,19 +179,19 @@ docker build --target web     ${VITE_ARGS} -t daywright-web:${NEW_TAG} .
 #      --db-instance-identifier daywright-prod \
 #      --db-snapshot-identifier "daywright-pre-${NEW_TAG}-$(date +%Y%m%d%H%M)"
 
-# 3. Update IMAGE_TAG in .env
+# 3. Clear any stale exported IMAGE_TAG (shell exports override .env) and update .env
+unset IMAGE_TAG
 sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${NEW_TAG}/" .env
 
 # 4. Run additive (backward-compatible) migrations from the new image BEFORE starting
 #    the new containers, so old containers stay healthy while the schema updates.
-#    (We override the entrypoint with php artisan migrate --force)
-docker compose -f compose.production.yaml run --rm --no-deps \
-  --entrypoint php app artisan migrate --force
-
-# 5. Recreate services with the new image
+#    Only recreate services if migrations succeed; on failure, stop the release and
+#    follow the recovery procedure in Section 6.
+docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
+  --entrypoint php app artisan migrate --force && \
 docker compose -f compose.production.yaml up -d
 
-# 6. Verify healthchecks and logs
+# 5. Verify healthchecks and logs
 docker compose -f compose.production.yaml ps
 docker compose -f compose.production.yaml logs --tail=50 app horizon web
 ```
