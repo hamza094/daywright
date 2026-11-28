@@ -71,7 +71,7 @@ echo "[entrypoint] WARNING: Cache warm-up failed. PHP-FPM will start without cac
 
 # Ensure any compiled views or boot logs created above belong to www-data so
 # php-fpm workers, horizon, and scheduler can read/write shared volumes cleanly.
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache || true
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # ------------------------------------------------------------------------------
 # 3. Hand off to PHP-FPM

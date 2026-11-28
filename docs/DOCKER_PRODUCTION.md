@@ -83,6 +83,8 @@ docker build --target web     ${VITE_ARGS} -t daywright-web:${TAG} -t daywright-
 #    Nginx then occupies port 80 and serves ACME challenges from /var/www/certbot.
 docker compose -f compose.production.yaml config --quiet && \
 docker compose -f compose.production.yaml up -d --wait redis && \
+docker compose -f compose.production.yaml run --rm --no-deps --user root \
+  --entrypoint chown app -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
 docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
   --entrypoint php app artisan db:monitor && \
 docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
@@ -181,10 +183,13 @@ docker build --target web     ${VITE_ARGS} -t daywright-web:${NEW_TAG} .
 unset IMAGE_TAG
 sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${NEW_TAG}/" .env
 
-# 4. Run additive (backward-compatible) migrations from the new image BEFORE starting
+# 4. Normalize shared volume ownership (protects upgrades from older root-run volumes),
+#    then run additive (backward-compatible) migrations from the new image BEFORE starting
 #    the new containers, so old containers stay healthy while the schema updates.
 #    Only recreate services if migrations succeed; on failure, stop the release and
 #    follow the recovery procedure in Section 6.
+docker compose -f compose.production.yaml run --rm --no-deps --user root \
+  --entrypoint chown app -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
 docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
   --entrypoint php app artisan migrate --force && \
 docker compose -f compose.production.yaml up -d
@@ -227,14 +232,14 @@ Safe migration & recovery rules:
 1. **Always take an RDS snapshot before running `php artisan migrate --force`** on any release that alters tables/columns.
 2. **Prefer backward-compatible (expand-and-contract) migrations** — add nullable columns or new tables first, deploy code, and only drop old columns in a later release once rollback is no longer needed.
 3. **If a migration fails or breaks the previous app version:**
-   - **First, inspect migration status** using a one-off container from the image that ran the migration (do **not** use `exec app`, because on a failed release `app` is still running `<PREVIOUS_TAG>` and lacks the new migration files):
+   - **First, inspect migration status** using a one-off container of the release image that introduced the migration (`<NEW_TAG>`) — set `IMAGE_TAG=<NEW_TAG>` explicitly on the command so `.env` changes from the image rollback section above cannot select the older image, and do **not** use `exec app`, because on a failed release `app` is still running `<PREVIOUS_TAG>`:
      ```bash
-     docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
+     IMAGE_TAG=<NEW_TAG> docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
        --entrypoint php app artisan migrate:status
      ```
-   - For minor additive migrations where a new migration actually completed and has a verified non-destructive `down()` method, roll back using that same `run --rm` command (using the image containing that migration) _before_ restoring `<PREVIOUS_TAG>`:
+   - For minor additive migrations where a new migration actually completed and has a verified non-destructive `down()` method, roll back using that same `IMAGE_TAG=<NEW_TAG>` one-off command _before_ switching back to `<PREVIOUS_TAG>`:
      ```bash
-     docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
+     IMAGE_TAG=<NEW_TAG> docker compose -f compose.production.yaml run --rm --no-deps --user www-data \
        --entrypoint php app artisan migrate:rollback --step=1 --force
      ```
    - For destructive or irreversible schema/data migrations, **stop writes first** (`docker compose -f compose.production.yaml stop web horizon scheduler` or enable maintenance mode), **restore the pre-migration AWS RDS snapshot** (and update `DB_HOST` in `.env.production` if restoring to a new RDS instance endpoint), and reconcile any critical post-snapshot writes if needed.
